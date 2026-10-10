@@ -1,0 +1,22 @@
+# Architecture decision records
+
+Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the process is [ADR 0001](0001-record-architecture-decisions-with-madr.md). New ADRs copy [`template.md`](template.md), take the next free number, and are added to this table in the same change. `npm run check:docs` verifies the files and this index.
+
+| # | Title | Status | Date |
+|---|---|---|---|
+| [0001](0001-record-architecture-decisions-with-madr.md) | Record architecture decisions with MADR | accepted | 2026-10-10 |
+| [0002](0002-external-coding-agent-generates-diagrams.md) | External coding agent generates diagrams through a skill | accepted | 2026-10-10 |
+| [0003](0003-target-claude-code-and-codex.md) | Target Claude Code and Codex | accepted | 2026-10-10 |
+| [0004](0004-one-skill-with-bundled-scripts.md) | One skill with bundled repo-facts and validate scripts | accepted | 2026-10-10 |
+| [0005](0005-manual-invocation-and-claude-pre-approvals.md) | Manual skill invocation and Claude tool pre-approvals | accepted | 2026-10-10 |
+| [0006](0006-install-skill-into-agents-with-claude-symlink.md) | Install the skill into .agents/skills with a .claude symlink | accepted | 2026-10-10 |
+| [0007](0007-validator-as-dependency-free-node-bundles.md) | Validator and repo facts as dependency-free Node bundles | accepted | 2026-10-10 |
+| [0008](0008-validator-publishes-draft-as-candidate.md) | Validator publishes draft.json as candidate.json | accepted | 2026-10-10 |
+| [0009](0009-validator-owns-geometry-and-meta-fields.md) | Validator owns geometry, presentation and repository metadata | accepted | 2026-10-10 |
+| [0010](0010-elkjs-layout-in-the-webview.md) | elkjs layout in the webview, authored positions when complete | accepted | 2026-10-10 |
+| [0011](0011-webview-panel-viewer-with-code-beside.md) | WebviewPanel viewer with code in the other column | accepted | 2026-10-10 |
+| [0012](0012-no-validation-on-load-tolerant-parsing.md) | No validation on load; tolerant parsing; stale citations reported on click | accepted | 2026-10-10 |
+| [0013](0013-archify-json-v1-and-archify-folder-layout.md) | Archify JSON v1 and the .archify folder layout | accepted | 2026-10-10 |
+| [0014](0014-desktop-vscode-vsix-single-folder.md) | Desktop VS Code, .vsix install, one chosen folder | accepted | 2026-10-10 |
+| [0015](0015-typescript-esbuild-vitest-plain-svg-webview.md) | TypeScript, npm, esbuild, vitest; plain TypeScript SVG webview | accepted | 2026-10-10 |
+| [0016](0016-build-test-and-docs-check-harness.md) | Build, test and docs-check harness | accepted | 2026-10-10 |
