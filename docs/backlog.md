@@ -1,0 +1,1 @@
+- Apart from the features that you kept, add `node finder` and `history browser`
