@@ -2,7 +2,7 @@
 
 Sustain is a VS Code extension that shows a repository's architecture as an Archify diagram and opens the code cited by each node. Diagrams are produced by an external coding agent (Claude Code or Codex) running the bundled `sustain-architecture` skill, whose scripts validate and publish the diagram; the extension itself never calls an LLM ([ADR 0002](adr/0002-external-coding-agent-generates-diagrams.md)).
 
-> **Build state (M1).** Built: the shared model (`src/model/`), the skill scripts (`src/agent/` → `repo-facts.mjs`, `validate.mjs`) and the build/test harness. Not built yet, and marked *planned* below: the skill text and install/generate commands (M2), layout, viewer and webview (M3), navigation and watching (M4).
+> **Build state (M2).** Built: the shared model (`src/model/`), the skill (`skills/sustain-architecture/` plus the scripts built from `src/agent/`), the `Install Agent Skills` and `Generate Architecture` commands, and the build/test harness. Not built yet, and marked *planned* below: layout, viewer and webview (M3), navigation, watching and the test hook (M4).
 
 ## Components
 
@@ -13,8 +13,8 @@ flowchart LR
     rf["scripts/repo-facts.mjs"]
     val["scripts/validate.mjs"]
   end
-  subgraph ext["Extension host: src/extension/ (planned M2–M4)"]
-    host["commands, panel, navigate,<br/>install, generate, watcher"]
+  subgraph ext["Extension host: src/extension/"]
+    host["install, generate (built);<br/>panel, navigate, watcher (planned M3–M4)"]
   end
   web["Webview: webview/ (planned M3)"]
   model["src/model/"]
@@ -59,9 +59,26 @@ CLI entry points bundled by `esbuild.mjs` into `dist/skills/sustain-architecture
 * `repo-facts.ts` → `repo-facts.mjs [--focus <text>]`: creates the run folder, prints `{root, runFolder, draft, git}` ([ADR 0018](adr/0018-repo-facts-creates-the-run-folder.md)).
 * `validate.ts` → `validate.mjs <draft>`: locate draft → parse → git facts → `checkSubmission` → publish or report ([ADR 0017](adr/0017-validator-output-contract-and-exit-codes.md), [ADR 0019](adr/0019-validator-deviations-from-the-prototype-gate.md)).
 
-### `src/extension/`
+### `skills/sustain-architecture/` (built)
 
-`extension.ts` exists with an empty `activate()`. `panel.ts`, `navigate.ts`, `install.ts`, `generate.ts`, `watcher.ts` are *planned* (M2–M4).
+The static skill, copied as-is to `dist/skills/sustain-architecture/` next to the built scripts ([ADR 0004](adr/0004-one-skill-with-bundled-scripts.md), [ADR 0005](adr/0005-manual-invocation-and-claude-pre-approvals.md)).
+
+* `SKILL.md`: frontmatter (manual invocation, Claude pre-approvals) and the seven imperative steps of FR-SKL-02; every script is referenced by its repo-root path `.agents/skills/sustain-architecture/scripts/…`.
+* `agents/openai.yaml`: Codex display name and `allow_implicit_invocation: false`.
+* `references/archify-format.md`: authoring guidance adapted from the prototype's system prompt, with validation described as the `validate.mjs` steps (FR-SKL-03).
+* `references/example.json`: vendored Archify candidate, a shape example only.
+
+### `src/extension/` (partly built)
+
+| File | Responsibility |
+|---|---|
+| `extension.ts` | `activate()` registers `sustain.installSkills` and `sustain.generateArchitecture` (contributed in `package.json`, activated on command). |
+| `folders.ts` | `pickRepoRoot()`: the only folder, a QuickPick of folders, or "Open a folder first." (FR-WS-01). |
+| `skillFiles.ts` | No `vscode`: target paths, `skillInstalled`, `writeSkill` (remove both targets, copy to `.agents`, relative `dir`/`junction` link from `.claude`, copy on link failure) ([ADR 0006](adr/0006-install-skill-into-agents-with-claude-symlink.md)). |
+| `install.ts` | `installSkill()`: modal overwrite question, `writeSkill`, success notification (FR-INS-01). |
+| `agents.ts` | No `vscode`: the two agents, `agentPrompt` (`/sustain-architecture …`, `$sustain-architecture …`), `findOnPath` (PATH, PATHEXT). |
+| `generate.ts` | FR-GEN-01 flow: folder → install offer → focus → agent → terminal with `shellPath`/`shellArgs` or the "not found" warning with "Copy prompt" ([ADR 0020](adr/0020-launch-agent-terminal-with-shellpath-and-shellargs.md), [ADR 0021](adr/0021-command-ui-details-not-fixed-by-the-spec.md)). |
+| `panel.ts`, `navigate.ts`, `watcher.ts` | *Planned M3–M4.* |
 
 ### `src/layout/`, `webview/`
 
@@ -77,7 +94,9 @@ Enforced by `test/unit/boundaries.test.ts` (NFR-QUAL-03):
 
 ## Flows
 
-### Generate → validate → publish (script side built; launch planned M2)
+### Generate → validate → publish
+
+`Sustain: Generate Architecture` creates a terminal running `claude "/sustain-architecture <focus>"` or `codex "$sustain-architecture <focus>"` with the repo root as cwd; from there the agent follows `SKILL.md`:
 
 ```mermaid
 sequenceDiagram
@@ -109,12 +128,12 @@ Open → layout → render and click → resolve → open/stale are *planned* (M
 | Path | Contents |
 |---|---|
 | `<repo>/.archify/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]/` | One run: `draft.json` while unvalidated or after a failed run; `candidate.json` once accepted ([ADR 0008](adr/0008-validator-publishes-draft-as-candidate.md), [ADR 0013](adr/0013-archify-json-v1-and-archify-folder-layout.md)). |
-| `<repo>/.agents/skills/sustain-architecture/` | Installed skill (*planned M2*, [ADR 0006](adr/0006-install-skill-into-agents-with-claude-symlink.md)). |
-| `<repo>/.claude/skills/sustain-architecture` | Relative symlink to the above (*planned M2*). |
+| `<repo>/.agents/skills/sustain-architecture/` | Installed skill: real files copied from `dist/skills/sustain-architecture/` ([ADR 0006](adr/0006-install-skill-into-agents-with-claude-symlink.md)). |
+| `<repo>/.claude/skills/sustain-architecture` | Relative symlink `../../.agents/skills/sustain-architecture` (`junction` on Windows); a copy if the link cannot be created. |
 | `dist/extension.js` | Extension host bundle (CJS, `vscode` external). |
 | `dist/skills/sustain-architecture/` | Static skill files from `skills/` plus `scripts/repo-facts.mjs`, `scripts/validate.mjs`. |
 | `dist/webview.js`, `dist/webview.css` | *Planned M3.* |
-| `out/e2e/`, `out/test-scripts/` | Test builds (gitignored, never packaged): the e2e suite, and the script bundles the unit tests run ([ADR 0016](adr/0016-build-test-and-docs-check-harness.md)). |
+| `out/e2e/`, `out/test-scripts/` | Test builds (gitignored, never packaged): the e2e suite (scenarios `single`, `empty`, `multi`, each in its own VS Code launch), and the script bundles the unit tests run ([ADR 0016](adr/0016-build-test-and-docs-check-harness.md)). |
 
 ## Trust boundaries
 
@@ -122,6 +141,7 @@ Open → layout → render and click → resolve → open/stale are *planned* (M
 * **Repo-root confinement:** citation paths must be relative `/`-paths without `.`/`..` segments; their real path (symlinks resolved) must stay inside the repo root's real path (`citations.ts`).
 * **Deny-list:** `.git`, `.archify`, credential rc files, `.env*` (except examples), SSH key names and key/cert extensions can never be cited (`deny.ts`).
 * **Git:** fixed argv, no shell, no terminal prompts, stdin closed; HTTP(S) credentials are stripped from the origin before it is written anywhere (`git.ts`).
+* **Agent launch:** the prompt is a single argv element of the resolved CLI, never parsed by a shell ([ADR 0020](adr/0020-launch-agent-terminal-with-shellpath-and-shellargs.md)). Writes by the agent still need approval in Claude Code ([ADR 0005](adr/0005-manual-invocation-and-claude-pre-approvals.md)).
 * **Webview CSP:** *planned M3* (NFR-SEC-01).
 
 ## Decisions

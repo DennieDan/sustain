@@ -14,7 +14,20 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [],
-  "contributes": {},
+  "contributes": {
+    "commands": [
+      {
+        "command": "sustain.installSkills",
+        "title": "Install Agent Skills",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.generateArchitecture",
+        "title": "Generate Architecture",
+        "category": "Sustain"
+      }
+    ]
+  },
   "scripts": {
     "build": "node esbuild.mjs",
     "typecheck": "tsc --noEmit",

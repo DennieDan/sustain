@@ -7,8 +7,8 @@ Tracks [spec.md](spec.md) milestones. An item is ticked only when its AC passed;
 | Milestone | Status | Commit |
 |---|---|---|
 | M0 Scaffold | Done (owner checks open) | `M0: Scaffold (NFR-QUAL-01, NFR-QUAL-02, NFR-QUAL-03, NFR-SEC-02, FR-DOC-03; ADR 0001-0016)` |
-| M1 Model, validator, repo facts | Done | `M1: Model, validator, repo facts (FR-MOD-01..02, FR-VAL-01..06, FR-GIT-01, FR-RF-01; ADR 0017-0019)` |
-| M2 Skill, install, generate | Not started | |
+| M1 Model, validator, repo facts | Done | `M1: Model, validator, repo facts (FR-MOD-01, FR-MOD-02, FR-VAL-01..06, FR-GIT-01, FR-RF-01; ADR 0017-0019)` |
+| M2 Skill, install, generate | Done (FR-SKL-02 `[live]` open) | `M2: Skill, install, generate (FR-SKL-01..03, FR-WS-01, FR-INS-01, FR-GEN-01; ADR 0020-0021)` |
 | M3 Viewer | Not started | |
 | M4 Navigation and watching | Not started | |
 | M5 Finish | Not started | |
@@ -54,12 +54,14 @@ All M1 tests run in `npm run check` (`vitest run`); the script tests execute the
 
 ## M2 Skill, install, generate
 
-- [ ] FR-SKL-01 Frontmatter
-- [ ] FR-SKL-02 Body (`[live]`, verified by FR-LIVE-*)
-- [ ] FR-SKL-03 Format reference
-- [ ] FR-WS-01 Folder choice
-- [ ] FR-INS-01 Install Agent Skills
-- [ ] FR-GEN-01 Generate Architecture
+Evidence 2026-10-11: `npm run check` exit 0 (14 files / 336 tests; `check:docs: 21 ADRs …`; build OK). `npm run test:e2e` exit 0 on VS Code 1.141.0 with three launches: `single` 13 passing, `empty` 3 passing, `multi` 2 passing.
+
+- [x] **FR-SKL-01 Frontmatter.** `skills/sustain-architecture/SKILL.md`, `agents/openai.yaml`. `test/unit/skill/skill.test.ts` › `SKILL.md declares the manual-only skill with its pre-approved tools` (exact four fields), `agents/openai.yaml names the skill and forbids implicit invocation`. Codex tolerance of the Claude-only key: FR-LIVE-02.
+- [ ] **FR-SKL-02 Body** `[live]`: written (seven steps, scripts by repo-root path, deny-list listed, 3 repairs / 4 runs, report). Verified only by FR-LIVE-01/02 (owner).
+- [x] **FR-SKL-03 Format reference.** `references/archify-format.md` adapted from `crates/archalign-agent/prompts/system.md` (How you work order, Composition, Schema rules kept; tools and "the app" removed; Validation section describes the `validate.mjs` steps; attribution kept). `skill.test.ts` › 5 × `does not mention the prototype tool …`, `does not mention "the app"`, `keeps the Archify attribution`. `THIRD_PARTY_NOTICES.md` lists the file.
+- [x] **FR-WS-01 Folder choice.** `src/extension/folders.ts`. e2e: `empty.folders.test.ts` › `the window has no workspace folder`, `sustain.installSkills shows "Open a folder first."`, `sustain.generateArchitecture shows "Open a folder first."`; `multi.folders.test.ts` › `the QuickPick lists every folder and the pick decides the repo root`, `dismissing the folder pick does nothing`; single folder used without a pick in every `single.*` test.
+- [x] **FR-INS-01 Install Agent Skills.** `src/extension/{install,skillFiles}.ts`. e2e `single.install.test.ts` › `a fresh install copies the skill and links .claude to it` (`lstat().isSymbolicLink()`, `readlink` = `../../.agents/skills/sustain-architecture`, success message names both paths), `an existing install is replaced after Overwrite` (modal flag and buttons asserted), `Cancel leaves an existing install untouched`, `a lone .claude entry also triggers the overwrite prompt`. Unit `test/unit/extension/skillFiles.test.ts` › `copies into .claude when the symlink cannot be created` (fallback), `replaces an existing install and removes a stale link without following it`, `a dangling .claude link counts as installed`.
+- [x] **FR-GEN-01 Generate Architecture.** `src/extension/{generate,agents}.ts` ([ADR 0020](adr/0020-launch-agent-terminal-with-shellpath-and-shellargs.md), [ADR 0021](adr/0021-command-ui-details-not-fixed-by-the-spec.md)). e2e `single.generate.test.ts` with stub CLIs on a temp `PATH` › `Claude Code: the terminal runs the resolved CLI with the prompt as its argument` (`creationOptions.shellPath`, `cwd`, `shellArgs` = `["/sustain-architecture Payment flow"]`, name `Sustain: Claude Code`), `Codex with an empty focus: …` (`["$sustain-architecture"]`), `a missing CLI shows the warning and Copy prompt copies the prompt` (clipboard read back), `dismissing the focus prompt stops before the agent pick`, `without the skill it offers to install first; Install installs and continues`, `without the skill, Cancel stops and installs nothing`. Unit `agents.test.ts`: 5 prompt-format cases, agent order, PATH order, non-executable/folder/empty entries skipped, absent, Windows `PATHEXT`.
 
 ## M3 Viewer
 
@@ -97,3 +99,4 @@ All M1 tests run in `npm run check` (`vitest run`); the script tests execute the
 
 - 2026-10-10 — **M0 Scaffold** (NFR-QUAL-01..03, NFR-SEC-02, FR-DOC-03; ADRs 0001–0016 added). Small decisions: `publisher` is `sustain` (extension id `sustain.sustain`, needed by `vsce` and the e2e smoke test); `activationEvents` is empty and `contributes` has no commands until M2 adds the first one; `vitest.config.ts` keeps the spec's name, so Vite prints a notice that native config loading would want `.mts` or `"type": "module"` (making the package ESM would break the CJS `dist/extension.js`); `Promise.withResolvers` is fine in extension/test code but must not be used in the Node-18 skill scripts. `docs/backlog.md` asks for a node finder and a history browser, both spec §3 non-goals: not implemented, raised with the owner.
 - 2026-10-11 — **M1 Model, validator, repo facts** (FR-MOD-01..02, FR-VAL-01..06, FR-GIT-01, FR-RF-01; ADRs 0017–0019 added). Small decisions: the candidate's root keys are re-ordered so `schema_version` and `diagram_type` come first (cosmetic; values unchanged); `repo-facts.mjs` prints `root` as the cwd as given (not real-path resolved); the script bundles need no `require` shim (Ajv's `require("ajv/dist/runtime/…")` strings are only used for standalone code generation, which Sustain does not use). Test-only: the vitest unit project has a global setup that builds the scripts into `out/test-scripts/`, because `npm run check` runs vitest before `npm run build`.
+- 2026-10-11 — **M2 Skill, install, generate** (FR-SKL-01..03, FR-WS-01, FR-INS-01, FR-GEN-01; ADRs 0020–0021 added). Small decisions: the `vscode`-free parts of install and generate live in `src/extension/skillFiles.ts` and `src/extension/agents.ts` so they are unit-tested in Node; `folders.ts` holds the shared folder choice. Test-only: the e2e harness now launches one VS Code per scenario (`single`, `empty`, `multi`) with its own `--user-data-dir` under `/tmp` (macOS limits IPC socket paths to 104 bytes, which the per-user temp dir exceeds), and UI calls are stubbed on the shared `vscode.window` object (`test/e2e/stubs.ts`). Open question for the owner: ADR 0021 keeps the backticks in §7 messages literally.

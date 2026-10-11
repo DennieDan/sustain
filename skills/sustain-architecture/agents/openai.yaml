@@ -1,0 +1,5 @@
+interface:
+  display_name: "Sustain Architecture"
+  short_description: "Generate an architecture diagram for Sustain"
+policy:
+  allow_implicit_invocation: false

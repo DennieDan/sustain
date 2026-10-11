@@ -14,7 +14,9 @@ Unofficial; not affiliated with Archify. Includes material derived from Archify 
   - `fixtures/archify/**` (architecture JSON copied from `archify/examples/`, `examples/`,
     `docs/cases/`, `archify/test/fixtures/`, plus one Archify-skill run candidate);
   - `skills/sustain-architecture/references/example.json` (the Archify-skill run candidate,
-    `fixtures/archify/skill-run/archify-runtime.architecture.json`).
+    `fixtures/archify/skill-run/archify-runtime.architecture.json`);
+  - `skills/sustain-architecture/references/archify-format.md` (authoring guidance condensed
+    from `archify/SKILL.md` and `archify/references/`).
 
 ```text
 MIT License

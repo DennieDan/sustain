@@ -23,3 +23,5 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0017](0017-validator-output-contract-and-exit-codes.md) | Validator output contract and exit codes | accepted | 2026-10-11 |
 | [0018](0018-repo-facts-creates-the-run-folder.md) | repo-facts.mjs creates the run folder | accepted | 2026-10-11 |
 | [0019](0019-validator-deviations-from-the-prototype-gate.md) | Validator deviations from the prototype's submission gate | accepted | 2026-10-11 |
+| [0020](0020-launch-agent-terminal-with-shellpath-and-shellargs.md) | Launch the agent terminal with shellPath and shellArgs | accepted | 2026-10-11 |
+| [0021](0021-command-ui-details-not-fixed-by-the-spec.md) | Command UI details not fixed by the spec | accepted | 2026-10-11 |
