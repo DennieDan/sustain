@@ -20,3 +20,6 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0014](0014-desktop-vscode-vsix-single-folder.md) | Desktop VS Code, .vsix install, one chosen folder | accepted | 2026-10-10 |
 | [0015](0015-typescript-esbuild-vitest-plain-svg-webview.md) | TypeScript, npm, esbuild, vitest; plain TypeScript SVG webview | accepted | 2026-10-10 |
 | [0016](0016-build-test-and-docs-check-harness.md) | Build, test and docs-check harness | accepted | 2026-10-10 |
+| [0017](0017-validator-output-contract-and-exit-codes.md) | Validator output contract and exit codes | accepted | 2026-10-11 |
+| [0018](0018-repo-facts-creates-the-run-folder.md) | repo-facts.mjs creates the run folder | accepted | 2026-10-11 |
+| [0019](0019-validator-deviations-from-the-prototype-gate.md) | Validator deviations from the prototype's submission gate | accepted | 2026-10-11 |

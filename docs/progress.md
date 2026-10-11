@@ -6,8 +6,8 @@ Tracks [spec.md](spec.md) milestones. An item is ticked only when its AC passed;
 
 | Milestone | Status | Commit |
 |---|---|---|
-| M0 Scaffold | Done (owner checks open) | `M0: Scaffold (NFR-QUAL-01..03, NFR-SEC-02, FR-DOC-03; ADR 0001-0016)` |
-| M1 Model, validator, repo facts | Not started | |
+| M0 Scaffold | Done (owner checks open) | `M0: Scaffold (NFR-QUAL-01, NFR-QUAL-02, NFR-QUAL-03, NFR-SEC-02, FR-DOC-03; ADR 0001-0016)` |
+| M1 Model, validator, repo facts | Done | `M1: Model, validator, repo facts (FR-MOD-01..02, FR-VAL-01..06, FR-GIT-01, FR-RF-01; ADR 0017-0019)` |
 | M2 Skill, install, generate | Not started | |
 | M3 Viewer | Not started | |
 | M4 Navigation and watching | Not started | |
@@ -39,16 +39,18 @@ Owner checks:
 
 ## M1 Model, validator, repo facts
 
-- [ ] FR-MOD-01 Types
-- [ ] FR-MOD-02 Schema
-- [ ] FR-VAL-01 CLI
-- [ ] FR-VAL-02 App-owned fields
-- [ ] FR-VAL-03 Schema step
-- [ ] FR-VAL-04 Semantic checks
-- [ ] FR-VAL-05 Citations
-- [ ] FR-VAL-06 Publish
-- [ ] FR-GIT-01 Git facts
-- [ ] FR-RF-01 repo-facts CLI
+All M1 tests run in `npm run check` (`vitest run`); the script tests execute the real bundles, built by the vitest global setup `test/unit/support/buildScripts.ts` with `esbuild.mjs`'s `buildScripts()` into `out/test-scripts/`, as child processes of `node`. Evidence 2026-10-11: `npm run check` exit 0 (11 files / 313 tests; `check:docs: 19 ADRs and 38 relative links OK`; build OK, `dist/skills/sustain-architecture/scripts/{repo-facts,validate}.mjs` present); `npm run test:e2e` exit 0 (smoke, 3 passing).
+
+- [x] **FR-MOD-01 Types.** `src/model/types.ts`; documents stay plain JSON values, rewritten with `stringifyDocument`. `test/unit/model/schema.test.ts` › `there are 24 vendored fixtures` and 24 × `<fixture> round-trips parse → stringify as an equal JSON value`; unknown fields kept by the validator: `validate.test.ts` › `root and meta constants are set over agent values; unknown fields survive` (`cards`, `meta.legend`).
+- [x] **FR-MOD-02 Schema.** `src/model/schema.ts` (Ajv 2020, `allErrors`, `strict: false`, `$id` resolution from the two local schemas). `schema.test.ts`: 24 × `<fixture> passes the vendored schema`; `an unknown component type points at /components/1/type`; `an extra field points at the extra property` (`/components/0/colour`); `~`/`/` escaping; all errors reported; required → owning object; non-documents; 6 `portableOutputPath` violations and one valid run-folder output.
+- [x] **FR-VAL-01 CLI.** `src/agent/validate.ts` → `validate.mjs` ([ADR 0017](adr/0017-validator-output-contract-and-exit-codes.md)). `test/unit/agent/validate.test.ts` › `accepted: exit 0, …`, `rejected: exit 1, …`, `an absolute draft path works from any cwd`, `malformed JSON is a rejection at pointer ""`, 5 × `usage or I/O error (…): exit 2, message on stderr, nothing on stdout`, `a publish failure is an I/O error: exit 2 and the draft stays`, `at most 50 errors are listed, then a count of the rest`; `runFolder.test.ts` › draft location cases. Also smoke-run under Node v18.20.8 (`npx -y node@18`): repo-facts exit 0, validate exit 1 then 0.
+- [x] **FR-VAL-02 App-owned fields.** `submission.ts` › `applyAppOwnedFields`. `validate.test.ts` › `every removable field is stripped with a warning and the draft is still accepted` (all 24 pointers listed, none left in the candidate), `root and meta constants are set over agent values; unknown fields survive`, `meta.repository comes from git facts and overrides the agent's`, `without git an agent-supplied meta.repository is removed with a warning`.
+- [x] **FR-VAL-03 Schema step.** `validate.test.ts` › `rejected: exit 1, …` (`/components/1/type`), `schema errors stop before semantic and citation checks`.
+- [x] **FR-VAL-04 Semantic checks.** `src/model/checks.ts`. `test/unit/model/checks.test.ts`: one test per rule asserting the pointer (duplicate component id, duplicate connection id, unknown `from`, unknown `to`, unknown `wraps/j`, `MissingSources` at `/components/i`, partial overlap and equal sets at `/boundaries/j`), plus valid, id-less connections, nested/separate boundaries, `boundaryRelation`.
+- [x] **FR-VAL-05 Citations.** `src/model/{citations,deny}.ts`. `test/unit/model/citations.test.ts` builds a temp repo with an outside folder, an outside file symlink, an outside directory symlink and an in-root symlink: path syntax (7 accepted, 14 rejected incl. 241 chars), line counting (6 cases), valid citations, 5 denied paths, 7 broken targets (outside file link, outside dir link, missing, ENOTDIR, folder, > 2 MiB, NUL in first 8 KiB; exactly 2 MiB and a NUL after 8 KiB are fine), 7 line-range cases each naming the line count, pointer indices. `deny.test.ts`: 64 ported deny-list cases. CLI: `a symlink pointing outside the root is a broken citation`, `semantic and citation errors are reported together`. Deviations from the prototype: [ADR 0019](adr/0019-validator-deviations-from-the-prototype-gate.md).
+- [x] **FR-VAL-06 Publish.** `runFolder.ts` › `publishCandidate`. `validate.test.ts` › `an accepted run leaves only candidate.json, written as 2-space JSON with a trailing newline`, `a rejected run leaves only draft.json, byte-identical`; `runFolder.test.ts` › `writes candidate.json, deletes the draft and leaves no temp files`, `replaces an existing candidate`.
+- [x] **FR-GIT-01 Git facts.** `src/model/git.ts`. `test/unit/model/git.test.ts` with temp git repos (isolated config, unsigned commits): clean, dirty (modified/untracked/renamed), 205 untracked → 200 + `dirtyCount` 205, no origin, origin with credentials (github), gitee, non-hosted (`local-only`), subfolder, plain folder, no commits, git missing; 10 `sanitizeOrigin` cases; fixed argv; porcelain parsing. CLI with `git` absent from PATH: `repoFacts.test.ts` › `git absent from PATH gives git: null and still succeeds`, `validate.test.ts` (all `envWithoutGit` runs).
+- [x] **FR-RF-01 repo-facts CLI.** `src/agent/repo-facts.ts` → `repo-facts.mjs` ([ADR 0018](adr/0018-repo-facts-creates-the-run-folder.md)). `runFolder.test.ts`: 14-row slug table ported from `run_storage.rs`, local timestamp, folder creation, collisions `-2`/`-3`, unusable `.archify`. `repoFacts.test.ts`: output keys and paths, slug from focus / folder name / empty focus, `a name collision appends -2`, git facts, git absent, 3 bad-argument cases, unusable `.archify` → exit 2.
 
 ## M2 Skill, install, generate
 
@@ -94,3 +96,4 @@ Owner checks:
 ## Log
 
 - 2026-10-10 — **M0 Scaffold** (NFR-QUAL-01..03, NFR-SEC-02, FR-DOC-03; ADRs 0001–0016 added). Small decisions: `publisher` is `sustain` (extension id `sustain.sustain`, needed by `vsce` and the e2e smoke test); `activationEvents` is empty and `contributes` has no commands until M2 adds the first one; `vitest.config.ts` keeps the spec's name, so Vite prints a notice that native config loading would want `.mts` or `"type": "module"` (making the package ESM would break the CJS `dist/extension.js`); `Promise.withResolvers` is fine in extension/test code but must not be used in the Node-18 skill scripts. `docs/backlog.md` asks for a node finder and a history browser, both spec §3 non-goals: not implemented, raised with the owner.
+- 2026-10-11 — **M1 Model, validator, repo facts** (FR-MOD-01..02, FR-VAL-01..06, FR-GIT-01, FR-RF-01; ADRs 0017–0019 added). Small decisions: the candidate's root keys are re-ordered so `schema_version` and `diagram_type` come first (cosmetic; values unchanged); `repo-facts.mjs` prints `root` as the cwd as given (not real-path resolved); the script bundles need no `require` shim (Ajv's `require("ajv/dist/runtime/…")` strings are only used for standalone code generation, which Sustain does not use). Test-only: the vitest unit project has a global setup that builds the scripts into `out/test-scripts/`, because `npm run check` runs vitest before `npm run build`.

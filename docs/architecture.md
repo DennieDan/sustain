@@ -1,59 +1,129 @@
 # Sustain architecture
 
-> **Status: planned structure (M0).** Only the build/test scaffold exists. Everything below "Planned modules" describes the target from [spec §6](spec.md#6-repository-layout) and is replaced by a description of the built system from M1 onward (FR-DOC-02).
+Sustain is a VS Code extension that shows a repository's architecture as an Archify diagram and opens the code cited by each node. Diagrams are produced by an external coding agent (Claude Code or Codex) running the bundled `sustain-architecture` skill, whose scripts validate and publish the diagram; the extension itself never calls an LLM ([ADR 0002](adr/0002-external-coding-agent-generates-diagrams.md)).
 
-Sustain is a VS Code extension that shows a repository's architecture as an Archify diagram and opens the code cited by each node. Diagrams are produced by an external coding agent (Claude Code or Codex) running the bundled `sustain-architecture` skill; the extension itself never calls an LLM ([ADR 0002](adr/0002-external-coding-agent-generates-diagrams.md)).
+> **Build state (M1).** Built: the shared model (`src/model/`), the skill scripts (`src/agent/` → `repo-facts.mjs`, `validate.mjs`) and the build/test harness. Not built yet, and marked *planned* below: the skill text and install/generate commands (M2), layout, viewer and webview (M3), navigation and watching (M4).
 
-## What exists today (M0)
-
-| Path | Role |
-|---|---|
-| `src/extension/extension.ts` | Extension entry point; `activate()` registers nothing yet. Bundled to `dist/extension.js`. |
-| `src/model/schemas/*.schema.json` | Archify v1 JSON Schemas, vendored byte-for-byte ([ADR 0013](adr/0013-archify-json-v1-and-archify-folder-layout.md)). |
-| `skills/sustain-architecture/references/example.json` | Vendored example diagram; copied to `dist/skills/` by the build. |
-| `fixtures/archify/` | 24 vendored Archify fixtures + README. |
-| `esbuild.mjs` | Builds `dist/`; `--e2e` builds the e2e suite to `out/e2e/` ([ADR 0016](adr/0016-build-test-and-docs-check-harness.md)). |
-| `scripts/check-docs.mjs` | `npm run check:docs`: ADR format, numbering, index and relative links (FR-DOC-03). |
-| `test/unit/` | vitest (Node): module-boundary scan (NFR-QUAL-03), no-network scan (NFR-SEC-02), docs checker. |
-| `test/dom/` | vitest (happy-dom) project for webview code; empty until M3. |
-| `test/e2e/` | `@vscode/test-electron` launcher (`runTest.ts`, VS Code 1.141.0) and mocha TDD suite (`suite/`). |
-
-## Planned modules
+## Components
 
 ```mermaid
 flowchart LR
   agent["External agent<br/>(Claude Code / Codex)"]
-  subgraph skill["Installed skill (.agents/skills/sustain-architecture)"]
+  subgraph skill["Installed skill: .agents/skills/sustain-architecture/"]
     rf["scripts/repo-facts.mjs"]
     val["scripts/validate.mjs"]
   end
-  subgraph ext["VS Code extension host (src/extension)"]
+  subgraph ext["Extension host: src/extension/ (planned M2–M4)"]
     host["commands, panel, navigate,<br/>install, generate, watcher"]
   end
-  web["Webview (webview/)<br/>render, viewport, tooltip"]
-  model["src/model<br/>types, schema, checks, citations, tolerant, ..."]
-  layout["src/layout<br/>Archify doc → Scene (elkjs)"]
-  disk[(".archify/&lt;run&gt;/candidate.json")]
+  web["Webview: webview/ (planned M3)"]
+  model["src/model/"]
+  layout["src/layout/ (planned M3)"]
+  disk[(".archify/&lt;run&gt;/<br/>draft.json → candidate.json")]
 
-  agent --> rf
-  agent --> val
+  agent -- "runs" --> rf
+  agent -- "writes draft, runs" --> val
   rf --> model
   val --> model
-  val --> disk
+  val -- "publishes" --> disk
   host --> model
   host <-- "postMessage" --> web
   web --> layout
   layout --> model
-  host --> disk
+  host -- "reads, watches" --> disk
   host -- "creates terminal" --> agent
 ```
 
-Allowed dependency directions (enforced by `test/unit/boundaries.test.ts`, NFR-QUAL-03):
+## Modules
 
-* `src/model/` imports no `vscode`. Only `citations.ts`, `git.ts`, `runFolder.ts`, `discovery.ts` may import `node:fs`, `node:path`, `node:child_process`; `types.ts`, `tolerant.ts`, `checks.ts` are browser-safe. Model files import nothing outside `src/model/`.
+### `src/model/` (built)
+
+Pure TypeScript shared by the scripts, and later by the extension host and webview. No `vscode` import anywhere.
+
+| File | Responsibility | Node APIs |
+|---|---|---|
+| `types.ts` | Archify v1 types (`ArchifyDoc`, `Component`, `SourceRef`, …), `Issue {code, pointer, message}`, `stringifyDocument` (2-space JSON + newline), `pointerToken`. Documents stay plain parsed JSON, so unmodelled fields survive rewrites (FR-MOD-01). | none (browser-safe) |
+| `schema.ts` | `validateArchitecture(value)`: Ajv draft 2020-12 (`ajv/dist/2020`, `allErrors`, `strict: false`) over the vendored `schemas/*.schema.json`, `$ref`s resolved by `$id` in memory; errors → `Issue` with JSON pointers (FR-MOD-02). | none |
+| `checks.ts` | `semanticChecks(doc)`: duplicate IDs, unknown references, missing sources, overlapping/equal boundaries; `boundaryRelation` (FR-VAL-04). | none (browser-safe) |
+| `deny.ts` | `isDenied(path)`: citation deny-list, any segment, case-insensitive (FR-VAL-05). | none |
+| `citations.ts` | `citationPathOk`, `countLines`, `probeFile(rootReal, path)` (real-path confinement, regular file, ≤ 2 MiB, NUL sniff), `rangeProblem`, `checkCitations(doc, root)` (FR-VAL-05). | `node:fs`, `node:path` |
+| `git.ts` | `collectGitFacts(root)` via fixed-argv `git` with `GIT_TERMINAL_PROMPT=0`; `sanitizeOrigin`, `parsePorcelainZ`, `repositoryFromGit` (FR-GIT-01). | `node:child_process`, `node:fs` |
+| `runFolder.ts` | `slugify`, `runTimestamp`, `RUN_FOLDER_PATTERN`/`parseRunFolderName`, `createRunFolder` (collision `-N`), `locateDraft`, `publishCandidate` (temp + rename, then delete draft) (FR-RF-01, FR-VAL-06). | `node:fs`, `node:path` |
+| `submission.ts` | `applyAppOwnedFields` (step 1, FR-VAL-02) and `checkSubmission(value, app, checkCitations)`: schema, then semantic + injected citation check (FR-VAL-03..06). | none (file access injected) |
+| `tolerant.ts`, `discovery.ts` | *planned M3* (FR-VIEW-02/03). | |
+
+### `src/agent/` (built)
+
+CLI entry points bundled by `esbuild.mjs` into `dist/skills/sustain-architecture/scripts/*.mjs` (ESM, platform node, target node18, Ajv and schemas inlined; [ADR 0007](adr/0007-validator-as-dependency-free-node-bundles.md)).
+
+* `repo-facts.ts` → `repo-facts.mjs [--focus <text>]`: creates the run folder, prints `{root, runFolder, draft, git}` ([ADR 0018](adr/0018-repo-facts-creates-the-run-folder.md)).
+* `validate.ts` → `validate.mjs <draft>`: locate draft → parse → git facts → `checkSubmission` → publish or report ([ADR 0017](adr/0017-validator-output-contract-and-exit-codes.md), [ADR 0019](adr/0019-validator-deviations-from-the-prototype-gate.md)).
+
+### `src/extension/`
+
+`extension.ts` exists with an empty `activate()`. `panel.ts`, `navigate.ts`, `install.ts`, `generate.ts`, `watcher.ts` are *planned* (M2–M4).
+
+### `src/layout/`, `webview/`
+
+*Planned M3.*
+
+### Dependency rules
+
+Enforced by `test/unit/boundaries.test.ts` (NFR-QUAL-03):
+
+* `src/model/` imports no `vscode` and nothing outside `src/model/` (plus `ajv` in `schema.ts`). Only `citations.ts`, `git.ts`, `runFolder.ts`, `discovery.ts` may import `node:fs`, `node:path`, `node:child_process`; `types.ts`, `tolerant.ts`, `checks.ts` import no Node built-in.
 * `src/layout/` is browser-safe and may import only `src/model/` and elkjs.
-* `src/agent/` (CLI entry points), `src/extension/` and `webview/` sit on top of `model` and `layout`.
+* `src/agent/`, `src/extension/` and `webview/` sit on top of `model` and `layout`. No module makes network requests (`test/unit/noNetwork.test.ts`, NFR-SEC-02).
+
+## Flows
+
+### Generate → validate → publish (script side built; launch planned M2)
+
+```mermaid
+sequenceDiagram
+  participant A as Agent
+  participant RF as repo-facts.mjs
+  participant V as validate.mjs
+  participant FS as <repo>/.archify/
+  A->>RF: node …/repo-facts.mjs --focus "<focus>"
+  RF->>FS: mkdir architecture-<slug>-<ts>[-N]/
+  RF-->>A: {root, runFolder, draft, git}
+  A->>FS: write draft.json
+  loop at most 4 runs
+    A->>V: node …/validate.mjs <draft>
+    V->>V: strip app-owned fields, set meta (git facts)
+    V->>V: schema → semantic + citations
+    alt accepted
+      V->>FS: candidate.json (temp + rename), delete draft.json
+      V-->>A: {status: accepted, candidate, warnings}
+    else rejected
+      V-->>A: {status: rejected, errors, warnings, hint}
+    end
+  end
+```
+
+Open → layout → render and click → resolve → open/stale are *planned* (M3, M4).
+
+## On-disk layout
+
+| Path | Contents |
+|---|---|
+| `<repo>/.archify/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]/` | One run: `draft.json` while unvalidated or after a failed run; `candidate.json` once accepted ([ADR 0008](adr/0008-validator-publishes-draft-as-candidate.md), [ADR 0013](adr/0013-archify-json-v1-and-archify-folder-layout.md)). |
+| `<repo>/.agents/skills/sustain-architecture/` | Installed skill (*planned M2*, [ADR 0006](adr/0006-install-skill-into-agents-with-claude-symlink.md)). |
+| `<repo>/.claude/skills/sustain-architecture` | Relative symlink to the above (*planned M2*). |
+| `dist/extension.js` | Extension host bundle (CJS, `vscode` external). |
+| `dist/skills/sustain-architecture/` | Static skill files from `skills/` plus `scripts/repo-facts.mjs`, `scripts/validate.mjs`. |
+| `dist/webview.js`, `dist/webview.css` | *Planned M3.* |
+| `out/e2e/`, `out/test-scripts/` | Test builds (gitignored, never packaged): the e2e suite, and the script bundles the unit tests run ([ADR 0016](adr/0016-build-test-and-docs-check-harness.md)). |
+
+## Trust boundaries
+
+* **No network:** no module imports `http`/`https`/`http2`/`net`/`tls`/`dgram` or uses `fetch`/`XMLHttpRequest`/`WebSocket` (NFR-SEC-02).
+* **Repo-root confinement:** citation paths must be relative `/`-paths without `.`/`..` segments; their real path (symlinks resolved) must stay inside the repo root's real path (`citations.ts`).
+* **Deny-list:** `.git`, `.archify`, credential rc files, `.env*` (except examples), SSH key names and key/cert extensions can never be cited (`deny.ts`).
+* **Git:** fixed argv, no shell, no terminal prompts, stdin closed; HTTP(S) credentials are stripped from the origin before it is written anywhere (`git.ts`).
+* **Webview CSP:** *planned M3* (NFR-SEC-01).
 
 ## Decisions
 
-See the [ADR index](adr/README.md). Structure-relevant: agent runtime [0002](adr/0002-external-coding-agent-generates-diagrams.md), skill packaging [0004](adr/0004-one-skill-with-bundled-scripts.md)–[0007](adr/0007-validator-as-dependency-free-node-bundles.md), publish rule [0008](adr/0008-validator-publishes-draft-as-candidate.md), layout [0010](adr/0010-elkjs-layout-in-the-webview.md), viewer [0011](adr/0011-webview-panel-viewer-with-code-beside.md)–[0012](adr/0012-no-validation-on-load-tolerant-parsing.md), tooling [0015](adr/0015-typescript-esbuild-vitest-plain-svg-webview.md)–[0016](adr/0016-build-test-and-docs-check-harness.md).
+See the [ADR index](adr/README.md).

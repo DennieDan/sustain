@@ -8,6 +8,7 @@ export default defineConfig({
           name: "unit",
           environment: "node",
           include: ["test/unit/**/*.test.ts"],
+          globalSetup: ["test/unit/support/buildScripts.ts"],
         },
       },
       {

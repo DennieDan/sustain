@@ -3,7 +3,7 @@
 // `node esbuild.mjs --e2e`  → out/e2e/ (the @vscode/test-electron suite; never shipped)
 import * as esbuild from "esbuild";
 import { cpSync, readdirSync, rmSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -17,11 +17,31 @@ const common = {
   legalComments: "inline",
 };
 
+/**
+ * The skill scripts: ESM for Node ≥ 18 with every dependency inlined (ADR 0007).
+ * @param {string} outdir
+ */
+export async function buildScripts(outdir) {
+  await esbuild.build({
+    ...common,
+    entryPoints: {
+      "repo-facts": join(root, "src/agent/repo-facts.ts"),
+      validate: join(root, "src/agent/validate.ts"),
+    },
+    outdir,
+    outExtension: { ".js": ".mjs" },
+    platform: "node",
+    format: "esm",
+    target: "node18",
+  });
+}
+
 async function buildDist() {
   rmSync(dist, { recursive: true, force: true });
 
   // Static skill files (SKILL.md, agents/, references/) ship as-is.
   cpSync(join(root, "skills"), join(dist, "skills"), { recursive: true });
+  await buildScripts(join(dist, "skills/sustain-architecture/scripts"));
 
   await esbuild.build({
     ...common,
@@ -53,8 +73,7 @@ async function buildE2e() {
   });
 }
 
-if (process.argv.includes("--e2e")) {
-  await buildE2e();
-} else {
-  await buildDist();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (process.argv.includes("--e2e")) await buildE2e();
+  else await buildDist();
 }
