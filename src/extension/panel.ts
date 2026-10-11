@@ -4,13 +4,14 @@ import { readFileSync } from "node:fs";
 import { basename, relative, sep } from "node:path";
 import * as vscode from "vscode";
 import type { HostMessage, WebviewMessage } from "../model/messages";
-import { parseDiagram } from "../model/tolerant";
+import { parseDiagram, type ViewDiagram } from "../model/tolerant";
 import { webviewHtml } from "./html";
+import { openSource } from "./navigate";
 
 export const VIEW_TYPE = "sustain.architecture";
 
 /** What the panel currently shows: a diagram, or an empty state with a message. */
-type Shown = { kind: "diagram"; doc: unknown } | { kind: "empty"; message: string };
+type Shown = { kind: "diagram"; doc: unknown; diagram: ViewDiagram } | { kind: "empty"; message: string };
 
 /** How a file is named in messages: repo-relative when inside the root, else the base name. */
 function displayName(root: string, file: string): string {
@@ -41,7 +42,7 @@ export class ArchitecturePanel {
       styleUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(dist, "webview.css")).toString(),
     });
     this.disposables.push(
-      panel.webview.onDidReceiveMessage((message: WebviewMessage) => this.handleMessage(message)),
+      panel.webview.onDidReceiveMessage((message: WebviewMessage) => void this.handleMessage(message)),
       // retainContextWhenHidden is false: the webview restarts when shown again and
       // also asks with "ready"; re-sending here covers a webview that kept its page.
       panel.onDidChangeViewState(({ webviewPanel }) => {
@@ -60,10 +61,8 @@ export class ArchitecturePanel {
   static show(extensionUri: vscode.Uri, root: string, file: string): ArchitecturePanel {
     const existing = ArchitecturePanel.instance;
     if (existing) {
-      existing.root = root;
-      existing.file = file;
       existing.panel.reveal(existing.panel.viewColumn);
-      existing.reload();
+      existing.showFile(root, file);
       return existing;
     }
     const column = vscode.window.visibleTextEditors.length === 0 ? vscode.ViewColumn.Active : vscode.ViewColumn.Beside;
@@ -74,8 +73,11 @@ export class ArchitecturePanel {
     return created;
   }
 
-  get viewColumn(): vscode.ViewColumn | undefined {
-    return this.panel.viewColumn;
+  /** Switches the open panel to `file` (resolved against `root`) without revealing it. */
+  showFile(root: string, file: string): void {
+    this.root = root;
+    this.file = file;
+    this.reload();
   }
 
   /** Reads the file again and sends it (or an empty state) to the webview. */
@@ -95,7 +97,7 @@ export class ArchitecturePanel {
     }
     this.panel.title = `Architecture: ${result.diagram.title ?? basename(this.file)}`;
     // The webview gets the parsed JSON only (NFR-SEC-01), never source files.
-    this.shown = { kind: "diagram", doc: result.value };
+    this.shown = { kind: "diagram", doc: result.value, diagram: result.diagram };
     this.send();
   }
 
@@ -117,9 +119,18 @@ export class ArchitecturePanel {
     void this.panel.webview.postMessage(message);
   }
 
-  /** Handles a message from the webview (also the e2e test hook's entry point). */
-  handleMessage(message: WebviewMessage): void {
-    if (message.type === "ready") this.send();
+  /**
+   * Handles a message from the webview (also the e2e test hook's entry point). `openSource`
+   * uses the diagram the webview was last sent, resolved against the panel's repo root.
+   */
+  async handleMessage(message: WebviewMessage): Promise<void> {
+    if (message.type === "ready") {
+      this.send();
+      return;
+    }
+    if (this.shown.kind !== "diagram") return;
+    const component = this.shown.diagram.components.find((candidate) => candidate.id === message.componentId);
+    if (component) await openSource(this.root, component, message.index, this.panel.viewColumn);
   }
 
   private dispose(): void {

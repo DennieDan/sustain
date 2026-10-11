@@ -5,6 +5,7 @@ import { layoutDiagram } from "../src/layout/layout";
 import type { MeasureText } from "../src/layout/scene";
 import type { HostMessage, WebviewMessage } from "../src/model/messages";
 import { readDiagram } from "../src/model/tolerant";
+import { NodeClicks } from "./click";
 import { renderScene } from "./render";
 import { TooltipController } from "./tooltip";
 import { ViewportController } from "./viewport";
@@ -58,6 +59,7 @@ document.body.append(app);
 
 const viewport = new ViewportController(svg, content, toolbar, window);
 const tooltip = new TooltipController(svg, tooltipElement, (message) => vscode.postMessage(message));
+new NodeClicks(svg, (message) => vscode.postMessage(message));
 viewport.onChange = () => tooltip.hide();
 
 const canvasContext = document.createElement("canvas").getContext("2d");

@@ -10,7 +10,7 @@ Tracks [spec.md](spec.md) milestones. An item is ticked only when its AC passed;
 | M1 Model, validator, repo facts | Done | `M1: Model, validator, repo facts (FR-MOD-01, FR-MOD-02, FR-VAL-01..06, FR-GIT-01, FR-RF-01; ADR 0017-0019)` |
 | M2 Skill, install, generate | Done (FR-SKL-02 `[live]` open) | `M2: Skill, install, generate (FR-SKL-01..03, FR-WS-01, FR-INS-01, FR-GEN-01; ADR 0020-0021)` |
 | M3 Viewer | Done (owner checks open) | `M3: Viewer (FR-VIEW-01..07, FR-LAY-01..04, NFR-SEC-01, NFR-PERF-01; ADR 0022-0025)` |
-| M4 Navigation and watching | Not started | |
+| M4 Navigation and watching | Done | `M4: Navigation and watching (FR-NAV-01..03, FR-WAT-01, FR-TEST-01; ADR 0026-0027)` |
 | M5 Finish | Not started | |
 
 ## Environment
@@ -89,11 +89,13 @@ Owner checks:
 
 ## M4 Navigation and watching
 
-- [ ] FR-NAV-01 Click
-- [ ] FR-NAV-02 Open
-- [ ] FR-NAV-03 Stale references
-- [ ] FR-WAT-01 Watch
-- [ ] FR-TEST-01 Test hook
+Evidence 2026-10-11: `npm run check` exit 0 (29 files / 619 tests; `check:docs: 27 ADRs …`; build OK). `npm run test:e2e` exit 0: `single` 35 passing, `empty` 3, `multi` 2.
+
+- [x] **FR-NAV-01 Click.** `webview/click.ts` (`[dom]`): `test/dom/click.test.ts` › `a click on any part of a node posts openSource with index 0`, 6 movement cases at the 4 px threshold (3.9 → click, 4 → no click, (3,3) → no click), release elsewhere / other pointer / secondary button / cancel. Host status message (`[e2e]`): `single.navigate.test.ts` › `a component without sources shows the status bar message for 3 s and opens nothing` (`"\`Orders DB\` has no source references"`, timeout 3000).
+- [x] **FR-NAV-02 Open.** `src/extension/{navigate,sourceTarget}.ts`. e2e through the hook: `line and end_line select the whole lines in the other column` (path, selection 1:0–3:9, column 2), `line only selects that line`, `a source without lines (a tooltip entry with index 1) opens at the top without a selection`, `with the panel in column 2 the code opens in column 1`. Unit `sourceTarget.test.ts`: range, single line, 4 no-usable-line cases, `end_line` before `line`, binary file.
+- [x] **FR-NAV-03 Stale references.** e2e: `a path outside the repo root is an invalid source path; nothing opens`, `a missing file is a stale reference; nothing opens`, `lines beyond the file report the counts and open the file without a selection` ("… has 3 lines; the diagram cites 2–9"). Unit: 6 invalid paths (absolute, `..`, backslash, empty segment, drive, symlink leaving the root), 3 missing/not-a-file cases, 3 beyond-line cases.
+- [x] **FR-WAT-01 Watch.** `src/extension/{watcher,watchLogic}.ts` ([ADR 0027](adr/0027-navigation-and-watching-details.md)); `activationEvents: ["onStartupFinished"]`. e2e `single.watch.test.ts` › `a new newest candidate loads into the open panel`, `a change to the shown file reloads it`, `without a panel a new candidate is announced and Open opens it`, `an older candidate appearing does not replace the shown newest one`. Unit `watchLogic.test.ts`: 300 ms debounce with per-file merge (fake timers), dispose, reload / deleted ("This diagram was deleted.") / switch / notify / 3 ignored cases.
+- [x] **FR-TEST-01 Test hook.** `activate()` returns `{panelState(), postFromWebview(msg)}` ([ADR 0026](adr/0026-activate-test-hook-and-happy-dom-tests.md)); used by `single.view`, `single.navigate` and `single.watch` suites; `a ready message re-sends without changing the panel state`, `closing the panel clears the panel state`.
 
 ## M5 Finish
 
@@ -109,3 +111,4 @@ Owner checks:
 - 2026-10-11 — **M1 Model, validator, repo facts** (FR-MOD-01..02, FR-VAL-01..06, FR-GIT-01, FR-RF-01; ADRs 0017–0019 added). Small decisions: the candidate's root keys are re-ordered so `schema_version` and `diagram_type` come first (cosmetic; values unchanged); `repo-facts.mjs` prints `root` as the cwd as given (not real-path resolved); the script bundles need no `require` shim (Ajv's `require("ajv/dist/runtime/…")` strings are only used for standalone code generation, which Sustain does not use). Test-only: the vitest unit project has a global setup that builds the scripts into `out/test-scripts/`, because `npm run check` runs vitest before `npm run build`.
 - 2026-10-11 — **M2 Skill, install, generate** (FR-SKL-01..03, FR-WS-01, FR-INS-01, FR-GEN-01; ADRs 0020–0021 added). Small decisions: the `vscode`-free parts of install and generate live in `src/extension/skillFiles.ts` and `src/extension/agents.ts` so they are unit-tested in Node; `folders.ts` holds the shared folder choice. Test-only: the e2e harness now launches one VS Code per scenario (`single`, `empty`, `multi`) with its own `--user-data-dir` under `/tmp` (macOS limits IPC socket paths to 104 bytes, which the per-user temp dir exceeds), and UI calls are stubbed on the shared `vscode.window` object (`test/e2e/stubs.ts`). Open question for the owner: ADR 0021 keeps the backticks in §7 messages literally.
 - 2026-10-11 — **M3 Viewer** (FR-VIEW-01..07, FR-LAY-01..04, NFR-SEC-01, NFR-PERF-01; ADRs 0022–0025 added). Small decisions: `src/model/messages.ts` holds the host↔webview message types (shared by both sides); `parseDiagram` returns the parsed value with the diagram so the panel sends exactly what it validated; the test hook of FR-TEST-01 exists from M3 (the panel tests need `panelState()`), its `openSource` handling arrives with M4; the delegated webview first used an opaque node fill (12 % mixed into the editor background) — replaced by `color-mix(… 12%, transparent)` to match FR-VIEW-05 literally; the webview bundle is minified. Finding: every vendored fixture is fully authored, so the layout fixture tests also run each one with `pos`/`size`/`row`/`col` stripped to cover auto mode. Test-only: e2e waits for tab changes with `tabGroups.onDidChangeTabs` because tab state reaches the extension host asynchronously.
+- 2026-10-11 — **M4 Navigation and watching** (FR-NAV-01..03, FR-WAT-01, FR-TEST-01; ADRs 0026–0027 added). Small decisions: `postFromWebview` returns a promise that resolves once the message is handled, so tests can await the editor; `ArchitecturePanel.showFile` switches files without revealing (used by the watcher), `show` reveals; the panel keeps the tolerant diagram it last sent so `openSource` resolves against exactly what the user sees. Finding: a panel created in `ViewColumn.Active` reports `viewColumn` only once the workbench has shown its tab, so the navigation e2e tests wait for the tab before clicking (as a user would); a tab-based fallback was tried and removed as unnecessary.

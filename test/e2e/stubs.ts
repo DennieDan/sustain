@@ -17,6 +17,8 @@ export interface UiStubs {
   quickPicks: vscode.QuickPickItem[][];
   inputBoxes: (vscode.InputBoxOptions | undefined)[];
   openDialogs: (vscode.OpenDialogOptions | undefined)[];
+  /** `setStatusBarMessage(text, hideAfterTimeout)` calls. */
+  statusMessages: { text: string; timeout: unknown }[];
   /** Answers for the next calls, consumed in order; `undefined` = dismissed. */
   answers: {
     info: (string | undefined)[];
@@ -39,6 +41,7 @@ export function stubUi(): UiStubs {
     showQuickPick: window.showQuickPick,
     showInputBox: window.showInputBox,
     showOpenDialog: window.showOpenDialog,
+    setStatusBarMessage: window.setStatusBarMessage,
   };
   const stubs: UiStubs = {
     infos: [],
@@ -47,12 +50,17 @@ export function stubUi(): UiStubs {
     quickPicks: [],
     inputBoxes: [],
     openDialogs: [],
+    statusMessages: [],
     answers: { info: [], warning: [], quickPick: [], inputBox: [], openDialog: [] },
     restore: () => Object.assign(window, saved),
   };
   // The real signatures are heavily overloaded; these replacements honour the shapes the
   // extension uses (message + optional options + string buttons, item arrays).
   Object.assign(window, {
+    setStatusBarMessage: (text: string, timeout: unknown) => {
+      stubs.statusMessages.push({ text, timeout });
+      return { dispose: () => undefined };
+    },
     showInformationMessage: (message: string, ...rest: unknown[]) => {
       stubs.infos.push({ message, rest });
       return Promise.resolve(stubs.answers.info.shift());

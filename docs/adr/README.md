@@ -29,3 +29,5 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0023](0023-auto-layout-direction-by-fit-scale.md) | Auto layout direction chosen by fit scale | accepted | 2026-10-11 |
 | [0024](0024-theme-colour-mapping-and-svg-styling.md) | Theme colour mapping and SVG styling | accepted | 2026-10-11 |
 | [0025](0025-viewer-details-not-fixed-by-the-spec.md) | Viewer details not fixed by the spec | accepted | 2026-10-11 |
+| [0026](0026-activate-test-hook-and-happy-dom-tests.md) | activate() test hook and happy-dom DOM tests | accepted | 2026-10-11 |
+| [0027](0027-navigation-and-watching-details.md) | Navigation and watching details | accepted | 2026-10-11 |

@@ -1,0 +1,51 @@
+// Opening the code behind a diagram node (FR-NAV-01..03, ADR 0011).
+import * as vscode from "vscode";
+import type { ViewComponent } from "../model/tolerant";
+import { resolveSource } from "./sourceTarget";
+
+/** How long the opened lines stay highlighted. */
+const HIGHLIGHT_MS = 2_000;
+/** How long the "no source references" status bar message stays. */
+const STATUS_MS = 3_000;
+
+/**
+ * Opens `component.sources[index]` from `root` in the editor column that is not the panel's
+ * (`panelColumn === 1 ? 2 : 1`), selecting and briefly highlighting the cited lines.
+ */
+export async function openSource(root: string, component: ViewComponent, index: number, panelColumn: vscode.ViewColumn | undefined): Promise<void> {
+  if (component.sources.length === 0) {
+    vscode.window.setStatusBarMessage(`\`${component.label}\` has no source references`, STATUS_MS);
+    return;
+  }
+  const source = component.sources[index];
+  if (!source) return;
+  const target = resolveSource(root, source);
+  if (target.kind === "error") {
+    void vscode.window.showErrorMessage(target.message);
+    return;
+  }
+  const viewColumn = panelColumn === vscode.ViewColumn.One ? vscode.ViewColumn.Two : vscode.ViewColumn.One;
+  const document = await vscode.workspace.openTextDocument(vscode.Uri.file(target.file));
+  const editor = await vscode.window.showTextDocument(document, { viewColumn, preserveFocus: false });
+  if (target.warning) void vscode.window.showErrorMessage(target.warning);
+  if (!target.lines || document.lineCount === 0) {
+    // VS Code restores a document's last selection; "no selection" means the top of the file.
+    const top = new vscode.Position(0, 0);
+    editor.selection = new vscode.Selection(top, top);
+    editor.revealRange(new vscode.Range(top, top), vscode.TextEditorRevealType.AtTop);
+    return;
+  }
+
+  const last = document.lineCount - 1;
+  const start = Math.min(target.lines.start - 1, last);
+  const end = Math.min(target.lines.end - 1, last);
+  const range = new vscode.Range(start, 0, end, document.lineAt(end).range.end.character);
+  editor.selection = new vscode.Selection(range.start, range.end);
+  editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  const highlight = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: new vscode.ThemeColor("editor.rangeHighlightBackground"),
+  });
+  editor.setDecorations(highlight, [range]);
+  setTimeout(() => highlight.dispose(), HIGHLIGHT_MS);
+}
