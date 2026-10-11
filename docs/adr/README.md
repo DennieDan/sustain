@@ -31,3 +31,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0025](0025-viewer-details-not-fixed-by-the-spec.md) | Viewer details not fixed by the spec | accepted | 2026-10-11 |
 | [0026](0026-activate-test-hook-and-happy-dom-tests.md) | activate() test hook and happy-dom DOM tests | accepted | 2026-10-11 |
 | [0027](0027-navigation-and-watching-details.md) | Navigation and watching details | accepted | 2026-10-11 |
+| [0028](0028-package-with-vsce-without-license-or-repository.md) | Package with vsce, without LICENSE or repository metadata | accepted | 2026-10-11 |

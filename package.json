@@ -46,7 +46,9 @@
     "test": "vitest run",
     "check:docs": "node scripts/check-docs.mjs",
     "check": "npm run typecheck && npm run test && npm run check:docs && npm run build",
-    "test:e2e": "npm run build && node esbuild.mjs --e2e && node out/e2e/runTest.js"
+    "test:e2e": "npm run build && node esbuild.mjs --e2e && node out/e2e/runTest.js",
+    "vscode:prepublish": "node esbuild.mjs",
+    "package": "vsce package --no-dependencies --skip-license --allow-missing-repository"
   },
   "dependencies": {
     "ajv": "8.20.0",

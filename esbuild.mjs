@@ -61,6 +61,7 @@ async function buildDist() {
     platform: "browser",
     format: "iife",
     target: "es2022",
+    minify: true,
   });
   cpSync(join(root, "webview/styles.css"), join(dist, "webview.css"));
 }

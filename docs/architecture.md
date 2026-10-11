@@ -2,8 +2,6 @@
 
 Sustain is a VS Code extension that shows a repository's architecture as an Archify diagram and opens the code cited by each node. Diagrams are produced by an external coding agent (Claude Code or Codex) running the bundled `sustain-architecture` skill, whose scripts validate and publish the diagram; the extension itself never calls an LLM ([ADR 0002](adr/0002-external-coding-agent-generates-diagrams.md)).
 
-> **Build state (M4).** Everything in this document is built. M5 adds packaging, the README and the live agent runs.
-
 ## Components
 
 ```mermaid
@@ -36,7 +34,7 @@ flowchart LR
 
 ## Modules
 
-### `src/model/` (built)
+### `src/model/`
 
 Pure TypeScript shared by the scripts, the extension host and the webview. No `vscode` import anywhere.
 
@@ -54,14 +52,14 @@ Pure TypeScript shared by the scripts, the extension host and the webview. No `v
 | `discovery.ts` | `listCandidates(root)`: `.archify/*/candidate.json` inside the root, newest first (`compareCandidates`, FR-VIEW-02); `repoRootFor(file, folder)`. | `node:fs`, `node:path` |
 | `messages.ts` | `HostMessage` / `WebviewMessage` types (protocol below). | none |
 
-### `src/agent/` (built)
+### `src/agent/`
 
 CLI entry points bundled by `esbuild.mjs` into `dist/skills/sustain-architecture/scripts/*.mjs` (ESM, platform node, target node18, Ajv and schemas inlined; [ADR 0007](adr/0007-validator-as-dependency-free-node-bundles.md)).
 
 * `repo-facts.ts` → `repo-facts.mjs [--focus <text>]`: creates the run folder, prints `{root, runFolder, draft, git}` ([ADR 0018](adr/0018-repo-facts-creates-the-run-folder.md)).
 * `validate.ts` → `validate.mjs <draft>`: locate draft → parse → git facts → `checkSubmission` → publish or report ([ADR 0017](adr/0017-validator-output-contract-and-exit-codes.md), [ADR 0019](adr/0019-validator-deviations-from-the-prototype-gate.md)).
 
-### `skills/sustain-architecture/` (built)
+### `skills/sustain-architecture/`
 
 The static skill, copied as-is to `dist/skills/sustain-architecture/` next to the built scripts ([ADR 0004](adr/0004-one-skill-with-bundled-scripts.md), [ADR 0005](adr/0005-manual-invocation-and-claude-pre-approvals.md)).
 
@@ -224,6 +222,7 @@ A `FileSystemWatcher` per workspace folder feeds a 300 ms debounce; each changed
 | `dist/skills/sustain-architecture/` | Static skill files from `skills/` plus `scripts/repo-facts.mjs`, `scripts/validate.mjs`. |
 | `dist/webview.js`, `dist/webview.css` | Webview bundle (IIFE, elkjs included, minified) and stylesheet; the only `localResourceRoots`. |
 | `out/e2e/`, `out/test-scripts/` | Test builds (gitignored, never packaged): the e2e suite (scenarios `single`, `empty`, `multi`, each in its own VS Code launch), and the script bundles the unit tests run ([ADR 0016](adr/0016-build-test-and-docs-check-harness.md)). |
+| `sustain-<version>.vsix` | `npm run package` (`vsce package --no-dependencies`, build via `vscode:prepublish`); `.vscodeignore` ships only `dist/**`, `package.json`, `README.md`, `THIRD_PARTY_NOTICES.md` (and `LICENSE` if one is added). |
 
 ## Trust boundaries
 

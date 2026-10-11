@@ -11,7 +11,7 @@ Tracks [spec.md](spec.md) milestones. An item is ticked only when its AC passed;
 | M2 Skill, install, generate | Done (FR-SKL-02 `[live]` open) | `M2: Skill, install, generate (FR-SKL-01..03, FR-WS-01, FR-INS-01, FR-GEN-01; ADR 0020-0021)` |
 | M3 Viewer | Done (owner checks open) | `M3: Viewer (FR-VIEW-01..07, FR-LAY-01..04, NFR-SEC-01, NFR-PERF-01; ADR 0022-0025)` |
 | M4 Navigation and watching | Done | `M4: Navigation and watching (FR-NAV-01..03, FR-WAT-01, FR-TEST-01; ADR 0026-0027)` |
-| M5 Finish | Not started | |
+| M5 Finish | Implemented; owner `[manual]` and `[live]` checks open | `M5: Finish (FR-PKG-01, FR-DOC-01, FR-DOC-02; ADR 0028)` |
 
 ## Environment
 
@@ -99,11 +99,14 @@ Evidence 2026-10-11: `npm run check` exit 0 (29 files / 619 tests; `check:docs: 
 
 ## M5 Finish
 
-- [ ] FR-PKG-01 Package `[manual]`
-- [ ] FR-DOC-01 README `[manual]`
-- [ ] FR-DOC-02 Architecture document `[manual]`
-- [ ] FR-LIVE-01 Claude Code `[live]`
-- [ ] FR-LIVE-02 Codex `[live]`
+Evidence 2026-10-11: `npm run check` exit 0 (29 files / 619 tests; `check:docs: 28 ADRs and 73 relative links OK`); `npm run test:e2e` exit 0 (`single` 35, `empty` 3, `multi` 2). Every remaining item is `[manual]` or `[live]`, so it is implemented and handed to the owner, not ticked.
+
+- [ ] **FR-PKG-01 Package** `[manual]`. Implemented: `npm run package` → `vsce package --no-dependencies --skip-license --allow-missing-repository` with `vscode:prepublish` building ([ADR 0028](adr/0028-package-with-vsce-without-license-or-repository.md)). Run 2026-10-11: `sustain-0.1.0.vsix`, 14 files / 526.6 KB (`dist/extension.js`, `dist/webview.js` 1.48 MB minified, `dist/webview.css`, `dist/skills/sustain-architecture/**` incl. both scripts, `package.json`, `readme.md`, `THIRD_PARTY_NOTICES.md`). Install smoke: `code --install-extension sustain-0.1.0.vsix` into a fresh `--extensions-dir`/`--user-data-dir` of the downloaded VS Code 1.141.0 → `--list-extensions` shows `sustain.sustain@0.1.0`. Owner: run the four commands in a clean profile.
+- [ ] **FR-DOC-01 README** `[manual]`. `README.md`: `.vsix` install, the four commands, the skill workflow for Claude Code and Codex, Node ≥ 18, `.archify/` contents. Owner review.
+- [ ] **FR-DOC-02 Architecture document** `[manual]`. Final pass: build-state banner and "(built)/planned" markers removed; packaging row added; a script checked that every source path named in backticks exists (only runtime artifacts such as `candidate.json` and the built `scripts/*.mjs` are not in the tree) and that every code symbol named is exported/defined (the rest are VS Code API names). Owner review.
+- [ ] **FR-LIVE-01 Claude Code** `[live]` — owner.
+- [ ] **FR-LIVE-02 Codex** `[live]` — owner.
+- [ ] **FR-SKL-02 Body** `[live]` — verified by the two live runs.
 
 ## Log
 
@@ -112,3 +115,4 @@ Evidence 2026-10-11: `npm run check` exit 0 (29 files / 619 tests; `check:docs: 
 - 2026-10-11 — **M2 Skill, install, generate** (FR-SKL-01..03, FR-WS-01, FR-INS-01, FR-GEN-01; ADRs 0020–0021 added). Small decisions: the `vscode`-free parts of install and generate live in `src/extension/skillFiles.ts` and `src/extension/agents.ts` so they are unit-tested in Node; `folders.ts` holds the shared folder choice. Test-only: the e2e harness now launches one VS Code per scenario (`single`, `empty`, `multi`) with its own `--user-data-dir` under `/tmp` (macOS limits IPC socket paths to 104 bytes, which the per-user temp dir exceeds), and UI calls are stubbed on the shared `vscode.window` object (`test/e2e/stubs.ts`). Open question for the owner: ADR 0021 keeps the backticks in §7 messages literally.
 - 2026-10-11 — **M3 Viewer** (FR-VIEW-01..07, FR-LAY-01..04, NFR-SEC-01, NFR-PERF-01; ADRs 0022–0025 added). Small decisions: `src/model/messages.ts` holds the host↔webview message types (shared by both sides); `parseDiagram` returns the parsed value with the diagram so the panel sends exactly what it validated; the test hook of FR-TEST-01 exists from M3 (the panel tests need `panelState()`), its `openSource` handling arrives with M4; the delegated webview first used an opaque node fill (12 % mixed into the editor background) — replaced by `color-mix(… 12%, transparent)` to match FR-VIEW-05 literally; the webview bundle is minified. Finding: every vendored fixture is fully authored, so the layout fixture tests also run each one with `pos`/`size`/`row`/`col` stripped to cover auto mode. Test-only: e2e waits for tab changes with `tabGroups.onDidChangeTabs` because tab state reaches the extension host asynchronously.
 - 2026-10-11 — **M4 Navigation and watching** (FR-NAV-01..03, FR-WAT-01, FR-TEST-01; ADRs 0026–0027 added). Small decisions: `postFromWebview` returns a promise that resolves once the message is handled, so tests can await the editor; `ArchitecturePanel.showFile` switches files without revealing (used by the watcher), `show` reveals; the panel keeps the tolerant diagram it last sent so `openSource` resolves against exactly what the user sees. Finding: a panel created in `ViewColumn.Active` reports `viewColumn` only once the workbench has shown its tab, so the navigation e2e tests wait for the tab before clicking (as a user would); a tab-based fallback was tried and removed as unnecessary.
+- 2026-10-11 — **M5 Finish** (FR-PKG-01, FR-DOC-01, FR-DOC-02 implemented; ADR 0028 added). The webview minification recorded in M3 had not actually been applied (the edit was lost); it is applied now (3.5 MB → 1.48 MB), and the minified bundle was re-smoke-tested under the exact CSP in headless Chromium (`docs-cases/mco-runtime` with geometry stripped: 13/13 nodes, 12 edges, no CSP violations, no page errors). Waiting on the owner: all `[manual]` checks (NFR-QUAL-02, FR-DOC-03 content, NFR-SEC-01 in VS Code, FR-VIEW-05 theme switch, FR-VIEW-06 feel, FR-PKG-01, FR-DOC-01, FR-DOC-02) and the `[live]` runs FR-LIVE-01/02 (which also verify FR-SKL-02); a decision on the literal backticks in §7 messages (ADR 0021); a LICENSE (ADR 0028); and `docs/backlog.md` (node finder, history browser are spec §3 non-goals).
