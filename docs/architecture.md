@@ -2,7 +2,7 @@
 
 Sustain is a VS Code extension that shows a repository's architecture as an Archify diagram and opens the code cited by each node. Diagrams are produced by an external coding agent (Claude Code or Codex) running the bundled `sustain-architecture` skill, whose scripts validate and publish the diagram; the extension itself never calls an LLM ([ADR 0002](adr/0002-external-coding-agent-generates-diagrams.md)).
 
-> **Build state (M2).** Built: the shared model (`src/model/`), the skill (`skills/sustain-architecture/` plus the scripts built from `src/agent/`), the `Install Agent Skills` and `Generate Architecture` commands, and the build/test harness. Not built yet, and marked *planned* below: layout, viewer and webview (M3), navigation, watching and the test hook (M4).
+> **Build state (M3).** Built: the shared model, the skill and its scripts, the install/generate commands, layout, the viewer panel and webview, and the build/test harness. Not built yet, and marked *planned* below: click-to-open with stale-reference handling and file watching (M4).
 
 ## Components
 
@@ -14,11 +14,11 @@ flowchart LR
     val["scripts/validate.mjs"]
   end
   subgraph ext["Extension host: src/extension/"]
-    host["install, generate (built);<br/>panel, navigate, watcher (planned M3–M4)"]
+    host["install, generate, open, panel;<br/>navigate, watcher (planned M4)"]
   end
-  web["Webview: webview/ (planned M3)"]
+  web["Webview: webview/<br/>render, viewport, tooltip"]
   model["src/model/"]
-  layout["src/layout/ (planned M3)"]
+  layout["src/layout/<br/>ViewDiagram → Scene (elkjs)"]
   disk[(".archify/&lt;run&gt;/<br/>draft.json → candidate.json")]
 
   agent -- "runs" --> rf
@@ -38,7 +38,7 @@ flowchart LR
 
 ### `src/model/` (built)
 
-Pure TypeScript shared by the scripts, and later by the extension host and webview. No `vscode` import anywhere.
+Pure TypeScript shared by the scripts, the extension host and the webview. No `vscode` import anywhere.
 
 | File | Responsibility | Node APIs |
 |---|---|---|
@@ -50,7 +50,9 @@ Pure TypeScript shared by the scripts, and later by the extension host and webvi
 | `git.ts` | `collectGitFacts(root)` via fixed-argv `git` with `GIT_TERMINAL_PROMPT=0`; `sanitizeOrigin`, `parsePorcelainZ`, `repositoryFromGit` (FR-GIT-01). | `node:child_process`, `node:fs` |
 | `runFolder.ts` | `slugify`, `runTimestamp`, `RUN_FOLDER_PATTERN`/`parseRunFolderName`, `createRunFolder` (collision `-N`), `locateDraft`, `publishCandidate` (temp + rename, then delete draft) (FR-RF-01, FR-VAL-06). | `node:fs`, `node:path` |
 | `submission.ts` | `applyAppOwnedFields` (step 1, FR-VAL-02) and `checkSubmission(value, app, checkCitations)`: schema, then semantic + injected citation check (FR-VAL-03..06). | none (file access injected) |
-| `tolerant.ts`, `discovery.ts` | *planned M3* (FR-VIEW-02/03). | |
+| `tolerant.ts` | `readDiagram(value)` / `parseDiagram(text)` → `ViewDiagram` (FR-VIEW-03): skips components without a string id and duplicates, label falls back to id, unknown type → `external`, drops unresolved connections and boundary members, skips emptied boundaries and sources without a string path; reports skips as `<pointer>: <reason>`. | none (browser-safe) |
+| `discovery.ts` | `listCandidates(root)`: `.archify/*/candidate.json` inside the root, newest first (`compareCandidates`, FR-VIEW-02); `repoRootFor(file, folder)`. | `node:fs`, `node:path` |
+| `messages.ts` | `HostMessage` / `WebviewMessage` types (protocol below). | none |
 
 ### `src/agent/` (built)
 
@@ -68,21 +70,46 @@ The static skill, copied as-is to `dist/skills/sustain-architecture/` next to th
 * `references/archify-format.md`: authoring guidance adapted from the prototype's system prompt, with validation described as the `validate.mjs` steps (FR-SKL-03).
 * `references/example.json`: vendored Archify candidate, a shape example only.
 
-### `src/extension/` (partly built)
+### `src/extension/`
 
 | File | Responsibility |
 |---|---|
-| `extension.ts` | `activate()` registers `sustain.installSkills` and `sustain.generateArchitecture` (contributed in `package.json`, activated on command). |
+| `extension.ts` | `activate()` registers the four commands (contributed in `package.json`, activated on command) and returns the e2e test hook `{panelState(), postFromWebview(msg)}` (FR-TEST-01). |
 | `folders.ts` | `pickRepoRoot()`: the only folder, a QuickPick of folders, or "Open a folder first." (FR-WS-01). |
 | `skillFiles.ts` | No `vscode`: target paths, `skillInstalled`, `writeSkill` (remove both targets, copy to `.agents`, relative `dir`/`junction` link from `.claude`, copy on link failure) ([ADR 0006](adr/0006-install-skill-into-agents-with-claude-symlink.md)). |
 | `install.ts` | `installSkill()`: modal overwrite question, `writeSkill`, success notification (FR-INS-01). |
 | `agents.ts` | No `vscode`: the two agents, `agentPrompt` (`/sustain-architecture …`, `$sustain-architecture …`), `findOnPath` (PATH, PATHEXT). |
 | `generate.ts` | FR-GEN-01 flow: folder → install offer → focus → agent → terminal with `shellPath`/`shellArgs` or the "not found" warning with "Copy prompt" ([ADR 0020](adr/0020-launch-agent-terminal-with-shellpath-and-shellargs.md), [ADR 0021](adr/0021-command-ui-details-not-fixed-by-the-spec.md)). |
-| `panel.ts`, `navigate.ts`, `watcher.ts` | *Planned M3–M4.* |
+| `open.ts` | `Open Architecture` (newest candidate, or "No architecture diagram yet." with "Generate") and `Open Architecture File…` (candidates + "Browse…") (FR-VIEW-01). |
+| `panel.ts` | `ArchitecturePanel`: one `WebviewPanel` (`sustain.architecture`) per window, `ViewColumn.Active` without visible editors else `Beside`, `retainContextWhenHidden: false`; reads the file, tolerant-parses it, sets the title, posts `load`/`empty`; re-sends on `ready` and when visible (FR-VIEW-04, [ADR 0011](adr/0011-webview-panel-viewer-with-code-beside.md), [ADR 0025](adr/0025-viewer-details-not-fixed-by-the-spec.md)). |
+| `html.ts` | No `vscode`: `webviewCsp`, `webviewHtml` (CSP meta, stylesheet link, one nonce'd script) (NFR-SEC-01). |
+| `navigate.ts`, `watcher.ts` | *Planned M4.* |
 
-### `src/layout/`, `webview/`
+### `src/layout/`
 
-*Planned M3.*
+Browser-safe; runs in the webview ([ADR 0010](adr/0010-elkjs-layout-in-the-webview.md)). Entry `layout.ts › layoutDiagram(diagram, {measure, viewport}) → Promise<Scene>` (types in `scene.ts`).
+
+| File | Responsibility |
+|---|---|
+| `mode.ts` | `authoredRects`: authored mode when every component has `pos` or a grid cell (Archify grid defaults), `size` default 120×60 (FR-LAY-01). |
+| `measure.ts` | `autoNodeSize`: label 14 px bold, sublabel 12 px, tag 11 px, padding 12/10, at least 120×60; the font sizes the renderer also uses. |
+| `elk.ts` | `runElk(input, direction)`: elkjs `layered`, orthogonal, `INCLUDE_CHILDREN`, spec spacings, ROOT coordinates (FR-LAY-02, [ADR 0023](adr/0023-auto-layout-direction-by-fit-scale.md)). |
+| `boundaries.ts` | `memberSets`, `hierarchy` (placement and parents, FR-LAY-03), `overlayRect` (16 px), `authoredBoundaryRects` (30/50 px) ([ADR 0022](adr/0022-authored-straight-edges-and-overlay-boundaries.md)). |
+| `edges.ts` | `straightEdge` (clipped), `selfLoop`, `labelAnchor` (FR-LAY-04). |
+| `geom.ts` | `center`, `boundingBox`, `pad`. |
+| `layout.ts` | Mode choice, both ELK directions, choice by fit scale (ties RIGHT), translation to a 40 px origin, `bounds` with a 40 px margin. |
+
+### `webview/`
+
+Bundled into `dist/webview.js` (IIFE, browser, minified, elkjs included) and `dist/webview.css`.
+
+| File | Responsibility |
+|---|---|
+| `main.ts` | Builds the DOM (`div.app` > `svg.canvas` > `g.viewport`, toolbar, empty state, tooltip), posts `ready`, handles `load` (tolerant parse → canvas text measurement in `--vscode-font-family` → `layoutDiagram` at the panel size → render → fit unless the same file is reloaded) and `empty`. |
+| `render.ts` | `renderScene`: boundaries, edges with arrowheads, edge labels with halo, nodes with label/sublabel/tag (FR-VIEW-05, [ADR 0024](adr/0024-theme-colour-mapping-and-svg-styling.md)). |
+| `viewport.ts` | Pure math (`fitView`, `zoomAt`, `panBy`, 10–400 % clamp) and `ViewportController` (drag, wheel, pinch, toolbar Fit/−/+/100 %, keys `+ = - 0 f`) (FR-VIEW-06). |
+| `tooltip.ts` | `TooltipController`: 300 ms show, 200 ms hide, sources as `path:line–end_line` buttons posting `openSource` (FR-VIEW-07). |
+| `styles.css` | Theme-variable styling only. |
 
 ### Dependency rules
 
@@ -121,7 +148,37 @@ sequenceDiagram
   end
 ```
 
-Open → layout → render and click → resolve → open/stale are *planned* (M3, M4).
+### Open → layout → render
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant H as Extension host
+  participant W as Webview
+  U->>H: Sustain: Open Architecture
+  H->>H: pickRepoRoot, listCandidates → newest
+  H->>H: read file, parseDiagram (tolerant)
+  alt unreadable / no components
+    H-->>U: error "Can't show `<file>`: <reason>"
+    H->>W: {type: empty, message}
+  else diagram
+    H->>W: create panel (CSP html) and {type: load, doc, file}
+  end
+  W->>H: {type: ready}
+  H->>W: {type: load, doc, file} (again)
+  W->>W: readDiagram → measure (canvas) → layoutDiagram (ELK RIGHT and DOWN) → renderScene → fit
+```
+
+Click → resolve → open/stale is *planned* (M4).
+
+### Webview message protocol
+
+| Direction | Message | Meaning |
+|---|---|---|
+| host → webview | `{type: "load", doc, file}` | Draw the parsed diagram JSON `doc` from absolute path `file`; same `file` as before keeps the viewport. |
+| host → webview | `{type: "empty", message}` | Clear the drawing and show `message`. |
+| webview → host | `{type: "ready"}` | The page started; the host (re)sends the current state. |
+| webview → host | `{type: "openSource", componentId, index}` | Open `sources[index]` of that component (tooltip entries now; handled by the host from M4). |
 
 ## On-disk layout
 
@@ -132,7 +189,7 @@ Open → layout → render and click → resolve → open/stale are *planned* (M
 | `<repo>/.claude/skills/sustain-architecture` | Relative symlink `../../.agents/skills/sustain-architecture` (`junction` on Windows); a copy if the link cannot be created. |
 | `dist/extension.js` | Extension host bundle (CJS, `vscode` external). |
 | `dist/skills/sustain-architecture/` | Static skill files from `skills/` plus `scripts/repo-facts.mjs`, `scripts/validate.mjs`. |
-| `dist/webview.js`, `dist/webview.css` | *Planned M3.* |
+| `dist/webview.js`, `dist/webview.css` | Webview bundle (IIFE, elkjs included, minified) and stylesheet; the only `localResourceRoots`. |
 | `out/e2e/`, `out/test-scripts/` | Test builds (gitignored, never packaged): the e2e suite (scenarios `single`, `empty`, `multi`, each in its own VS Code launch), and the script bundles the unit tests run ([ADR 0016](adr/0016-build-test-and-docs-check-harness.md)). |
 
 ## Trust boundaries
@@ -142,7 +199,7 @@ Open → layout → render and click → resolve → open/stale are *planned* (M
 * **Deny-list:** `.git`, `.archify`, credential rc files, `.env*` (except examples), SSH key names and key/cert extensions can never be cited (`deny.ts`).
 * **Git:** fixed argv, no shell, no terminal prompts, stdin closed; HTTP(S) credentials are stripped from the origin before it is written anywhere (`git.ts`).
 * **Agent launch:** the prompt is a single argv element of the resolved CLI, never parsed by a shell ([ADR 0020](adr/0020-launch-agent-terminal-with-shellpath-and-shellargs.md)). Writes by the agent still need approval in Claude Code ([ADR 0005](adr/0005-manual-invocation-and-claude-pre-approvals.md)).
-* **Webview CSP:** *planned M3* (NFR-SEC-01).
+* **Webview CSP:** `default-src 'none'; script-src 'nonce-…'; style-src <cspSource>`; `localResourceRoots` is `dist/`; the webview receives the diagram JSON only, never file contents (`html.ts`, `panel.ts`, NFR-SEC-01).
 
 ## Decisions
 

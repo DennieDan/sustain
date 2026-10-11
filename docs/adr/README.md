@@ -25,3 +25,7 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0019](0019-validator-deviations-from-the-prototype-gate.md) | Validator deviations from the prototype's submission gate | accepted | 2026-10-11 |
 | [0020](0020-launch-agent-terminal-with-shellpath-and-shellargs.md) | Launch the agent terminal with shellPath and shellArgs | accepted | 2026-10-11 |
 | [0021](0021-command-ui-details-not-fixed-by-the-spec.md) | Command UI details not fixed by the spec | accepted | 2026-10-11 |
+| [0022](0022-authored-straight-edges-and-overlay-boundaries.md) | Straight clipped edges in authored mode; overlay rectangles for overlapping boundaries | accepted | 2026-10-11 |
+| [0023](0023-auto-layout-direction-by-fit-scale.md) | Auto layout direction chosen by fit scale | accepted | 2026-10-11 |
+| [0024](0024-theme-colour-mapping-and-svg-styling.md) | Theme colour mapping and SVG styling | accepted | 2026-10-11 |
+| [0025](0025-viewer-details-not-fixed-by-the-spec.md) | Viewer details not fixed by the spec | accepted | 2026-10-11 |

@@ -9,7 +9,7 @@ Tracks [spec.md](spec.md) milestones. An item is ticked only when its AC passed;
 | M0 Scaffold | Done (owner checks open) | `M0: Scaffold (NFR-QUAL-01, NFR-QUAL-02, NFR-QUAL-03, NFR-SEC-02, FR-DOC-03; ADR 0001-0016)` |
 | M1 Model, validator, repo facts | Done | `M1: Model, validator, repo facts (FR-MOD-01, FR-MOD-02, FR-VAL-01..06, FR-GIT-01, FR-RF-01; ADR 0017-0019)` |
 | M2 Skill, install, generate | Done (FR-SKL-02 `[live]` open) | `M2: Skill, install, generate (FR-SKL-01..03, FR-WS-01, FR-INS-01, FR-GEN-01; ADR 0020-0021)` |
-| M3 Viewer | Not started | |
+| M3 Viewer | Done (owner checks open) | `M3: Viewer (FR-VIEW-01..07, FR-LAY-01..04, NFR-SEC-01, NFR-PERF-01; ADR 0022-0025)` |
 | M4 Navigation and watching | Not started | |
 | M5 Finish | Not started | |
 
@@ -65,19 +65,27 @@ Evidence 2026-10-11: `npm run check` exit 0 (14 files / 336 tests; `check:docs: 
 
 ## M3 Viewer
 
-- [ ] FR-VIEW-01 Open commands
-- [ ] FR-VIEW-02 Newest candidate
-- [ ] FR-VIEW-03 Tolerant parse
-- [ ] FR-VIEW-04 Panel
-- [ ] FR-VIEW-05 Rendering (theme switching `[manual]`)
-- [ ] FR-VIEW-06 Viewport (feel `[manual]`)
-- [ ] FR-VIEW-07 Tooltip
-- [ ] FR-LAY-01 Mode
-- [ ] FR-LAY-02 Auto layout
-- [ ] FR-LAY-03 Boundaries
-- [ ] FR-LAY-04 Edges
-- [ ] NFR-SEC-01 Webview CSP (elkjs under CSP `[manual]`)
-- [ ] NFR-PERF-01 Layout performance
+Evidence 2026-10-11: `npm run check` exit 0 (26 files / 580 tests; `check:docs: 25 ADRs …`; build OK, `dist/webview.js` + `dist/webview.css` present). `npm run test:e2e` exit 0: `single` 22 passing, `empty` 3, `multi` 2. Layout and webview were implemented by two delegated sub-tasks against contracts fixed first (`src/model/tolerant.ts`, `src/layout/scene.ts`, `src/model/messages.ts`) and integrated here.
+
+- [x] **FR-VIEW-01 Open commands.** `src/extension/open.ts`. e2e `single.view.test.ts` › `without candidates: info with Generate, which runs Generate Architecture`, `opens the newest candidate in the active column when no editor is open`, `Open Architecture File… lists candidates newest first with titles, plus Browse…`, `Browse… opens a JSON file chosen in the file dialog`. Unit `discovery.test.ts` › 5 × `FR-VIEW-01 repo root of a browsed file`.
+- [x] **FR-VIEW-02 Newest candidate.** `src/model/discovery.ts`. `discovery.test.ts` › `run folders sort by timestamp then -N; other folders follow by mtime` (mixed names incl. `-2`/`-10`, non-run folders with mtimes), `folders without candidate.json, stray files and links outside the root are ignored`, `no .archify folder gives an empty list`.
+- [x] **FR-VIEW-03 Tolerant parse.** `src/model/tolerant.ts`. `tolerant.test.ts`: 24 × `<fixture> parses with no skips`; one test per rule (no string id, duplicates, label → id and unknown type → external, unresolved connections, unresolved members and emptied boundaries, sources without path); 6 failure reasons; geometry carried. Host error notification + empty state: e2e `an unreadable diagram shows the error and an empty-state panel`, `a document without components is refused with the reason`.
+- [x] **FR-VIEW-04 Panel.** `src/extension/panel.ts`, `webview/main.ts`. e2e: column Active without editors / Beside with one, `re-running reveals and reloads the same single panel` (one tab, new title), title `Architecture: <meta.title>`, `closing the panel clears the panel state`. DOM `main.test.ts` › `builds the DOM skeleton in body and posts ready once on start`, `load measures text with the VS Code font, lays out at the panel size, renders and fits`, `empty shows the message, …`.
+- [x] **FR-VIEW-05 Rendering** (`[dom]` part). `webview/render.ts`, `styles.css` ([ADR 0024](adr/0024-theme-colour-mapping-and-svg-styling.md)). `test/dom/render.test.ts`: 24 × `<fixture>: one element per component, connection and boundary, classed by type, variant and kind`, `every type, variant and boundary kind gets its own class, in layer order`, text stacking/centring/fit, arrowheads.
+- [x] **FR-VIEW-06 Viewport** (`[dom]` part). `webview/viewport.ts`. `test/dom/viewport.test.ts`: clamps 10–400 %, zoom-around-point keeps the point fixed (4 cases), fit centring, toolbar, keys, wheel/pinch, drag; `main.test.ts` › `a reload of the same file keeps the viewport; another file fits`.
+- [x] **FR-VIEW-07 Tooltip.** `webview/tooltip.ts`. `test/dom/tooltip.test.ts`: shows at 300 ms not before, hides 200 ms after leaving node and tooltip, stays node → tooltip → node, source formats (5 cases), `clicking a source entry posts openSource with that source's index`.
+- [x] **FR-LAY-01 Mode.** `src/layout/mode.ts`. `test/unit/layout/mode.test.ts` › `the archify-repo-grid fixture resolves to the prototype's positions` (9 ported positions), pos/cell/default-size/partial cases.
+- [x] **FR-LAY-02 Auto layout.** `src/layout/{elk,layout,measure}.ts` ([ADR 0023](adr/0023-auto-layout-direction-by-fit-scale.md)). `fixtures.test.ts`: 48 × `… lays out without overlapping boxes` (24 fixtures authored + 24 with geometry stripped → auto) and 48 × `… lays out identically twice`; `edges.test.ts` › 4 direction-choice tests incl. ties → RIGHT; `mode.test.ts` › exact node sizes with a fixed advance.
+- [x] **FR-LAY-03 Boundaries.** `src/layout/boundaries.ts` ([ADR 0022](adr/0022-authored-straight-edges-and-overlay-boundaries.md)). `boundaries.test.ts` › `nested boundaries put child boxes inside parent boxes`, `overlapping boundaries produce both rectangles, neither nested`, `a boundary equal to a placed one is an overlay`, authored 30/50 px padding, hierarchy placement rules.
+- [x] **FR-LAY-04 Edges.** `src/layout/edges.ts`. `edges.test.ts` › clipped straight segments, self-loop, `orthogonal ELK routes run border to border; labels sit on the longest segment`.
+- [x] **NFR-SEC-01 Webview CSP** (`[unit]` part). `src/extension/html.ts`. `test/unit/extension/html.test.ts`: exact CSP string, no `unsafe-*`/wildcards, one nonce'd script from `dist/webview.js`, one stylesheet, no inline styles or handlers, escaping. `localResourceRoots` = `dist/` (panel.ts). Throwaway smoke (not kept): `dist/webview.js` served under the exact policy in headless Chromium rendered `skill-run/archify-runtime` with geometry stripped (auto mode via elkjs): 12 nodes, 11 edges, 3 boundaries, `ready` posted, zero `securitypolicyviolation` events, no page errors; `dist/webview.js` contains no `eval(`/`new Function`.
+- [x] **NFR-PERF-01 Layout performance.** `test/unit/layout/perf.test.ts` › `layout of 60 components and 120 connections takes < 1 s (median of 5)` (6 regions × 2 inner groups; ≈ 200 ms per layout in Node).
+
+Owner checks:
+
+- [ ] **NFR-SEC-01** `[manual]`: elkjs lays out under the CSP inside VS Code (open any diagram without positions and see it drawn).
+- [ ] **FR-VIEW-05** `[manual]`: colours follow a theme switch (light ↔ dark ↔ high contrast).
+- [ ] **FR-VIEW-06** `[manual]`: pan/zoom feel (drag, wheel, pinch, Ctrl/⌘ + wheel, toolbar, keys).
 
 ## M4 Navigation and watching
 
@@ -100,3 +108,4 @@ Evidence 2026-10-11: `npm run check` exit 0 (14 files / 336 tests; `check:docs: 
 - 2026-10-10 — **M0 Scaffold** (NFR-QUAL-01..03, NFR-SEC-02, FR-DOC-03; ADRs 0001–0016 added). Small decisions: `publisher` is `sustain` (extension id `sustain.sustain`, needed by `vsce` and the e2e smoke test); `activationEvents` is empty and `contributes` has no commands until M2 adds the first one; `vitest.config.ts` keeps the spec's name, so Vite prints a notice that native config loading would want `.mts` or `"type": "module"` (making the package ESM would break the CJS `dist/extension.js`); `Promise.withResolvers` is fine in extension/test code but must not be used in the Node-18 skill scripts. `docs/backlog.md` asks for a node finder and a history browser, both spec §3 non-goals: not implemented, raised with the owner.
 - 2026-10-11 — **M1 Model, validator, repo facts** (FR-MOD-01..02, FR-VAL-01..06, FR-GIT-01, FR-RF-01; ADRs 0017–0019 added). Small decisions: the candidate's root keys are re-ordered so `schema_version` and `diagram_type` come first (cosmetic; values unchanged); `repo-facts.mjs` prints `root` as the cwd as given (not real-path resolved); the script bundles need no `require` shim (Ajv's `require("ajv/dist/runtime/…")` strings are only used for standalone code generation, which Sustain does not use). Test-only: the vitest unit project has a global setup that builds the scripts into `out/test-scripts/`, because `npm run check` runs vitest before `npm run build`.
 - 2026-10-11 — **M2 Skill, install, generate** (FR-SKL-01..03, FR-WS-01, FR-INS-01, FR-GEN-01; ADRs 0020–0021 added). Small decisions: the `vscode`-free parts of install and generate live in `src/extension/skillFiles.ts` and `src/extension/agents.ts` so they are unit-tested in Node; `folders.ts` holds the shared folder choice. Test-only: the e2e harness now launches one VS Code per scenario (`single`, `empty`, `multi`) with its own `--user-data-dir` under `/tmp` (macOS limits IPC socket paths to 104 bytes, which the per-user temp dir exceeds), and UI calls are stubbed on the shared `vscode.window` object (`test/e2e/stubs.ts`). Open question for the owner: ADR 0021 keeps the backticks in §7 messages literally.
+- 2026-10-11 — **M3 Viewer** (FR-VIEW-01..07, FR-LAY-01..04, NFR-SEC-01, NFR-PERF-01; ADRs 0022–0025 added). Small decisions: `src/model/messages.ts` holds the host↔webview message types (shared by both sides); `parseDiagram` returns the parsed value with the diagram so the panel sends exactly what it validated; the test hook of FR-TEST-01 exists from M3 (the panel tests need `panelState()`), its `openSource` handling arrives with M4; the delegated webview first used an opaque node fill (12 % mixed into the editor background) — replaced by `color-mix(… 12%, transparent)` to match FR-VIEW-05 literally; the webview bundle is minified. Finding: every vendored fixture is fully authored, so the layout fixture tests also run each one with `pos`/`size`/`row`/`col` stripped to cover auto mode. Test-only: e2e waits for tab changes with `tabGroups.onDidChangeTabs` because tab state reaches the extension host asynchronously.

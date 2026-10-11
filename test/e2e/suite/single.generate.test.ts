@@ -68,7 +68,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
 
     assert.deepEqual(ui.inputBoxes, [{ prompt: "Focus (optional)" }]);
     assert.deepEqual(
-      ui.quickPicks[0]!.map((item) => (item as vscode.QuickPickItem).label),
+      ui.quickPicks[0]!.map((item) => item.label),
       ["Claude Code", "Codex"],
     );
     assert.equal(terminal.name, "Sustain: Claude Code");

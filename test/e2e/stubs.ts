@@ -14,8 +14,9 @@ export interface UiStubs {
   infos: MessageCall[];
   warnings: MessageCall[];
   errors: MessageCall[];
-  quickPicks: unknown[][];
+  quickPicks: vscode.QuickPickItem[][];
   inputBoxes: (vscode.InputBoxOptions | undefined)[];
+  openDialogs: (vscode.OpenDialogOptions | undefined)[];
   /** Answers for the next calls, consumed in order; `undefined` = dismissed. */
   answers: {
     info: (string | undefined)[];
@@ -23,6 +24,8 @@ export interface UiStubs {
     /** Picks the item whose `label` matches, or dismisses for `undefined`. */
     quickPick: (string | undefined)[];
     inputBox: (string | undefined)[];
+    /** File path to return, or `undefined` to cancel. */
+    openDialog: (string | undefined)[];
   };
   restore(): void;
 }
@@ -35,6 +38,7 @@ export function stubUi(): UiStubs {
     showErrorMessage: window.showErrorMessage,
     showQuickPick: window.showQuickPick,
     showInputBox: window.showInputBox,
+    showOpenDialog: window.showOpenDialog,
   };
   const stubs: UiStubs = {
     infos: [],
@@ -42,7 +46,8 @@ export function stubUi(): UiStubs {
     errors: [],
     quickPicks: [],
     inputBoxes: [],
-    answers: { info: [], warning: [], quickPick: [], inputBox: [] },
+    openDialogs: [],
+    answers: { info: [], warning: [], quickPick: [], inputBox: [], openDialog: [] },
     restore: () => Object.assign(window, saved),
   };
   // The real signatures are heavily overloaded; these replacements honour the shapes the
@@ -69,6 +74,11 @@ export function stubUi(): UiStubs {
     showInputBox: (options?: vscode.InputBoxOptions) => {
       stubs.inputBoxes.push(options);
       return Promise.resolve(stubs.answers.inputBox.shift());
+    },
+    showOpenDialog: (options?: vscode.OpenDialogOptions) => {
+      stubs.openDialogs.push(options);
+      const path = stubs.answers.openDialog.shift();
+      return Promise.resolve(path === undefined ? undefined : [vscode.Uri.file(path)]);
     },
   });
   return stubs;

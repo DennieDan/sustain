@@ -28,7 +28,7 @@ suite("FR-WS-01 multi-root workspace", () => {
     ui.answers.quickPick.push("beta");
     await vscode.commands.executeCommand("sustain.installSkills");
     assert.deepEqual(
-      ui.quickPicks[0]!.map((item) => (item as vscode.QuickPickItem).label),
+      ui.quickPicks[0]!.map((item) => item.label),
       ["alpha", "beta"],
     );
     assert.equal(existsSync(join(folders[1]!, ".agents/skills/sustain-architecture/SKILL.md")), true);

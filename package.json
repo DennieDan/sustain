@@ -25,6 +25,16 @@
         "command": "sustain.generateArchitecture",
         "title": "Generate Architecture",
         "category": "Sustain"
+      },
+      {
+        "command": "sustain.openArchitecture",
+        "title": "Open Architecture",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.openArchitectureFile",
+        "title": "Open Architecture File…",
+        "category": "Sustain"
       }
     ]
   },
