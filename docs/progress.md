@@ -16,11 +16,11 @@ Tracks [spec.md](spec.md) milestones. An item is ticked only when its AC passed;
 ## Environment
 
 * Build machine: macOS (darwin arm64), Node v26.7.0, npm 11.19.0. VS Code is not installed; `[e2e]` uses the copy downloaded by `@vscode/test-electron` into `.vscode-test/`.
-* **e2e VS Code version: 1.141.0** (stable on 2026-10-10, pinned in `test/e2e/runTest.ts`); `package.json` `engines.vscode` is `^1.141.0`.
+* **e2e VS Code versions: 1.126.0 and 1.141.0** (the `engines.vscode` floor and the latest stable, both pinned in `test/e2e/runTest.ts`; every scenario runs on each); `package.json` `engines.vscode` is `^1.126.0`. Lowered from 1.141.0 on 2026-10-11 so Devin Desktop (VS Code 1.126.0) and Cursor 3.23.23 (VS Code 1.128.0) can install the `.vsix` ([ADR 0016](adr/0016-build-test-and-docs-check-harness.md)). Evidence 2026-10-11: `npm run typecheck` against `@types/vscode` 1.125.0 exit 0; `npm run check` exit 0 (29 files / 619 tests; `check:docs: 28 ADRs and 74 relative links OK`); `npm run test:e2e` exit 0 on both VS Code 1.126.0 and 1.141.0 (each: `single` 35, `empty` 3, `multi` 2 passing); `--install-extension sustain-0.1.0.vsix` into a fresh `--extensions-dir` of Devin Desktop, Cursor and VS Code 1.141.0 lists `sustain.sustain@0.1.0` in all three. Run e2e with `ELECTRON_RUN_AS_NODE` unset; terminals inside Electron editors set it.
 
 ## Dependencies (NFR-QUAL-02)
 
-Pinned exactly in `package.json`: runtime `ajv` 8.20.0, `elkjs` 0.12.0; dev `typescript` 7.0.2, `esbuild` 0.28.2, `vitest` 5.0.3, `happy-dom` 20.14.6, `@types/vscode` 1.140.0, `@types/node` 26.6.5, `@vscode/test-electron` 3.1.0, `mocha` 12.0.3, `@vscode/vsce` 4.0.0.
+Pinned exactly in `package.json`: runtime `ajv` 8.20.0, `elkjs` 0.12.0; dev `typescript` 7.0.2, `esbuild` 0.28.2, `vitest` 5.0.3, `happy-dom` 20.14.6, `@types/vscode` 1.125.0 (the newest release not above `engines.vscode`; no 1.126.0 exists), `@types/node` 26.6.5, `@vscode/test-electron` 3.1.0, `mocha` 12.0.3, `@vscode/vsce` 4.0.0.
 
 Additional dev dependencies and their justification: none.
 

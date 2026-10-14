@@ -6,7 +6,7 @@ Diagrams use the [Archify](https://github.com/tt-a1i/archify) JSON format (archi
 
 ## Requirements
 
-- Desktop VS Code 1.141 or newer (not VS Code for the Web or remote-only workspaces).
+- Desktop VS Code 1.126 or newer, or a fork based on it such as Cursor or Devin Desktop (not VS Code for the Web or remote-only workspaces).
 - Node.js 18 or newer on your `PATH`: the agent runs the skill's two scripts with `node`.
 - To generate diagrams: [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (`claude`) or [Codex](https://github.com/openai/codex) (`codex`) installed and signed in. Viewing existing diagrams needs neither.
 

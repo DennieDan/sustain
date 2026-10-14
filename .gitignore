@@ -5,3 +5,6 @@ out/
 *.vsix
 .vscode-test/
 .smoke_repo/
+.agents/
+.archify/
+.claude/

@@ -3,8 +3,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-// The VS Code build the [e2e] suite runs against; package.json engines.vscode matches it.
-const VSCODE_VERSION = "1.141.0";
+// The VS Code builds the [e2e] suite runs against: the engines.vscode floor and the latest stable.
+const VSCODE_VERSIONS = ["1.126.0", "1.141.0"];
 
 /**
  * Each scenario launches its own VS Code with a fresh profile and runs the suite files
@@ -36,17 +36,18 @@ async function main(): Promise<void> {
   const extensionDevelopmentPath = resolve(__dirname, "../..");
   const extensionTestsPath = resolve(__dirname, "suite/index.js");
   const only = process.argv[2];
-  for (const scenario of SCENARIOS) {
+  const runs = VSCODE_VERSIONS.flatMap((version) => SCENARIOS.map((scenario) => ({ version, scenario })));
+  for (const { version, scenario } of runs) {
     if (only && scenario.name !== only) continue;
     const base = realpathSync(mkdtempSync(join(tmpdir(), `sustain-e2e-${scenario.name}-`)));
     // VS Code puts its IPC socket in the user-data dir; macOS caps socket paths at 104 bytes,
     // which the per-user tmpdir (/var/folders/…) would exceed.
     const userData = mkdtempSync(join(process.platform === "win32" ? tmpdir() : "/tmp", "sustain-ud-"));
     const workspace = scenario.workspace(base);
-    console.log(`\n=== e2e scenario: ${scenario.name} ===`);
+    console.log(`\n=== e2e VS Code ${version}, scenario: ${scenario.name} ===`);
     try {
       await runTests({
-        version: VSCODE_VERSION,
+        version,
         extensionDevelopmentPath,
         extensionTestsPath,
         extensionTestsEnv: { SUSTAIN_E2E_SCENARIO: scenario.name },

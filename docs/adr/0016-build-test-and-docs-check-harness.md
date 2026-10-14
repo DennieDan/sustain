@@ -27,7 +27,7 @@ M0 needs working gates (NFR-QUAL-01) before any feature exists: a build that gro
 Chosen option: "esbuild-compiled e2e suite in `out/e2e/`, VS Code version pinned, local mocha typings, dependency-free `scripts/check-docs.mjs`", because it uses only the listed dependencies, keeps test code out of `dist/`, and makes `npm run check:docs` a plain Node command that the unit tests can also import.
 
 * `esbuild.mjs` builds `dist/` (extension, webview, skill files and script bundles as each milestone adds them); `node esbuild.mjs --e2e` bundles `test/e2e/runTest.ts` and `test/e2e/suite/*.ts` to `out/e2e/` (gitignored, excluded by `.vscodeignore`).
-* `test/e2e/runTest.ts` pins VS Code `1.141.0`, the stable release when M0 was built; `engines.vscode` is `^1.141.0`.
+* `test/e2e/runTest.ts` pins two VS Code versions and runs every scenario on each: `1.126.0`, the lowest supported version, and `1.141.0`, the latest stable; `engines.vscode` is `^1.126.0`. M0 pinned `1.141.0`, the stable release at the time; it was lowered on 2026-10-11 so that Devin Desktop (VS Code 1.126.0) and Cursor (VS Code 1.128.0) can install the `.vsix`.
 * `test/e2e/mocha.d.ts` declares only the programmatic `Mocha` API used by `suite/index.ts`; `test/e2e/tdd.ts` re-exports the TDD globals with types so they do not leak into the vitest type scope.
 * `vitest.config.ts` defines two projects: `unit` (Node, `test/unit/**`) and `dom` (happy-dom, `test/dom/**`).
 * `scripts/check-docs.mjs` is plain ESM with JSDoc types, type-checked by `tsc` through `checkJs`.
