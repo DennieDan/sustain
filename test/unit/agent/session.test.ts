@@ -449,6 +449,233 @@ describe("complete and the full loop", () => {
   });
 });
 
+describe("pause and resume", () => {
+  test("pause parks the phase, blocks play commands, resume returns to it", () => {
+    const root = fixture();
+    const out = init(root);
+    const run = runName(out);
+    plan(root);
+    runScript("session", ["inject", "--file", "src/demo.ts", "--line", "3", "--kind", "off-by-one"], { cwd: root });
+
+    const paused = runScript("session", ["pause"], { cwd: root });
+    expect(paused.status).toBe(0);
+    expect(paused.json()).toMatchObject({ status: "ok", phase: "paused", pausedFrom: "hunting" });
+    expect(sessionJson(root, run)).toMatchObject({ phase: "paused", pausedFrom: "hunting" });
+
+    // Every play command refuses while parked — including complete.
+    for (const args of [
+      ["inject", "--file", "src/api.ts", "--line", "2", "--kind", "missing-await"],
+      ["report", "--file", "src/demo.ts"],
+      ["hint", "--level", "1"],
+      ["verify"],
+      ["complete"],
+    ]) {
+      const blocked = runScript("session", args, { cwd: root });
+      expect(blocked.status).toBe(1);
+      expect(blocked.json()["status"]).toBe("paused");
+    }
+    // Pause is idempotent-refusal; status still works and shows pausedFrom.
+    expect(runScript("session", ["pause"], { cwd: root }).json()["status"]).toBe("paused");
+    expect(runScript("session", ["status"], { cwd: root }).json()).toMatchObject({ phase: "paused", pausedFrom: "hunting" });
+
+    const resumed = runScript("session", ["resume"], { cwd: root });
+    expect(resumed.status).toBe(0);
+    expect(resumed.json()).toMatchObject({ status: "ok", phase: "hunting" });
+    expect(events(root, run).map((e) => e["type"])).toEqual(["init", "planned", "injected", "paused", "resumed"]);
+    expect(sessionJson(root, run)["pausedFrom"]).toBeUndefined();
+  });
+
+  test("resume outside paused and pause in done are bad-phase", () => {
+    const root = fixture();
+    init(root);
+    plan(root);
+    const resumed = runScript("session", ["resume"], { cwd: root });
+    expect(resumed.status).toBe(1);
+    expect(resumed.json()).toMatchObject({ status: "bad-phase", phase: "implementing" });
+
+    // done cannot pause.
+    const heldRun = readFileSync(join(root, ".sustain/active"), "utf8").trim();
+    const session = sessionJson(root, heldRun);
+    session["phase"] = "done";
+    writeFileSync(join(root, ".sustain", heldRun, "session.json"), JSON.stringify(session));
+    const paused = runScript("session", ["pause"], { cwd: root });
+    expect(paused.status).toBe(1);
+    expect(paused.json()["status"]).toBe("bad-phase");
+  });
+
+  test("pause in clarify keeps resume target clarify", () => {
+    const root = fixture();
+    init(root);
+    runScript("session", ["pause"], { cwd: root });
+    const resumed = runScript("session", ["resume"], { cwd: root });
+    expect(resumed.json()).toMatchObject({ phase: "clarify" });
+    // And plan works again afterwards.
+    const planned = plan(root);
+    expect(planned["phase"]).toBe("implementing");
+  });
+});
+
+describe("restore", () => {
+  test("writes pristine hunks back, keeps the session, drops the bug from pending", () => {
+    const root = fixture();
+    const out = init(root);
+    const run = runName(out);
+    plan(root);
+    runScript("session", ["inject", "--file", "src/demo.ts", "--line", "3", "--kind", "off-by-one"], { cwd: root });
+    expect(readFileSync(join(root, "src/demo.ts"), "utf8")).toContain("i <= xs.length");
+
+    const restored = runScript("session", ["restore"], { cwd: root });
+    expect(restored.status).toBe(0);
+    expect(restored.json()).toMatchObject({ status: "ok", phase: "hunting", restored: ["bug-1"], fixed: [] });
+    expect(readFileSync(join(root, "src/demo.ts"), "utf8")).toBe(SUM_BELOW);
+
+    const bugs = manifestBugs(root, run);
+    expect(bugs[0]).toMatchObject({ restored: true, fixed: false });
+    // verify now sees nothing pending and finishes the step.
+    const verified = runScript("session", ["verify"], { cwd: root });
+    expect(verified.status).toBe(0);
+    expect(verified.json()).toMatchObject({ status: "ok", phase: "done" });
+    // A restored bug scores nothing even after the step advances.
+    expect(sessionJson(root, run)["score"]).toBe(0);
+    const ledger = events(root, run).map((e) => e["type"]);
+    expect(ledger).toContain("restored");
+    expect(ledger).toContain("verified");
+  });
+
+  test("--bug restores one of several, --bug on a fixed bug fails", () => {
+    const root = fixture();
+    init(root);
+    plan(root);
+    runScript("session", ["inject", "--file", "src/demo.ts", "--line", "3", "--kind", "off-by-one"], { cwd: root });
+    runScript("session", ["inject", "--file", "src/api.ts", "--line", "2", "--kind", "missing-await"], { cwd: root });
+
+    const one = runScript("session", ["restore", "--bug", "bug-1"], { cwd: root });
+    expect(one.json()).toMatchObject({ restored: ["bug-1"] });
+    expect(readFileSync(join(root, "src/api.ts"), "utf8")).toContain("fetchData()");
+
+    // Bug-2's hunk gone → restore counts it fixed, not restored.
+    put(root, "src/api.ts", LOADER);
+    const two = runScript("session", ["restore", "--bug", "bug-2"], { cwd: root });
+    expect(two.json()).toMatchObject({ restored: [], fixed: ["bug-2"] });
+
+    const again = runScript("session", ["restore", "--bug", "bug-2"], { cwd: root });
+    expect(again.status).toBe(1);
+    expect(again.json()["status"]).toBe("no-bug");
+  });
+
+  test("a deleted bug file is marked restored with the missing bucket", () => {
+    const root = fixture();
+    init(root);
+    plan(root);
+    runScript("session", ["inject", "--file", "src/demo.ts", "--line", "3", "--kind", "off-by-one"], { cwd: root });
+    rmSync(join(root, "src/demo.ts"));
+    const run = runScript("session", ["restore"], { cwd: root });
+    expect(run.status).toBe(0);
+    expect(run.json()).toMatchObject({ restored: [], missing: ["bug-1"] });
+  });
+
+  test("restore in done is bad-phase; restore keeps working while paused", () => {
+    const root = fixture();
+    init(root);
+    plan(root);
+    runScript("session", ["inject", "--file", "src/demo.ts", "--line", "3", "--kind", "off-by-one"], { cwd: root });
+    runScript("session", ["pause"], { cwd: root });
+    const run = runScript("session", ["restore"], { cwd: root });
+    expect(run.status).toBe(0);
+    expect(run.json()).toMatchObject({ phase: "paused", restored: ["bug-1"] });
+    // Resume still returns to hunting even though nothing is seeded — verify ends it.
+    runScript("session", ["resume"], { cwd: root });
+    expect(runScript("session", ["verify"], { cwd: root }).json()).toMatchObject({ phase: "done" });
+    const late = runScript("session", ["restore"], { cwd: root });
+    expect(late.status).toBe(1);
+    expect(late.json()["status"]).toBe("bad-phase");
+  });
+});
+
+describe("abandon", () => {
+  test("restores seeded hunks, frees the lock, keeps the run for audit", () => {
+    const root = fixture();
+    const out = init(root);
+    const run = runName(out);
+    plan(root);
+    runScript("session", ["inject", "--file", "src/demo.ts", "--line", "3", "--kind", "off-by-one"], { cwd: root });
+    runScript("session", ["inject", "--file", "src/api.ts", "--line", "2", "--kind", "missing-await"], { cwd: root });
+    // The user fixed bug-1 already (found + fixed), bug-2 is still seeded.
+    runScript("session", ["report", "--file", "src/demo.ts"], { cwd: root });
+    put(root, "src/demo.ts", SUM_BELOW);
+
+    const done = runScript("session", ["abandon"], { cwd: root });
+    expect(done.status).toBe(0);
+    expect(done.json()).toMatchObject({ status: "abandoned", restored: ["bug-2"], fixed: ["bug-1"], score: 10 });
+    // Only the seeded hunks were touched: bug-2's line is pristine again, the user's
+    // fix of bug-1 stands, and the implemented step code is otherwise untouched.
+    expect(readFileSync(join(root, "src/api.ts"), "utf8")).toBe(LOADER);
+    expect(readFileSync(join(root, "src/demo.ts"), "utf8")).toBe(SUM_BELOW);
+
+    expect(existsSync(join(root, ".sustain/active"))).toBe(false);
+    expect(runScript("session", ["status"], { cwd: root }).json()).toEqual({ status: "none" });
+    const ledger = events(root, run);
+    expect(ledger.at(-1)).toMatchObject({ type: "abandoned", score: 10 });
+    // Snapshots are dropped for the audit trail, like complete does.
+    expect(manifestBugs(root, run).every((b) => b["pristineHunk"] === undefined)).toBe(true);
+    expect(sessionJson(root, run)["phase"]).toBe("done");
+
+    // init starts cleanly afterwards.
+    const next = init(root, "next");
+    expect(next["warnings"]).toBeUndefined();
+  });
+
+  test("abandon works while paused", () => {
+    const root = fixture();
+    init(root);
+    plan(root);
+    runScript("session", ["inject", "--file", "src/demo.ts", "--line", "3", "--kind", "off-by-one"], { cwd: root });
+    runScript("session", ["pause"], { cwd: root });
+    const done = runScript("session", ["abandon"], { cwd: root });
+    expect(done.status).toBe(0);
+    expect(done.json()).toMatchObject({ status: "abandoned", restored: ["bug-1"] });
+    expect(existsSync(join(root, ".sustain/active"))).toBe(false);
+  });
+});
+
+describe("stale sessions", () => {
+  function ageSession(root: string, msAgo: number): void {
+    const run = readFileSync(join(root, ".sustain/active"), "utf8").trim();
+    const path = join(root, ".sustain", run, "session.json");
+    const session = JSON.parse(readFileSync(path, "utf8"));
+    session["updatedAt"] = new Date(Date.now() - msAgo).toISOString();
+    writeFileSync(path, JSON.stringify(session));
+  }
+
+  test("status flags a session idle past 24h as stale", () => {
+    const root = fixture();
+    init(root);
+    plan(root);
+    runScript("session", ["inject", "--file", "src/demo.ts", "--line", "3", "--kind", "off-by-one"], { cwd: root });
+    const fresh = runScript("session", ["status"], { cwd: root }).json();
+    expect(fresh["stale"]).toBe(false);
+    ageSession(root, 25 * 60 * 60 * 1000);
+    const old = runScript("session", ["status"], { cwd: root }).json();
+    expect(old).toMatchObject({ status: "ok", phase: "hunting", stale: true });
+    expect(old["idleMs"]).toBeGreaterThan(24 * 60 * 60 * 1000);
+  });
+
+  test("init releases a stale lock even for a paused session", () => {
+    const root = fixture();
+    init(root);
+    plan(root);
+    runScript("session", ["pause"], { cwd: root });
+    ageSession(root, 25 * 60 * 60 * 1000);
+    const out = init(root, "fresh");
+    expect(out["warnings"]).toEqual([expect.stringContaining("stale lock")]);
+    // A fresh pause under 24h still holds the lock.
+    runScript("session", ["pause"], { cwd: root });
+    const refused = runScript("session", ["init", "--mode", "bugfix"], { cwd: root });
+    expect(refused.status).toBe(1);
+    expect(refused.json()["status"]).toBe("active");
+  });
+});
+
 describe("usage and exit codes", () => {
   test.each([
     [[], "usage"],

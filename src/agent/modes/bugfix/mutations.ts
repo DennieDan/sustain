@@ -163,3 +163,24 @@ export function hunkCount(text: string, hunk: string): number {
 export function bugStillPresent(text: string, bug: { buggyHunk: string; twins: number }): boolean {
   return hunkCount(text, bug.buggyHunk) > bug.twins;
 }
+
+/**
+ * `restore`/`abandon` (ADR 0033): writes `pristineHunk` back over the still-seeded
+ * `buggyHunk` — the trimmed-matching line nearest `region.startLine`, which is the seeded
+ * instance even when identical twins pre-existed. Returns the new file text, or `null`
+ * when the seeded hunk is already absent (the file is never touched: only the recorded
+ * hunk is restored, never a user edit elsewhere and never a pre-existing twin).
+ */
+export function restoreHunk(text: string, bug: { buggyHunk: string; pristineHunk: string; region: BugRegion; twins: number }): string | null {
+  if (!bugStillPresent(text, bug)) return null;
+  const trimmed = bug.buggyHunk.trim();
+  const lines = text.split("\n");
+  let best = -1;
+  for (let i = 0; i < lines.length; i += 1) {
+    const distance = Math.abs(i + 1 - bug.region.startLine);
+    if (lines[i]!.trim() === trimmed && (best === -1 || distance < Math.abs(best + 1 - bug.region.startLine))) best = i;
+  }
+  if (best === -1) return null;
+  lines[best] = bug.pristineHunk;
+  return lines.join("\n");
+}

@@ -22,6 +22,7 @@ const SCRIPT_ENTRIES = {
   "repo-facts": "src/agent/repo-facts.ts",
   validate: "src/agent/validate.ts",
   session: "src/agent/session.ts",
+  "session-hook": "src/agent/session-hook.ts",
 };
 
 /**
@@ -54,7 +55,7 @@ async function buildDist() {
   // Static skill files (SKILL.md, agents/, references/) ship as-is.
   cpSync(join(root, "skills"), join(dist, "skills"), { recursive: true });
   await buildScripts(join(dist, "skills/sustain-architecture/scripts"), ["repo-facts", "validate"]);
-  await buildScripts(join(dist, "skills/sustain-bugfix/scripts"), ["session"]);
+  await buildScripts(join(dist, "skills/sustain-bugfix/scripts"), ["session", "session-hook"]);
 
   await esbuild.build({
     ...common,

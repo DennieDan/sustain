@@ -17,6 +17,7 @@ import {
   checkSession,
   HINT_COST,
   HINT_LEVELS,
+  isSessionStale,
   loadManifest,
   loadSession,
   MUTATION_KINDS,
@@ -27,9 +28,11 @@ import {
   saveSession,
   scoreSession,
   SESSION_FILE,
+  sessionIdleMs,
   SESSION_MODES,
   SUSTAIN_DIR,
   type HintLevel,
+  type LivePhase,
   type Manifest,
   type ManifestBug,
   type MutationKind,
@@ -37,7 +40,7 @@ import {
   type SessionState,
   type SessionStep,
 } from "../model/session";
-import { bugStillPresent, hunkCount, mutateFile, type MutationResult } from "./modes/bugfix/mutations";
+import { bugStillPresent, hunkCount, mutateFile, restoreHunk, type MutationResult } from "./modes/bugfix/mutations";
 
 const USAGE =
   "usage: node session.mjs <command>\n" +
@@ -48,7 +51,11 @@ const USAGE =
   "  report --file <f>                      confirm <f> holds an unfixed seeded bug\n" +
   "  hint --level <1|2|3> [--bug <id>|--file <f>]  ledger a hint deduction\n" +
   "  verify [--check-cmd <cmd>]             judge fixes; advance the step when clean\n" +
-  "  complete                               score the session, free the lock";
+  "  complete                               score the session, free the lock\n" +
+  "  pause                                  park the session; hooks go inert\n" +
+  "  resume                                 return to the phase pause parked\n" +
+  "  restore [--bug <id>]                   write pristine hunks back, keep the session\n" +
+  "  abandon                                restore seeded hunks, end the session, free the lock";
 
 const JS_TS = /\.(mjs|cjs|mts|cts|js|jsx|ts|tsx)$/;
 /** `.mjs`/`.cjs` are the only files `node --check` parses unambiguously (ADR 0037). */
@@ -109,6 +116,16 @@ function noSession(): number {
 }
 
 /**
+ * Gate shared by the play commands: a parked session refuses `plan`/`inject`/`report`/
+ * `hint`/`verify`/`complete` (exit 1, `paused`) until `resume` or `abandon` (ADR 0033).
+ * Returns the report code, or `null` when the session is not paused.
+ */
+function ifPaused(session: SessionState): number | null {
+  if (session.phase !== "paused") return null;
+  return report(1, { status: "paused", phase: "paused", message: "session is paused — resume or abandon it first" });
+}
+
+/**
  * Resolves `arg` to a regular file inside the repo root. Throws for missing files, paths
  * escaping the root, deny-listed paths and anything under `.sustain/`.
  */
@@ -162,12 +179,14 @@ function cmdInit(args: string[]): number {
   const warnings: string[] = [];
   const held = activeRun(root);
   if (held !== null) {
-    // A lock is stale when its run is gone or its session is unreadable or already done
-    // (ADR 0033: stale sessions auto-release, they must not hold the repo hostage).
+    // A lock is stale when its run is gone, its session is unreadable, it already reached
+    // done, or it sat idle past STALE_IDLE_MS — even paused (ADR 0033: stale sessions
+    // auto-release, they must not hold the repo hostage).
     let stale = !runExists(root, held);
     if (!stale) {
       try {
-        stale = checkSession(JSON.parse(readFileSync(join(root, SUSTAIN_DIR, held, SESSION_FILE), "utf8"))).phase === "done";
+        const heldSession = checkSession(JSON.parse(readFileSync(join(root, SUSTAIN_DIR, held, SESSION_FILE), "utf8")));
+        stale = heldSession.phase === "done" || isSessionStale(heldSession);
       } catch {
         stale = true;
       }
@@ -212,20 +231,24 @@ function cmdStatus(args: string[]): number {
   if (args.length !== 0) return usageError(`status: takes no arguments`);
   const active = loadActive();
   if (active === null) return report(0, { status: "none" });
-  const { session } = active;
+  const { session, manifest } = active;
   const step = session.steps[session.stepIndex];
   return report(0, {
     status: "ok",
     run: `${SUSTAIN_DIR}/${active.run}`,
     mode: session.mode,
     phase: session.phase,
+    ...(session.pausedFrom !== undefined ? { pausedFrom: session.pausedFrom } : {}),
     stepIndex: session.stepIndex,
     stepsTotal: session.steps.length,
     step: step ? { title: step.title, files: step.files } : null,
     bugs: session.bugs,
     found: session.found,
     fixed: session.fixed,
+    restored: manifest.bugs.filter((b) => b.restored === true).length,
     score: session.score,
+    stale: isSessionStale(session),
+    idleMs: sessionIdleMs(session),
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
   });
@@ -263,6 +286,8 @@ function cmdPlan(args: string[]): number {
   const active = loadActive();
   if (active === null) return noSession();
   const { session } = active;
+  const parked = ifPaused(session);
+  if (parked !== null) return parked;
   if (session.phase !== "clarify") {
     return report(1, { status: "bad-phase", phase: session.phase, message: `plan runs in clarify, not ${session.phase}` });
   }
@@ -296,6 +321,8 @@ function cmdInject(args: string[]): number {
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
+  const parked = ifPaused(session);
+  if (parked !== null) return parked;
   if (session.phase !== "implementing" && session.phase !== "hunting") {
     return report(1, { status: "bad-phase", phase: session.phase, message: `inject runs in implementing or hunting, not ${session.phase}` });
   }
@@ -347,8 +374,10 @@ function cmdReport(args: string[]): number {
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
+  const parked = ifPaused(session);
+  if (parked !== null) return parked;
   const rel = looseRel(opts["file"]!);
-  const bug = rel === null ? undefined : manifest.bugs.find((b) => b.file === rel && !b.found && !b.fixed);
+  const bug = rel === null ? undefined : manifest.bugs.find((b) => b.file === rel && !b.found && !b.fixed && b.restored !== true);
   if (bug === undefined) {
     return report(1, { status: "miss", file: opts["file"], message: `${opts["file"]} holds no unreported seeded bug` });
   }
@@ -369,18 +398,21 @@ function cmdHint(args: string[]): number {
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
+  const parked = ifPaused(session);
+  if (parked !== null) return parked;
+  const live = (b: ManifestBug): boolean => !b.fixed && b.restored !== true;
 
   let bug: ManifestBug | undefined;
   if (opts["bug"] !== undefined) {
     bug = manifest.bugs.find((b) => b.id === opts["bug"]);
     if (bug === undefined) return report(1, { status: "no-bug", message: `unknown bug ${JSON.stringify(opts["bug"])}` });
-    if (bug.fixed) return report(1, { status: "no-bug", bug: bug.id, message: `${bug.id} is already fixed` });
+    if (!live(bug)) return report(1, { status: "no-bug", bug: bug.id, message: `${bug.id} is already ${bug.fixed ? "fixed" : "restored"}` });
   } else if (opts["file"] !== undefined) {
     const rel = looseRel(opts["file"]!);
-    bug = rel === null ? undefined : manifest.bugs.find((b) => b.file === rel && !b.fixed);
+    bug = rel === null ? undefined : manifest.bugs.find((b) => b.file === rel && live(b));
     if (bug === undefined) return report(1, { status: "no-bug", file: opts["file"], message: `${opts["file"]} holds no unfixed seeded bug` });
   } else {
-    bug = manifest.bugs.find((b) => b.step === session.stepIndex && !b.fixed);
+    bug = manifest.bugs.find((b) => b.step === session.stepIndex && live(b));
     if (bug === undefined) return report(1, { status: "no-bug", message: "no unfixed bug to hint" });
   }
 
@@ -407,12 +439,14 @@ function cmdVerify(args: string[]): number {
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
+  const parked = ifPaused(session);
+  if (parked !== null) return parked;
   if (session.phase === "done") return report(0, { status: "ok", phase: session.phase, stepIndex: session.stepIndex });
   if (session.phase === "clarify") {
     return report(1, { status: "bad-phase", phase: session.phase, message: "nothing to verify before `plan`" });
   }
 
-  const pending = manifest.bugs.filter((b) => !b.fixed);
+  const pending = manifest.bugs.filter((b) => !b.fixed && b.restored !== true);
   const newlyFixed: string[] = [];
   for (const bug of pending) {
     const abs = join(root, bug.file);
@@ -465,16 +499,148 @@ function cmdComplete(args: string[]): number {
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
+  const parked = ifPaused(session);
+  if (parked !== null) return parked;
   if (session.phase !== "done") {
-    const remaining = manifest.bugs.filter((b) => !b.fixed).length;
+    const remaining = manifest.bugs.filter((b) => !b.fixed && b.restored !== true).length;
     return report(1, { status: "not-complete", phase: session.phase, remaining, message: `phase is ${session.phase}; verify every step first` });
   }
   session.score = scoreSession(manifest);
   appendEvent(active.dir, { type: "completed", score: session.score });
-  for (const bug of manifest.bugs) delete bug.pristineHunk;
+  dropPristineSnapshots(manifest);
   save(active);
   unlinkSync(join(root, SUSTAIN_DIR, ACTIVE_FILE));
   return report(0, { status: "completed", score: session.score, found: session.found, fixed: session.fixed, bugs: session.bugs, run: `${SUSTAIN_DIR}/${active.run}` });
+}
+
+// ------------------------------------------------------------------ pause / resume
+
+function cmdPause(args: string[]): number {
+  if (args.length !== 0) return usageError(`pause: takes no arguments`);
+  const active = loadActive();
+  if (active === null) return noSession();
+  const { session } = active;
+  if (session.phase === "paused") return report(1, { status: "paused", phase: "paused", message: "session is already paused" });
+  if (session.phase === "done") return report(1, { status: "bad-phase", phase: "done", message: "a finished session cannot pause — run `complete`" });
+  const from = session.phase as LivePhase;
+  session.pausedFrom = from;
+  session.phase = "paused";
+  appendEvent(active.dir, { type: "paused", from });
+  save(active);
+  return report(0, { status: "ok", phase: "paused", pausedFrom: from });
+}
+
+function cmdResume(args: string[]): number {
+  if (args.length !== 0) return usageError(`resume: takes no arguments`);
+  const active = loadActive();
+  if (active === null) return noSession();
+  const { session } = active;
+  if (session.phase !== "paused") {
+    return report(1, { status: "bad-phase", phase: session.phase, message: `resume runs while paused, not ${session.phase}` });
+  }
+  const to = session.pausedFrom ?? "implementing";
+  delete session.pausedFrom;
+  session.phase = to;
+  appendEvent(active.dir, { type: "resumed", to });
+  save(active);
+  return report(0, { status: "ok", phase: to });
+}
+
+// --------------------------------------------------------------- restore / abandon
+
+interface RestoreResult {
+  /** Bugs whose buggy hunk was overwritten with the recorded pristine hunk. */
+  restored: string[];
+  /** Bugs whose hunk was already gone — fixed by the same rule `verify` applies. */
+  fixed: string[];
+  /** Bugs skipped because their file no longer exists (marked restored, nothing written). */
+  missing: string[];
+  /** Bugs still present but unrestorable (pristine snapshot already deleted). */
+  unrestorable: string[];
+}
+
+/**
+ * The only revert `restore`/`abandon` ever performs: writes each recorded `pristineHunk`
+ * back over its still-seeded `buggyHunk` (ADR 0033 — only seeded hunks, never a git reset
+ * and never user work around the seeded region).
+ */
+function restoreSeededBugs(runDir: string, bugs: ManifestBug[]): RestoreResult {
+  const result: RestoreResult = { restored: [], fixed: [], missing: [], unrestorable: [] };
+  for (const bug of bugs) {
+    const abs = join(root, bug.file);
+    if (!existsSync(abs)) {
+      bug.restored = true;
+      result.missing.push(bug.id);
+      continue;
+    }
+    const text = readFileSync(abs, "utf8");
+    if (!bugStillPresent(text, bug)) {
+      bug.fixed = true;
+      appendEvent(runDir, { type: "fixed", bug: bug.id });
+      result.fixed.push(bug.id);
+      continue;
+    }
+    const pristine = bug.pristineHunk;
+    if (pristine === undefined) {
+      result.unrestorable.push(bug.id);
+      continue;
+    }
+    const next = restoreHunk(text, { ...bug, pristineHunk: pristine });
+    if (next === null) continue; // unreachable while bugStillPresent; defensive
+    writeFileSync(abs, next);
+    bug.restored = true;
+    result.restored.push(bug.id);
+  }
+  return result;
+}
+
+/** `complete`/`abandon` delete the pristine snapshots; the audit keeps `buggyHunk`. */
+function dropPristineSnapshots(manifest: Manifest): void {
+  for (const bug of manifest.bugs) delete bug.pristineHunk;
+}
+
+/** Bugs that still hold a seeded mutation — the only ones restore ever touches. */
+function seededBugs(manifest: Manifest): ManifestBug[] {
+  return manifest.bugs.filter((b) => !b.fixed && b.restored !== true);
+}
+
+function cmdRestore(args: string[]): number {
+  const opts = flags(args, ["bug"]);
+  if (opts === null) return usageError(`restore: [--bug <id>]`);
+  const active = loadActive();
+  if (active === null) return noSession();
+  const { session, manifest } = active;
+  if (session.phase === "done") {
+    return report(1, { status: "bad-phase", phase: "done", message: "the session is finished — nothing left to restore" });
+  }
+  let targets = seededBugs(manifest);
+  if (opts["bug"] !== undefined) {
+    targets = targets.filter((b) => b.id === opts["bug"]);
+    if (targets.length === 0) return report(1, { status: "no-bug", bug: opts["bug"], message: `no seeded bug ${JSON.stringify(opts["bug"])} to restore` });
+  }
+  const result = restoreSeededBugs(active.dir, targets);
+  session.fixed = manifest.bugs.filter((b) => b.fixed).length;
+  session.score = scoreSession(manifest);
+  appendEvent(active.dir, { type: "restored", ...result });
+  save(active);
+  return report(0, { status: "ok", phase: session.phase, ...result });
+}
+
+function cmdAbandon(args: string[]): number {
+  if (args.length !== 0) return usageError(`abandon: takes no arguments`);
+  const active = loadActive();
+  if (active === null) return noSession();
+  const { session, manifest } = active;
+  const result = restoreSeededBugs(active.dir, seededBugs(manifest));
+  session.fixed = manifest.bugs.filter((b) => b.fixed).length;
+  session.score = scoreSession(manifest);
+  session.phase = "done";
+  delete session.pausedFrom;
+  appendEvent(active.dir, { type: "abandoned", ...result, score: session.score });
+  dropPristineSnapshots(manifest);
+  save(active);
+  unlinkSync(join(root, SUSTAIN_DIR, ACTIVE_FILE));
+  return report(0, { status: "abandoned", score: session.score, ...result, run: `${SUSTAIN_DIR}/${active.run}` });
 }
 
 // ----------------------------------------------------------------------------- main
@@ -488,6 +654,10 @@ const COMMANDS: Record<string, (args: string[]) => number> = {
   hint: cmdHint,
   verify: cmdVerify,
   complete: cmdComplete,
+  pause: cmdPause,
+  resume: cmdResume,
+  restore: cmdRestore,
+  abandon: cmdAbandon,
 };
 
 function main(args: string[]): number {

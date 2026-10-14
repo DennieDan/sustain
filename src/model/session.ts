@@ -26,10 +26,16 @@ export const EVENTS_FILE = "events.jsonl";
 export const MANIFEST_FILE = "manifest.json";
 
 export type SessionMode = "bugfix";
-export type SessionPhase = "clarify" | "implementing" | "hunting" | "done";
+export type SessionPhase = "clarify" | "implementing" | "hunting" | "paused" | "done";
+/** Phases a session can resume into; `paused` and `done` are never resume targets. */
+export type LivePhase = Exclude<SessionPhase, "paused" | "done">;
 
-export const SESSION_PHASES: readonly SessionPhase[] = ["clarify", "implementing", "hunting", "done"];
+export const SESSION_PHASES: readonly SessionPhase[] = ["clarify", "implementing", "hunting", "paused", "done"];
+export const LIVE_PHASES: readonly LivePhase[] = ["clarify", "implementing", "hunting"];
 export const SESSION_MODES: readonly SessionMode[] = ["bugfix"];
+
+/** A non-done session idle past this is stale: `status` flags it, `init` releases it (ADR 0033). */
+export const STALE_IDLE_MS = 24 * 60 * 60 * 1000;
 
 /** The bug kinds the mutation engine knows (ADR 0031); each tiers into the score table. */
 export type MutationKind = "off-by-one" | "flipped-comparison" | "missing-await";
@@ -48,8 +54,20 @@ export type HintLevel = 1 | 2 | 3;
 export const HINT_LEVELS: readonly HintLevel[] = [1, 2, 3];
 export const HINT_COST: Record<HintLevel, number> = { 1: 5, 2: 10, 3: 15 };
 
-/** Ledger event types; `paused`/`resumed` arrive with the lifecycle commands (ADR 0033). */
-export type EventType = "init" | "planned" | "injected" | "found" | "fixed" | "hint" | "verified" | "completed";
+/** Ledger event types (ADR 0034): lifecycle events `paused`/`resumed`/`restored`/`abandoned` per ADR 0033. */
+export type EventType =
+  | "init"
+  | "planned"
+  | "injected"
+  | "found"
+  | "fixed"
+  | "hint"
+  | "verified"
+  | "completed"
+  | "paused"
+  | "resumed"
+  | "restored"
+  | "abandoned";
 
 /** One `events.jsonl` line: `{"ts": <ISO>, "type": <EventType>, …details}`. */
 export interface SessionEvent {
@@ -71,6 +89,8 @@ export interface SessionState {
   version: 1;
   mode: SessionMode;
   phase: SessionPhase;
+  /** The live phase `pause` parked — where `resume` returns (ADR 0033). */
+  pausedFrom?: LivePhase;
   /** 0-based index of the step the session is working on. */
   stepIndex: number;
   steps: SessionStep[];
@@ -108,6 +128,8 @@ export interface ManifestBug {
   twins: number;
   found: boolean;
   fixed: boolean;
+  /** `restore`/`abandon` wrote the pristine hunk back — the bug is unseeded and unscored. */
+  restored?: boolean;
   /** Hint levels taken on this bug, in order (each is a score deduction). */
   hints: HintLevel[];
 }
@@ -131,10 +153,21 @@ export function newManifest(): Manifest {
 export function scoreSession(manifest: Manifest): number {
   let score = 0;
   for (const bug of manifest.bugs) {
-    if (bug.found && bug.fixed) score += TIER_POINTS[KIND_TIER[bug.kind]];
+    if (bug.found && bug.fixed && bug.restored !== true) score += TIER_POINTS[KIND_TIER[bug.kind]];
     for (const level of bug.hints) score -= HINT_COST[level];
   }
   return Math.max(0, score);
+}
+
+/** Milliseconds since `session.updatedAt`; `NaN` timestamps count as infinitely idle. */
+export function sessionIdleMs(session: SessionState, now = new Date()): number {
+  const updated = Date.parse(session.updatedAt);
+  return Number.isNaN(updated) ? Number.POSITIVE_INFINITY : now.getTime() - updated;
+}
+
+/** A non-done session idle past {@link STALE_IDLE_MS} — including `paused` (ADR 0033/0039). */
+export function isSessionStale(session: SessionState, now = new Date()): boolean {
+  return session.phase !== "done" && sessionIdleMs(session, now) > STALE_IDLE_MS;
 }
 
 /** Appends one JSON line (`{ts, type, …details}`) to `events.jsonl`, creating it if needed. */
@@ -192,6 +225,9 @@ export function checkSession(value: unknown, file = SESSION_FILE): SessionState 
   if (!isRecord(value)) throw corrupt(file, "not an object");
   if (!SESSION_MODES.includes(value["mode"] as SessionMode)) throw corrupt(file, `unknown mode ${JSON.stringify(value["mode"])}`);
   if (!SESSION_PHASES.includes(value["phase"] as SessionPhase)) throw corrupt(file, `unknown phase ${JSON.stringify(value["phase"])}`);
+  if (value["pausedFrom"] !== undefined && !LIVE_PHASES.includes(value["pausedFrom"] as LivePhase)) {
+    throw corrupt(file, `pausedFrom is not a live phase`);
+  }
   for (const key of ["stepIndex", "bugs", "found", "fixed", "score"]) {
     if (typeof value[key] !== "number") throw corrupt(file, `${key} is not a number`);
   }
@@ -219,6 +255,7 @@ export function checkManifest(value: unknown, file = MANIFEST_FILE): Manifest {
     }
     if (typeof item["step"] !== "number" || typeof item["twins"] !== "number") throw corrupt(file, `${at} counters are malformed`);
     if (typeof item["found"] !== "boolean" || typeof item["fixed"] !== "boolean") throw corrupt(file, `${at} flags are malformed`);
+    if (item["restored"] !== undefined && typeof item["restored"] !== "boolean") throw corrupt(file, `${at}.restored is not a boolean`);
     const hints = item["hints"] ?? [];
     if (!Array.isArray(hints) || hints.some((h) => !HINT_LEVELS.includes(h as HintLevel))) throw corrupt(file, `${at}.hints is malformed`);
     return { ...(item as unknown as ManifestBug), hints: hints as HintLevel[] };

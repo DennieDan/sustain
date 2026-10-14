@@ -106,6 +106,33 @@ export function runScript(
   };
 }
 
+/** session-hook.mjs stdout: a Devin hook control object (`decision`/`hookSpecificOutput`). */
+export interface HookReport {
+  decision?: "approve" | "block";
+  reason?: string;
+  hookSpecificOutput?: { hookEventName: string; additionalContext?: string; updatedInput?: Record<string, unknown> };
+  [key: string]: unknown;
+}
+
+/**
+ * Runs the built session-hook.mjs exactly as Devin's lifecycle hooks do: the event JSON
+ * on stdin, cwd = repo root, `DEVIN_PROJECT_DIR` set (ADR 0032).
+ */
+export function runHook(payload: Record<string, unknown>, options: RunOptions): ScriptRun<HookReport> {
+  const result = spawnSync(process.execPath, [join(SCRIPTS_DIR, "session-hook.mjs")], {
+    cwd: options.cwd,
+    encoding: "utf8",
+    input: JSON.stringify(payload),
+    env: { ...process.env, DEVIN_PROJECT_DIR: options.cwd, ...options.env },
+  });
+  return {
+    status: result.status,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    json: () => JSON.parse(result.stdout) as HookReport,
+  };
+}
+
 /** An environment whose PATH holds no `git` (only an empty folder). */
 export function envWithoutGit(): NodeJS.ProcessEnv {
   return { ...process.env, PATH: tempDir("sustain-nogit-") };
