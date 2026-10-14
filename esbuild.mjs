@@ -67,7 +67,8 @@ async function buildDist() {
     external: ["vscode"],
   });
 
-  // The webview: one IIFE (elkjs included) loaded by nonce under a strict CSP (NFR-SEC-01).
+  // The webviews: one IIFE each (the diagram one includes elkjs) loaded by nonce under a
+  // strict CSP (NFR-SEC-01).
   await esbuild.build({
     ...common,
     entryPoints: [join(root, "webview/main.ts")],
@@ -77,7 +78,17 @@ async function buildDist() {
     target: "es2022",
     minify: true,
   });
+  await esbuild.build({
+    ...common,
+    entryPoints: [join(root, "webview/session.ts")],
+    outfile: join(dist, "session-webview.js"),
+    platform: "browser",
+    format: "iife",
+    target: "es2022",
+    minify: true,
+  });
   cpSync(join(root, "webview/styles.css"), join(dist, "webview.css"));
+  cpSync(join(root, "webview/session.css"), join(dist, "session-webview.css"));
 }
 
 async function buildE2e() {

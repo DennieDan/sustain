@@ -37,6 +37,11 @@
         "command": "sustain.openArchitectureFile",
         "title": "Open Architecture File…",
         "category": "Sustain"
+      },
+      {
+        "command": "sustain.startLearning",
+        "title": "Start Learning Session",
+        "category": "Sustain"
       }
     ]
   },
