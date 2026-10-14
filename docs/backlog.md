@@ -13,3 +13,4 @@
 - ~~`restore`/`abandon` safety net, clean-git warning at `init`, stale-session auto-release~~ **shipped** (ADR 0039)
 - Remote/shared leaderboard — deferred: breaks the no-network rule (NFR-SEC-02), needs its own ADR; revisit manifest secrecy then
 - Claude-target hook install (`.claude/settings.json`, tool-name normalisation) if Claude sessions are kept for hunt mode; Codex hunt mode is honor-system for edits
+- Open Learning Session VSCode panel command. Give it a separate command from Start Learning Session.
