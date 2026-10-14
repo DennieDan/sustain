@@ -64,6 +64,12 @@ export interface RepoFacts {
   git: { head: string; origin: string | null; dirtyCount: number; dirty: string[] } | null;
 }
 
+/** session.mjs stdout: `status` plus command-specific fields (ADR 0037). */
+export interface SessionReport {
+  status: string;
+  [key: string]: unknown;
+}
+
 export interface ScriptRun<Output> {
   status: number | null;
   stdout: string;
@@ -80,7 +86,12 @@ interface RunOptions {
 /** Runs a built skill script with `node`, as the agent does. */
 export function runScript(script: "validate", args: string[], options: RunOptions): ScriptRun<ValidateReport>;
 export function runScript(script: "repo-facts", args: string[], options: RunOptions): ScriptRun<RepoFacts>;
-export function runScript(script: "validate" | "repo-facts", args: string[], options: RunOptions): ScriptRun<ValidateReport | RepoFacts> {
+export function runScript(script: "session", args: string[], options: RunOptions): ScriptRun<SessionReport>;
+export function runScript(
+  script: "validate" | "repo-facts" | "session",
+  args: string[],
+  options: RunOptions,
+): ScriptRun<ValidateReport | RepoFacts | SessionReport> {
   const result = spawnSync(process.execPath, [join(SCRIPTS_DIR, `${script}.mjs`), ...args], {
     cwd: options.cwd,
     encoding: "utf8",
@@ -91,7 +102,7 @@ export function runScript(script: "validate" | "repo-facts", args: string[], opt
     stdout: result.stdout,
     stderr: result.stderr,
     // Names the documented output contract; the tests assert every field they read.
-    json: () => JSON.parse(result.stdout) as ValidateReport | RepoFacts,
+    json: () => JSON.parse(result.stdout) as ValidateReport | RepoFacts | SessionReport,
   };
 }
 

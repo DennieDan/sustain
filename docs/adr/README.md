@@ -40,3 +40,5 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0034](0034-sustain-folder-layout-and-session-state-files.md) | .sustain run-folder layout and session state files | accepted | 2026-10-14 |
 | [0035](0035-mode-verification-hints-and-scoring.md) | Mode verification contracts, hints and scoring | accepted | 2026-10-14 |
 | [0036](0036-session-install-skills-and-managed-hooks.md) | Session install: skills into .agents, managed hooks per agent config | accepted | 2026-10-14 |
+| [0037](0037-session-command-contract-and-scoring.md) | session.mjs v1 command contract, phases and scoring weights | accepted | 2026-10-14 |
+| [0038](0038-mutation-engine-v1-rule-tables.md) | Mutation engine v1: three kinds as ordered rewrite tables on one line | accepted | 2026-10-14 |
