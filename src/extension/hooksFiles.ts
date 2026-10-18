@@ -1,9 +1,9 @@
-// Merge/remove of the Sustain block in `<repo>/.devin/hooks.v1.json` plus the `.sustain/`
-// line of `.gitignore` (ADRs 0032/0036). No `vscode` import, so the merge is unit-tested in
+// Merge/remove of the Sustain block in `<repo>/.devin/hooks.v1.json` plus Sustain's lines in
+// `.git/info/exclude` (ADR 0032; lifecycle per spec v0.3 SAF-06). No `vscode` import, so the merge is unit-tested in
 // Node — the cases that matter: a file that already holds user hooks, a hand-edited file,
 // an empty file, a corrupt file. Never a blind overwrite: only hook objects whose command
 // runs a `.agents/skills/sustain-*` script are touched, so user entries always survive.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { assertWritable } from "../model/confine";
 import { writeJson } from "../model/session";
@@ -124,23 +124,34 @@ export function removeHooks(root: string): HooksRemoval {
   return "updated";
 }
 
-const GITIGNORE_FILE = ".gitignore";
+/**
+ * Removes Sustain's hook entries when no learning session holds `.sustain/active` (SAF-06).
+ * Called when the lock disappears and at activation. Returns what removing did.
+ */
+export function removeHooksWhenIdle(root: string): HooksRemoval {
+  if (existsSync(join(root, ".sustain", "active"))) return "none";
+  return removeHooks(root);
+}
+
+/** Lines Sustain keeps out of git through the repository's local exclude file (SAF-06). */
+export const EXCLUDE_LINES: readonly string[] = [".sustain/", ".archify/**/draft.json", ".archify/**/*.html"];
 
 /**
- * Ensures `.sustain/` is ignored in `root` (ADR 0034): appended unless a `.sustain` or
- * `.sustain/` line already exists. Creates `.gitignore` when missing. Returns whether the
- * file changed.
+ * Appends any missing {@link EXCLUDE_LINES} to `.git/info/exclude`, which git reads and never
+ * commits. Does nothing when `.git` is not a folder, as in a worktree or outside git. Returns
+ * whether the file changed.
  */
-export function ensureSustainGitignore(root: string): boolean {
-  const path = join(root, GITIGNORE_FILE);
+export function ensureGitExclude(root: string): boolean {
+  const gitDir = join(root, ".git");
+  if (!existsSync(gitDir) || !lstatSync(gitDir).isDirectory()) return false;
+  const path = join(gitDir, "info", "exclude");
   const text = existsSync(path) ? readFileSync(path, "utf8") : "";
-  const covered = text.split("\n").some((line) => {
-    const trimmed = line.trim();
-    return trimmed === ".sustain" || trimmed === ".sustain/";
-  });
-  if (covered) return false;
-  const prefix = text === "" ? "" : text.endsWith("\n") ? text : `${text}\n`;
+  const present = new Set(text.split("\n").map((line) => line.trim()));
+  const missing = EXCLUDE_LINES.filter((line) => !present.has(line));
+  if (missing.length === 0) return false;
   assertWritable(root, path);
-  writeFileSync(path, `${prefix}.sustain/\n`);
+  mkdirSync(dirname(path), { recursive: true });
+  const prefix = text === "" ? "" : text.endsWith("\n") ? text : `${text}\n`;
+  writeFileSync(path, `${prefix}${missing.join("\n")}\n`);
   return true;
 }

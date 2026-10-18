@@ -1,5 +1,5 @@
-// FR-INS-01 in a single-folder workspace — both skills, the .devin hooks merge and the
-// .sustain/ gitignore line (ADRs 0006/0036).
+// FR-INS-01 in a single-folder workspace: both skills, and since spec v0.3 SAF-06 no hooks
+// and no .gitignore line at install time.
 import * as assert from "node:assert/strict";
 import { existsSync, lstatSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -24,7 +24,7 @@ suite("FR-INS-01 Install Agent Skills", () => {
     rmSync(join(root, ".gitignore"), { force: true });
   });
 
-  test("a fresh install copies both skills, links .claude, merges hooks and ignores .sustain", async () => {
+  test("SAF-06 a fresh install copies both skills, links .claude and leaves .devin and .gitignore alone", async () => {
     await vscode.commands.executeCommand("sustain.installSkills");
     for (const file of ["SKILL.md", "agents/openai.yaml", "references/archify-format.md", "references/example.json", "scripts/validate.mjs", "scripts/repo-facts.mjs"]) {
       assert.ok(existsSync(join(root, ".agents/skills/sustain-architecture", file)), file);
@@ -38,15 +38,12 @@ suite("FR-INS-01 Install Agent Skills", () => {
       assert.equal(readlinkSync(link), `../../.agents/skills/${name}`);
       assert.ok(existsSync(join(link, "SKILL.md")), "link resolves to the skill");
     }
-    const hooks = JSON.parse(readFileSync(join(root, HOOKS), "utf8")) as Record<string, unknown>;
-    for (const event of ["PreToolUse", "UserPromptSubmit", "PostCompaction", "SessionStart"]) {
-      assert.ok(Array.isArray(hooks[event]), `hooks.${event}`);
-    }
-    assert.match(readFileSync(join(root, ".gitignore"), "utf8"), /^\.sustain\/$/m);
+    assert.equal(existsSync(join(root, HOOKS)), false, "no hooks at install");
+    assert.equal(existsSync(join(root, ".gitignore")), false, "no .gitignore at install");
     assert.equal(ui.warnings.length, 0, "no overwrite prompt on a fresh install");
     assert.equal(ui.infos.length, 1);
     assert.match(ui.infos[0]!.message, /\.agents\/skills\//);
-    assert.match(ui.infos[0]!.message, /hooks/);
+    assert.doesNotMatch(ui.infos[0]!.message, /hooks/);
   });
 
   test("an existing install is replaced after Overwrite", async () => {

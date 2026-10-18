@@ -39,9 +39,10 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0033](0033-session-lifecycle-lock-pause-abandon-complete.md) | Session lifecycle: lock, pause, resume, abandon, complete | accepted | 2026-10-14 |
 | [0034](0034-sustain-folder-layout-and-session-state-files.md) | .sustain run-folder layout and session state files | accepted | 2026-10-14 |
 | [0035](0035-mode-verification-hints-and-scoring.md) | Mode verification contracts, hints and scoring | accepted | 2026-10-14 |
-| [0036](0036-session-install-skills-and-managed-hooks.md) | Session install: skills into .agents, managed hooks per agent config | accepted | 2026-10-14 |
+| [0036](0036-session-install-skills-and-managed-hooks.md) | Session install: skills into .agents, managed hooks per agent config | superseded by [ADR-0042](0042-session-hooks-live-only-while-a-session-runs.md) | 2026-10-14 |
 | [0037](0037-session-command-contract-and-scoring.md) | session.mjs v1 command contract, phases and scoring weights | accepted | 2026-10-14 |
 | [0038](0038-mutation-engine-v1-rule-tables.md) | Mutation engine v1: three kinds as ordered rewrite tables on one line | accepted | 2026-10-14 |
 | [0039](0039-lifecycle-commands-and-hook-contract.md) | Lifecycle command contract and the session-hook wire format | accepted | 2026-10-14 |
 | [0040](0040-hooks-merge-panel-read-side-and-devin-detection.md) | Hooks-merge mechanics, session-panel read side and Devin CLI detection | accepted | 2026-10-15 |
 | [0041](0041-pre-approved-skill-commands-run-no-caller-named-program.md) | Pre-approved skill commands run no caller-named program | accepted | 2026-10-18 |
+| [0042](0042-session-hooks-live-only-while-a-session-runs.md) | Session hooks live only while a session runs | accepted | 2026-10-18 |

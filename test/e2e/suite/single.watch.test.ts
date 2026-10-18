@@ -6,6 +6,7 @@ import * as vscode from "vscode";
 import type { TestHook } from "../../../src/extension/extension";
 import { stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
+import { until } from "../until";
 
 const OLD = "architecture-watch-20261011-090000";
 const NEW = "architecture-watch-20261011-120000";
@@ -19,20 +20,6 @@ function write(root: string, rel: string, content: string): string {
 
 function diagram(title: string): string {
   return JSON.stringify({ meta: { title }, components: [{ id: "a", type: "backend", label: "A", sources: [{ path: "a.ts" }] }] });
-}
-
-/**
- * Waits for `condition`. The real file watcher and the 300 ms debounce run on the platform
- * clock in the extension host, so there is no event to await from the test; poll briefly.
- */
-async function until(condition: () => boolean, what: string): Promise<void> {
-  const deadline = Date.now() + 10_000;
-  while (!condition()) {
-    if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
-    const { promise, resolve } = Promise.withResolvers<void>();
-    setTimeout(resolve, 50);
-    await promise;
-  }
 }
 
 function panelLabel(): string | undefined {

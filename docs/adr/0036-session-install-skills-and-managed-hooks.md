@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0042](0042-session-hooks-live-only-while-a-session-runs.md)
 date: 2026-10-14
 decision-makers: owner
 ---

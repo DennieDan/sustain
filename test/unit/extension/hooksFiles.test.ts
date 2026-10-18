@@ -1,10 +1,10 @@
 // The `.devin/hooks.v1.json` merge/remove and `.gitignore` append behind Install Agent
 // Skills (ADR 0036/0039): partial existing file, hand-edited file, empty file, corrupt
 // file — a user's own hooks must always survive.
-import { existsSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { ensureSustainGitignore, mergeHooks, removeHooks, SUSTAIN_HOOK_MARKER, sustainHooks } from "../../../src/extension/hooksFiles";
+import { ensureGitExclude, EXCLUDE_LINES, mergeHooks, removeHooks, removeHooksWhenIdle, SUSTAIN_HOOK_MARKER, sustainHooks } from "../../../src/extension/hooksFiles";
 import { put, tempDir } from "../support/temp";
 
 const HOOKS = ".devin/hooks.v1.json";
@@ -138,28 +138,40 @@ describe("removeHooks", () => {
   });
 });
 
-describe("ensureSustainGitignore", () => {
-  test("creates .gitignore when missing, appends preserving the last line", () => {
+describe("SAF-06 ensureGitExclude", () => {
+  test("appends the missing lines to .git/info/exclude once, keeping the user's lines", () => {
     const root = tempDir();
-    expect(ensureSustainGitignore(root)).toBe(true);
-    expect(readFileSync(join(root, ".gitignore"), "utf8")).toBe(".sustain/\n");
-
-    const root2 = tempDir();
-    put(root2, ".gitignore", "node_modules"); // no trailing newline
-    expect(ensureSustainGitignore(root2)).toBe(true);
-    expect(readFileSync(join(root2, ".gitignore"), "utf8")).toBe("node_modules\n.sustain/\n");
+    put(root, ".git/info/exclude", "# git ls-files --others --exclude-from=.git/info/exclude\n*.log");
+    expect(ensureGitExclude(root)).toBe(true);
+    expect(readFileSync(join(root, ".git/info/exclude"), "utf8")).toBe(`# git ls-files --others --exclude-from=.git/info/exclude\n*.log\n${EXCLUDE_LINES.join("\n")}\n`);
+    expect(ensureGitExclude(root)).toBe(false);
   });
 
-  test.each([".sustain/", ".sustain", "  .sustain/  "])("an existing %q line counts", (line) => {
+  test("leaves a folder without a .git directory alone", () => {
     const root = tempDir();
-    put(root, ".gitignore", `dist/\n${line}\n`);
-    expect(ensureSustainGitignore(root)).toBe(false);
+    put(root, ".git", "gitdir: ../elsewhere/.git/worktrees/x\n");
+    expect(ensureGitExclude(root)).toBe(false);
+    expect(ensureGitExclude(tempDir())).toBe(false);
   });
 
-  test("a substring like .sustainx does not count", () => {
+  test("never writes .gitignore", () => {
     const root = tempDir();
-    put(root, ".gitignore", ".sustainx/\n");
-    expect(ensureSustainGitignore(root)).toBe(true);
+    put(root, ".git/HEAD", "ref: refs/heads/main\n");
+    ensureGitExclude(root);
+    expect(existsSync(join(root, ".gitignore"))).toBe(false);
+  });
+});
+
+describe("SAF-06 removeHooksWhenIdle", () => {
+  test("keeps Sustain's hooks while a session holds the lock and removes them once it is gone", () => {
+    const root = tempDir();
+    put(root, ".sustain/active", "bugfix-demo-20261018-120000\n");
+    mergeHooks(root);
+    expect(removeHooksWhenIdle(root)).toBe("none");
+    expect(existsSync(join(root, HOOKS))).toBe(true);
+    rmSync(join(root, ".sustain/active"));
+    expect(removeHooksWhenIdle(root)).toBe("deleted");
+    expect(existsSync(join(root, HOOKS))).toBe(false);
   });
 });
 

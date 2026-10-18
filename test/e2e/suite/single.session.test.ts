@@ -6,8 +6,10 @@ import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs
 import { join } from "node:path";
 import * as vscode from "vscode";
 import type { TestHook } from "../../../src/extension/extension";
+import { mergeHooks } from "../../../src/extension/hooksFiles";
 import { stubUi, type UiStubs } from "../stubs";
 import { setup, suite, teardown, test } from "../tdd";
+import { pause, until } from "../until";
 
 const HOOKS = join(".devin", "hooks.v1.json");
 
@@ -90,5 +92,15 @@ suite("Learning session launcher", () => {
     assert.equal(String(options.cwd), root);
     assert.equal(hook.sessionPanelState().open, true);
     await hook.postFromSessionWebview({ type: "ready" }); // host re-sends the view; must not throw
+  });
+
+  test("SAF-06 the session's hook entries go when its lock goes", async () => {
+    mkdirSync(join(root, ".sustain"), { recursive: true });
+    writeFileSync(join(root, ".sustain/active"), "bugfix-demo-20261018-120000\n");
+    mergeHooks(root);
+    await pause(800); // the watcher sees the lock appear and keeps the hooks
+    assert.ok(existsSync(join(root, HOOKS)), "hooks kept while the lock exists");
+    rmSync(join(root, ".sustain/active"));
+    await until(() => !existsSync(join(root, HOOKS)), "hooks removed after the lock went");
   });
 });

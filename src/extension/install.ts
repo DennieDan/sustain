@@ -1,19 +1,18 @@
-// `Sustain: Install Agent Skills` (FR-INS-01, ADR 0006; learning-session assets per ADRs
-// 0032/0036): copies both skills into `.agents/skills/`, merges the Sustain block into
-// `.devin/hooks.v1.json` and appends `.sustain/` to `.gitignore`.
+// `Sustain: Install Agent Skills` (FR-INS-01, ADR 0006): copies both skills into
+// `.agents/skills/`. Hooks and git excludes belong to the session launch (spec v0.3 SAF-06).
 import * as vscode from "vscode";
 import { pickRepoRoot } from "./folders";
-import { ensureSustainGitignore, mergeHooks } from "./hooksFiles";
+import { ensureGitExclude, mergeHooks } from "./hooksFiles";
 import { SKILL_NAMES, skillInstalled, skillTargets, writeSkill } from "./skillFiles";
 
 /**
- * The session-side assets: the managed hooks block and the `.sustain/` gitignore line.
- * Idempotent — safe on install and on every session launch; a corrupt hooks file throws
- * and the caller reports it rather than overwriting (ADR 0036).
+ * The session-side assets, merged when a learning session launches: the managed hooks block
+ * and Sustain's git excludes. A corrupt hooks file throws, and the caller reports it rather
+ * than overwriting.
  */
 export function ensureSessionAssets(root: string): void {
   mergeHooks(root);
-  ensureSustainGitignore(root);
+  ensureGitExclude(root);
 }
 
 /**
@@ -31,12 +30,7 @@ export async function installSkill(extensionUri: vscode.Uri, root: string): Prom
     const source = vscode.Uri.joinPath(extensionUri, "dist", "skills", name).fsPath;
     kinds.add(writeSkill(root, source, skillTargets(root, name), name));
   }
-  try {
-    ensureSessionAssets(root);
-  } catch (error) {
-    void vscode.window.showWarningMessage(`Skills installed, but the Devin hooks could not be merged: ${(error as Error).message}`);
-  }
-  void vscode.window.showInformationMessage(`Installed the Sustain skills in .agents/skills/ (${[...kinds].join("/")} for .claude) with the .devin hooks and .sustain/ gitignore.`);
+  void vscode.window.showInformationMessage(`Installed the Sustain skills in .agents/skills/ (${[...kinds].join("/")} for .claude).`);
   return "installed";
 }
 

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import { agentLaunchArgs, agentPrompt, AGENTS, findOnPath } from "./agents";
 import { pickRepoRoot } from "./folders";
+import { ensureGitExclude } from "./hooksFiles";
 import { installSkill } from "./install";
 import { agentsSkillDir } from "./skillFiles";
 
@@ -34,6 +35,11 @@ export async function generateArchitectureCommand(extensionUri: vscode.Uri): Pro
     const action = await vscode.window.showWarningMessage(`\`${agent.cli}\` was not found on PATH.`, "Copy prompt");
     if (action === "Copy prompt") await vscode.env.clipboard.writeText(prompt);
     return;
+  }
+  try {
+    ensureGitExclude(root);
+  } catch (error) {
+    void vscode.window.showWarningMessage(`Draft and page files may show up in git status: ${(error as Error).message}`);
   }
   const terminal = vscode.window.createTerminal({ name: `Sustain: ${agent.label}`, cwd: root, shellPath, shellArgs: agentLaunchArgs(prompt) });
   terminal.show();

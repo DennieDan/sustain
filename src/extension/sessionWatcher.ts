@@ -1,7 +1,10 @@
 // Watches `<folder>/.sustain/{active,*/session.json}` in every workspace folder and reloads
 // the session panel (ADR 0034). Reuses the ChangeBatch debounce of the diagram watcher;
-// no notifications — a learning session writes session.json every turn.
+// no notifications — a learning session writes session.json every turn. When the lock goes,
+// the session's hook entries go with it (spec v0.3 SAF-06).
+import { basename } from "node:path";
 import * as vscode from "vscode";
+import { removeHooksWhenIdle } from "./hooksFiles";
 import { SessionPanel } from "./sessionPanel";
 import { ChangeBatch } from "./watchLogic";
 
@@ -35,6 +38,15 @@ export class SessionWatcher implements vscode.Disposable {
   }
 
   private flush(changes: ReadonlyMap<string, boolean>): void {
+    for (const file of changes.keys()) {
+      const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(file));
+      if (basename(file) !== "active" || folder === undefined) continue;
+      try {
+        removeHooksWhenIdle(folder.uri.fsPath);
+      } catch (error) {
+        void vscode.window.showWarningMessage(`The learning session ended, but its Devin hooks could not be removed: ${(error as Error).message}`);
+      }
+    }
     const panel = SessionPanel.current;
     if (panel === undefined) return;
     for (const file of changes.keys()) {

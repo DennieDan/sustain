@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { SessionWebviewMessage, WebviewMessage } from "../model/messages";
 import { generateArchitectureCommand } from "./generate";
+import { removeHooksWhenIdle } from "./hooksFiles";
 import { installSkillsCommand } from "./install";
 import { startLearningSessionCommand } from "./learn";
 import { openArchitectureCommand, openArchitectureFileCommand } from "./open";
@@ -20,6 +21,14 @@ export interface TestHook {
 
 export function activate(context: vscode.ExtensionContext): TestHook {
   const { extensionUri } = context;
+  // Hooks left by a session that ended while VS Code was closed go now.
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    try {
+      removeHooksWhenIdle(folder.uri.fsPath);
+    } catch {
+      // A corrupt hooks file stays as the user left it.
+    }
+  }
   context.subscriptions.push(
     new CandidateWatcher(extensionUri),
     new SessionWatcher(),
