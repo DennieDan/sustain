@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { repoRoot, sourceFiles } from "./support/sourceScan";
 
-/** Programs a spawn may start, per file. Git's path is resolved by `src/model/git.ts` itself. */
-const ALLOWED_PROGRAMS: Record<string, string[]> = { "*": ["process.execPath"], "src/model/git.ts": ["program"] };
+/** Programs a spawn may start, per file. Git and the setup check resolve theirs from absolute PATH entries. */
+const ALLOWED_PROGRAMS: Record<string, string[]> = { "*": ["process.execPath"], "src/model/git.ts": ["program"], "src/model/preflight.ts": ["binary"] };
 
 function execViolations(file: string, source: string): string[] {
   const violations: string[] = [];
