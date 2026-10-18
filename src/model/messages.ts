@@ -17,14 +17,27 @@ export type HostMessage =
   | { type: "empty"; message: string; action?: "mapFolder" }
   | { type: "highlight"; ids: string[]; file: string | null; follow: boolean }
   /** FRS-03: each box's state against the code, and the header when boxes changed. */
-  | { type: "freshness"; boxes: Record<string, Freshness>; header: string | null };
+  | { type: "freshness"; boxes: Record<string, Freshness>; header: string | null }
+  /** FRS-04: boxes a diff touched, or `null` to clear the overlay. */
+  | { type: "changes"; overlay: ChangeOverlay | null };
+
+/** What Show Changes found for the shown map (FRS-04). */
+export interface ChangeOverlay {
+  /** The scope's name, such as "Uncommitted changes". */
+  scope: string;
+  strong: string[];
+  weak: string[];
+  /** Changed files no box cites. */
+  uncovered: string[];
+}
 
 /** Architecture webview → host. `index` is into the component's tolerant `sources` list. */
 export type WebviewMessage =
   | { type: "ready" }
   | { type: "openSource"; componentId: string; index: number }
   | { type: "setFollow"; on: boolean }
-  | { type: "mapFolder" };
+  | { type: "mapFolder" }
+  | { type: "clearChanges" };
 
 /** What the session webview renders — public `session.json` fields plus the leaderboard. */
 export interface SessionView {

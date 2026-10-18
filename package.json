@@ -121,6 +121,12 @@
         "command": "sustain.openBoxCode",
         "title": "Open Code",
         "category": "Sustain"
+      },
+      {
+        "command": "sustain.showChanges",
+        "title": "Show Changes on Diagram",
+        "category": "Sustain",
+        "icon": "$(git-compare)"
       }
     ],
     "viewsContainers": {
@@ -192,6 +198,11 @@
           "command": "sustain.showInMap",
           "when": "resourceScheme == file",
           "group": "navigation@100"
+        },
+        {
+          "command": "sustain.showChanges",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "navigation@2"
         }
       ],
       "explorer/context": [

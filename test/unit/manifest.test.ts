@@ -73,3 +73,7 @@ test("UI-05 the Explorer maps folders and shows files; boxes open their code", (
   const hidden = manifest.contributes.menus["commandPalette"]!.filter((entry) => entry.when === "false").map((entry) => entry.command);
   expect(hidden).toEqual(["sustain.showFileInMap", "sustain.mapFolder", "sustain.openBoxCode"]);
 });
+
+test("FRS-04 Show Changes sits in the map panel's title bar only", () => {
+  expect(manifest.contributes.menus["editor/title"]).toContainEqual({ command: "sustain.showChanges", when: "activeWebviewPanelId == 'sustain.architecture'", group: "navigation@2" });
+});

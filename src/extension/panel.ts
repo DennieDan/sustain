@@ -5,7 +5,7 @@ import { basename, isAbsolute, relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { citingBoxes } from "../model/citing";
 import { freshnessHeader } from "../model/home";
-import type { HostMessage, WebviewMessage } from "../model/messages";
+import type { ChangeOverlay, HostMessage, WebviewMessage } from "../model/messages";
 import type { MapFreshness } from "../model/staleness";
 import { parseDiagram, type ViewDiagram } from "../model/tolerant";
 import { changedBoxes, type FreshnessService } from "./freshness";
@@ -56,6 +56,8 @@ export class ArchitecturePanel {
   private focused: string[] = [];
   /** How the shown map compares with the code (FRS-03). */
   private freshness: MapFreshness | null = null;
+  /** The boxes a diff touched (FRS-04), until cleared or another file is shown. */
+  private changes: ChangeOverlay | null = null;
   private readonly disposables: vscode.Disposable[] = [];
 
   private constructor(
@@ -151,6 +153,7 @@ export class ArchitecturePanel {
 
   /** Switches the open panel to `file` (resolved against `root`) without revealing it. */
   showFile(root: string, file: string): void {
+    if (file !== this.file) this.changes = null;
     this.root = root;
     this.file = file;
     this.reload();
@@ -197,6 +200,7 @@ export class ArchitecturePanel {
     void this.panel.webview.postMessage(message);
     this.sendHighlight();
     this.sendFreshness();
+    this.sendChanges();
   }
 
   /** Computes the shown map's freshness and sends its badges and header. */
@@ -214,6 +218,26 @@ export class ArchitecturePanel {
     const message: HostMessage = { type: "freshness", boxes: state.boxes, header };
     void this.panel.webview.postMessage(message);
     ArchitecturePanel.freshnessChanged.fire(changed);
+  }
+
+  /** The shown map's components with their citations, for marking changes. */
+  components(): { id: string; sources: { path: string; line?: number; end_line?: number }[] }[] {
+    return this.shown.kind === "diagram" ? this.shown.diagram.components : [];
+  }
+
+  /** Marks the boxes a diff touched, or clears the marks for `null` (FRS-04). */
+  showChanges(overlay: ChangeOverlay | null): void {
+    this.changes = overlay;
+    this.sendChanges();
+  }
+
+  get changeOverlay(): ChangeOverlay | null {
+    return this.changes;
+  }
+
+  private sendChanges(): void {
+    const message: HostMessage = { type: "changes", overlay: this.changes };
+    void this.panel.webview.postMessage(message);
   }
 
   /** The shown map's freshness, for the e2e tests. */
@@ -244,6 +268,9 @@ export class ArchitecturePanel {
       }
       case "mapFolder":
         await vscode.commands.executeCommand("sustain.mapFolder", vscode.Uri.file(this.root));
+        return;
+      case "clearChanges":
+        this.showChanges(null);
         return;
       case "openSource":
         await this.openBox(message.componentId, message.index);

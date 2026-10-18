@@ -163,6 +163,55 @@ body {
   fill: var(--sustain-red);
 }
 
+/* Change overlay (FRS-04) */
+
+.changes {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  max-width: 50%;
+  max-height: 40%;
+  overflow: auto;
+  padding: 4px 4px 4px 10px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.app--empty .changes {
+  display: none;
+}
+
+.changes__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.changes__uncovered summary {
+  cursor: pointer;
+  color: var(--sustain-muted);
+}
+
+.changes__uncovered ul {
+  margin: 4px 0;
+  padding-left: 18px;
+  font-family: var(--sustain-mono-font-family);
+}
+
+.node--change-strong .node__box {
+  fill: color-mix(in srgb, var(--sustain-accent) 30%, transparent);
+  stroke: var(--sustain-accent);
+  stroke-width: 3px;
+}
+
+.node--change-weak .node__box {
+  stroke: var(--sustain-accent);
+  stroke-dasharray: 3 3;
+}
+
 /* Empty state */
 
 .empty-state__action {

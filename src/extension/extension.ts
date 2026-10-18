@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
-import type { HomeState, HomeWebviewMessage, RunCard, SessionWebviewMessage, WebviewMessage } from "../model/messages";
+import type { ChangeOverlay, HomeState, HomeWebviewMessage, RunCard, SessionWebviewMessage, WebviewMessage } from "../model/messages";
 import type { MapFreshness } from "../model/staleness";
 import { Ask } from "./ask";
+import { showChangesCommand } from "./changes";
 import { FreshnessService } from "./freshness";
 import { generateArchitectureCommand, resetDataNote } from "./generate";
 import { HOME_VIEW, HomeView } from "./home";
@@ -24,6 +25,8 @@ export interface TestHook {
   panelHighlight(): { ids: string[]; file: string | null; follow: boolean } | undefined;
   /** How the shown map compares with the code (FRS-03). */
   panelFreshness(): MapFreshness | null | undefined;
+  /** The change overlay on the shown map (FRS-04). */
+  panelChanges(): ChangeOverlay | null | undefined;
   /** Delivers `message` as if the webview had posted it; resolves when it has been handled. */
   postFromWebview(message: WebviewMessage): Promise<void>;
   sessionPanelState(): { open: boolean };
@@ -83,11 +86,13 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.showFileInMap", (uri?: vscode.Uri) => showInMapCommand(extensionUri, uri)),
     vscode.commands.registerCommand("sustain.mapFolder", (uri?: vscode.Uri) => mapFolderCommand(context, runs, uri)),
     vscode.commands.registerCommand("sustain.openBoxCode", openBoxCodeCommand),
+    vscode.commands.registerCommand("sustain.showChanges", () => showChangesCommand(extensionUri)),
   );
   return {
     panelState: () => ({ file: ArchitecturePanel.current?.file, open: ArchitecturePanel.current !== undefined }),
     panelHighlight: () => ArchitecturePanel.current?.highlightState,
     panelFreshness: () => ArchitecturePanel.current?.freshnessState,
+    panelChanges: () => ArchitecturePanel.current?.changeOverlay,
     postFromWebview: async (message) => ArchitecturePanel.current?.handleMessage(message),
     sessionPanelState: () => ({ open: SessionPanel.current !== undefined }),
     postFromSessionWebview: async (message) => SessionPanel.current?.handleMessage(message),

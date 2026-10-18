@@ -231,3 +231,25 @@ describe("FRS-03 freshness on the map", () => {
     expect(document.querySelector('.node[data-id="api"] .node__badge')?.textContent).toBe("changed");
   });
 });
+
+describe("FRS-04 change overlay", () => {
+  beforeEach(() => send({ type: "changes", overlay: null }));
+
+  test("touched boxes are strong, others in the same files weak, and uncited files listed; Clear posts", async () => {
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    expect(document.querySelector<HTMLElement>(".changes")!.hidden).toBe(true);
+    send({ type: "changes", overlay: { scope: "Uncommitted changes", strong: ["web"], weak: ["api"], uncovered: ["README.md", "<b>x</b>.ts"] } });
+    expect(document.querySelector('.node[data-id="web"]')!.classList.contains("node--change-strong")).toBe(true);
+    expect(document.querySelector('.node[data-id="api"]')!.classList.contains("node--change-weak")).toBe(true);
+    expect(document.querySelector(".changes__summary")!.firstChild!.textContent).toBe("Uncommitted changes: 1 box touched, 1 more in the same files");
+    expect(document.querySelector(".changes__uncovered summary")!.textContent).toBe("Not on the map: 2 files");
+    expect([...document.querySelectorAll(".changes__uncovered li")].map((item) => item.textContent)).toEqual(["README.md", "<b>x</b>.ts"]);
+    expect(document.querySelector(".changes b")).toBeNull();
+    document.querySelector<HTMLButtonElement>(".changes__clear")!.click();
+    expect(posted).toEqual([{ type: "clearChanges" }]);
+    send({ type: "changes", overlay: null });
+    expect(document.querySelectorAll(".node--change-strong, .node--change-weak").length).toBe(0);
+    expect(document.querySelector<HTMLElement>(".changes")!.hidden).toBe(true);
+  });
+});

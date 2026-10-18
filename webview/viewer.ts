@@ -3,7 +3,7 @@
 // webview, the diagram page and the cloud site share it.
 import { layoutDiagram } from "../src/layout/layout";
 import type { MeasureText } from "../src/layout/scene";
-import type { HostMessage } from "../src/model/messages";
+import type { ChangeOverlay, HostMessage } from "../src/model/messages";
 import type { Freshness } from "../src/model/staleness";
 import { readDiagram } from "../src/model/tolerant";
 import { onMessage, post } from "./bridge";
@@ -65,6 +65,10 @@ export function startViewer(): void {
   const freshnessBar = document.createElement("div");
   freshnessBar.className = "freshness";
   freshnessBar.hidden = true;
+  // FRS-04: the change overlay's summary, the files it could not place, and Clear.
+  const changesBar = document.createElement("div");
+  changesBar.className = "changes";
+  changesBar.hidden = true;
   const emptyState = document.createElement("div");
   emptyState.className = "empty-state";
   emptyState.hidden = true;
@@ -72,7 +76,7 @@ export function startViewer(): void {
   tooltipElement.className = "tooltip";
   tooltipElement.setAttribute("role", "tooltip");
   tooltipElement.hidden = true;
-  app.append(svg, toolbar, highlightBar, freshnessBar, emptyState, tooltipElement);
+  app.append(svg, toolbar, highlightBar, freshnessBar, changesBar, emptyState, tooltipElement);
   document.body.append(app);
 
   const viewport = new ViewportController(svg, content, toolbar, window);
@@ -92,6 +96,45 @@ export function startViewer(): void {
   let freshness: Record<string, Freshness> = {};
 
   const BADGES: Partial<Record<Freshness, string>> = { edited: "changed", missing: "missing" };
+  let changes: ChangeOverlay | null = null;
+
+  function applyChanges(): void {
+    const strong = new Set(changes?.strong ?? []);
+    const weak = new Set(changes?.weak ?? []);
+    for (const node of content.querySelectorAll(".node")) {
+      const id = node.getAttribute("data-id") ?? "";
+      node.classList.toggle("node--change-strong", strong.has(id));
+      node.classList.toggle("node--change-weak", weak.has(id));
+    }
+    changesBar.replaceChildren();
+    changesBar.hidden = changes === null;
+    if (changes === null) return;
+    const summary = document.createElement("div");
+    summary.className = "changes__summary";
+    const near = changes.weak.length > 0 ? `, ${changes.weak.length} more in the same files` : "";
+    summary.textContent = `${changes.scope}: ${changes.strong.length} box${changes.strong.length === 1 ? "" : "es"} touched${near}`;
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "toolbar__button changes__clear";
+    clear.textContent = "Clear";
+    clear.addEventListener("click", () => post({ type: "clearChanges" }));
+    summary.append(clear);
+    changesBar.append(summary);
+    if (changes.uncovered.length > 0) {
+      const details = document.createElement("details");
+      details.className = "changes__uncovered";
+      const title = document.createElement("summary");
+      title.textContent = `Not on the map: ${changes.uncovered.length} file${changes.uncovered.length === 1 ? "" : "s"}`;
+      const list = document.createElement("ul");
+      for (const path of changes.uncovered) {
+        const item = document.createElement("li");
+        item.textContent = path;
+        list.append(item);
+      }
+      details.append(title, list);
+      changesBar.append(details);
+    }
+  }
 
   function applyFreshness(): void {
     for (const node of content.querySelectorAll<SVGGElement>(".node")) {
@@ -166,6 +209,7 @@ export function startViewer(): void {
     renderScene(content, result.diagram, scene, measure);
     applyHighlight();
     applyFreshness();
+    applyChanges();
     tooltip.setDiagram(result.diagram);
     viewport.bounds = scene.bounds;
     if (file !== shownFile) viewport.fit();
@@ -176,6 +220,11 @@ export function startViewer(): void {
     if (message.type === "highlight") {
       highlight = { ids: message.ids, file: message.file, follow: message.follow };
       applyHighlight();
+      return;
+    }
+    if (message.type === "changes") {
+      changes = message.overlay;
+      applyChanges();
       return;
     }
     if (message.type === "freshness") {

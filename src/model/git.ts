@@ -3,6 +3,7 @@
 // shell, and with the repository's fsmonitor hook switched off (SAF-07).
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
+import { REVISION_PATTERN } from "./changes";
 import type { Repository } from "./types";
 import { findOnPath } from "./which";
 
@@ -140,4 +141,47 @@ export function renamesSince(root: string, revision: string, env: NodeJS.Process
     }
   }
   return renames;
+}
+
+/** What Show Changes compares (FRS-04). */
+export type ChangeScope = { kind: "uncommitted" } | { kind: "branch" } | { kind: "range"; from: string; to: string };
+
+/** The diff flags every change scope uses: no colour, external diff or textconv, and fixed prefixes. */
+export const DIFF_FLAGS = ["diff", "--no-color", "--no-ext-diff", "--no-textconv", "--unified=0", "-M", "--src-prefix=a/", "--dst-prefix=b/"] as const;
+
+
+/** Where "this branch" starts: the merge-base of HEAD with origin/HEAD, else main, else master. */
+function branchBase(program: string, root: string): string | null {
+  for (const ref of ["origin/HEAD", "main", "master"]) {
+    if (run(program, root, [...GIT_PREFIX, "rev-parse", "--verify", "--quiet", `${ref}^{commit}`]) === null) continue;
+    const base = run(program, root, [...GIT_PREFIX, "merge-base", "HEAD", ref])?.trim();
+    if (base) return base;
+  }
+  return null;
+}
+
+export type ChangeDiff = { ok: true; text: string; untracked: string[] } | { ok: false; reason: string };
+
+/**
+ * The unified diff for `scope`, against the working tree for the uncommitted and branch scopes,
+ * with their untracked files.
+ */
+export function diffFor(root: string, scope: ChangeScope, env: NodeJS.ProcessEnv = process.env): ChangeDiff {
+  const program = gitProgram(env);
+  if (program === undefined) return { ok: false, reason: "git was not found on PATH." };
+  if (run(program, root, GIT_READS.head) === null) return { ok: false, reason: "This folder is not a git repository with a commit." };
+  let revisions: string[];
+  if (scope.kind === "uncommitted") revisions = ["HEAD"];
+  else if (scope.kind === "branch") {
+    const base = branchBase(program, root);
+    if (base === null) return { ok: false, reason: "No origin/HEAD, main or master to compare this branch with." };
+    revisions = [base];
+  } else {
+    if (![scope.from, scope.to].every((revision) => REVISION_PATTERN.test(revision))) return { ok: false, reason: "A commit range looks like main..HEAD." };
+    revisions = [scope.from, scope.to];
+  }
+  const text = run(program, root, [...GIT_PREFIX, ...DIFF_FLAGS, ...revisions, "--"]);
+  if (text === null) return { ok: false, reason: `git diff ${revisions.join(" ")} failed.` };
+  const untracked = scope.kind === "range" ? [] : (run(program, root, [...GIT_PREFIX, "ls-files", "--others", "--exclude-standard", "-z"]) ?? "").split("\0").filter((path) => path !== "");
+  return { ok: true, text, untracked };
 }
