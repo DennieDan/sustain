@@ -446,10 +446,10 @@ Tests the I3 ACs call for:
 
 Done when: Rule violations show on the map, in Problems and in PR checks.
 
-- [ ] **ARC-01 Architecture rules** `[unit]` `[e2e]`
-- [ ] **ARC-02 Rules from the map** `[dom]` `[unit]` `[e2e]`
-- [ ] **ARC-03 Hotspots** `[unit]` `[dom]`
-- [ ] **ARC-04 Architecture notes for agents** `[unit]` `[e2e]`
+- [x] **ARC-01 Architecture rules** `[unit]` `[e2e]` — 2026-10-19: `src/model/rules.ts`, import lines in `src/model/evidence/`, `src/extension/rules.ts` (diagnostics and the map's red arrows), the check's `violations` and `--fail-on violation`. Tests: `rules.test.ts` (11: each kind in TypeScript, Java and Python with the importing line; `path:` globs; reading rules from the config); e2e `single.rules.test.ts` › ARC-01 (a diagnostic at the importing line, gone when fixed). The check's category was confirmed by hand on a scratch repository.
+- [x] **ARC-02 Rules from the map** `[dom]` `[unit]` `[e2e]` — 2026-10-19: `src/model/ruleEdits.ts`, `src/extension/ruleCommands.ts`, `src/extension/previewWrite.ts`, the arrow and box menus, the sidebar's Rules section. Tests: `ruleEdits.test.ts` (3), `render.test.ts` and `main.test.ts` › ARC-02 (the arrow menu's context; added arrows without it), `sidebar.test.ts` › ARC-02 (2); e2e `single.rules.test.ts` › ARC-02 (the diff, a no saving nothing, Add saving the rule).
+- [x] **ARC-03 Hotspots** `[unit]` `[dom]` — 2026-10-19: `changeLog` in `git.ts`, `src/model/hotspots.ts`, `src/extension/hotspots.ts`, Show Hotspots and Hide Hotspots, the sidebar's Hotspots section. Tests: `hotspots.test.ts` (a temporary history with an out-of-order commit outside the window), `main.test.ts` › ARC-03 (tints kept across a reload, cleared when hidden), `sidebar.test.ts` › ARC-03.
+- [x] **ARC-04 Architecture notes for agents** `[unit]` `[e2e]` — 2026-10-19: `src/model/agentNotes.ts`, `src/extension/agentNotes.ts`. Tests: `agentNotes.test.ts` (3: the block, an idempotent merge with the people's text kept, the CLAUDE.md rule); e2e `single.notes.test.ts` (2: both files after their diffs and once only; a CLAUDE.md that imports AGENTS.md left alone, and a no writing nothing).
 - [ ] **ARC-05 Architecture health** `[unit]` `[dom]`
 - [ ] **PRC-03 Branch maps** `[e2e]`
 - [ ] **PRC-05 Map update in CI** `[unit]` `[smoke]`
