@@ -464,3 +464,17 @@ select.header__folder,
   color: var(--vscode-descriptionForeground);
   font-size: 0.9em;
 }
+
+/* Hotspots (ARC-03) */
+
+.hotspots__window,
+.hotspots__empty {
+  margin: 0 0 4px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+.hotspots__list {
+  margin: 0;
+  padding-left: 20px;
+}

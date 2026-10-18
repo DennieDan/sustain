@@ -133,7 +133,7 @@ describe("FR-VIEW-07 tooltip", () => {
   });
 
   test("ACC-03 a doubtful box's tooltip says why, under its type", () => {
-    tooltip.setNotes({ api: "The audit found it partial: no request handling is cited." });
+    tooltip.setNotes("checks", { api: "The audit found it partial: no request handling is cited." });
     move(null, part("api", ".node__box"));
     vi.advanceTimersByTime(SHOW_DELAY_MS);
     expect([...element.children].map((child) => child.className).slice(0, 4)).toEqual(["tooltip__label", "tooltip__sublabel", "tooltip__type", "tooltip__note"]);

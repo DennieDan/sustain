@@ -22,6 +22,8 @@ export type HostMessage =
   | { type: "changes"; overlay: ChangeOverlay | null }
   /** PRC-02: new box candidates drawn as dashed ghost boxes, and PRC-06's new arrows as dashed ghost arrows; never written. */
   | { type: "ghosts"; ghosts: Ghost[]; arrows?: GhostArrow[] }
+  /** ARC-03: each box's heat level (0 to 4) and tooltip line, and whether the Hotspots toggle shows them. */
+  | { type: "hotspots"; boxes: Record<string, { level: number; note: string }>; shown: boolean }
   /** ARC-01: imports that break the rules, as red arrows between the boxes, labelled with the rules. */
   | { type: "violations"; arrows: { from: string; to: string; label: string }[] }
   /** ACC-03: doubtful boxes and unbacked arrows, and whether the map's Checks are shown. */
@@ -209,6 +211,8 @@ export interface HomeState {
   review: ReviewView | null;
   /** ARC-02: the folder's rules with their violation counts, or `null` without a folder. */
   rules: RulesView | null;
+  /** ARC-03: the five most changed boxes of the rules map over the window, or `null` without one. */
+  hotspots: { days: number; boxes: { id: string; label: string; commits: number; lines: number }[] } | null;
   /** Host time at send, for the run card's elapsed time. */
   serverNow: string;
 }

@@ -33,8 +33,8 @@ function div(className: string, text: string): HTMLDivElement {
  */
 export class TooltipController {
   private diagram: ViewDiagram | undefined;
-  /** Box id to a note shown under its type (ACC-03). */
-  private notes: Record<string, string> = {};
+  /** Notes shown under a box's type, by source (ACC-03's checks, ARC-03's hotspots), each by box id. */
+  private readonly notes = new Map<string, Record<string, string>>();
   /** The node element under the pointer. */
   private hovered: Element | undefined;
   private overTooltip = false;
@@ -68,9 +68,9 @@ export class TooltipController {
     this.hide();
   }
 
-  /** Sets the notes shown for boxes, by id. */
-  setNotes(notes: Record<string, string>): void {
-    this.notes = notes;
+  /** Sets `source`'s notes for boxes, by id. */
+  setNotes(source: string, notes: Record<string, string>): void {
+    this.notes.set(source, notes);
   }
 
   /** Hides the tooltip now and cancels pending show and hide delays. */
@@ -134,8 +134,10 @@ export class TooltipController {
     const children: HTMLElement[] = [div("tooltip__label", component.label)];
     if (component.sublabel) children.push(div("tooltip__sublabel", component.sublabel));
     children.push(div("tooltip__type", component.type));
-    const note = this.notes[component.id];
-    if (note !== undefined) children.push(div("tooltip__note", note));
+    for (const notes of this.notes.values()) {
+      const note = notes[component.id];
+      if (note !== undefined) children.push(div("tooltip__note", note));
+    }
     if (component.sources.length > 0) {
       const list = document.createElement("ul");
       list.className = "tooltip__sources";

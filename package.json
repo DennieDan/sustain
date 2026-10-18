@@ -88,6 +88,12 @@
           ],
           "default": "warning",
           "description": "How the Problems panel shows an import that breaks an architecture rule in sustain.config.json."
+        },
+        "sustain.hotspots.days": {
+          "type": "number",
+          "default": 90,
+          "minimum": 1,
+          "description": "How many days of git history the map's Hotspots count."
         }
       }
     },
@@ -226,6 +232,18 @@
         "icon": "$(eye-closed)"
       },
       {
+        "command": "sustain.showHotspots",
+        "title": "Show Hotspots",
+        "category": "Sustain",
+        "icon": "$(flame)"
+      },
+      {
+        "command": "sustain.hideHotspots",
+        "title": "Hide Hotspots",
+        "category": "Sustain",
+        "icon": "$(circle-slash)"
+      },
+      {
         "command": "sustain.reviewChanges",
         "title": "Review Changes",
         "category": "Sustain"
@@ -350,6 +368,16 @@
           "command": "sustain.showChecks",
           "when": "activeWebviewPanelId == 'sustain.architecture' && sustain.checksHidden",
           "group": "navigation@5"
+        },
+        {
+          "command": "sustain.showHotspots",
+          "when": "activeWebviewPanelId == 'sustain.architecture' && !sustain.hotspotsShown",
+          "group": "navigation@6"
+        },
+        {
+          "command": "sustain.hideHotspots",
+          "when": "activeWebviewPanelId == 'sustain.architecture' && sustain.hotspotsShown",
+          "group": "navigation@6"
         }
       ],
       "explorer/context": [

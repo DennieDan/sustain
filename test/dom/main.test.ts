@@ -352,3 +352,21 @@ describe("ARC-01 ARC-02 rule violations on the map", () => {
     await vi.waitFor(() => expect(document.querySelectorAll(".edge").length).toBe(1));
   });
 });
+
+describe("ARC-03 hotspots on the map", () => {
+  test("the toggle tints boxes by their heat level and adds each box's figures to its tooltip", async () => {
+    const doc = { meta: { title: "Heat" }, components: [{ id: "api", label: "API", type: "backend" }, { id: "store", label: "Store", type: "database" }, { id: "ui", label: "UI", type: "frontend" }] };
+    send({ type: "load", doc, file: "/r/heat.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(3));
+    const boxes = { api: { level: 4, note: "9 commits, 120 lines changed, 3 authors in the last 90 days." }, store: { level: 2, note: "4 commits, 20 lines changed, 1 author in the last 90 days." }, ui: { level: 0, note: "0 commits, 0 lines changed, 0 authors in the last 90 days." } };
+    const heat = (): (string | null)[] => [...document.querySelectorAll(".node")].map((node) => [...node.classList].find((name) => name.startsWith("node--heat-")) ?? null);
+    send({ type: "hotspots", boxes, shown: true });
+    expect(heat()).toEqual(["node--heat-4", "node--heat-2", null]);
+    const before = document.querySelector(".node");
+    send({ type: "load", doc, file: "/r/heat.json" });
+    await vi.waitFor(() => expect(document.querySelector(".node")).not.toBe(before));
+    expect(heat()).toEqual(["node--heat-4", "node--heat-2", null]);
+    send({ type: "hotspots", boxes, shown: false });
+    expect(heat()).toEqual([null, null, null]);
+  });
+});

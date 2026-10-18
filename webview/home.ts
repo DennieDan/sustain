@@ -85,6 +85,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   const maps = el("div", "maps-slot");
   const reviewSlot = el("div", "review-slot");
   const rulesSlot = el("div", "rules-slot");
+  const hotspotsSlot = el("div", "hotspots-slot");
   const setup = el("details", "section setup");
   const session = el("div", "session-slot");
   // UI-06: the Ask chat sits at the bottom; its text box persists like the composer's.
@@ -118,7 +119,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   question.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !askButton.disabled) askButton.click();
   });
-  container.append(header, composer, runSlot, maps, reviewSlot, rulesSlot, setup, session, askSection);
+  container.append(header, composer, runSlot, maps, reviewSlot, rulesSlot, hotspotsSlot, setup, session, askSection);
 
   let current: HomeState | null = null;
   let figures: HTMLElement | null = null;
@@ -265,6 +266,21 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     rulesSlot.append(block);
   }
 
+  /** ARC-03: the five most changed boxes over the window. */
+  function renderHotspots(state: HomeState): void {
+    hotspotsSlot.replaceChildren();
+    if (state.root === null || state.hotspots === null || state.maps.length === 0) return;
+    const block = section("Hotspots", "hotspots");
+    block.append(el("p", "hotspots__window", `Most changed in the last ${state.hotspots.days} days`));
+    if (state.hotspots.boxes.length === 0) block.append(el("p", "hotspots__empty", "No box's code changed in that time."));
+    else {
+      const list = el("ol", "hotspots__list");
+      for (const box of state.hotspots.boxes) list.append(el("li", "hotspot", `${box.label} · ${box.commits} commit${box.commits === 1 ? "" : "s"} · ${box.lines} line${box.lines === 1 ? "" : "s"}`));
+      block.append(list);
+    }
+    hotspotsSlot.append(block);
+  }
+
   /** PRC-02: the Review changes section, with each new box candidate's actions. */
   function renderReview(state: HomeState): void {
     reviewSlot.replaceChildren();
@@ -372,6 +388,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
       renderMaps(state.maps);
       renderReview(state);
       renderRules(state);
+      renderHotspots(state);
       renderSetup(state.setup);
       renderSession(state);
       renderAsk(state.ask);

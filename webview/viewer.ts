@@ -172,10 +172,21 @@ export function startViewer(mount: HTMLElement = document.body): void {
     const edges = new Set(uncertain.shown ? uncertain.edges : []);
     for (const node of content.querySelectorAll(".node")) node.classList.toggle("node--doubtful", (node.getAttribute("data-id") ?? "") in boxes);
     for (const edge of content.querySelectorAll(".edge, .edge-label")) edge.classList.toggle("edge--unsupported", edges.has(Number(edge.getAttribute("data-index"))));
-    tooltip.setNotes(boxes);
+    tooltip.setNotes("checks", boxes);
     legend.hidden = Object.keys(boxes).length === 0 && edges.size === 0;
     legend.querySelector(".checks-legend__box")!.toggleAttribute("hidden", Object.keys(boxes).length === 0);
     legend.querySelector(".checks-legend__edge")!.toggleAttribute("hidden", edges.size === 0);
+  }
+
+  /** ARC-03: each box's heat level and tooltip line, and whether the Hotspots toggle shows them. */
+  let heat: { boxes: Record<string, { level: number; note: string }>; shown: boolean } = { boxes: {}, shown: false };
+
+  function applyHotspots(): void {
+    for (const node of content.querySelectorAll(".node")) {
+      const level = heat.shown ? (heat.boxes[node.getAttribute("data-id") ?? ""]?.level ?? 0) : 0;
+      for (let n = 1; n <= 4; n++) node.classList.toggle(`node--heat-${n}`, level === n);
+    }
+    tooltip.setNotes("hotspots", heat.shown ? Object.fromEntries(Object.entries(heat.boxes).map(([id, box]) => [id, box.note])) : {});
   }
 
   /** Each box's state against the code, kept across reloads (FRS-03). */
@@ -301,6 +312,7 @@ export function startViewer(mount: HTMLElement = document.body): void {
     renderScene(content, diagram, scene, measure);
     applyGhosts();
     applyUncertainty();
+    applyHotspots();
     applyHighlight();
     applyFreshness();
     applyChanges();
@@ -340,6 +352,11 @@ export function startViewer(mount: HTMLElement = document.body): void {
       ghosts = message.ghosts;
       ghostArrows = message.arrows ?? [];
       if (lastLoad === null) return;
+    }
+    if (message.type === "hotspots") {
+      heat = { boxes: message.boxes, shown: message.shown };
+      applyHotspots();
+      return;
     }
     if (message.type === "violations") {
       const same = JSON.stringify(violationArrows) === JSON.stringify(message.arrows);

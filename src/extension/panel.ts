@@ -10,6 +10,7 @@ import { AUDIT_FILE } from "../model/audit";
 import { EVIDENCE_FILE } from "../model/evidence";
 import type { MapFreshness } from "../model/staleness";
 import { uncertainty } from "../model/uncertainty";
+import { hotspotMarks, hotspotsFor } from "./hotspots";
 import { violationArrows, type RulesService } from "./rules";
 import { parseDiagram, type ViewDiagram } from "../model/tolerant";
 import { changedBoxes, type FreshnessService } from "./freshness";
@@ -83,6 +84,23 @@ export class ArchitecturePanel {
   sendViolations(): void {
     const violations = ArchitecturePanel.rules?.result(this.root)?.violations ?? [];
     const message: HostMessage = { type: "violations", arrows: violationArrows(violations, this.components()) };
+    void this.panel.webview.postMessage(message);
+  }
+
+  /** Whether the maps are coloured by hotspots (ARC-03); off until the title bar's toggle turns it on. */
+  private static hotspotsShown = false;
+
+  /** Shows or hides the hotspots on the map, for the title bar's toggle. */
+  static setHotspotsShown(shown: boolean): void {
+    ArchitecturePanel.hotspotsShown = shown;
+    void vscode.commands.executeCommand("setContext", "sustain.hotspotsShown", shown);
+    ArchitecturePanel.instance?.sendHotspots();
+  }
+
+  /** Sends the shown map's hotspots when the toggle shows them (ARC-03). */
+  sendHotspots(): void {
+    const shown = ArchitecturePanel.hotspotsShown && this.shown.kind === "diagram";
+    const message: HostMessage = { type: "hotspots", boxes: shown ? hotspotMarks(hotspotsFor(this.root, this.components())) : {}, shown };
     void this.panel.webview.postMessage(message);
   }
 
@@ -247,6 +265,7 @@ export class ArchitecturePanel {
     this.sendChanges();
     this.sendUncertainty();
     this.sendViolations();
+    this.sendHotspots();
     if (this.ghosts.length + this.ghostArrows.length > 0) this.showGhosts(this.ghosts, this.ghostArrows);
   }
 

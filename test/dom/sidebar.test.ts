@@ -37,6 +37,7 @@ function state(fields: Partial<HomeState> = {}): HomeState {
     ask: { blocked: null, turns: [], estimate: null, confirm: false },
     review: null,
     rules: null,
+    hotspots: null,
     serverNow: NOW.toISOString(),
     ...fields,
   };
@@ -323,6 +324,16 @@ describe("ARC-02 Rules", () => {
     expect(text(".rules__empty")).toEqual(["No rules yet. Suggest some, or right-click an arrow or a box on the map."]);
     home.render(state({ maps: [], rules: { map: null, rules: [] } }));
     expect(container.querySelector(".rules")).toBeNull();
+  });
+});
+
+describe("ARC-03 Hotspots", () => {
+  test("the five most changed boxes with their commits and lines, or a line saying none changed", () => {
+    home.render(state({ maps: [map({})], hotspots: { days: 90, boxes: [{ id: "api", label: "API", commits: 9, lines: 120 }, { id: "db", label: "DB", commits: 1, lines: 1 }] } }));
+    expect(text(".hotspots__window")).toEqual(["Most changed in the last 90 days"]);
+    expect(text(".hotspot")).toEqual(["API · 9 commits · 120 lines", "DB · 1 commit · 1 line"]);
+    home.render(state({ maps: [map({})], hotspots: { days: 30, boxes: [] } }));
+    expect(text(".hotspots__empty")).toEqual(["No box's code changed in that time."]);
   });
 });
 

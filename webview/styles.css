@@ -138,6 +138,25 @@ body {
   display: none;
 }
 
+/* Hotspots (ARC-03): boxes tinted by how often their code changes, four steps */
+
+.node--heat-1 .node__box {
+  fill: color-mix(in srgb, var(--sustain-orange) 15%, transparent);
+}
+
+.node--heat-2 .node__box {
+  fill: color-mix(in srgb, var(--sustain-orange) 28%, transparent);
+}
+
+.node--heat-3 .node__box {
+  fill: color-mix(in srgb, var(--sustain-orange) 42%, transparent);
+}
+
+.node--heat-4 .node__box {
+  fill: color-mix(in srgb, var(--sustain-orange) 55%, transparent);
+  stroke: var(--sustain-orange);
+}
+
 /* Rule violations (ARC-01): red arrows labelled with the rules */
 
 .edge--violation .edge__line {

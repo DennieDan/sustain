@@ -113,6 +113,8 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.suggestRules", () => suggestRulesCommand(rules, home.root())),
     vscode.commands.registerCommand("sustain.flagBox", (box?: { componentId?: unknown }) => flagBoxCommand(context, runs, box)),
     vscode.commands.registerCommand("sustain.hideChecks", () => ArchitecturePanel.setChecksShown(false)),
+    vscode.commands.registerCommand("sustain.showHotspots", () => ArchitecturePanel.setHotspotsShown(true)),
+    vscode.commands.registerCommand("sustain.hideHotspots", () => ArchitecturePanel.setHotspotsShown(false)),
     vscode.commands.registerCommand("sustain.showChecks", () => ArchitecturePanel.setChecksShown(true)),
     vscode.commands.registerCommand("sustain.exportPage", () => exportPageCommand(extensionUri)),
     vscode.commands.registerCommand("sustain.reviewChanges", () => review.command(home.root())),

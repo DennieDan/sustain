@@ -24,7 +24,8 @@ import { refreshArchitectureCommand } from "./refresh";
 import type { Review } from "./review";
 import type { Runs } from "./runs";
 import { suggestRulesCommand } from "./ruleCommands";
-import type { RulesService } from "./rules";
+import { rulesMap, type RulesService } from "./rules";
+import { hotspotDays, hotspotsFor } from "./hotspots";
 import { SessionPanel } from "./sessionPanel";
 import { readSessionSnapshot } from "./sessionFiles";
 
@@ -120,8 +121,18 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
       ask: this.ask.view(root),
       review: this.review.view(root),
       rules: root === null ? null : (({ map, rules }) => ({ map, rules }))(this.rules.result(root) ?? { map: null, rules: [], violations: [] }),
+      hotspots: root === null ? null : this.hotspots(root),
       serverNow: new Date().toISOString(),
     };
+  }
+
+  /** ARC-03: the rules map's five most changed boxes, or `null` without a map. */
+  private hotspots(root: string): HomeState["hotspots"] {
+    const { map, components } = rulesMap(root);
+    if (map === null) return null;
+    const labels = new Map(components.map((component) => [component.id, component.label]));
+    const boxes = hotspotsFor(root, components).filter((box) => box.commits > 0).slice(0, 5);
+    return { days: hotspotDays(), boxes: boxes.map((box) => ({ id: box.id, label: labels.get(box.id) ?? box.id, commits: box.commits, lines: box.lines })) };
   }
 
   /** The maps list, each with its changed boxes when it has fingerprints (FRS-03). */

@@ -259,6 +259,35 @@ export function generatedFiles(root: string, paths: readonly string[], env: Node
   return marked;
 }
 
+/** One commit of {@link changeLog}: its author's email, used only to count authors, and each file's added and deleted lines. */
+export interface LoggedCommit {
+  commit: string;
+  author: string;
+  files: { path: string; added: number; deleted: number }[];
+}
+
+/** The commits of the last `days` days on the current branch, without merges or renames (ARC-03), or `null` when git cannot tell. */
+export function changeLog(root: string, days: number, env: NodeJS.ProcessEnv = process.env): LoggedCommit[] | null {
+  const program = gitProgram(env);
+  if (program === undefined || !Number.isInteger(days) || days < 1) return null;
+  // --since stops at the first older commit, so an out-of-order date hides the rest; git 2.37's
+  // --since-as-filter checks every commit, and older git falls back to --since.
+  const args = (since: string): string[] => [...GIT_PREFIX, "-c", "core.quotepath=off", "log", `${since}=${days} days ago`, "--no-merges", "--no-renames", "--numstat", "--format=@@%H%x09%aE"];
+  const output = run(program, root, args("--since-as-filter")) ?? run(program, root, args("--since"));
+  if (output === null) return null;
+  const commits: LoggedCommit[] = [];
+  for (const line of output.split("\n")) {
+    if (line.startsWith("@@")) {
+      const [commit, author] = line.slice(2).split("\t");
+      commits.push({ commit: commit!, author: author ?? "", files: [] });
+      continue;
+    }
+    const match = /^(\d+|-)\t(\d+|-)\t(.+)$/.exec(line);
+    if (match && commits.length > 0) commits.at(-1)!.files.push({ path: match[3]!, added: match[1] === "-" ? 0 : Number(match[1]), deleted: match[2] === "-" ? 0 : Number(match[2]) });
+  }
+  return commits;
+}
+
 /** Untracked files that are not ignored, repository-relative. */
 export function untrackedFiles(root: string, env: NodeJS.ProcessEnv = process.env): string[] {
   const program = gitProgram(env);
