@@ -3,7 +3,7 @@
 // `node esbuild.mjs --e2e`  → out/e2e/ (the @vscode/test-electron suite; never shipped)
 // `node esbuild.mjs --action` → action/dist/index.js (the GitHub Action, committed; PRC-04)
 // `node esbuild.mjs --cloud`  → cloud/public/viewer.js and viewer.css (the cloud's map viewer; CLD-03)
-// `node esbuild.mjs --bench`  → out/bench/ (the bench harness and its fit; never shipped, CST-02, CST-06)
+// `node esbuild.mjs --bench`  → out/bench/ and out/eval/ (the bench harness, its fit and the eval scorer; never shipped, CST-02, CST-06, ACC-04)
 import * as esbuild from "esbuild";
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -289,18 +289,20 @@ export async function buildAction(outfile = join(root, "action/dist/index.js")) 
   });
 }
 
-/** The bench's commands, run from out/bench (CST-02, CST-06). */
+/** The bench's and the eval's commands, run from out/bench and out/eval (CST-02, CST-06, ACC-04). */
 async function buildBench() {
-  const out = join(root, "out/bench");
-  rmSync(out, { recursive: true, force: true });
-  const entries = readdirSync(join(root, "bench"))
-    .filter((name) => name.endsWith(".ts"))
-    .map((name) => join(root, "bench", name));
+  for (const dir of ["bench", "eval"]) rmSync(join(root, "out", dir), { recursive: true, force: true });
+  const entries = ["bench", "eval"].flatMap((dir) =>
+    readdirSync(join(root, dir))
+      .filter((name) => name.endsWith(".ts"))
+      .map((name) => join(root, dir, name)),
+  );
   await esbuild.build({
     ...common,
     metafile: false,
     entryPoints: entries,
-    outdir: out,
+    outdir: join(root, "out"),
+    outbase: root,
     platform: "node",
     format: "esm",
     target: "node20",

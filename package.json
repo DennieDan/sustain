@@ -351,6 +351,8 @@
     "bench": "node esbuild.mjs --bench && node out/bench/bench.mjs",
     "bench:plan": "node esbuild.mjs --bench && node out/bench/plan.mjs",
     "bench:fit": "node esbuild.mjs --bench && node out/bench/fit.mjs",
+    "eval": "node esbuild.mjs --bench && node out/eval/score.mjs",
+    "eval:check-truth": "node esbuild.mjs --bench && node out/eval/check-truth.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:docs": "node scripts/check-docs.mjs",

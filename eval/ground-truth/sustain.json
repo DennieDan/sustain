@@ -1,0 +1,24 @@
+{
+  "repo": "sustain",
+  "revision": "080b865c39d1ab6f689c8c1020bd54d23d16c82e",
+  "source": "docs/architecture.md",
+  "components": [
+    { "id": "skill", "label": "Installed skill", "aliases": ["sustain-architecture skill", "skill"], "paths": ["skills/sustain-architecture/**"] },
+    { "id": "repo-facts", "label": "repo-facts.mjs", "aliases": ["repo-facts", "repo facts"], "paths": ["src/agent/repo-facts.ts"] },
+    { "id": "validator", "label": "validate.mjs", "aliases": ["validate", "validator"], "paths": ["src/agent/validate.ts"] },
+    { "id": "extension-host", "label": "Extension host", "aliases": ["extension", "host"], "paths": ["src/extension/**"] },
+    { "id": "webview", "label": "Webview", "aliases": ["viewer"], "paths": ["webview/**"] },
+    { "id": "model", "label": "src/model", "aliases": ["model"], "paths": ["src/model/**"] },
+    { "id": "layout", "label": "src/layout", "aliases": ["layout"], "paths": ["src/layout/**"] }
+  ],
+  "edges": [
+    { "from": "repo-facts", "to": "model" },
+    { "from": "validator", "to": "model" },
+    { "from": "extension-host", "to": "model" },
+    { "from": "extension-host", "to": "webview" },
+    { "from": "webview", "to": "extension-host" },
+    { "from": "webview", "to": "layout" },
+    { "from": "layout", "to": "model" }
+  ],
+  "groups": [{ "id": "installed-skill", "label": "Installed skill", "members": ["skill", "repo-facts", "validator"] }]
+}

@@ -1,0 +1,320 @@
+{
+  "repo": "markbind",
+  "revision": "50f43f07b661255887ff5556adc3c03478bb7ae5",
+  "source": "docs/devGuide/design/architecture.md",
+  "components": [
+    {
+      "id": "cli",
+      "label": "CLI Entry",
+      "aliases": [
+        "index.js",
+        "CLI"
+      ],
+      "paths": [
+        "packages/cli/index.ts",
+        "packages/cli/src/cmd/**",
+        "packages/cli/src/lib/**",
+        "packages/cli/src/util/*.ts"
+      ]
+    },
+    {
+      "id": "site",
+      "label": "Site",
+      "aliases": [],
+      "paths": [
+        "packages/core/index.ts",
+        "packages/core/src/Site/**"
+      ]
+    },
+    {
+      "id": "page",
+      "label": "Page",
+      "aliases": [],
+      "paths": [
+        "packages/core/src/Page/index.ts",
+        "packages/core/src/Page/PageConfig.ts",
+        "packages/core/src/Page/PageSources.ts"
+      ]
+    },
+    {
+      "id": "layout-manager",
+      "label": "LayoutManager",
+      "aliases": [
+        "Apply Layout",
+        "LayoutManager.combine"
+      ],
+      "paths": [
+        "packages/core/src/Layout/LayoutManager.ts"
+      ]
+    },
+    {
+      "id": "layout",
+      "label": "Layout",
+      "aliases": [],
+      "paths": [
+        "packages/core/src/Layout/Layout.ts",
+        "packages/core/src/Layout/index.ts"
+      ]
+    },
+    {
+      "id": "external-manager",
+      "label": "ExternalManager",
+      "aliases": [],
+      "paths": [
+        "packages/core/src/External/ExternalManager.ts"
+      ]
+    },
+    {
+      "id": "external",
+      "label": "External",
+      "aliases": [],
+      "paths": [
+        "packages/core/src/External/External.ts"
+      ]
+    },
+    {
+      "id": "variable-processor",
+      "label": "VariableProcessor",
+      "aliases": [
+        "Nunjucks Templates",
+        "Nunjucks"
+      ],
+      "paths": [
+        "packages/core/src/variables/**",
+        "packages/core/src/lib/nunjucks-extensions/**",
+        "packages/core/src/patches/nunjucks/**"
+      ]
+    },
+    {
+      "id": "node-processor",
+      "label": "NodeProcessor",
+      "aliases": [
+        "DOM Traversal"
+      ],
+      "paths": [
+        "packages/core/src/html/NodeProcessor.ts",
+        "packages/core/src/html/Context.ts"
+      ]
+    },
+    {
+      "id": "markdown-processing",
+      "label": "Markdown Processing",
+      "aliases": [
+        "markdown-it instance",
+        "markdown-it",
+        "Markdown"
+      ],
+      "paths": [
+        "packages/core/src/html/MarkdownProcessor.ts",
+        "packages/core/src/html/MdAttributeRenderer.ts",
+        "packages/core/src/lib/markdown-it/**"
+      ]
+    },
+    {
+      "id": "html-element-processing",
+      "label": "HTML element processing",
+      "aliases": [
+        "Html"
+      ],
+      "paths": [
+        "packages/core/src/html/linkProcessor.ts",
+        "packages/core/src/html/SiteLinkManager.ts",
+        "packages/core/src/html/includePanelProcessor.ts",
+        "packages/core/src/html/siteAndPageNavProcessor.ts",
+        "packages/core/src/html/headerProcessor.ts",
+        "packages/core/src/html/codeblockProcessor.ts",
+        "packages/core/src/html/cardStackProcessor.ts",
+        "packages/core/src/html/CustomListIconProcessor.ts",
+        "packages/core/src/html/FootnoteProcessor.ts",
+        "packages/core/src/html/scriptAndStyleTagProcessor.ts",
+        "packages/core/src/html/vueSlotSyntaxProcessor.ts",
+        "packages/core/src/html/elements.ts",
+        "packages/core/src/html/warnings.ts",
+        "packages/core/src/html/constants.ts"
+      ]
+    },
+    {
+      "id": "page-vue-server-renderer",
+      "label": "PageVueServerRenderer",
+      "aliases": [
+        "renderVuePage()",
+        "Server-Side Render"
+      ],
+      "paths": [
+        "packages/core/src/Page/PageVueServerRenderer.ts"
+      ]
+    },
+    {
+      "id": "template-rendering",
+      "label": "Template Rendering",
+      "aliases": [
+        "page.njk"
+      ],
+      "paths": [
+        "packages/core/src/Page/page.njk"
+      ]
+    },
+    {
+      "id": "client-hydration",
+      "label": "Client Hydration",
+      "aliases": [
+        "createSSRApp().mount()"
+      ],
+      "paths": [
+        "packages/core-web/src/index.js",
+        "packages/core-web/src/VueCommonAppFactory.js"
+      ]
+    },
+    {
+      "id": "vue-components",
+      "label": "@markbind/vue-components",
+      "aliases": [
+        "Interactive Components"
+      ],
+      "paths": [
+        "packages/vue-components/src/index.js",
+        "packages/vue-components/src/*.vue",
+        "packages/vue-components/src/annotations/**",
+        "packages/vue-components/src/cardstack/**",
+        "packages/vue-components/src/directives/**",
+        "packages/vue-components/src/pagefindSearchBar/**",
+        "packages/vue-components/src/panels/**",
+        "packages/vue-components/src/questions/**",
+        "packages/vue-components/src/utils/**"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "cli",
+      "to": "site"
+    },
+    {
+      "from": "site",
+      "to": "page"
+    },
+    {
+      "from": "page",
+      "to": "layout-manager"
+    },
+    {
+      "from": "page",
+      "to": "external-manager"
+    },
+    {
+      "from": "layout-manager",
+      "to": "external-manager"
+    },
+    {
+      "from": "page",
+      "to": "variable-processor"
+    },
+    {
+      "from": "variable-processor",
+      "to": "node-processor"
+    },
+    {
+      "from": "node-processor",
+      "to": "layout-manager"
+    },
+    {
+      "from": "layout-manager",
+      "to": "page-vue-server-renderer"
+    },
+    {
+      "from": "external-manager",
+      "to": "page-vue-server-renderer"
+    },
+    {
+      "from": "node-processor",
+      "to": "markdown-processing"
+    },
+    {
+      "from": "markdown-processing",
+      "to": "html-element-processing"
+    },
+    {
+      "from": "node-processor",
+      "to": "variable-processor"
+    },
+    {
+      "from": "page-vue-server-renderer",
+      "to": "template-rendering"
+    },
+    {
+      "from": "client-hydration",
+      "to": "vue-components"
+    },
+    {
+      "from": "layout-manager",
+      "to": "layout"
+    },
+    {
+      "from": "external-manager",
+      "to": "external"
+    }
+  ],
+  "groups": [
+    {
+      "id": "core-site-architecture",
+      "label": "Core Site Architecture",
+      "members": [
+        "site",
+        "page"
+      ]
+    },
+    {
+      "id": "resource-managers",
+      "label": "Resource Managers",
+      "members": [
+        "layout-manager",
+        "external-manager"
+      ]
+    },
+    {
+      "id": "content-processing-pipeline",
+      "label": "Content Processing Pipeline",
+      "members": [
+        "variable-processor",
+        "node-processor",
+        "markdown-processing",
+        "html-element-processing",
+        "layout-manager"
+      ]
+    },
+    {
+      "id": "node-processing",
+      "label": "Node Processing",
+      "members": [
+        "node-processor",
+        "markdown-processing",
+        "html-element-processing"
+      ]
+    },
+    {
+      "id": "vue-rendering-layer",
+      "label": "Vue Rendering Layer",
+      "members": [
+        "page-vue-server-renderer",
+        "template-rendering"
+      ]
+    },
+    {
+      "id": "output-and-client",
+      "label": "Output & Client",
+      "members": [
+        "client-hydration",
+        "vue-components"
+      ]
+    },
+    {
+      "id": "key-classes",
+      "label": "Key classes",
+      "members": [
+        "page",
+        "layout",
+        "external"
+      ]
+    }
+  ]
+}

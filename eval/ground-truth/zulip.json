@@ -1,0 +1,319 @@
+{
+  "repo": "zulip",
+  "revision": "bf1ab61d9ef959094aabfe2d81af2a189893674a",
+  "source": "docs/overview/architecture-overview.md",
+  "components": [
+    {
+      "id": "django",
+      "label": "Django",
+      "aliases": [
+        "Django application server",
+        "main web application server",
+        "Django app",
+        "Application server"
+      ],
+      "paths": [
+        "manage.py",
+        "zerver/*.py",
+        "zerver/actions/**",
+        "zerver/data_import/**",
+        "zerver/lib/_*",
+        "zerver/lib/a*",
+        "zerver/lib/b*",
+        "zerver/lib/cam*",
+        "zerver/lib/cap*",
+        "zerver/lib/ch*",
+        "zerver/lib/co*",
+        "zerver/lib/cr*",
+        "zerver/lib/d*",
+        "zerver/lib/e*",
+        "zerver/lib/f*",
+        "zerver/lib/g*",
+        "zerver/lib/h*",
+        "zerver/lib/i*",
+        "zerver/lib/l*",
+        "zerver/lib/m*",
+        "zerver/lib/n*",
+        "zerver/lib/o*",
+        "zerver/lib/p*",
+        "zerver/lib/quer*",
+        "zerver/lib/rea*",
+        "zerver/lib/rec*",
+        "zerver/lib/rem*",
+        "zerver/lib/req*",
+        "zerver/lib/res*",
+        "zerver/lib/ret*",
+        "zerver/lib/sa*",
+        "zerver/lib/sc*",
+        "zerver/lib/se*",
+        "zerver/lib/so*",
+        "zerver/lib/st*",
+        "zerver/lib/su*",
+        "zerver/lib/tem*",
+        "zerver/lib/tex*",
+        "zerver/lib/th*",
+        "zerver/lib/ti*",
+        "zerver/lib/to*",
+        "zerver/lib/tr*",
+        "zerver/lib/ty*",
+        "zerver/lib/u*",
+        "zerver/lib/v*",
+        "zerver/lib/wi*",
+        "zerver/lib/wo*",
+        "zerver/lib/z*",
+        "zerver/lib/markdown/**",
+        "zerver/lib/upload/**",
+        "zerver/lib/url_preview/**",
+        "zerver/management/*.py",
+        "zerver/management/data/**",
+        "zerver/management/commands/_*",
+        "zerver/management/commands/a*",
+        "zerver/management/commands/b*",
+        "zerver/management/commands/c*",
+        "zerver/management/commands/d*",
+        "zerver/management/commands/e*",
+        "zerver/management/commands/f*",
+        "zerver/management/commands/g*",
+        "zerver/management/commands/i*",
+        "zerver/management/commands/l*",
+        "zerver/management/commands/m*",
+        "zerver/management/commands/prom*",
+        "zerver/management/commands/pu*",
+        "zerver/management/commands/q*",
+        "zerver/management/commands/ra*",
+        "zerver/management/commands/re*",
+        "zerver/management/commands/runtu*",
+        "zerver/management/commands/s*",
+        "zerver/management/commands/t*",
+        "zerver/management/commands/u*",
+        "zerver/migrations/**",
+        "zerver/models/**",
+        "zerver/views/**",
+        "zerver/openapi/__init__.py",
+        "zerver/openapi/openapi.py",
+        "zerver/openapi/zulip.yaml",
+        "zproject/_*",
+        "zproject/b*",
+        "zproject/c*",
+        "zproject/d*",
+        "zproject/e*",
+        "zproject/p*",
+        "zproject/s*",
+        "zproject/tem*",
+        "zproject/u*",
+        "zproject/w*",
+        "zproject/jinja2/**",
+        "analytics/*.py",
+        "analytics/lib/**",
+        "analytics/management/**",
+        "analytics/migrations/**",
+        "analytics/views/**",
+        "confirmation/*.py",
+        "confirmation/management/**",
+        "confirmation/migrations/**",
+        "corporate/*.py",
+        "corporate/lib/_*",
+        "corporate/lib/a*",
+        "corporate/lib/b*",
+        "corporate/lib/d*",
+        "corporate/lib/r*",
+        "corporate/lib/s*",
+        "corporate/management/**",
+        "corporate/migrations/**",
+        "corporate/models/**",
+        "corporate/views/**",
+        "zilencer/*.py",
+        "zilencer/lib/**",
+        "zilencer/management/**",
+        "zilencer/migrations/**",
+        "pgroonga/**"
+      ]
+    },
+    {
+      "id": "tornado",
+      "label": "Tornado",
+      "aliases": [
+        "real-time push system",
+        "server-to-client real-time push system",
+        "real-time push and event queue system",
+        "Tornado server",
+        "Tornado push system",
+        "Realtime push server"
+      ],
+      "paths": [
+        "zerver/tornado/**",
+        "zproject/tornado_urls.py",
+        "zerver/management/commands/runtornado.py"
+      ]
+    },
+    {
+      "id": "queue-processors",
+      "label": "queue processors",
+      "aliases": ["background processes that process event queues", "background processes"],
+      "paths": ["zerver/worker/**", "zerver/management/commands/process_queue.py"]
+    },
+    {
+      "id": "web-app",
+      "label": "web app",
+      "aliases": ["frontend", "Client"],
+      "paths": ["web/src/**", "web/styles/**", "web/webpack.config.ts"]
+    },
+    {
+      "id": "frontend-templates",
+      "label": "frontend templates",
+      "aliases": ["Handlebars"],
+      "paths": ["web/templates/**"]
+    },
+    {
+      "id": "backend-templates",
+      "label": "backend templates",
+      "aliases": ["Jinja2"],
+      "paths": [
+        "templates/*.html",
+        "templates/analytics/**",
+        "templates/confirmation/**",
+        "templates/corporate/**/*.html",
+        "templates/two_factor/**",
+        "templates/zerver/**/*.html",
+        "templates/zerver/**/*.txt",
+        "templates/zilencer/**"
+      ]
+    },
+    {
+      "id": "webhook-integrations",
+      "label": "incoming webhook integrations",
+      "aliases": ["integrations", "library of incoming webhook integrations"],
+      "paths": [
+        "zerver/webhooks/__init__.py",
+        "zerver/webhooks/*/__init__.py",
+        "zerver/webhooks/*/view.py",
+        "zerver/webhooks/*/view/**",
+        "zerver/webhooks/*/support_event.py",
+        "zerver/lib/webhooks/**"
+      ]
+    },
+    {
+      "id": "nginx",
+      "label": "nginx",
+      "aliases": ["front-end web server", "Reverse proxy", "Static asset server"],
+      "paths": [
+        "puppet/zulip/files/nginx/**",
+        "puppet/zulip/templates/nginx/**",
+        "puppet/zulip/templates/nginx.conf.template.erb",
+        "puppet/zulip/manifests/nginx.pp"
+      ]
+    },
+    {
+      "id": "supervisor",
+      "label": "Supervisor",
+      "aliases": ["supervisord"],
+      "paths": [
+        "puppet/zulip/templates/supervisor/**",
+        "puppet/zulip/files/supervisor/**",
+        "puppet/zulip/manifests/supervisor.pp",
+        "scripts/lib/supervisor.py"
+      ]
+    },
+    {
+      "id": "memcached",
+      "label": "memcached",
+      "aliases": ["cache"],
+      "paths": [
+        "zerver/lib/cache.py",
+        "zerver/lib/cache_helpers.py",
+        "zerver/lib/singleton_bmemcached.py",
+        "puppet/zulip/templates/memcached.conf.template.erb",
+        "puppet/zulip/manifests/profile/memcached.pp",
+        "puppet/zulip/files/sasl2/memcached.conf",
+        "scripts/setup/flush-memcached"
+      ]
+    },
+    {
+      "id": "redis",
+      "label": "Redis",
+      "aliases": [],
+      "paths": [
+        "puppet/zulip/templates/zulip-redis.template.erb",
+        "puppet/zulip/manifests/profile/redis.pp",
+        "zerver/lib/redis_utils.py",
+        "zerver/lib/rate_limiter.py",
+        "zerver/lib/rate_limiter.lua"
+      ]
+    },
+    {
+      "id": "rabbitmq",
+      "label": "RabbitMQ",
+      "aliases": ["queueing system"],
+      "paths": [
+        "puppet/zulip/files/rabbitmq/**",
+        "puppet/zulip/manifests/profile/rabbitmq.pp",
+        "scripts/setup/configure-rabbitmq",
+        "scripts/setup/generate-rabbitmq-cookie",
+        "zerver/lib/queue.py"
+      ]
+    },
+    {
+      "id": "postgresql",
+      "label": "PostgreSQL",
+      "aliases": ["database", "Persistent data storage"],
+      "paths": [
+        "puppet/zulip/files/postgresql/**",
+        "puppet/zulip/templates/postgresql/**",
+        "puppet/zulip/manifests/postgresql_*.pp",
+        "puppet/zulip/manifests/profile/postgresql.pp",
+        "tools/setup/postgresql-init-dev-db",
+        "tools/rebuild-dev-database",
+        "scripts/setup/upgrade-postgresql"
+      ]
+    },
+    {
+      "id": "nagios",
+      "label": "Nagios",
+      "aliases": [],
+      "paths": [
+        "puppet/zulip/manifests/nagios_plugins.pp",
+        "puppet/zulip/files/nagios_plugins/**",
+        "scripts/nagios/**"
+      ]
+    }
+  ],
+  "edges": [
+    { "from": "web-app", "to": "nginx" },
+    { "from": "nginx", "to": "django" },
+    { "from": "nginx", "to": "tornado" },
+    { "from": "django", "to": "postgresql" },
+    { "from": "django", "to": "tornado" },
+    { "from": "django", "to": "memcached" },
+    { "from": "django", "to": "redis" },
+    { "from": "django", "to": "rabbitmq" },
+    { "from": "tornado", "to": "rabbitmq" },
+    { "from": "queue-processors", "to": "rabbitmq" },
+    { "from": "supervisor", "to": "django" },
+    { "from": "supervisor", "to": "tornado" },
+    { "from": "supervisor", "to": "queue-processors" },
+    { "from": "web-app", "to": "frontend-templates" },
+    { "from": "django", "to": "backend-templates" }
+  ],
+  "groups": [
+    {
+      "id": "backend",
+      "label": "Backend",
+      "members": ["django", "tornado"]
+    },
+    {
+      "id": "database",
+      "label": "Database",
+      "members": ["postgresql"]
+    },
+    {
+      "id": "zulip",
+      "label": "Zulip",
+      "members": ["nginx", "django", "tornado", "postgresql"]
+    },
+    {
+      "id": "html-templates",
+      "label": "HTML templates",
+      "members": ["backend-templates", "frontend-templates"]
+    }
+  ]
+}

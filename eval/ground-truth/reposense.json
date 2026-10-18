@@ -1,0 +1,74 @@
+{
+  "repo": "reposense",
+  "revision": "21570530a5243754a1a7be42d280b9a48c00ca82",
+  "source": "docs/dg/architecture.md",
+  "components": [
+    {
+      "id": "parser",
+      "label": "Parser",
+      "aliases": ["ConfigParser"],
+      "paths": ["src/main/java/reposense/parser/**"]
+    },
+    {
+      "id": "git",
+      "label": "Git",
+      "aliases": ["Git Clone"],
+      "paths": ["src/main/java/reposense/git/**"]
+    },
+    {
+      "id": "commits-reporter",
+      "label": "CommitsReporter",
+      "aliases": ["CommitReporter"],
+      "paths": ["src/main/java/reposense/commits/**"]
+    },
+    {
+      "id": "authorship-reporter",
+      "label": "AuthorshipReporter",
+      "aliases": [],
+      "paths": ["src/main/java/reposense/authorship/**"]
+    },
+    {
+      "id": "report-generator",
+      "label": "ReportGenerator",
+      "aliases": ["Main", "ResultsAggregator", "Dashboard Generator"],
+      "paths": [
+        "src/main/java/reposense/RepoSense.java",
+        "src/main/java/reposense/report/**"
+      ]
+    },
+    {
+      "id": "system",
+      "label": "System",
+      "aliases": [],
+      "paths": ["src/main/java/reposense/system/**"]
+    },
+    {
+      "id": "model",
+      "label": "Model",
+      "aliases": [],
+      "paths": ["src/main/java/reposense/model/**"]
+    },
+    {
+      "id": "dashboard",
+      "label": "Dashboard",
+      "aliases": ["Dashboard (HTML, CSS, JS)", "HTML report"],
+      "paths": ["frontend/src/**", "frontend/index.html"]
+    }
+  ],
+  "edges": [
+    { "from": "parser", "to": "model" },
+    { "from": "git", "to": "model" },
+    { "from": "git", "to": "system" },
+    { "from": "commits-reporter", "to": "git" },
+    { "from": "commits-reporter", "to": "model" },
+    { "from": "authorship-reporter", "to": "git" },
+    { "from": "authorship-reporter", "to": "model" },
+    { "from": "report-generator", "to": "parser" },
+    { "from": "report-generator", "to": "git" },
+    { "from": "report-generator", "to": "commits-reporter" },
+    { "from": "report-generator", "to": "authorship-reporter" },
+    { "from": "report-generator", "to": "model" },
+    { "from": "report-generator", "to": "dashboard" }
+  ],
+  "groups": []
+}

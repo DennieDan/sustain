@@ -1,0 +1,67 @@
+{
+  "repo": "ab3",
+  "revision": "ecdc9bf0a169609a4758b8768f0f1e9795c7c1c0",
+  "source": "docs/DeveloperGuide.md",
+  "components": [
+    {
+      "id": "main",
+      "label": "Main",
+      "aliases": ["MainApp"],
+      "paths": [
+        "src/main/java/seedu/address/Main.java",
+        "src/main/java/seedu/address/MainApp.java"
+      ]
+    },
+    {
+      "id": "ui",
+      "label": "UI",
+      "aliases": ["UI component", "Ui"],
+      "paths": [
+        "src/main/java/seedu/address/ui/**",
+        "src/main/resources/view/**"
+      ]
+    },
+    {
+      "id": "logic",
+      "label": "Logic",
+      "aliases": ["Logic component", "command executor"],
+      "paths": ["src/main/java/seedu/address/logic/**"]
+    },
+    {
+      "id": "model",
+      "label": "Model",
+      "aliases": ["Model component"],
+      "paths": ["src/main/java/seedu/address/model/**"]
+    },
+    {
+      "id": "storage",
+      "label": "Storage",
+      "aliases": ["Storage component"],
+      "paths": ["src/main/java/seedu/address/storage/**"]
+    },
+    {
+      "id": "commons",
+      "label": "Commons",
+      "aliases": ["Common classes", "seedu.address.commons"],
+      "paths": ["src/main/java/seedu/address/commons/**"]
+    }
+  ],
+  "edges": [
+    { "from": "main", "to": "ui" },
+    { "from": "main", "to": "logic" },
+    { "from": "main", "to": "storage" },
+    { "from": "main", "to": "model" },
+    { "from": "ui", "to": "logic" },
+    { "from": "ui", "to": "model" },
+    { "from": "logic", "to": "storage" },
+    { "from": "logic", "to": "model" },
+    { "from": "storage", "to": "model" }
+  ],
+  "groups": [
+    {
+      "id": "four-main-components",
+      "label": "Four main components",
+      "members": ["ui", "logic", "model", "storage"]
+    }
+  ]
+}
