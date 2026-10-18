@@ -217,7 +217,7 @@ describe("FRS-03 freshness on the map", () => {
       ["api", true, "missing"],
     ]);
     const header = document.querySelector<HTMLElement>(".freshness")!;
-    expect([header.hidden, header.textContent]).toEqual([false, "2 of 2 boxes changed since this map (abc1234, 2 days ago)"]);
+    expect([header.hidden, header.textContent]).toEqual([false, "2 of 2 boxes changed since this map (abc1234, 2 days ago) · Refresh"]);
   });
 
   test("fresh and moved boxes carry no badge, and badges survive a reload", async () => {
@@ -252,4 +252,14 @@ describe("FRS-04 change overlay", () => {
     expect(document.querySelectorAll(".node--change-strong, .node--change-weak").length).toBe(0);
     expect(document.querySelector<HTMLElement>(".changes")!.hidden).toBe(true);
   });
+});
+
+test("FRS-06 the freshness header's Refresh posts refresh", async () => {
+  send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+  await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+  send({ type: "freshness", boxes: { web: "edited" }, header: "1 of 2 boxes changed since this map" });
+  expect(document.querySelector(".freshness")!.textContent).toBe("1 of 2 boxes changed since this map · Refresh");
+  document.querySelector<HTMLButtonElement>(".freshness__refresh")!.click();
+  expect(posted).toEqual([{ type: "refresh" }]);
+  send({ type: "freshness", boxes: {}, header: null });
 });

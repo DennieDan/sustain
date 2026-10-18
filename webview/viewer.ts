@@ -229,7 +229,15 @@ export function startViewer(): void {
     }
     if (message.type === "freshness") {
       freshness = message.boxes;
-      freshnessBar.textContent = message.header ?? "";
+      freshnessBar.replaceChildren();
+      if (message.header !== null) {
+        const refresh = document.createElement("button");
+        refresh.type = "button";
+        refresh.className = "toolbar__button freshness__refresh";
+        refresh.textContent = "Refresh";
+        refresh.addEventListener("click", () => post({ type: "refresh" }));
+        freshnessBar.append(document.createTextNode(`${message.header} · `), refresh);
+      }
       freshnessBar.hidden = message.header === null;
       applyFreshness();
       return;

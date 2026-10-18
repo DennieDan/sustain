@@ -1,7 +1,7 @@
 // SAF-04: agents launch with the prompt alone and only from absolute PATH entries.
 import { chmodSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { agentLaunchArgs, agentPrompt, AGENTS, findOnPath, headlessArgs } from "../../../src/extension/agents";
+import { agentLaunchArgs, agentPrompt, AGENTS, findOnPath, headlessArgs, SKILL_SCRIPTS, skillPrompt } from "../../../src/extension/agents";
 import { devinPromptArgs } from "../../../src/extension/devin";
 import { put, tempDir } from "../support/temp";
 
@@ -57,6 +57,21 @@ describe("SAF-04 launch arguments", () => {
       "Glob",
       "Bash(node /h/.claude/skills/sustain-architecture/scripts/repo-facts.mjs *)",
       "Bash(node /h/.claude/skills/sustain-architecture/scripts/validate.mjs *)",
+      "Edit(./.archify/**)",
+    ]);
+    expect(forbiddenIn(argv)).toEqual([]);
+  });
+
+  test("FRS-06 a refresh names the refresh skill and may run only its own scripts", () => {
+    expect(skillPrompt("claude", "sustain-refresh", " --from architecture-a-20261018-120000 ")).toBe("/sustain-refresh --from architecture-a-20261018-120000");
+    expect(skillPrompt("codex", "sustain-refresh", "")).toBe("$sustain-refresh");
+    const argv = headlessArgs("claude", "/sustain-refresh --from x", { skillDir: "/h/.claude/skills/sustain-refresh", scripts: SKILL_SCRIPTS["sustain-refresh"] });
+    expect(argv.slice(argv.indexOf("--allowedTools") + 1)).toEqual([
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(node /h/.claude/skills/sustain-refresh/scripts/refresh-facts.mjs *)",
+      "Bash(node /h/.claude/skills/sustain-refresh/scripts/validate.mjs *)",
       "Edit(./.archify/**)",
     ]);
     expect(forbiddenIn(argv)).toEqual([]);

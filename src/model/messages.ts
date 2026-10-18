@@ -37,7 +37,8 @@ export type WebviewMessage =
   | { type: "openSource"; componentId: string; index: number }
   | { type: "setFollow"; on: boolean }
   | { type: "mapFolder" }
-  | { type: "clearChanges" };
+  | { type: "clearChanges" }
+  | { type: "refresh" };
 
 /** What the session webview renders — public `session.json` fields plus the leaderboard. */
 export interface SessionView {
@@ -182,6 +183,7 @@ export type HomeWebviewMessage =
   | { type: "runInTerminal" }
   | { type: "openMap"; file: string }
   | { type: "deleteMap"; file: string }
+  | { type: "refreshMap"; file: string }
   | { type: "fix"; check: CheckId }
   | { type: "checkSetup" }
   | { type: "openSession" }

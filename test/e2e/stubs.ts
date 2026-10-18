@@ -91,3 +91,9 @@ export function stubUi(): UiStubs {
   });
   return stubs;
 }
+
+/** What the user had to answer: picks, input boxes and modal messages. Toasts are left out. */
+export function prompts(stubs: UiStubs): number {
+  const modal = (call: MessageCall): boolean => (call.rest[0] as { modal?: unknown } | undefined)?.modal === true;
+  return stubs.quickPicks.length + stubs.inputBoxes.length + stubs.infos.filter(modal).length + stubs.warnings.filter(modal).length;
+}

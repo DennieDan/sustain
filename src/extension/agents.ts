@@ -21,9 +21,20 @@ export function agentLaunchArgs(prompt: string): string[] {
   return [prompt];
 }
 
+/** The skills a run launches (FR-GEN-01, FRS-05). */
+export type SkillName = "sustain-architecture" | "sustain-refresh";
+
+/** The scripts each skill runs, which its Bash rules name exactly. */
+export const SKILL_SCRIPTS: Readonly<Record<SkillName, readonly string[]>> = {
+  "sustain-architecture": ["repo-facts.mjs", "validate.mjs"],
+  "sustain-refresh": ["refresh-facts.mjs", "validate.mjs"],
+};
+
 export interface HeadlessOptions {
   /** The skill folder the agent loads, for the exact script rules. */
   skillDir: string;
+  /** The scripts the run may start; the architecture skill's by default. */
+  scripts?: readonly string[];
   /** A question run: read and search tools only (UI-06). */
   readOnly?: boolean;
   /** Claude Code session to continue a follow-up question in. */
@@ -43,8 +54,7 @@ export function headlessArgs(cli: "claude" | "codex", prompt: string, options: H
         "Read",
         "Grep",
         "Glob",
-        `Bash(node ${options.skillDir}/scripts/repo-facts.mjs *)`,
-        `Bash(node ${options.skillDir}/scripts/validate.mjs *)`,
+        ...(options.scripts ?? SKILL_SCRIPTS["sustain-architecture"]).map((script) => `Bash(node ${options.skillDir}/scripts/${script} *)`),
         "Edit(./.archify/**)",
       ];
   const resume = options.resume === undefined ? [] : ["--resume", options.resume];
@@ -53,6 +63,12 @@ export function headlessArgs(cli: "claude" | "codex", prompt: string, options: H
 
 /** `/sustain-architecture <focus>` or `$sustain-architecture <focus>`; no trailing space for an empty focus. */
 export function agentPrompt(agent: Agent, focus: string): string {
-  const trimmed = focus.trim();
-  return trimmed === "" ? agent.invoke : `${agent.invoke} ${trimmed}`;
+  return skillPrompt(agent.cli, "sustain-architecture", focus);
+}
+
+/** `/<skill> <args>` for Claude Code or `$<skill> <args>` for Codex; no trailing space without arguments. */
+export function skillPrompt(cli: "claude" | "codex", skill: SkillName, args: string): string {
+  const invoke = `${cli === "claude" ? "/" : "$"}${skill}`;
+  const trimmed = args.trim();
+  return trimmed === "" ? invoke : `${invoke} ${trimmed}`;
 }

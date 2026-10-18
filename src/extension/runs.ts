@@ -7,6 +7,7 @@ import type { StreamParser } from "../model/agentStream/feed";
 import type { RunState } from "../model/agentStream/tracker";
 import type { RunCard, RunMode } from "../model/messages";
 import { CANDIDATE_FILE } from "../model/runFolder";
+import type { LaunchTask } from "./generate";
 import { newRunRecord, newRunSince, runFolderNames, updateRunRecord } from "../model/runRecord";
 import { ArchitecturePanel } from "./panel";
 import { startHeadless, type HeadlessRun } from "./runner";
@@ -17,8 +18,10 @@ export const RECORD_POLL_MS = 1_000;
 /** What started the current run, for "Run in terminal instead". */
 export interface RunRequest {
   root: string;
+  /** What the card shows: the focus, or what a refresh covers. */
   focus: string;
   agent: { cli: "claude" | "codex"; label: string };
+  task: LaunchTask;
 }
 
 export class Runs implements vscode.Disposable {

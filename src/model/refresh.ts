@@ -58,3 +58,15 @@ export function refreshReport(inputs: RefreshInputs): RefreshReport {
   return { stale, boxes, changes, uncovered: changes.filter((change) => !change.covered).map((change) => change.path), newFolders };
 }
 
+/**
+ * The refresh skill's arguments: `--from <run>`, then `--paths` and the files when given. A path
+ * with a space is quoted; one with a quote, `$`, a backtick or a backslash is left out, since the
+ * agent passes these on to a shell command.
+ */
+export function refreshArgs(run: string, paths: readonly string[] = []): string {
+  const tokens = paths.flatMap((path) => {
+    if (/^[\w./@+-]+$/.test(path)) return [path];
+    return /["$`\\]/.test(path) ? [] : [`"${path}"`];
+  });
+  return tokens.length === 0 ? `--from ${run}` : `--from ${run} --paths ${tokens.join(" ")}`;
+}

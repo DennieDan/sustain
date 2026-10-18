@@ -9,7 +9,7 @@ import * as vscode from "vscode";
 import type { TestHook } from "../../../src/extension/extension";
 import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
 import { findOnPath } from "../../../src/model/which";
-import { stubUi, type UiStubs } from "../stubs";
+import { prompts, stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
 import { until } from "../until";
 
@@ -137,7 +137,7 @@ suite("UI-01 Sustain sidebar", () => {
     const argv = JSON.parse(readFileSync(args, "utf8")) as string[];
     assert.deepEqual(argv.slice(0, 2), ["-p", "/sustain-architecture payment flow"]);
     assert.deepEqual(argv.slice(argv.indexOf("--permission-mode"), argv.indexOf("--permission-mode") + 2), ["--permission-mode", "dontAsk"]);
-    assert.equal(ui.infos.length + ui.warnings.length + ui.quickPicks.length + ui.inputBoxes.length, 0, "no prompt besides the click");
+    assert.equal(prompts(ui), 0, "no prompt besides the click");
     assert.ok(existsSync(join(homedir(), ".claude/skills/sustain-architecture/SKILL.md")));
     assert.deepEqual(hook.homeState().state?.composer.notes, []);
   });

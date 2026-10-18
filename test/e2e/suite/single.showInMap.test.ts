@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import * as vscode from "vscode";
 import type { TestHook } from "../../../src/extension/extension";
 import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
-import { stubUi, type UiStubs } from "../stubs";
+import { prompts, stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
 import { until } from "../until";
 
@@ -119,7 +119,7 @@ suite("UI-03 Show in Map and UI-05 menus", () => {
     const terminal = await opened;
     terminals.push(terminal);
     assert.deepEqual((terminal.creationOptions as vscode.TerminalOptions).shellArgs, ["/sustain-architecture src"]);
-    assert.equal(ui.quickPicks.length + ui.infos.length + ui.warnings.length, 0);
+    assert.equal(prompts(ui), 0);
   });
 
   test("UI-05 Open code on a box opens its first source", async () => {

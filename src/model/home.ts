@@ -71,6 +71,7 @@ export function statusText(input: StatusInput, now: Date): string {
 export const SIDEBAR_ACTIONS: Readonly<Record<string, string>> = {
   generate: "sustain.generateArchitecture",
   openMap: "sustain.openArchitecture",
+  refreshMap: "sustain.refreshArchitecture",
   startLearning: "sustain.startLearning",
   checkSetup: "sustain.checkSetup",
   cancelRun: "sustain.cancelRun",

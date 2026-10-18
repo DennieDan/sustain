@@ -127,6 +127,17 @@
         "title": "Show Changes on Diagram",
         "category": "Sustain",
         "icon": "$(git-compare)"
+      },
+      {
+        "command": "sustain.refreshArchitecture",
+        "title": "Refresh Architecture",
+        "category": "Sustain",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sustain.refreshBox",
+        "title": "Refresh This Box",
+        "category": "Sustain"
       }
     ],
     "viewsContainers": {
@@ -191,6 +202,10 @@
         {
           "command": "sustain.openBoxCode",
           "when": "false"
+        },
+        {
+          "command": "sustain.refreshBox",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -203,6 +218,11 @@
           "command": "sustain.showChanges",
           "when": "activeWebviewPanelId == 'sustain.architecture'",
           "group": "navigation@2"
+        },
+        {
+          "command": "sustain.refreshArchitecture",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "navigation@1"
         }
       ],
       "explorer/context": [
@@ -222,6 +242,11 @@
           "command": "sustain.openBoxCode",
           "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
           "group": "navigation@1"
+        },
+        {
+          "command": "sustain.refreshBox",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
+          "group": "navigation@2"
         }
       ]
     }

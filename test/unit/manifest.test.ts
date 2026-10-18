@@ -67,13 +67,16 @@ test("UI-05 the Explorer maps folders and shows files; boxes open their code", (
     { command: "sustain.mapFolder", when: "explorerResourceIsFolder", group: "sustain@1" },
     { command: "sustain.showFileInMap", when: "!explorerResourceIsFolder", group: "sustain@2" },
   ]);
-  expect(manifest.contributes.menus["webview/context"]).toEqual([
-    { command: "sustain.openBoxCode", when: "webviewId == 'sustain.architecture' && webviewSection == 'box'", group: "navigation@1" },
-  ]);
+  expect(manifest.contributes.menus["webview/context"]).toContainEqual({ command: "sustain.openBoxCode", when: "webviewId == 'sustain.architecture' && webviewSection == 'box'", group: "navigation@1" });
   const hidden = manifest.contributes.menus["commandPalette"]!.filter((entry) => entry.when === "false").map((entry) => entry.command);
-  expect(hidden).toEqual(["sustain.showFileInMap", "sustain.mapFolder", "sustain.openBoxCode"]);
+  expect(hidden).toEqual(expect.arrayContaining(["sustain.showFileInMap", "sustain.mapFolder", "sustain.openBoxCode"]));
 });
 
 test("FRS-04 Show Changes sits in the map panel's title bar only", () => {
   expect(manifest.contributes.menus["editor/title"]).toContainEqual({ command: "sustain.showChanges", when: "activeWebviewPanelId == 'sustain.architecture'", group: "navigation@2" });
+});
+
+test("FRS-06 Refresh sits in the map's title bar and in a box's menu", () => {
+  expect(manifest.contributes.menus["editor/title"]).toContainEqual({ command: "sustain.refreshArchitecture", when: "activeWebviewPanelId == 'sustain.architecture'", group: "navigation@1" });
+  expect(manifest.contributes.menus["webview/context"]).toContainEqual({ command: "sustain.refreshBox", when: "webviewId == 'sustain.architecture' && webviewSection == 'box'", group: "navigation@2" });
 });

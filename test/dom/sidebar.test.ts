@@ -91,16 +91,18 @@ describe("UI-01 sidebar states", () => {
     expect(container.querySelector<HTMLTextAreaElement>(".composer__focus")!.value).toBe("half typed");
   });
 
-  test("maps: newest first with focus, agent, age and boxes; Open and Delete post the file", () => {
+  test("maps: newest first with focus, agent, age and boxes; Open, Refresh and Delete post the file", () => {
     home.render(state({ maps: [map({ focus: "payments" }), map({ title: null, runFolder: "architecture-old-20261001-090000", file: "/r/old.json", agent: null, boxes: 1, createdAt: "2026-10-01T09:00:00Z" })] }));
     expect(text(".header__status")).toEqual(["Map from 2 days ago · 16 boxes"]);
     expect(text(".map__title")).toEqual(["Sustain", "architecture-old-20261001-090000"]);
     expect(text(".map__meta")).toEqual(["payments · Claude Code · 2 days ago · 16 boxes", "17 days ago · 1 box"]);
     click("Delete");
     container.querySelector<HTMLButtonElement>(".map__title")!.click();
+    click("Refresh");
     expect(posted).toEqual([
       { type: "deleteMap", file: map({}).file },
       { type: "openMap", file: map({}).file },
+      { type: "refreshMap", file: map({}).file },
     ]);
   });
 

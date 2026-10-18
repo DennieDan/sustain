@@ -199,6 +199,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     const actions = el("div", "map__actions");
     actions.append(
       button("Open", "link", () => post({ type: "openMap", file: item.file })),
+      button("Refresh", "link", () => post({ type: "refreshMap", file: item.file })),
       button("Delete", "link link--danger", () => post({ type: "deleteMap", file: item.file })),
     );
     entry.append(open, el("div", "map__meta", meta.join(" · ")), actions);

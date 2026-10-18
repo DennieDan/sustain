@@ -13,11 +13,12 @@ import { AGENTS } from "./agents";
 import type { Ask } from "./ask";
 import { changedBoxes, type FreshnessService } from "./freshness";
 import { findDevinCli } from "./devin";
-import { chosenAgent, configuredRunMode, foundAgents, launchGenerate, launchNotes, rememberAgent } from "./generate";
+import { chosenAgent, configuredRunMode, foundAgents, launchGenerate, launchNotes, launchTask, rememberAgent } from "./generate";
 import { webviewHtml } from "./html";
 import { installSkill } from "./install";
 import { skillStatus } from "./integrity";
 import { ArchitecturePanel } from "./panel";
+import { refreshArchitectureCommand } from "./refresh";
 import type { Runs } from "./runs";
 import { SessionPanel } from "./sessionPanel";
 import { readSessionSnapshot } from "./sessionFiles";
@@ -184,7 +185,7 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
       case "runInTerminal": {
         const last = this.runs.lastRequest;
         const agent = AGENTS.find((entry) => entry.cli === last?.agent.cli);
-        if (last && agent) await launchGenerate(this.context, this.runs, last.root, agent, last.focus, "terminal");
+        if (last && agent) await launchTask(this.context, this.runs, last.root, agent, last.task, "terminal");
         return;
       }
       case "openMap":
@@ -192,6 +193,12 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         return;
       case "deleteMap":
         if (root !== null && this.isCandidate(root, message.file)) await this.deleteMap(root, message.file);
+        return;
+      case "refreshMap":
+        if (root !== null && this.isCandidate(root, message.file)) {
+          this.runs.dismiss();
+          await refreshArchitectureCommand(this.context, this.runs, message.file, [], chosenAgent(this.context, foundAgents()) ?? undefined);
+        }
         return;
       case "fix":
         await this.fix(message.check);

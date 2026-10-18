@@ -8,7 +8,7 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import type { TestHook } from "../../../src/extension/extension";
 import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
-import { stubUi, type UiStubs } from "../stubs";
+import { prompts, stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
 
 /** Folder holding executable stub CLIs that just wait, so the terminal stays open. */
@@ -195,7 +195,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     await vscode.commands.executeCommand("sustain.generateArchitecture");
     await terminal;
 
-    assert.equal(ui.inputBoxes.length + ui.quickPicks.length + ui.infos.length + ui.warnings.length, 2);
+    assert.equal(prompts(ui), 2);
     assert.equal(ui.infos[0]!.message, "Generate with Claude Code?");
     const [options] = ui.infos[0]!.rest as [{ modal: boolean; detail: string }];
     assert.equal(options.detail, "Installs the sustain-architecture skill in ~/.claude/skills/.\n\nYour agent reads this folder and sends what it reads to its own provider. Sustain sends nothing.");

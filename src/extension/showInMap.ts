@@ -3,7 +3,7 @@
 import { relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { listCandidates } from "../model/discovery";
-import { confirmAndLaunch } from "./generate";
+import { confirmAndLaunch, generateTask } from "./generate";
 import { ArchitecturePanel } from "./panel";
 import type { Runs } from "./runs";
 
@@ -39,7 +39,7 @@ export async function mapFolderCommand(context: vscode.ExtensionContext, runs: R
   }
   const root = folder.uri.fsPath;
   const focus = relative(root, uri.fsPath).split(sep).join("/");
-  await confirmAndLaunch(context, runs, root, focus);
+  await confirmAndLaunch(context, runs, root, generateTask(focus));
 }
 
 /** The argument a `webview/context` menu passes: the box's `data-vscode-context` and the view type. */

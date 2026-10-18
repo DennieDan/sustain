@@ -272,6 +272,9 @@ export class ArchitecturePanel {
       case "clearChanges":
         this.showChanges(null);
         return;
+      case "refresh":
+        await vscode.commands.executeCommand("sustain.refreshArchitecture");
+        return;
       case "openSource":
         await this.openBox(message.componentId, message.index);
         return;
