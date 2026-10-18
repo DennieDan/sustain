@@ -10,7 +10,7 @@ import { envWithoutGit, git, gitRepo, put, runScript, tempDir } from "../support
 const RUN_NAME = /^architecture-([a-z0-9-]+)-(\d{8}-\d{6})(-\d+)?$/;
 
 describe("FR-RF-01 repo-facts CLI", () => {
-  test("CST-04 creates the run folder with run.json and prints root, runFolder, draft and git", () => {
+  test("CST-04 CST-01 CST-03 CST-05 creates the run folder with run.json and prints root, runFolder, draft, git, size, estimate and budget", () => {
     const root = tempDir();
     const run = runScript("repo-facts", ["--focus", "Payment service: retries & queues"], { cwd: root, env: envWithoutGit() });
     expect(run.status).toBe(0);

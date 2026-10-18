@@ -121,7 +121,7 @@ suite("UI-01 Sustain sidebar", () => {
     assert.equal(state?.composer.runMode, "sidebar");
   });
 
-  test("UI-01 SET-03 Generate from the sidebar takes one click, installs the skill it stated and launches with the typed focus", async () => {
+  test("UI-01 SET-03 CST-03 Generate from the sidebar takes one click, states the estimate, installs the skill it stated and launches with the typed focus", async () => {
     for (const dir of [".agents", ".claude"]) rmSync(join(homedir(), dir), { recursive: true, force: true });
     await hook.setDataNoteShown(false);
     agents(["claude"]);

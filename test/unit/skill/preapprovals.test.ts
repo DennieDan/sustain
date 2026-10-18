@@ -16,7 +16,7 @@ function unsafeRules(allowedTools: string): string[] {
   return rules.filter((rule) => /^(Edit|Write|NotebookEdit|MultiEdit)\b/.test(rule) || (rule.startsWith("Bash") && !DATA_ONLY_SCRIPTS.test(rule)));
 }
 
-test.each(SKILLS)("SAF-02 %s pre-approves no edit tool and no open-ended Bash rule", (name) => {
+test.each(SKILLS)("SAF-02 ACC-05 %s pre-approves no edit tool and no open-ended Bash rule", (name) => {
   const fields = parseFrontMatter(readFileSync(join(repoRoot, "skills", name, "SKILL.md"), "utf8"))?.fields;
   expect(fields?.["allowed-tools"]).toBeDefined();
   expect(unsafeRules(fields!["allowed-tools"]!)).toEqual([]);

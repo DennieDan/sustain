@@ -7,7 +7,7 @@ import { buildRelease, PLUGIN_SKILLS } from "../../scripts/release.mjs";
 import { repoRoot } from "./support/sourceScan";
 import { tempDir } from "./support/temp";
 
-test("RCH-02 build:release assembles the plugin with its manifests and the committed skills", () => {
+test("RCH-02 ACC-05 build:release assembles the plugin with its manifests and the committed skills", () => {
   const plugin = buildRelease(tempDir());
   const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as { version: string };
   const manifest = JSON.parse(readFileSync(join(plugin, ".claude-plugin/plugin.json"), "utf8"));

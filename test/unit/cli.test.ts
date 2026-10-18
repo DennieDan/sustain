@@ -40,7 +40,7 @@ function mappedRepo(): { root: string; run: string } {
 }
 
 describe("RCH-03 install and verify-skills", () => {
-  test("install --scope project writes every skill; verify-skills finds them intact, then a changed file", () => {
+  test("ACC-05 install --scope project writes every skill; verify-skills finds them intact, then a changed file", () => {
     const root = tempDir();
     const installed = cli(["install", "--scope", "project", "--root", root], { cwd: root });
     expect(installed.status).toBe(0);

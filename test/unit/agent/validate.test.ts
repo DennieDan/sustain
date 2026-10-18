@@ -44,7 +44,7 @@ function candidate(root: string): Json & { meta: Json; components: Json[]; conne
 }
 
 describe("FR-VAL-01 CLI exit paths", () => {
-  test("accepted: exit 0, one JSON object, candidate path, no hint", () => {
+  test("ACC-02 accepted: exit 0, one JSON object, candidate path, no hint, and the protocol arrow not checked", () => {
     const { root } = setup(draftDoc());
     const run = runScript("validate", [DRAFT], { cwd: root, env: envWithoutGit() });
     expect(run.status).toBe(0);
@@ -149,7 +149,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
     ]);
   });
 
-  test("ACC-01 an accepted report lists declaration-only boxes and evidence.json records them", () => {
+  test("ACC-01 ACC-02 an accepted report lists declaration-only boxes and evidence.json records them with the import findings", () => {
     const doc = draftDoc();
     doc.components[1]!["sources"] = [{ path: "src/model.ts", line: 1 }];
     const { root } = setup(doc);
@@ -160,7 +160,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
     expect(JSON.parse(readFileSync(join(root, ".archify", RUN, "evidence.json"), "utf8"))).toEqual({ schema: 1, findings: [finding, HTTP_NOT_CHECKED] });
   });
 
-  test("ACC-01 a revised draft in an accepted run folder replaces the candidate and its sidecars", () => {
+  test("ACC-01 ACC-02 a revised draft in an accepted run folder replaces the candidate and its sidecars", () => {
     const doc = draftDoc();
     doc.components[1]!["sources"] = [{ path: "src/model.ts", line: 1 }];
     const { root } = setup(doc);

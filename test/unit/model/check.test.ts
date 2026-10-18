@@ -158,7 +158,7 @@ describe("PRC-01 the map, ownership and config", () => {
     expect(new Ownership([{ id: "api", sources: [{ path: "src/api/handler.ts" }] }]).owners("lib/x.ts")).toEqual([]);
   });
 
-  test("the config schema accepts its keys and refuses others", () => {
+  test("PRC-06 ARC-01 the config schema accepts its keys and refuses others", () => {
     expect(readConfig({ map: "architecture-a-20261018-120000", ignore: ["docs/**"], check: { failOn: ["stale", "new-box"] }, rules: [] })).toMatchObject({ ok: true });
     expect(readConfig({ map: "../x", ignore: "docs", check: { failOn: ["everything"], other: 1 }, rules: {}, extra: true })).toEqual({
       ok: false,

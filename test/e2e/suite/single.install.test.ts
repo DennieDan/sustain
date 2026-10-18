@@ -28,7 +28,7 @@ suite("FR-INS-01 Install Agent Skills", () => {
     rmSync(join(root, ".gitignore"), { force: true });
   });
 
-  test("SAF-06 FRS-05 a fresh install copies every skill, links .claude and leaves .devin and .gitignore alone", async () => {
+  test("SAF-06 FRS-05 ACC-05 a fresh install copies every skill, links .claude and leaves .devin and .gitignore alone", async () => {
     await vscode.commands.executeCommand("sustain.installSkills");
     for (const file of ["SKILL.md", "agents/openai.yaml", "references/archify-format.md", "references/example.json", "scripts/validate.mjs", "scripts/repo-facts.mjs"]) {
       assert.ok(existsSync(join(home, ".agents/skills/sustain-architecture", file)), file);
@@ -56,7 +56,7 @@ suite("FR-INS-01 Install Agent Skills", () => {
     assert.doesNotMatch(ui.infos[0]!.message, /hooks/);
   });
 
-  test("an existing install is replaced after Overwrite", async () => {
+  test("ACC-05 an existing install is replaced after Overwrite", async () => {
     await vscode.commands.executeCommand("sustain.installSkills");
     const marker = join(home, ".agents/skills/sustain-architecture/marker.txt");
     writeFileSync(marker, "old");

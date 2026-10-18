@@ -117,7 +117,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     assert.equal(opened.length, 0);
   });
 
-  test("SAF-01 a tampered SKILL.md blocks the launch until Reinstall restores it", async () => {
+  test("SAF-01 CST-03 a tampered SKILL.md blocks the launch until Reinstall restores it", async () => {
     const bin = stubBin("claude");
     cleanup.push(bin);
     process.env["PATH"] = `${bin}:${savedPath}`;
@@ -143,7 +143,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     assert.equal(readFileSync(skillFile, "utf8"), original);
   });
 
-  test("SAF-01 a tampered validate.mjs blocks the launch", async () => {
+  test("SAF-01 CST-03 a tampered validate.mjs blocks the launch", async () => {
     const bin = stubBin("codex");
     cleanup.push(bin);
     process.env["PATH"] = `${bin}:${savedPath}`;
@@ -183,7 +183,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     assert.equal(opened.length, 0);
   });
 
-  test("SET-03 a fresh install takes two interactions: the focus, then one modal for the install and the data note", async () => {
+  test("SET-03 CST-03 a fresh install takes two interactions: the focus, then one modal for the estimate, the install and the data note", async () => {
     for (const dir of [".agents", ".claude"]) rmSync(join(homedir(), dir), { recursive: true, force: true });
     await hook.setDataNoteShown(false);
     const bin = stubBin("claude");

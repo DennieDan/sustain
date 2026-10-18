@@ -138,7 +138,7 @@ suite("FRS-06 Refresh from the UI", () => {
     assert.deepEqual(notes.map((note) => note.note), ["It also handles refunds.", "The cited line is the old client."]);
   });
 
-  test("FRS-06 SAF-01 a missing refresh skill is installed after one modal", async () => {
+  test("FRS-06 SAF-01 CST-03 a missing refresh skill is installed after one modal", async () => {
     rmSync(join(homedir(), ".agents/skills/sustain-refresh"), { recursive: true, force: true });
     rmSync(join(homedir(), ".claude/skills/sustain-refresh"), { force: true });
     await vscode.commands.executeCommand("sustain.openArchitecture");
