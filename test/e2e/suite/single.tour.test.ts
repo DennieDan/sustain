@@ -72,10 +72,8 @@ suite("SKL-02 Guided tours", () => {
     await until(() => hook.panelTour()?.length === 4, "the panel to read the tour");
 
     await vscode.commands.executeCommand("sustain.playTour");
-    await until(() => shownAt(join(root, "src/web.ts")) !== undefined, "the first stop's code");
-    const first = shownAt(join(root, "src/web.ts"))!;
-    assert.equal(first.selection.start.line, 1);
-    assert.notEqual(first.viewColumn, vscode.ViewColumn.One, "the code opens beside the map");
+    await until(() => shownAt(join(root, "src/web.ts"))?.selection.start.line === 1, "the first stop's lines selected");
+    assert.notEqual(shownAt(join(root, "src/web.ts"))!.viewColumn, vscode.ViewColumn.One, "the code opens beside the map");
 
     await hook.postFromWebview({ type: "tourStop", index: 1 });
     await until(() => shownAt(join(root, "src/api.ts")) !== undefined, "the second stop's code");
