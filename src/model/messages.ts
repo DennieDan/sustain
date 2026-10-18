@@ -168,6 +168,13 @@ export interface AskView {
   confirm: boolean;
 }
 
+/** The sidebar's Rules section (ARC-02). */
+export interface RulesView {
+  /** The map the rules use, or `null` without one. */
+  map: string | null;
+  rules: { id: string; reason: string; violations: number }[];
+}
+
 /** The sidebar's Review changes section (PRC-02). */
 export interface ReviewView {
   scope: string;
@@ -200,6 +207,8 @@ export interface HomeState {
   session: SessionSummary | null;
   ask: AskView;
   review: ReviewView | null;
+  /** ARC-02: the folder's rules with their violation counts, or `null` without a folder. */
+  rules: RulesView | null;
   /** Host time at send, for the run card's elapsed time. */
   serverNow: string;
 }
@@ -221,6 +230,7 @@ export type HomeWebviewMessage =
   | { type: "refreshMap"; file: string }
   | { type: "exportMap"; file: string }
   | { type: "review" }
+  | { type: "suggestRules" }
   | { type: "showFiles"; dir: string }
   | { type: "addToMap"; dir: string }
   | { type: "ignoreCandidate"; dir: string }

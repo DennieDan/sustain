@@ -8,8 +8,10 @@ import { exportPageCommand } from "./exportPage";
 import { refreshArchitectureCommand, refreshBoxCommand } from "./refresh";
 import { auditMapCommand } from "./audit";
 import { flagBoxCommand } from "./feedback";
+import { registerPreviews } from "./previewWrite";
 import { Review } from "./review";
 import { RulesService } from "./rules";
+import { forbidArrowCommand, onlyAllowFromCommand, routeThroughCommand, suggestRulesCommand } from "./ruleCommands";
 import { FreshnessService } from "./freshness";
 import { generateArchitectureCommand, resetDataNote } from "./generate";
 import { HOME_VIEW, HomeView } from "./home";
@@ -67,11 +69,12 @@ export function activate(context: vscode.ExtensionContext): TestHook {
   const freshness = new FreshnessService();
   const review = new Review(context, runs);
   const rules = new RulesService();
-  const home = new HomeView(context, runs, ask, freshness, review, [candidates.onDidChange, sessions.onDidChange, freshness.onDidChange]);
+  const home = new HomeView(context, runs, ask, freshness, review, rules, [candidates.onDidChange, sessions.onDidChange, freshness.onDidChange]);
   const status = new StatusItem(runs);
   const counts = ArchitecturePanel.onDidCountChanges((changed) => (status.changed = changed));
   const running = runs.onDidChange(() => void vscode.commands.executeCommand("setContext", "sustain.running", runs.current?.status === "running"));
   context.subscriptions.push(
+    registerPreviews(),
     runs,
     ask,
     freshness,
@@ -104,6 +107,10 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.showChanges", () => showChangesCommand(extensionUri)),
     vscode.commands.registerCommand("sustain.refreshArchitecture", () => refreshArchitectureCommand(context, runs)),
     vscode.commands.registerCommand("sustain.auditMap", () => auditMapCommand(context, runs)),
+    vscode.commands.registerCommand("sustain.forbidArrow", (arrow?: { from?: unknown; to?: unknown }) => forbidArrowCommand(rules, arrow)),
+    vscode.commands.registerCommand("sustain.onlyAllowImportsFrom", (box?: { componentId?: unknown }) => onlyAllowFromCommand(rules, box)),
+    vscode.commands.registerCommand("sustain.routeThrough", (box?: { componentId?: unknown }) => routeThroughCommand(rules, box)),
+    vscode.commands.registerCommand("sustain.suggestRules", () => suggestRulesCommand(rules, home.root())),
     vscode.commands.registerCommand("sustain.flagBox", (box?: { componentId?: unknown }) => flagBoxCommand(context, runs, box)),
     vscode.commands.registerCommand("sustain.hideChecks", () => ArchitecturePanel.setChecksShown(false)),
     vscode.commands.registerCommand("sustain.showChecks", () => ArchitecturePanel.setChecksShown(true)),

@@ -84,6 +84,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   const runSlot = el("div", "run-slot");
   const maps = el("div", "maps-slot");
   const reviewSlot = el("div", "review-slot");
+  const rulesSlot = el("div", "rules-slot");
   const setup = el("details", "section setup");
   const session = el("div", "session-slot");
   // UI-06: the Ask chat sits at the bottom; its text box persists like the composer's.
@@ -117,7 +118,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   question.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !askButton.disabled) askButton.click();
   });
-  container.append(header, composer, runSlot, maps, reviewSlot, setup, session, askSection);
+  container.append(header, composer, runSlot, maps, reviewSlot, rulesSlot, setup, session, askSection);
 
   let current: HomeState | null = null;
   let figures: HTMLElement | null = null;
@@ -244,6 +245,26 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     maps.append(list);
   }
 
+  /** ARC-02: the Rules section, each rule with its violations and reason, and Suggest rules. */
+  function renderRules(state: HomeState): void {
+    rulesSlot.replaceChildren();
+    if (state.root === null || state.rules === null || state.maps.length === 0) return;
+    const block = section("Rules", "rules");
+    if (state.rules.rules.length === 0) {
+      block.append(el("p", "rules__empty", "No rules yet. Suggest some, or right-click an arrow or a box on the map."));
+    } else {
+      const list = el("ul", "rules__list");
+      for (const rule of state.rules.rules) {
+        const entry = el("li", `rule${rule.violations > 0 ? " rule--broken" : ""}`);
+        entry.append(el("div", "rule__id", `${rule.id} · ${rule.violations} violation${rule.violations === 1 ? "" : "s"}`), el("div", "rule__reason", rule.reason));
+        list.append(entry);
+      }
+      block.append(list);
+    }
+    block.append(button("Suggest rules", "button", () => post({ type: "suggestRules" })));
+    rulesSlot.append(block);
+  }
+
   /** PRC-02: the Review changes section, with each new box candidate's actions. */
   function renderReview(state: HomeState): void {
     reviewSlot.replaceChildren();
@@ -350,6 +371,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
       renderRun(state.run);
       renderMaps(state.maps);
       renderReview(state);
+      renderRules(state);
       renderSetup(state.setup);
       renderSession(state);
       renderAsk(state.ask);

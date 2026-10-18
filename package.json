@@ -182,6 +182,26 @@
         "category": "Sustain"
       },
       {
+        "command": "sustain.forbidArrow",
+        "title": "Forbid This Dependency",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.onlyAllowImportsFrom",
+        "title": "Only Allow Imports From…",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.routeThrough",
+        "title": "Route Dependencies Through…",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.suggestRules",
+        "title": "Suggest Rules",
+        "category": "Sustain"
+      },
+      {
         "command": "sustain.exportPage",
         "title": "Export Page",
         "category": "Sustain",
@@ -281,6 +301,18 @@
         {
           "command": "sustain.flagBox",
           "when": "false"
+        },
+        {
+          "command": "sustain.forbidArrow",
+          "when": "false"
+        },
+        {
+          "command": "sustain.onlyAllowImportsFrom",
+          "when": "false"
+        },
+        {
+          "command": "sustain.routeThrough",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -347,6 +379,21 @@
           "command": "sustain.flagBox",
           "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
           "group": "navigation@3"
+        },
+        {
+          "command": "sustain.onlyAllowImportsFrom",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
+          "group": "rules@1"
+        },
+        {
+          "command": "sustain.routeThrough",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
+          "group": "rules@2"
+        },
+        {
+          "command": "sustain.forbidArrow",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'arrow'",
+          "group": "rules@1"
         }
       ]
     }

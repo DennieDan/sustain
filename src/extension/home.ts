@@ -23,6 +23,8 @@ import { exportPageCommand } from "./exportPage";
 import { refreshArchitectureCommand } from "./refresh";
 import type { Review } from "./review";
 import type { Runs } from "./runs";
+import { suggestRulesCommand } from "./ruleCommands";
+import type { RulesService } from "./rules";
 import { SessionPanel } from "./sessionPanel";
 import { readSessionSnapshot } from "./sessionFiles";
 
@@ -41,9 +43,10 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
     private readonly ask: Ask,
     private readonly freshness: FreshnessService,
     private readonly review: Review,
+    private readonly rules: RulesService,
     changes: vscode.Event<unknown>[],
   ) {
-    for (const change of [runs.onDidChange, ask.onDidChange, review.onDidChange, ...changes]) this.disposables.push(change(() => this.send()));
+    for (const change of [runs.onDidChange, ask.onDidChange, review.onDidChange, rules.onDidChange, ...changes]) this.disposables.push(change(() => this.send()));
     this.disposables.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => this.send()),
       vscode.workspace.onDidChangeConfiguration((event) => {
@@ -116,6 +119,7 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
       session: root === null ? null : sessionSummary(root),
       ask: this.ask.view(root),
       review: this.review.view(root),
+      rules: root === null ? null : (({ map, rules }) => ({ map, rules }))(this.rules.result(root) ?? { map: null, rules: [], violations: [] }),
       serverNow: new Date().toISOString(),
     };
   }
@@ -206,6 +210,9 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         return;
       case "review":
         if (root !== null) await this.review.run(root);
+        return;
+      case "suggestRules":
+        await suggestRulesCommand(this.rules, root);
         return;
       case "showFiles":
         await this.review.showFiles(message.dir);

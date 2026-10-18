@@ -30,26 +30,40 @@ export interface RulesResult {
   violations: Violation[];
 }
 
+/** The map whose box ids `root`'s rules use: the config's `map`, else the main map. */
+export function rulesMap(root: string): { map: string | null; components: { id: string; label: string; sources: { path: string }[] }[] } {
+  const config = loadConfig(root);
+  const map = config.ok ? (config.config.map ?? mainMap(root)) : mainMap(root);
+  if (map === null) return { map, components: [] };
+  try {
+    const read = readDiagram(JSON.parse(readFileSync(join(root, ARCHIFY_DIR, map, CANDIDATE_FILE), "utf8")));
+    return { map, components: read.ok ? read.diagram.components : [] };
+  } catch {
+    // Without a readable map only path: rule ends match.
+    return { map, components: [] };
+  }
+}
+
+/** The source files whose imports the rules check: tracked and untracked, tests left out. */
+export function ruleSourceFiles(root: string): string[] {
+  // New files count before they are added to git.
+  const listed = new Set([...listFiles(root).files, ...untrackedFiles(root).filter((path) => !skipped(path))]);
+  return [...listed].filter((path) => importLanguage(path) !== null && !isTestPath(path)).sort();
+}
+
+/** `root`'s file reader as text. */
+export function textReader(root: string): (path: string) => string | null {
+  const read = fileReader(root);
+  return (path) => read(path)?.toString("utf8") ?? null;
+}
+
 /** Checks `root`'s rules now (ARC-01). */
 export function checkFolderRules(root: string): RulesResult {
   const config = loadConfig(root);
   const rules = config.ok ? readRules(config.config.rules ?? []).rules : [];
-  const map = config.ok ? (config.config.map ?? mainMap(root)) : null;
+  const { map, components } = rulesMap(root);
   if (rules.length === 0) return { map, rules: [], violations: [] };
-  let components: { id: string; sources: { path: string }[] }[] = [];
-  if (map !== null) {
-    try {
-      const read = readDiagram(JSON.parse(readFileSync(join(root, ARCHIFY_DIR, map, CANDIDATE_FILE), "utf8")));
-      if (read.ok) components = read.diagram.components;
-    } catch {
-      // Without a readable map only path: rule ends match.
-    }
-  }
-  // New files count before they are added to git.
-  const listed = new Set([...listFiles(root).files, ...untrackedFiles(root).filter((path) => !skipped(path))]);
-  const files = [...listed].filter((path) => importLanguage(path) !== null && !isTestPath(path)).sort();
-  const read = fileReader(root);
-  const violations = checkRules(rules, components, importRefs(files, (path) => read(path)?.toString("utf8") ?? null));
+  const violations = checkRules(rules, components, importRefs(ruleSourceFiles(root), textReader(root)));
   return { map, rules: rules.map((rule) => ({ id: rule.id, reason: rule.reason, violations: violations.filter((violation) => violation.rule === rule.id).length })), violations };
 }
 

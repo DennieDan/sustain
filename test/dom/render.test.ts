@@ -102,6 +102,13 @@ describe("FR-VIEW-05 renderScene", () => {
     expect(content.querySelectorAll(".boundary__label").length).toBe(2);
   });
 
+  test("ARC-02 each arrow carries its two ends for the arrow menu", () => {
+    const content = contentGroup();
+    renderScene(content, ALL_KINDS, gridScene(ALL_KINDS), fixedMeasure);
+    const edge = content.querySelector('.edge[data-index="2"]')!;
+    expect(JSON.parse(edge.getAttribute("data-vscode-context")!)).toEqual({ webviewSection: "arrow", from: "n-backend", to: "n-security", preventDefaultContextMenuItems: true });
+  });
+
   test("rendering again replaces the previous drawing", () => {
     const content = contentGroup();
     renderScene(content, ALL_KINDS, gridScene(ALL_KINDS), fixedMeasure);

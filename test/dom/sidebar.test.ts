@@ -36,6 +36,7 @@ function state(fields: Partial<HomeState> = {}): HomeState {
     session: null,
     ask: { blocked: null, turns: [], estimate: null, confirm: false },
     review: null,
+    rules: null,
     serverNow: NOW.toISOString(),
     ...fields,
   };
@@ -304,6 +305,24 @@ describe("UI-06 Ask", () => {
   test("a failed answer shows its error", () => {
     home.render(state({ ask: { estimate: null, confirm: false, blocked: null, turns: [{ ...turn, status: "failed", blocks: [], error: "Not logged in" }] } }));
     expect(text(".turn__error")).toEqual(["Not logged in"]);
+  });
+});
+
+describe("ARC-02 Rules", () => {
+  test("each rule shows its violations and reason, broken rules stand out, and Suggest rules asks the host", () => {
+    home.render(state({ maps: [map({})], rules: { map: "architecture-x-20261016-120000", rules: [{ id: "api-not-store", reason: "Through the repository.", violations: 2 }, { id: "ui-not-db", reason: "Never.", violations: 0 }] } }));
+    expect(text(".rule__id")).toEqual(["api-not-store · 2 violations", "ui-not-db · 0 violations"]);
+    expect(text(".rule__reason")).toEqual(["Through the repository.", "Never."]);
+    expect([...container.querySelectorAll(".rule")].map((rule) => rule.classList.contains("rule--broken"))).toEqual([true, false]);
+    click("Suggest rules");
+    expect(posted).toEqual([{ type: "suggestRules" }]);
+  });
+
+  test("without rules it says how to add one, and without a map the section is left out", () => {
+    home.render(state({ maps: [map({})], rules: { map: null, rules: [] } }));
+    expect(text(".rules__empty")).toEqual(["No rules yet. Suggest some, or right-click an arrow or a box on the map."]);
+    home.render(state({ maps: [], rules: { map: null, rules: [] } }));
+    expect(container.querySelector(".rules")).toBeNull();
   });
 });
 

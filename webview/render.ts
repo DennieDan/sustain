@@ -54,6 +54,8 @@ function renderEdge(edge: SceneEdge): SVGGElement | undefined {
   if (edge.points.length < 2) return undefined;
   const { line, head } = edgeGeometry(edge.points);
   const g = svgEl("g", { class: `edge edge--${edge.variant}`, "data-index": edge.index, "data-from": edge.from, "data-to": edge.to });
+  // ARC-02: the arrow's native context menu (Forbid this dependency), with the browser's own items left out.
+  g.setAttribute("data-vscode-context", JSON.stringify({ webviewSection: "arrow", from: edge.from, to: edge.to, preventDefaultContextMenuItems: true }));
   g.append(svgEl("path", { class: "edge__line", d: line }), svgEl("path", { class: "edge__head", d: head }));
   return g;
 }
@@ -63,7 +65,7 @@ function renderEdge(edge: SceneEdge): SVGGElement | undefined {
  * `g.boundaries` (outermost first), `g.edges`, `g.edge-labels`, `g.nodes`.
  *
  * - Boundary: `g.boundary.boundary--<kind>[data-index]` > `rect.boundary__box`, `text.boundary__label`.
- * - Edge: `g.edge.edge--<variant>[data-index][data-from][data-to]` > `path.edge__line`, `path.edge__head`.
+ * - Edge: `g.edge.edge--<variant>[data-index][data-from][data-to][data-vscode-context]` > `path.edge__line`, `path.edge__head`.
  * - Edge label: `text.edge-label.edge-label--<variant>[data-index]` at `labelAt` (halo via CSS `paint-order`).
  * - Node: `g.node.node--<type>[data-id][data-index][data-vscode-context]` > `rect.node__box`, `text.node__label`,
  *   optional `text.node__sublabel`, optional `rect.node__tag-badge` + `text.node__tag`. Lines are

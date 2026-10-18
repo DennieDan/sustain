@@ -78,6 +78,7 @@ export const SIDEBAR_ACTIONS: Readonly<Record<string, string>> = {
   checkSetup: "sustain.checkSetup",
   cancelRun: "sustain.cancelRun",
   fix: "sustain.installSkills",
+  suggestRules: "sustain.suggestRules",
 };
 
 /** The map's freshness header (FRS-03), or `null` when no box changed. */

@@ -156,6 +156,8 @@ export function startViewer(mount: HTMLElement = document.body): void {
       const index = Number(edge.getAttribute("data-index"));
       edge.classList.toggle("edge--ghost", index >= firstGhostArrow);
       edge.classList.toggle("edge--violation", index >= firstViolation && index < firstGhostArrow);
+      // Arrows Sustain adds are not the map's, so they have no arrow menu.
+      if (index >= firstViolation && edge.classList.contains("edge")) edge.setAttribute("data-vscode-context", JSON.stringify({ webviewSection: "ghost", preventDefaultContextMenuItems: true }));
     }
   }
   /** The boxes marked as citing the active file, kept across reloads (UI-03). */

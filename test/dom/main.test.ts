@@ -330,3 +330,25 @@ describe("ACC-03 ACC-05 uncertainty on the map", () => {
     expect(document.querySelector<HTMLElement>(".checks-legend")!.hidden).toBe(true);
   });
 });
+
+describe("ARC-01 ARC-02 rule violations on the map", () => {
+  test("violations are red arrows labelled with the rules, and only the map's own arrows have the arrow menu", async () => {
+    const doc = {
+      meta: { title: "Rules" },
+      components: [
+        { id: "api", label: "API", type: "backend" },
+        { id: "store", label: "Store", type: "database" },
+      ],
+      connections: [{ from: "store", to: "api", label: "notifies" }],
+    };
+    send({ type: "load", doc, file: "/r/rules.json" });
+    send({ type: "violations", arrows: [{ from: "api", to: "store", label: "api-not-store" }, { from: "api", to: "gone", label: "x" }] });
+    await vi.waitFor(() => expect(document.querySelectorAll(".edge.edge--violation").length).toBe(1));
+    const labels = [...document.querySelectorAll(".edge-label")].map((label) => [label.textContent, label.classList.contains("edge--violation")]);
+    expect(labels).toEqual([["notifies", false], ["api-not-store", true]]);
+    const contexts = [...document.querySelectorAll(".edge")].map((edge) => JSON.parse(edge.getAttribute("data-vscode-context")!).webviewSection);
+    expect(contexts).toEqual(["arrow", "ghost"]);
+    send({ type: "violations", arrows: [] });
+    await vi.waitFor(() => expect(document.querySelectorAll(".edge").length).toBe(1));
+  });
+});

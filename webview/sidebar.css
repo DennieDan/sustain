@@ -441,3 +441,26 @@ select.header__folder,
   color: var(--vscode-textLink-activeForeground);
   text-decoration: underline;
 }
+
+/* Rules (ARC-02) */
+
+.rules__list {
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.rule {
+  padding: 2px 0;
+}
+
+.rule--broken .rule__id {
+  color: var(--vscode-errorForeground);
+}
+
+.rule__reason,
+.rules__empty {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}

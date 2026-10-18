@@ -2,22 +2,20 @@
 // the sidebar's Review section, and the map shows the overlay, stale badges and the new box
 // candidates as dashed ghost boxes, which are never written. Each candidate offers Show files,
 // Add to map (a refresh limited to its folder) and Ignore (a config change shown as a diff first).
-import { readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { rangeOf } from "../model/changes";
 import { mainMap, runCheck, type CheckReport } from "../model/check";
-import { assertWritable } from "../model/confine";
-import { CONFIG_FILE, readConfig, withIgnored, type SustainConfig } from "../model/config";
+import { CONFIG_FILE, withIgnored } from "../model/config";
 import { defaultBranch } from "../model/git";
 import type { ReviewView } from "../model/messages";
 import { ARCHIFY_DIR, CANDIDATE_FILE } from "../model/runFolder";
 import { chosenAgent, foundAgents } from "./generate";
 import { ArchitecturePanel } from "./panel";
+import { configFile, configText, confirmWrite } from "./previewWrite";
 import { refreshArchitectureCommand } from "./refresh";
 import type { Runs } from "./runs";
 
-const PREVIEW_SCHEME = "sustain-preview";
 
 const SCOPES = [
   { label: "Uncommitted changes", detail: "The working tree against HEAD", scope: "uncommitted" },
@@ -30,18 +28,14 @@ export class Review implements vscode.Disposable {
   /** The scope of the last run, so Ignore can run it again. */
   private lastScope: { scope: string; base: string; head: string | undefined } | null = null;
   private error: string | null = null;
-  private readonly previews = new Map<string, string>();
   private readonly changed = new vscode.EventEmitter<void>();
-  private readonly provider: vscode.Disposable;
 
   readonly onDidChange = this.changed.event;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly runs: Runs,
-  ) {
-    this.provider = vscode.workspace.registerTextDocumentContentProvider(PREVIEW_SCHEME, { provideTextDocumentContent: (uri) => this.previews.get(uri.path) ?? "" });
-  }
+  ) {}
 
   view(root: string | null): ReviewView | null {
     if (this.error !== null) return { scope: "", error: this.error, counts: null, candidates: [] };
@@ -148,33 +142,19 @@ export class Review implements vscode.Disposable {
   async ignore(dir: string): Promise<void> {
     if (!this.candidate(dir) || !this.result) return;
     const root = this.result.root;
-    const path = join(root, CONFIG_FILE);
-    let before = "";
-    let config: SustainConfig = {};
-    try {
-      before = readFileSync(path, "utf8");
-      const read = readConfig(JSON.parse(before));
-      if (!read.ok) {
-        void vscode.window.showErrorMessage(`${CONFIG_FILE}: ${read.errors.join("; ")}`);
-        return;
-      }
-      config = read.config;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        void vscode.window.showErrorMessage(`${CONFIG_FILE} is not valid JSON: ${(error as Error).message}`);
-        return;
-      }
-    }
-    const after = `${JSON.stringify(withIgnored(config, dir), null, 2)}\n`;
-    const key = `/${Date.now()}`;
-    this.previews.set(`${key}/before`, before);
-    this.previews.set(`${key}/after`, after);
-    await vscode.commands.executeCommand("vscode.diff", vscode.Uri.from({ scheme: PREVIEW_SCHEME, path: `${key}/before` }), vscode.Uri.from({ scheme: PREVIEW_SCHEME, path: `${key}/after` }), `${CONFIG_FILE}: ignore ${dir}/`);
-    const choice = await vscode.window.showWarningMessage(`Ignore ${dir}/ in ${CONFIG_FILE}?`, { modal: true, detail: "Checks will leave its files out of the uncovered changes and new box candidates." }, "Ignore");
-    if (choice !== "Ignore") return;
-    assertWritable(root, path);
-    writeFileSync(path, after);
-    if (this.lastScope) await this.check(root, this.lastScope.scope, this.lastScope.base, this.lastScope.head);
+    const file = configFile(root);
+    if (!file.ok) return;
+    const written = await confirmWrite({
+      root,
+      path: file.path,
+      before: file.text,
+      after: configText(withIgnored(file.config, dir)),
+      title: `${CONFIG_FILE}: ignore ${dir}/`,
+      question: `Ignore ${dir}/ in ${CONFIG_FILE}?`,
+      detail: "Checks will leave its files out of the uncovered changes and new box candidates.",
+      verb: "Ignore",
+    });
+    if (written && this.lastScope) await this.check(root, this.lastScope.scope, this.lastScope.base, this.lastScope.head);
   }
 
   /** The palette command: the sidebar's folder, else the first workspace folder. */
@@ -191,7 +171,6 @@ export class Review implements vscode.Disposable {
   }
 
   dispose(): void {
-    this.provider.dispose();
     this.changed.dispose();
   }
 }
