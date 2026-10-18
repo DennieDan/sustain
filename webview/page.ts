@@ -4,6 +4,7 @@
 import { availableTargets, openLink, TARGET_LABELS, type LinkContext, type OpenTarget } from "../src/model/openLinks";
 import type { PageData } from "../src/model/page";
 import { readDiagram } from "../src/model/tolerant";
+import type { SourceRef } from "../src/model/types";
 import { useHost } from "./bridge";
 import { standaloneHost } from "./hosts/standalone";
 import { startViewer } from "./viewer";
@@ -56,9 +57,10 @@ bar.append(label, note);
 
 const read = readDiagram(data.doc);
 const components = read.ok ? read.diagram.components : [];
+// SKL-02: a tour's stops open their citations like a box's.
+const tour = data.messages?.find((message) => message.type === "tour")?.stops ?? [];
 
-function open(componentId: string, index: number): void {
-  const source = components.find((component) => component.id === componentId)?.sources[index];
+function open(source: SourceRef | undefined): void {
   const link = source === undefined ? null : openLink(target, source, context);
   if (link === null) {
     note.textContent = "This citation cannot be opened here.";
@@ -78,7 +80,8 @@ function open(componentId: string, index: number): void {
 useHost(
   standaloneHost({
     post: (message) => {
-      if (message.type === "openSource") open(message.componentId, message.index);
+      if (message.type === "openSource") open(components.find((component) => component.id === message.componentId)?.sources[message.index]);
+      if (message.type === "openTourCode") open(tour[message.index]?.citation);
     },
     messages: [{ type: "load", doc: data.doc, file: data.title }, ...(data.messages ?? [])],
   }),

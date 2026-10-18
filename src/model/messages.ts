@@ -9,6 +9,7 @@ import type { Grade } from "./practice";
 import type { Check, CheckId } from "./preflight";
 import type { RunPhase } from "./runRecord";
 import type { Freshness } from "./staleness";
+import type { TourStop } from "./tour";
 
 /**
  * Host → architecture webview. `doc` is the parsed diagram JSON; `file` its absolute path. An
@@ -32,7 +33,11 @@ export type HostMessage =
   /** ARC-01: imports that break the rules, as red arrows between the boxes, labelled with the rules. */
   | { type: "violations"; arrows: { from: string; to: string; label: string }[] }
   /** ACC-03: doubtful boxes and unbacked arrows, and whether the map's Checks are shown. */
-  | { type: "uncertainty"; boxes: Record<string, string>; edges: number[]; shown: boolean };
+  | { type: "uncertainty"; boxes: Record<string, string>; edges: number[]; shown: boolean }
+  /** SKL-02: the shown map's tour, or `null` when it has none. */
+  | { type: "tour"; stops: TourStop[] | null }
+  /** SKL-02: play the tour from its first stop. */
+  | { type: "playTour" };
 
 /** A new box candidate on the map (PRC-02). */
 export interface Ghost {
@@ -65,7 +70,10 @@ export type WebviewMessage =
   | { type: "clearChanges" }
   /** FRS-07: the compare bar's Clear. */
   | { type: "clearCompare" }
-  | { type: "refresh" };
+  | { type: "refresh" }
+  /** SKL-02: the tour showed stop `index`, or its citation was clicked. */
+  | { type: "tourStop"; index: number }
+  | { type: "openTourCode"; index: number };
 
 /** What the session webview renders — public `session.json` fields plus the leaderboard. */
 export interface SessionView {
@@ -290,4 +298,5 @@ export type HomeWebviewMessage =
   | { type: "practiceStart"; scope: "branch" | "uncommitted" | "box"; confirmed?: boolean }
   | { type: "practiceAnswer"; index: number; answer: string }
   | { type: "practiceCancel" }
-  | { type: "practiceClear" };
+  | { type: "practiceClear" }
+  | { type: "createTour"; file: string };

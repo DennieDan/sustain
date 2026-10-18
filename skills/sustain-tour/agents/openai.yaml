@@ -1,0 +1,5 @@
+interface:
+  display_name: "Sustain Tour"
+  short_description: "Write a guided tour of a Sustain architecture diagram"
+policy:
+  allow_implicit_invocation: false

@@ -193,6 +193,17 @@
         "category": "Sustain"
       },
       {
+        "command": "sustain.playTour",
+        "title": "Tour",
+        "category": "Sustain",
+        "icon": "$(milestone)"
+      },
+      {
+        "command": "sustain.createTour",
+        "title": "Create Tour",
+        "category": "Sustain"
+      },
+      {
         "command": "sustain.forbidArrow",
         "title": "Forbid This Dependency",
         "category": "Sustain"
@@ -395,9 +406,19 @@
           "group": "navigation@6"
         },
         {
+          "command": "sustain.playTour",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "navigation@7"
+        },
+        {
           "command": "sustain.writeAgentNotes",
           "when": "activeWebviewPanelId == 'sustain.architecture'",
           "group": "z_sustain@1"
+        },
+        {
+          "command": "sustain.createTour",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "z_sustain@2"
         },
         {
           "command": "sustain.compareMaps",

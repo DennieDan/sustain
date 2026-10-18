@@ -3,6 +3,7 @@ import type { CheckReport } from "../model/check";
 import type { MapDiff } from "../model/diff";
 import type { ChangeOverlay, Ghost, HomeState, HomeWebviewMessage, RunCard, SessionWebviewMessage, WebviewMessage } from "../model/messages";
 import type { MapFreshness } from "../model/staleness";
+import type { TourStop } from "../model/tour";
 import { Ask } from "./ask";
 import { Practice } from "./practice";
 import { showChangesCommand } from "./changes";
@@ -12,6 +13,7 @@ import { writeAgentNotesCommand } from "./agentNotes";
 import { compareMapsCommand } from "./compare";
 import { auditMapCommand } from "./audit";
 import { flagBoxCommand } from "./feedback";
+import { createTourCommand, playTourCommand } from "./tour";
 import { registerPreviews } from "./previewWrite";
 import { Review } from "./review";
 import { RulesService } from "./rules";
@@ -44,6 +46,8 @@ export interface TestHook {
   /** The comparison on the shown map (FRS-07, PRC-03). */
   panelCompare(): { against: string; diff: MapDiff } | null | undefined;
   panelGhosts(): Ghost[] | undefined;
+  /** The shown map's tour (SKL-02). */
+  panelTour(): TourStop[] | null | undefined;
   reviewReport(): CheckReport | null;
   /** Delivers `message` as if the webview had posted it; resolves when it has been handled. */
   postFromWebview(message: WebviewMessage): Promise<void>;
@@ -130,6 +134,8 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.reviewChanges", () => review.command(home.root())),
     vscode.commands.registerCommand("sustain.refreshBox", (box?: { componentId?: unknown }) => refreshBoxCommand(context, runs, box)),
     vscode.commands.registerCommand("sustain.checkUnderstanding", (box?: { componentId?: unknown }) => practice.command(home.root(), box)),
+    vscode.commands.registerCommand("sustain.playTour", () => playTourCommand(context, runs)),
+    vscode.commands.registerCommand("sustain.createTour", () => createTourCommand(context, runs)),
   );
   return {
     panelState: () => ({ file: ArchitecturePanel.current?.file, open: ArchitecturePanel.current !== undefined }),
@@ -138,6 +144,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     panelChanges: () => ArchitecturePanel.current?.changeOverlay,
     panelCompare: () => ArchitecturePanel.current?.comparison,
     panelGhosts: () => ArchitecturePanel.current?.ghostBoxes,
+    panelTour: () => ArchitecturePanel.current?.tourStops,
     reviewReport: () => review.report,
     postFromWebview: async (message) => ArchitecturePanel.current?.handleMessage(message),
     sessionPanelState: () => ({ open: SessionPanel.current !== undefined }),

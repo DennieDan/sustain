@@ -12,6 +12,7 @@ import { onMessage, post } from "./bridge";
 import { NodeClicks } from "./click";
 import { renderScene } from "./render";
 import { TooltipController } from "./tooltip";
+import { TourPlayer } from "./tour";
 import { ViewportController } from "./viewport";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -146,7 +147,14 @@ export function startViewer(mount: HTMLElement = document.body): void {
     row.textContent = text!;
     legend.append(row);
   }
-  app.append(svg, toolbar, highlightBar, freshnessBar, changesBar, compareBar, emptyState, tooltipElement, legend);
+  // SKL-02: the tour's start button and the card of the stop it shows.
+  const tour = new TourPlayer(
+    (message) => post(message),
+    (id) => {
+      for (const node of content.querySelectorAll(".node")) node.classList.toggle("node--tour", id !== null && node.getAttribute("data-id") === id);
+    },
+  );
+  app.append(svg, toolbar, tour.start, highlightBar, freshnessBar, changesBar, compareBar, emptyState, tooltipElement, legend, tour.card);
   mount.append(app);
 
   const viewport = new ViewportController(svg, content, toolbar, window);
@@ -380,6 +388,7 @@ export function startViewer(mount: HTMLElement = document.body): void {
     applyHighlight();
     applyFreshness();
     applyChanges();
+    tour.reapply();
     tooltip.setDiagram(diagram);
     viewport.bounds = scene.bounds;
     if (file !== shownFile) viewport.fit();
@@ -387,6 +396,14 @@ export function startViewer(mount: HTMLElement = document.body): void {
   }
 
   onMessage((message: HostMessage) => {
+    if (message.type === "tour") {
+      tour.setTour(message.stops);
+      return;
+    }
+    if (message.type === "playTour") {
+      tour.play();
+      return;
+    }
     if (message.type === "highlight") {
       highlight = { ids: message.ids, file: message.file, follow: message.follow };
       applyHighlight();
@@ -443,6 +460,7 @@ export function startViewer(mount: HTMLElement = document.body): void {
     const current = ++generation;
     if (message.type === "empty") {
       lastLoad = null;
+      tour.setTour(null);
       showEmpty(message.message, message.action);
       return;
     }

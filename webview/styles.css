@@ -580,3 +580,80 @@ body {
 .tooltip__source-label {
   color: var(--sustain-muted);
 }
+
+/* Tours (SKL-02): the stop's box outlined, the start button under the toolbar, and the stop's card */
+
+.node--tour .node__box {
+  stroke: var(--sustain-purple);
+  stroke-width: 3px;
+}
+
+.tour__start {
+  position: absolute;
+  top: 44px;
+  right: 8px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.tour {
+  position: absolute;
+  left: 8px;
+  bottom: 48px;
+  max-width: min(360px, calc(100% - 32px));
+  max-height: 60%;
+  overflow: auto;
+  padding: 8px 12px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+  overflow-wrap: anywhere;
+}
+
+.tour[hidden],
+.tour__start[hidden],
+.app--empty .tour,
+.app--empty .tour__start {
+  display: none;
+}
+
+.tour__step {
+  color: var(--sustain-muted);
+}
+
+.tour__title {
+  margin: 4px 0;
+  font-size: 1.1em;
+}
+
+.tour__explanation,
+.tour__question,
+.tour__answer {
+  margin: 6px 0;
+}
+
+.tour__answer {
+  padding: 4px 8px;
+  border-left: 3px solid var(--sustain-purple);
+}
+
+.tour__nav {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.tour__code {
+  padding: 0;
+  font-family: var(--sustain-mono-font-family, monospace);
+  color: var(--sustain-link);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.tour__code:hover {
+  text-decoration: underline;
+}

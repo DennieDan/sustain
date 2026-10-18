@@ -20,7 +20,7 @@ export interface Upload {
   branch: string;
   kind: "map" | "check";
   map?: unknown;
-  sidecars?: { run?: unknown; fingerprints?: unknown; evidence?: unknown };
+  sidecars?: { run?: unknown; fingerprints?: unknown; evidence?: unknown; tour?: unknown };
   check?: unknown;
   meta: { run?: string; focus?: string; agent?: string; pull?: number; defaultBranch?: string; [key: string]: unknown };
 }
@@ -62,7 +62,7 @@ export interface MapPayloadInput {
   run: string;
   map: unknown;
   record: { focus?: string; agent?: string; tokens?: unknown; costUsd?: number; skillVersion?: string } | null;
-  sidecars: { run?: unknown; fingerprints?: unknown; evidence?: unknown };
+  sidecars: { run?: unknown; fingerprints?: unknown; evidence?: unknown; tour?: unknown };
   defaultBranch?: string;
 }
 

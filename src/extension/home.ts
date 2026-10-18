@@ -25,6 +25,7 @@ import { installSkill } from "./install";
 import { skillStatus } from "./integrity";
 import { ArchitecturePanel } from "./panel";
 import { exportPageCommand } from "./exportPage";
+import { createTourCommand } from "./tour";
 import { refreshArchitectureCommand } from "./refresh";
 import type { Review } from "./review";
 import type { Runs } from "./runs";
@@ -340,6 +341,9 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         return;
       case "practiceClear":
         if (root !== null) await this.practice.clear(root);
+        return;
+      case "createTour":
+        if (root !== null && this.isCandidate(root, message.file)) await createTourCommand(this.context, this.runs, message.file);
         return;
     }
   }

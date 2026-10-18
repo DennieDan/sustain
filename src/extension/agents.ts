@@ -22,13 +22,14 @@ export function agentLaunchArgs(prompt: string): string[] {
 }
 
 /** The skills a run launches (FR-GEN-01, FRS-05). */
-export type SkillName = "sustain-architecture" | "sustain-refresh" | "sustain-audit";
+export type SkillName = "sustain-architecture" | "sustain-refresh" | "sustain-audit" | "sustain-tour";
 
 /** The scripts each skill runs, which its Bash rules name exactly. */
 export const SKILL_SCRIPTS: Readonly<Record<SkillName, readonly string[]>> = {
   "sustain-architecture": ["repo-facts.mjs", "validate.mjs", "render-html.mjs"],
   "sustain-refresh": ["refresh-facts.mjs", "validate.mjs", "render-html.mjs"],
   "sustain-audit": ["audit-record.mjs"],
+  "sustain-tour": ["tour-record.mjs"],
 };
 
 export interface HeadlessOptions {

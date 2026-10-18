@@ -79,14 +79,14 @@ Every command is also in the Command Palette under "Sustain".
 | Sidebar | The folder and its map status, the composer (focus, agent, run mode and Generate), the live run, your maps, Review changes, the setup checklist, Practice, learning sessions and Ask |
 | Sidebar title bar | Refresh and Check Setup |
 | Editor title, any file | Show in Map |
-| Editor title, map | Refresh Architecture, Show Changes on Diagram and Export Page |
+| Editor title, map | Refresh Architecture, Show Changes on Diagram, Export Page, Audit Map, Show Hotspots and Tour, with Compare With…, Write Architecture Notes for Agents and Create Tour in its menu |
 | Status bar | Sustain's state, the time of a running generation or the number of changed boxes. A click opens the sidebar. |
 | Explorer right-click | Map This Folder with Sustain, and Show in Architecture Map |
 | Box right-click | Open Code, Refresh This Box, This Box Is Wrong…, Check My Understanding, Only Allow Imports From… and Route Dependencies Through… |
 | Arrow right-click | Forbid This Dependency |
-| Maps list | Open, Refresh, Export page and Delete on each map |
+| Maps list | Open, Refresh, Export page, Create tour and Delete on each map |
 | Pull request | The Sustain check and its comment |
-| Sustain Cloud | Map pages, pull request pages, the docs and a gallery of public maps |
+| Sustain Cloud | Map pages with their tours, pull request pages, the docs and a gallery of public maps |
 
 ## Using the map
 
@@ -98,6 +98,7 @@ Every command is also in the Command Palette under "Sustain".
 - **Refresh Architecture** asks your agent to update only the boxes whose code changed.
 - **Export Page** writes the map as one HTML file that opens anywhere.
 - **Ask** in the sidebar answers questions about the map, with links to the lines it cites.
+- **Tour** in the map's title bar plays the map's tour. Each stop marks a box, opens its code beside the map, explains it and asks a question, and **Show answer** gives the answer. **Create tour** in the maps list asks your agent to write one.
 - **Audit Map** asks your agent to check each box against its cited code. Doubtful boxes are drawn dotted, and arrows with no import evidence grey and dashed. **Hide Checks** in the map's title bar hides them.
 - **This Box Is Wrong…** on a box saves your note beside the map and offers to refresh that box.
 - **Health** at the top of the sidebar says whether boxes changed since the map, how many changed lines no box covers, whether any import breaks a rule, and which box changes most. Each line opens its view.
@@ -116,6 +117,7 @@ Each map lives in its own run folder in `.archify/`, named after its focus and t
 - `fingerprints.json` holds hashes of the cited code. Sustain uses them to find the boxes that changed.
 - `run.json` records how the map was made, and `evidence.json` what the validator checked.
 - `audit.json` holds the audit's verdict on each box, and `feedback.json` your notes on boxes that are wrong.
+- `tour.json` holds the map's tour. Sustain Cloud plays it on the map's page.
 - `draft.json` and the `.html` page stay out of commits. Sustain lists them in `.git/info/exclude`.
 
 Name the map that checks compare with in `sustain.config.json` at the repository root.
@@ -134,7 +136,7 @@ Sustain makes no AI calls of its own. Your agent does the work, on your account.
 - Before every run, Sustain states an estimate under Generate, in the confirmation and on the run card, such as "About 180k–260k tokens (about $0.50–$0.80 at API prices; on a subscription it uses part of your plan's limit)". The skill states it too. Runs above `sustain.confirmAboveTokens`, 300,000 tokens by default, need a second click.
 - A run in the sidebar shows its elapsed time and tokens as it goes, and the final tokens and cost when the agent reports them. `run.json` keeps the figures.
 - Refresh reads only the code that changed since the map was made.
-- Ask spends tokens on each question, and Practice on its questions and on each grade.
+- Ask spends tokens on each question, Practice on its questions and on each grade, and Create tour once per tour.
 - Viewing a map, the freshness badges, Show Changes, Review changes, the diagram page and the pull request check spend no tokens.
 
 ## What it touches on your machine
@@ -149,7 +151,7 @@ Sustain makes no AI calls of its own. Your agent does the work, on your account.
 ## How to remove it
 
 1. Uninstall Sustain from the Extensions view.
-2. Delete `sustain-architecture`, `sustain-refresh`, `sustain-audit` and `sustain-bugfix` from `~/.agents/skills/` and `~/.claude/skills/`.
+2. Delete `sustain-architecture`, `sustain-refresh`, `sustain-audit`, `sustain-tour` and `sustain-bugfix` from `~/.agents/skills/` and `~/.claude/skills/`.
 3. In each repository you mapped, delete `.archify/` and `.sustain/` if you no longer want them, and the three Sustain lines from `.git/info/exclude`.
 
 To leave Sustain Cloud, choose **Delete my account** in its settings. Your account and every repository space it owns are removed at once.

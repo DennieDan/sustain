@@ -1,9 +1,10 @@
 // CLD-03 and CLD-04: what the viewer gets on a cloud page. Boxes open GitHub at the map's commit;
 // freshness comes from the latest check, and a pull request page adds its overlay and candidates.
-// FRS-07: a map page can also compare its map with an earlier one.
+// FRS-07: a map page can also compare its map with an earlier one, and SKL-02 plays its tour.
 import type { CheckReport } from "../../../src/model/check";
 import { diffMaps } from "../../../src/model/diff";
 import { readDiagram } from "../../../src/model/tolerant";
+import { readTour } from "../../../src/model/tour";
 import { freshnessHeader } from "../../../src/model/home";
 import type { HostMessage } from "../../../src/model/messages";
 import type { PageData } from "../../../src/model/page";
@@ -11,6 +12,7 @@ import type { Repository, UploadRow } from "./store";
 
 interface MapPayload {
   map?: { meta?: { title?: string }; components?: unknown[] };
+  sidecars?: { tour?: unknown };
   check?: CheckReport;
 }
 
@@ -48,6 +50,8 @@ export function mapPageData(repo: Repository, map: UploadRow, check: UploadRow |
   const shown = readDiagram(doc);
   const older = against === undefined ? null : readDiagram(mapOf(against) ?? {});
   if (shown.ok && older !== null && older.ok) messages.push({ type: "compare", compare: { against: mapName(against!), diff: diffMaps(older.diagram, shown.diagram) } });
+  const tour = readTour(payload(map).sidecars?.tour);
+  if (tour !== null) messages.push({ type: "tour", stops: tour });
   return {
     title: doc.meta?.title ?? `${repo.owner}/${repo.name}`,
     doc,

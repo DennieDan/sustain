@@ -9,6 +9,7 @@ import type { ChangeOverlay, Ghost, GhostArrow, HostMessage, WebviewMessage } fr
 import { AUDIT_FILE } from "../model/audit";
 import type { MapDiff } from "../model/diff";
 import { EVIDENCE_FILE } from "../model/evidence";
+import { readTour, TOUR_FILE, type TourStop } from "../model/tour";
 import type { MapFreshness } from "../model/staleness";
 import { uncertainty } from "../model/uncertainty";
 import { hotspotMarks, hotspotsFor } from "./hotspots";
@@ -69,8 +70,10 @@ export class ArchitecturePanel {
   private ghostArrows: GhostArrow[] = [];
   /** FRS-07: the shown map compared with another, until cleared or another file is shown. */
   private compare: { against: string; diff: MapDiff } | null = null;
-  /** Watches the shown map's evidence.json and audit.json (ACC-03). */
+  /** Watches the shown map's evidence.json and audit.json (ACC-03), and its tour.json (SKL-02). */
   private sidecars: { dir: string; watcher: vscode.FileSystemWatcher } | undefined;
+  /** SKL-02: the shown map's tour, or `null` when it has none. */
+  private tour: TourStop[] | null = null;
   private readonly disposables: vscode.Disposable[] = [];
 
   private static rules: RulesService | undefined;
@@ -284,6 +287,7 @@ export class ArchitecturePanel {
     this.sendFreshness();
     this.sendChanges();
     this.sendUncertainty();
+    this.sendTour();
     this.sendViolations();
     this.sendHotspots();
     this.sendCompare();
@@ -297,8 +301,13 @@ export class ArchitecturePanel {
       this.sidecars?.watcher.dispose();
       this.sidecars = undefined;
       if (dir !== null) {
-        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(dir), `{${EVIDENCE_FILE},${AUDIT_FILE}}`));
-        for (const event of [watcher.onDidCreate, watcher.onDidChange, watcher.onDidDelete]) event(() => this.sendUncertainty());
+        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(dir), `{${EVIDENCE_FILE},${AUDIT_FILE},${TOUR_FILE}}`));
+        for (const event of [watcher.onDidCreate, watcher.onDidChange, watcher.onDidDelete]) {
+          event(() => {
+            this.sendUncertainty();
+            this.sendTour();
+          });
+        }
         this.sidecars = { dir, watcher };
       }
     }
@@ -312,6 +321,39 @@ export class ArchitecturePanel {
     const { boxes, edges } = uncertainty(read(EVIDENCE_FILE), read(AUDIT_FILE));
     const message: HostMessage = { type: "uncertainty", boxes, edges, shown: ArchitecturePanel.checksShown };
     void this.panel.webview.postMessage(message);
+  }
+
+  /** SKL-02: reads the shown map's tour.json and sends its stops, or `null` without a valid one. */
+  sendTour(): void {
+    let stops: TourStop[] | null = null;
+    if (this.shown.kind === "diagram" && this.file !== "") {
+      try {
+        stops = readTour(JSON.parse(readFileSync(join(dirname(this.file), TOUR_FILE), "utf8")));
+      } catch {
+        stops = null;
+      }
+    }
+    this.tour = stops;
+    const message: HostMessage = { type: "tour", stops };
+    void this.panel.webview.postMessage(message);
+  }
+
+  /** The shown map's tour, for the Tour command and the tests. */
+  get tourStops(): TourStop[] | null {
+    return this.tour;
+  }
+
+  /** Plays the shown map's tour from its first stop. */
+  playTour(): void {
+    const message: HostMessage = { type: "playTour" };
+    void this.panel.webview.postMessage(message);
+  }
+
+  /** Opens stop `index`'s cited lines beside the map (SKL-02). */
+  private async openTourStop(index: number): Promise<void> {
+    const stop = Number.isInteger(index) ? this.tour?.[index] : undefined;
+    if (stop === undefined) return;
+    await openSourceRef(this.root, stop.citation, this.panel.viewColumn);
   }
 
   /** Computes the shown map's freshness and sends its badges and header. */
@@ -404,6 +446,10 @@ export class ArchitecturePanel {
         return;
       case "openSource":
         await this.openBox(message.componentId, message.index);
+        return;
+      case "tourStop":
+      case "openTourCode":
+        await this.openTourStop(message.index);
         return;
     }
   }

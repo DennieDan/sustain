@@ -9314,7 +9314,8 @@ var upload_schema_default = {
       properties: {
         run: { $ref: "#/$defs/run" },
         fingerprints: { $ref: "#/$defs/fingerprints" },
-        evidence: { $ref: "#/$defs/evidence" }
+        evidence: { $ref: "#/$defs/evidence" },
+        tour: { $ref: "#/$defs/tour" }
       }
     },
     check: { $ref: "#/$defs/check" },
@@ -9443,6 +9444,42 @@ var upload_schema_default = {
               between: { type: "array", minItems: 2, maxItems: 2, items: { $ref: "#/$defs/shortText" } },
               links: { $ref: "#/$defs/count" },
               message: { type: "string", maxLength: 700 }
+            }
+          }
+        }
+      }
+    },
+    tour: {
+      type: "object",
+      additionalProperties: false,
+      required: ["schema", "createdAt", "stops"],
+      properties: {
+        schema: { const: 1 },
+        createdAt: { type: "string", maxLength: 40 },
+        stops: {
+          type: "array",
+          minItems: 4,
+          maxItems: 12,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["component", "title", "explanation", "question", "answer", "citation"],
+            properties: {
+              component: { $ref: "#/$defs/shortText" },
+              title: { type: "string", minLength: 1, maxLength: 100 },
+              explanation: { type: "string", minLength: 1, maxLength: 400 },
+              question: { type: "string", minLength: 1, maxLength: 300 },
+              answer: { type: "string", minLength: 1, maxLength: 400 },
+              citation: {
+                type: "object",
+                additionalProperties: false,
+                required: ["path", "line"],
+                properties: {
+                  path: { $ref: "#/$defs/path" },
+                  line: { type: "integer", minimum: 1 },
+                  end_line: { type: "integer", minimum: 1 }
+                }
+              }
             }
           }
         }
@@ -9634,7 +9671,8 @@ var import_node_path8 = require("node:path");
 var SKILL_SCRIPTS = {
   "sustain-architecture": ["repo-facts.mjs", "validate.mjs", "render-html.mjs"],
   "sustain-refresh": ["refresh-facts.mjs", "validate.mjs", "render-html.mjs"],
-  "sustain-audit": ["audit-record.mjs"]
+  "sustain-audit": ["audit-record.mjs"],
+  "sustain-tour": ["tour-record.mjs"]
 };
 function headlessArgs(cli, prompt, options) {
   if (cli === "codex") return ["exec", "--json", "--sandbox", options.readOnly ? "read-only" : "workspace-write", prompt];

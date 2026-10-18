@@ -63,3 +63,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0057](0057-release-from-tags-to-github-and-the-stores.md) | Release from tags to GitHub and the stores | accepted | 2026-10-18 |
 | [0058](0058-the-action-updates-the-map-only-when-asked.md) | The Action updates the map only when asked | accepted | 2026-10-19 |
 | [0059](0059-explain-back-keeps-answer-keys-in-the-extension-host.md) | Explain-back keeps answer keys in the extension host | accepted | 2026-10-19 |
+| [0060](0060-tours-are-a-sidecar-the-viewer-plays.md) | Tours are a sidecar the viewer plays | accepted | 2026-10-19 |

@@ -5,10 +5,10 @@ import { expect, test } from "vitest";
 import { parseFrontMatter } from "../../../scripts/check-docs.mjs";
 import { repoRoot } from "../support/sourceScan";
 
-const SKILLS = ["sustain-architecture", "sustain-audit", "sustain-bugfix", "sustain-refresh"];
+const SKILLS = ["sustain-architecture", "sustain-audit", "sustain-bugfix", "sustain-refresh", "sustain-tour"];
 
 /** Scripts whose every argument is data the script validates. */
-const DATA_ONLY_SCRIPTS = /^Bash\(node \S+\/scripts\/(repo-facts|refresh-facts|validate|render-html|session|audit-record)\.mjs( \*)?\)$/;
+const DATA_ONLY_SCRIPTS = /^Bash\(node \S+\/scripts\/(repo-facts|refresh-facts|validate|render-html|session|audit-record|tour-record)\.mjs( \*)?\)$/;
 
 /** The `allowed-tools` entries that are edit tools or Bash rules reaching anything but a data-only script. */
 function unsafeRules(allowedTools: string): string[] {
@@ -16,7 +16,7 @@ function unsafeRules(allowedTools: string): string[] {
   return rules.filter((rule) => /^(Edit|Write|NotebookEdit|MultiEdit)\b/.test(rule) || (rule.startsWith("Bash") && !DATA_ONLY_SCRIPTS.test(rule)));
 }
 
-test.each(SKILLS)("SAF-02 ACC-05 %s pre-approves no edit tool and no open-ended Bash rule", (name) => {
+test.each(SKILLS)("SAF-02 ACC-05 SKL-02 %s pre-approves no edit tool and no open-ended Bash rule", (name) => {
   const fields = parseFrontMatter(readFileSync(join(repoRoot, "skills", name, "SKILL.md"), "utf8"))?.fields;
   expect(fields?.["allowed-tools"]).toBeDefined();
   expect(unsafeRules(fields!["allowed-tools"]!)).toEqual([]);

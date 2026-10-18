@@ -8,8 +8,8 @@ export default function PrivacyPage() {
       <h2>Maps, not code</h2>
       <p>
         Sustain Cloud stores architecture maps, never your code. It accepts only Archify maps, their sidecars (run records, fingerprints and evidence, which hold hashes,
-        not content), pull request check results and metadata: the repository, commit, branch, focus, agent and token counts. Every other field is refused, and so is anything
-        that looks like a secret.
+        not content, and tours, which hold the explanations and questions committed with the map), pull request check results and metadata: the repository, commit,
+        branch, focus, agent and token counts. Every other field is refused, and so is anything that looks like a secret.
       </p>
       <p>Your coding agent runs on your machine or your CI runner. Sustain never calls a language model and never reads your repository.</p>
       <h2>What is collected about you</h2>

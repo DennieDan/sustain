@@ -7,7 +7,7 @@ import { buildRelease, PLUGIN_SKILLS } from "../../scripts/release.mjs";
 import { repoRoot } from "./support/sourceScan";
 import { tempDir } from "./support/temp";
 
-test("RCH-02 ACC-05 build:release assembles the plugin with its manifests and the committed skills", () => {
+test("RCH-02 ACC-05 SKL-02 build:release assembles the plugin with its manifests and the committed skills", () => {
   const plugin = buildRelease(tempDir());
   const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as { version: string };
   const manifest = JSON.parse(readFileSync(join(plugin, ".claude-plugin/plugin.json"), "utf8"));
@@ -15,11 +15,12 @@ test("RCH-02 ACC-05 build:release assembles the plugin with its manifests and th
   expect(manifest.description).toMatch(/^Architecture maps/);
   const marketplace = JSON.parse(readFileSync(join(plugin, ".claude-plugin/marketplace.json"), "utf8"));
   expect(marketplace).toMatchObject({ name: "sustain", owner: { name: "Sustain" }, plugins: [{ name: "sustain", source: "./", version: pkg.version }] });
-  expect(PLUGIN_SKILLS).toEqual(["sustain-architecture", "sustain-refresh", "sustain-audit"]);
+  expect(PLUGIN_SKILLS).toEqual(["sustain-architecture", "sustain-refresh", "sustain-audit", "sustain-tour"]);
   const files: Record<string, string[]> = {
     "sustain-architecture": ["SKILL.md", "scripts/validate.mjs", "scripts/render-html.mjs", "references/archify-format.md"],
     "sustain-refresh": ["SKILL.md", "scripts/validate.mjs", "scripts/render-html.mjs", "references/archify-format.md"],
     "sustain-audit": ["SKILL.md", "agents/openai.yaml", "scripts/audit-record.mjs"],
+    "sustain-tour": ["SKILL.md", "agents/openai.yaml", "scripts/tour-record.mjs"],
   };
   for (const name of PLUGIN_SKILLS) {
     for (const file of files[name]!) {

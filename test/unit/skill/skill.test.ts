@@ -66,7 +66,7 @@ describe("FR-SKL-03 format reference", () => {
 });
 
 describe("SET-01 install anywhere", () => {
-  test.each(["sustain-architecture", "sustain-bugfix", "sustain-refresh"])("%s finds its scripts through its own folder, never a repository path", (name) => {
+  test.each(["sustain-architecture", "sustain-bugfix", "sustain-refresh", "sustain-tour"])("SKL-02 %s finds its scripts through its own folder, never a repository path", (name) => {
     const text = readFileSync(join(repoRoot, "skills", name, "SKILL.md"), "utf8");
     expect(text).not.toContain(".agents/skills/");
     expect(text).not.toContain(".claude/skills/");

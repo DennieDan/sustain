@@ -245,6 +245,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
       button("Open", "link", () => post({ type: "openMap", file: item.file })),
       button("Refresh", "link", () => post({ type: "refreshMap", file: item.file })),
       button("Export page", "link", () => post({ type: "exportMap", file: item.file })),
+      button("Create tour", "link", () => post({ type: "createTour", file: item.file })),
       button("Delete", "link link--danger", () => post({ type: "deleteMap", file: item.file })),
     );
     entry.append(open, el("div", "map__meta", meta.join(" · ")), actions);

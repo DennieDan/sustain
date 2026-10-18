@@ -219,7 +219,7 @@ export async function publish(args: CliArgs): Promise<CommandResult> {
     run: map.run,
     map: map.doc,
     record: readRunRecord(map.dir),
-    sidecars: { run: sidecar(map.dir, "run.json"), fingerprints: sidecar(map.dir, "fingerprints.json"), evidence: sidecar(map.dir, "evidence.json") },
+    sidecars: { run: sidecar(map.dir, "run.json"), fingerprints: sidecar(map.dir, "fingerprints.json"), evidence: sidecar(map.dir, "evidence.json"), tour: sidecar(map.dir, "tour.json") },
   });
   const issues = checkUpload(payload);
   if (issues.length > 0) {

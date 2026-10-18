@@ -158,7 +158,7 @@ export async function confirmAndLaunch(context: vscode.ExtensionContext, runs: R
   // The estimate alone asks only above the threshold (CST-03); every other note always asks (SET-03).
   if (notes.some((note) => note.kind !== "estimate" || note.confirm === true)) {
     const ask = notes.some((note) => note.kind === "repair") ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
-    const verb = task.skill === "sustain-refresh" ? "Refresh" : task.skill === "sustain-audit" ? "Audit" : "Generate";
+    const verb = task.skill === "sustain-refresh" ? "Refresh" : task.skill === "sustain-audit" ? "Audit" : task.skill === "sustain-tour" ? "Create Tour" : "Generate";
     const choice = await ask(`${verb} with ${agent.label}?`, { modal: true, detail: notes.map((note) => note.text).join("\n\n") }, verb);
     if (choice !== verb) return;
   }

@@ -416,3 +416,70 @@ describe("FRS-07 compare maps", () => {
     expect(document.querySelectorAll(".node--added, .edge--added").length).toBe(0);
   });
 });
+
+describe("SKL-02 tour player", () => {
+  const HOSTILE_TITLE = '<img src=x onerror="alert(1)">';
+  const STOPS = [
+    { component: "web", title: HOSTILE_TITLE, explanation: "The web box renders the page.", question: "What does web call?", answer: "The API, on its first line.", citation: { path: "web/src/main.ts", line: 1 } },
+    { component: "api", title: "The API", explanation: "It answers each request.", question: "What does it return?", answer: "JSON.", citation: { path: "api/a.ts", line: 3, end_line: 9 } },
+  ];
+  const card = (): HTMLElement => document.querySelector<HTMLElement>(".tour")!;
+  const press = (label: string): void => [...card().querySelectorAll("button")].find((node) => node.textContent === label)!.click();
+  const toured = (): string[] => [...document.querySelectorAll(".node--tour")].map((node) => node.getAttribute("data-id")!);
+
+  test("each stop highlights its box, asks the host to open its code, explains and asks, and shows the answer when asked", async () => {
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    const start = document.querySelector<HTMLButtonElement>(".tour__start")!;
+    expect(start.hidden).toBe(true);
+    send({ type: "tour", stops: STOPS });
+    expect(start.hidden).toBe(false);
+    posted.length = 0;
+    start.click();
+    expect(card().hidden).toBe(false);
+    expect([".tour__step", ".tour__title", ".tour__explanation", ".tour__question", ".tour__code"].map((selector) => card().querySelector(selector)!.textContent)).toEqual([
+      "Stop 1 of 2",
+      HOSTILE_TITLE,
+      "The web box renders the page.",
+      "Question: What does web call?",
+      "web/src/main.ts:1",
+    ]);
+    expect(card().querySelector("img")).toBeNull();
+    expect(toured()).toEqual(["web"]);
+    expect(posted).toEqual([{ type: "tourStop", index: 0 }]);
+    const answer = (): HTMLElement => card().querySelector<HTMLElement>(".tour__answer")!;
+    expect(answer().hidden).toBe(true);
+    press("Show answer");
+    expect(answer().hidden).toBe(false);
+    press("web/src/main.ts:1");
+    expect(posted.at(-1)).toEqual({ type: "openTourCode", index: 0 });
+
+    press("Next");
+    expect(card().querySelector(".tour__step")!.textContent).toBe("Stop 2 of 2");
+    expect(toured()).toEqual(["api"]);
+    expect(posted.at(-1)).toEqual({ type: "tourStop", index: 1 });
+    expect(answer().hidden).toBe(true);
+    const before = document.querySelector(".node");
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelector(".node")).not.toBe(before));
+    expect(toured()).toEqual(["api"]);
+    press("Back");
+    expect(toured()).toEqual(["web"]);
+    press("Next");
+    press("Finish");
+    expect(card().hidden).toBe(true);
+    expect(toured()).toEqual([]);
+  });
+
+  test("the title bar's Tour plays from the first stop, and a map without a tour ends it", async () => {
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    send({ type: "tour", stops: STOPS });
+    send({ type: "playTour" });
+    expect(card().querySelector(".tour__step")!.textContent).toBe("Stop 1 of 2");
+    send({ type: "tour", stops: null });
+    expect(card().hidden).toBe(true);
+    expect(document.querySelector<HTMLButtonElement>(".tour__start")!.hidden).toBe(true);
+    expect(toured()).toEqual([]);
+  });
+});

@@ -31,6 +31,7 @@ const SCRIPT_ENTRIES = {
   session: "src/agent/session.ts",
   "session-hook": "src/agent/session-hook.ts",
   "audit-record": "src/agent/audit-record.ts",
+  "tour-record": "src/agent/tour-record.ts",
 };
 
 /**
@@ -152,6 +153,7 @@ export async function buildSkillsAndCli(out) {
   cpSync(join(root, "skills/sustain-architecture/references"), join(out, "skills/sustain-refresh/references"), { recursive: true });
   results.push(await buildScripts(join(out, "skills/sustain-refresh/scripts"), ["refresh-facts", "validate", "render-html"]));
   results.push(await buildScripts(join(out, "skills/sustain-audit/scripts"), ["audit-record"]));
+  results.push(await buildScripts(join(out, "skills/sustain-tour/scripts"), ["tour-record"]));
   writeSkillHashes(out);
   const page = await buildPage();
   results.push(
