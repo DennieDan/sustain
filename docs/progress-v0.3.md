@@ -418,6 +418,32 @@ Done when: Evidence and audit verdicts show on the map; the scorer runs.
 
 ## I3 Architecture guardrails
 
+### I3 proposal (2026-10-19)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `src/model/evidence/*.ts` | ARC-01: every resolved import keeps the line of its first import statement | +40 |
+| `src/model/rules.ts`, `src/model/config.ts` | ARC-01: `rules` as `{id, kind, from, to?, via?, reason}` with box ids or `path:` globs; `forbid`, `only-via` and `isolated` checked against the imports; each violation names the rule, the importing file and line, and the imported file | +200 |
+| `src/extension/rules.ts`, `package.json` | ARC-01: diagnostics at each importing line in the Problems panel, severity from `sustain.rules.severity`, recomputed when a source file or the config is saved; red arrows labelled with the rule on the map | +150 |
+| `src/model/delta.ts`, `src/model/check.ts`, `src/model/deltaMarkdown.ts`, upload schema | ARC-01: PRC-01's `violation` category for violations the diff adds, and `--fail-on violation` | +80 |
+| `src/extension/rules.ts`, `webview/viewer.ts`, `webview/home.ts`, `package.json` | ARC-02: "Forbid this dependency" on an arrow; "Only allow imports from…" and "Route dependencies through…" on a box; the sidebar's Rules section with reasons and violation counts; "Suggest rules" for box pairs with no import link; a diff preview before every config write | +260 |
+| `src/model/hotspots.ts`, `src/extension/hotspots.ts`, `webview/viewer.ts`, `webview/home.ts` | ARC-03: commits, lines changed and distinct authors per box over `sustain.hotspots.days` (90); the map's Hotspots toggle colours boxes; the tooltip shows lines and author count; the sidebar lists the five most changed boxes | +220 |
+| `src/model/agentNotes.ts`, `src/extension/agentNotes.ts`, `package.json` | ARC-04: `Sustain: Write Architecture Notes for Agents` merges a managed block into `AGENTS.md`, and into `CLAUDE.md` when it exists without an `@AGENTS.md` import, after a diff preview | +160 |
+| `src/model/diff.ts`, `src/extension/compare.ts`, `webview/viewer.ts` | FRS-07, pulled forward from I6 for PRC-03: boxes and arrows added, removed and relabelled between two maps; "Compare with…" outlines added boxes and ghosts removed ones | +200 |
+| `src/extension/review.ts`, `webview/home.ts` | PRC-03: Review offers "Compare with base map" when the branch has a newer accepted map, and "Update map for this branch" runs the refresh with `--paths` set to every candidate and stale box | +90 |
+| `src/model/health.ts`, `src/extension/home.ts`, `webview/home.ts` | ARC-05: the sidebar's Health section with freshness, uncovered changed lines since the map, open violations and the top hotspot, each opening its view | +120 |
+| `action/src/refresh.ts`, `action/action.yml`, `action/src/main.ts` | PRC-05: `refresh: claude` or `refresh: codex`; with candidates or stale boxes, the refresh runs headless with CST-06's isolation and the new run folder is committed to the pull request branch; the comment adds the map's changes and the tokens; never on forks | +250 |
+
+Tests the I3 ACs call for:
+- each rule kind in each language; a violating import's diagnostic appearing and disappearing when fixed `[e2e]`;
+- the rule writes `[unit]`, the arrow and box menus and the Rules section `[dom]`, a rule written from the map `[e2e]`;
+- hotspots on a temporary git history, and the colouring `[dom]`;
+- the managed block merging idempotently with user text untouched, and the command `[e2e]`;
+- the map diff `[unit]` and its drawing `[dom]`;
+- Compare with base map and Update map for this branch `[e2e]`;
+- the Health section `[unit]` `[dom]`;
+- the refresh's decision, argv and fork refusal `[unit]`.
+
 Done when: Rule violations show on the map, in Problems and in PR checks.
 
 - [ ] **ARC-01 Architecture rules** `[unit]` `[e2e]`
@@ -427,6 +453,7 @@ Done when: Rule violations show on the map, in Problems and in PR checks.
 - [ ] **ARC-05 Architecture health** `[unit]` `[dom]`
 - [ ] **PRC-03 Branch maps** `[e2e]`
 - [ ] **PRC-05 Map update in CI** `[unit]` `[smoke]`
+- [ ] **FRS-07 Compare maps** `[unit]` `[dom]` (pulled forward from I6 for PRC-03)
 
 ## I4 Skill retention
 
