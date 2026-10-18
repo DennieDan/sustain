@@ -18,7 +18,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | I4 Skill retention | Closed pending owner (LRN-01 `[smoke]`) | `5b7a19c` |
 | I5 Cloud for teams | Waiting for the owner (CLD-12 hard stop, CLD-10 `[ci]`, CLD-07 Stripe products) | `f732167` |
 | I6 Polish and reach | Closed pending owner (VWR-02 `[ci]`, RCH-04 `[smoke]`) | `34d09df` |
-| I7 IntelliJ plugin | Not started | |
+| I7 IntelliJ plugin | In progress | |
 
 ## Waiting
 
@@ -43,6 +43,7 @@ Items only the owner can do, with exact steps.
 - CLD-07 billing (hard stop: creating Stripe products). In Stripe, create the Team product with a monthly per-seat price, enable the Customer Portal with plan changes and cancellation, and add a webhook endpoint `https://<domain>/api/stripe/webhook` for `checkout.session.completed`, `customer.subscription.updated` and `customer.subscription.deleted`. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (the endpoint's signing secret), `STRIPE_TEAM_PRICE` (the price's id) and `SUSTAIN_TEAM_PRICE_TEXT` (such as "$8 per seat a month") on the host. Then upgrade a test account in Stripe's test mode and confirm Settings shows Team.
 - CLD-10 `[ci]`: after the push, confirm the `cloud-image` job builds the image and its health check passes.
 - CLD-10 Postgres (install: a new npm dependency). The app runs on PGlite in the `/data` volume. Approve adding `pg@8` with `@types/pg` to `cloud/`, and `cloud/src/db/client.ts` then uses Postgres through Drizzle when `DATABASE_URL` is set, and `cloud/docker-compose.yml` gains a `postgres:17` service. This also covers the D5 deployment's driver step.
+- IDE-01 `[jvm]` (hard stop: installing toolchains). Approve installing, without sudo: Eclipse Temurin JDK 21 and JDK 25, from the adoptium.net tarballs into `~/.jdks`; the Gradle 9 wrapper in `intellij/`, which downloads Gradle itself; and the IntelliJ IDEA 2026.1 and 2026.2 distributions that the IntelliJ Platform Gradle Plugin 2.x downloads from JetBrains on the first build, about 1.5 GB each. Then the `intellij/` rows of the I7 proposal are built, and `./gradlew test verifyPlugin` joins the gates.
 - CLD-12 (hard stop: network access in shipped extension code). Reply with a go to let the extension send maps to Sustain Cloud when `sustain.cloud.enabled` is on. Nothing of CLD-12 is built until then. With the go, the maps list gains "Share to Sustain Cloud", which signs in through VS Code's GitHub authentication, previews the exact JSON, asks to confirm, and sends it through `src/cloud/client.ts`, the one file the no-network test then allows in the extension.
 - UI-06 `[smoke]`: ask one question per agent from the sidebar about a mapped repository. Confirm the answer cites `path:line`, the links open the lines, and a second Claude Code question resumes the session.
 
@@ -613,6 +614,23 @@ FRS-07 Compare maps was built in I3 for PRC-03, and is ticked there.
 - [x] **ENG-03 Spec traceability check** `[unit]` — 2026-10-19: `checkTraceability`, `specIds` and `checklistIds` in `scripts/check-docs.mjs`, run by `check:docs`. Tests: `checkDocs.test.ts` › ENG-03 (2: an ID on two checklist lines, one on none, and an undefined ID; the check run on a docs folder), and its existing check of the repository's own docs, which found FRS-07 on both the I3 and the I6 checklist and now passes.
 
 ## I7 IntelliJ plugin
+
+### I7 proposal (2026-10-19)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `webview/hosts/jcef.ts`, `webview/jcef.ts`, `esbuild.mjs` | IDE-01: the viewer's JCEF host. The viewer's messages go to Kotlin as JSON through `window.sustainPost`, Kotlin's messages arrive through `window.sustainReceive`, and `window.sustainDark` picks the light or dark palette. Built as `dist/jcef.js` | +50 |
+| `intellij/settings.gradle.kts`, `intellij/build.gradle.kts`, `intellij/gradle.properties`, `intellij/src/main/resources/META-INF/plugin.xml` | IDE-01: the Kotlin project on the IntelliJ Platform Gradle Plugin 2.x for IntelliJ IDEA 2026.2 (Java 25) and 2026.1 (Java 21), with the bundled "Web Browser (JCEF)" plugin as a dependency for 2026.2. The plugin packs `dist/jcef.js`, `dist/webview.css`, `dist/cli/` and `dist/skills/` | +120 |
+| `intellij/src/main/kotlin/…/MapPanel.kt`, `Bridge.kt` | The Map tab: a JCEF page with the viewer, its messages, and `OpenFileDescriptor(project, file, line - 1, 0).navigate(true)` on the UI thread. Without JCEF, the diagram page opens instead | +200 |
+| `intellij/src/main/kotlin/…/HomePanel.kt`, `SustainToolWindowFactory.kt` | The Home tab: the composer with Generate in the IDE terminal, the maps list, Review through `check` and Setup through `preflight` and `install` | +220 |
+| `intellij/src/main/kotlin/…/ShowInMapAction.kt` | "Show in Sustain Map" in the editor menu | +60 |
+| `intellij/src/main/kotlin/…/CoreCli.kt`, `AgentLaunch.kt` | `node <plugin>/core/cli/sustain.mjs <command> --root <root>`, and each agent's terminal command | +100 |
+| `intellij/src/test/kotlin/` | The bridge, argv and CLI-call tests | +150 |
+
+Tests the I7 AC calls for:
+- IDE-01: the JCEF host's bridge `[dom]`; the bridge, argv and CLI-call tests and `verifyPlugin` `[jvm]`; on AB3, generate, open, and click to open the cited lines `[smoke]`.
+
+The `intellij/` rows wait for a JDK and Gradle, which are not installed here (hard stop: installing toolchains, see Waiting). Kotlin that cannot be compiled or tested here is not written blind. The JCEF host is built now.
 
 Done when: The plugin opens cited lines on AB3.
 
