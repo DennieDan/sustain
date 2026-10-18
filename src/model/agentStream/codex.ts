@@ -49,9 +49,11 @@ export function codexParser(): StreamParser {
         }
         case "turn.completed": {
           const usage = record(event["usage"]);
-          total.input += count(usage["input_tokens"]);
-          total.cacheRead += count(usage["cached_input_tokens"]);
-          total.output += count(usage["output_tokens"]) + count(usage["reasoning_output_tokens"]);
+          // Codex's input count includes its cached input, and its output count includes reasoning.
+          const cached = count(usage["cached_input_tokens"]);
+          total.input += Math.max(0, count(usage["input_tokens"]) - cached);
+          total.cacheRead += cached;
+          total.output += count(usage["output_tokens"]);
           return { items: [], usage: { ...total } };
         }
         case "turn.failed":

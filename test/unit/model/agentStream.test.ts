@@ -72,8 +72,8 @@ describe("UI-02 Codex stream", () => {
     ]);
   });
 
-  test("turn usage adds cached and reasoning tokens to the total", () => {
-    expect(updates.at(-1)!.usage).toEqual({ input: 21000, output: 2200, cacheRead: 9000, cacheWrite: 0 });
+  test("turn usage counts cached input once, and reasoning inside the output", () => {
+    expect(updates.at(-1)!.usage).toEqual({ input: 12000, output: 1500, cacheRead: 9000, cacheWrite: 0 });
   });
 });
 
