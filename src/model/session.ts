@@ -17,6 +17,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseRunName } from "./runFolder";
+import { assertNotLink } from "./confine";
 
 export const SUSTAIN_DIR = ".sustain";
 /** Names the live run folder; missing means no active session (ADR 0033). */
@@ -173,6 +174,7 @@ export function isSessionStale(session: SessionState, now = new Date()): boolean
 /** Appends one JSON line (`{ts, type, …details}`) to `events.jsonl`, creating it if needed. */
 export function appendEvent(runDir: string, event: { type: EventType; [detail: string]: unknown }, now = new Date()): void {
   mkdirSync(runDir, { recursive: true });
+  assertNotLink(join(runDir, EVENTS_FILE));
   const line: SessionEvent = { ts: now.toISOString(), ...event };
   appendFileSync(join(runDir, EVENTS_FILE), `${JSON.stringify(line)}\n`);
 }

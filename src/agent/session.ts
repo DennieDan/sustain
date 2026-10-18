@@ -41,6 +41,7 @@ import {
   type SessionStep,
 } from "../model/session";
 import { bugStillPresent, hunkCount, mutateFile, restoreHunk, type MutationResult } from "./modes/bugfix/mutations";
+import { assertWritable } from "../model/confine";
 
 const USAGE =
   "usage: node session.mjs <command>\n" +
@@ -208,6 +209,7 @@ function cmdInit(args: string[]): number {
   saveSession(dir, session);
   saveManifest(dir, newManifest());
   appendEvent(dir, { type: "init", mode });
+  assertWritable(root, join(root, SUSTAIN_DIR, ACTIVE_FILE));
   writeFileSync(join(root, SUSTAIN_DIR, ACTIVE_FILE), `${run}\n`);
 
   if (git !== null && git.dirtyCount > 0) {
@@ -339,6 +341,7 @@ function cmdInject(args: string[]): number {
   const pristineText = readFileSync(target.abs, "utf8");
   let mutation: MutationResult;
   try {
+    assertWritable(root, target.abs);
     mutation = mutateFile(target.abs, line, kind);
   } catch (error) {
     return report(1, { status: "error", file: target.rel, message: (error as Error).message });
@@ -580,6 +583,7 @@ function restoreSeededBugs(runDir: string, bugs: ManifestBug[]): RestoreResult {
     }
     const next = restoreHunk(text, { ...bug, pristineHunk: pristine });
     if (next === null) continue; // unreachable while bugStillPresent; defensive
+    assertWritable(root, abs);
     writeFileSync(abs, next);
     bug.restored = true;
     result.restored.push(bug.id);

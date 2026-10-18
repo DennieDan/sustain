@@ -1,7 +1,9 @@
 // `node .agents/skills/sustain-architecture/scripts/validate.mjs <repo>/.archify/<run>/draft.json`
 // (FR-VAL-01..06). Contract and exit codes: ADR 0017. Bundled to a dependency-free ESM file.
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { checkCitations } from "../model/citations";
+import { assertWritable } from "../model/confine";
 import { collectGitFacts, repositoryFromGit } from "../model/git";
 import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftLocation } from "../model/runFolder";
 import { checkSubmission, REMOVED_FIELD_MESSAGE } from "../model/submission";
@@ -75,6 +77,7 @@ function main(args: string[]): number {
     return 1;
   }
   try {
+    assertWritable(location.root, join(dirname(location.draft), CANDIDATE_FILE));
     publishCandidate(location.draft, stringifyDocument(value));
   } catch (error) {
     return usageError(`cannot publish ${CANDIDATE_FILE}: ${(error as Error).message}`);

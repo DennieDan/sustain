@@ -1,7 +1,7 @@
 // The `.devin/hooks.v1.json` merge/remove and `.gitignore` append behind Install Agent
 // Skills (ADR 0036/0039): partial existing file, hand-edited file, empty file, corrupt
 // file — a user's own hooks must always survive.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { ensureSustainGitignore, mergeHooks, removeHooks, SUSTAIN_HOOK_MARKER, sustainHooks } from "../../../src/extension/hooksFiles";
@@ -38,6 +38,14 @@ describe("mergeHooks", () => {
     const pre = file["PreToolUse"] as { matcher?: string }[];
     expect(pre[0]!["matcher"]).toContain("edit");
     expect(pre[0]!["matcher"]).toContain("run_subagent");
+  });
+
+  test("SAF-05 refuses .devin linked outside the root and writes nothing there", () => {
+    const root = tempDir();
+    const outside = tempDir();
+    symlinkSync(outside, join(root, ".devin"), process.platform === "win32" ? "junction" : "dir");
+    expect(() => mergeHooks(root)).toThrow(/outside/);
+    expect(readdirSync(outside)).toEqual([]);
   });
 
   test("preserves a user's own entries and is idempotent", () => {

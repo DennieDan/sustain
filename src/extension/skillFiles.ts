@@ -3,6 +3,7 @@
 // so the symlink fallback is unit-tested in Node.
 import { cpSync, lstatSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { assertWritable } from "../model/confine";
 
 /** The skills `Sustain: Install Agent Skills` ships: architecture + the learning session. */
 export const SKILL_NAMES: readonly string[] = ["sustain-architecture", "sustain-bugfix"];
@@ -46,11 +47,13 @@ export type LinkFn = (target: string, path: string, type: "dir" | "junction") =>
 /**
  * Removes both targets (a symlink is removed, not followed), copies `source` to the
  * `.agents` folder and links the `.claude` entry to it; copies there too when `link` throws.
- * Returns how the `.claude` entry was created.
+ * Both targets must stay inside `root` (SAF-05). Returns how the `.claude` entry was created.
  */
-export function writeSkill(source: string, targets: SkillTargets, name: string, link: LinkFn = symlinkSync): "symlink" | "copy" {
+export function writeSkill(root: string, source: string, targets: SkillTargets, name: string, link: LinkFn = symlinkSync): "symlink" | "copy" {
   rmSync(targets.agentsDir, { recursive: true, force: true });
   rmSync(targets.claudeLink, { recursive: true, force: true });
+  assertWritable(root, targets.agentsDir);
+  assertWritable(root, targets.claudeLink);
   cpSync(source, targets.agentsDir, { recursive: true });
   mkdirSync(dirname(targets.claudeLink), { recursive: true });
   try {

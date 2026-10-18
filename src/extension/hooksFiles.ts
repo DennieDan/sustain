@@ -5,6 +5,7 @@
 // runs a `.agents/skills/sustain-*` script are touched, so user entries always survive.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { assertWritable } from "../model/confine";
 import { writeJson } from "../model/session";
 
 export const DEVIN_HOOKS_FILE = join(".devin", "hooks.v1.json");
@@ -90,6 +91,7 @@ export function mergeHooks(root: string): boolean {
     merged[event] = [...((merged[event] as unknown[] | undefined) ?? []), ...groups];
   }
   if (JSON.stringify(existing ?? {}) === JSON.stringify(merged)) return false;
+  assertWritable(root, path);
   mkdirSync(dirname(path), { recursive: true });
   writeJson(path, merged);
   return true;
@@ -112,6 +114,7 @@ export function removeHooks(root: string): HooksRemoval {
     const kept = stripSustain(groups);
     if (kept.length > 0) remaining[event] = kept;
   }
+  assertWritable(root, path);
   if (Object.keys(remaining).length === 0) {
     rmSync(path, { force: true });
     return "deleted";
@@ -137,6 +140,7 @@ export function ensureSustainGitignore(root: string): boolean {
   });
   if (covered) return false;
   const prefix = text === "" ? "" : text.endsWith("\n") ? text : `${text}\n`;
+  assertWritable(root, path);
   writeFileSync(path, `${prefix}.sustain/\n`);
   return true;
 }

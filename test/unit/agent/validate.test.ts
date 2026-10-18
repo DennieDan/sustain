@@ -72,6 +72,17 @@ describe("FR-VAL-01 CLI exit paths", () => {
     expect(run.json().errors).toEqual([{ pointer: "/components/0/sublabel", message: "SecretLike: looks like a secret (AWS access key). Remove it from the diagram." }]);
   });
 
+  test("SAF-05 .archify linked outside the root is an I/O error and writes no candidate there", () => {
+    const root = tempDir();
+    const outside = tempDir();
+    symlinkSync(outside, join(root, ".archify"), process.platform === "win32" ? "junction" : "dir");
+    setup(draftDoc(), { root });
+    const run = runScript("validate", [DRAFT], { cwd: root });
+    expect(run.status).toBe(2);
+    expect(run.stderr).toMatch(/outside/);
+    expect(readdirSync(join(outside, RUN))).toEqual(["draft.json"]);
+  });
+
   test("an absolute draft path works from any cwd", () => {
     const { root, draftPath } = setup(draftDoc());
     const run = runScript("validate", [draftPath], { cwd: tempDir() });

@@ -29,7 +29,7 @@ export async function installSkill(extensionUri: vscode.Uri, root: string): Prom
   const kinds = new Set<"symlink" | "copy">();
   for (const name of SKILL_NAMES) {
     const source = vscode.Uri.joinPath(extensionUri, "dist", "skills", name).fsPath;
-    kinds.add(writeSkill(source, skillTargets(root, name), name));
+    kinds.add(writeSkill(root, source, skillTargets(root, name), name));
   }
   try {
     ensureSessionAssets(root);
