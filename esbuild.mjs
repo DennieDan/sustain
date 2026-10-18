@@ -3,6 +3,7 @@
 // `node esbuild.mjs --e2e`  → out/e2e/ (the @vscode/test-electron suite; never shipped)
 // `node esbuild.mjs --action` → action/dist/index.js (the GitHub Action, committed; PRC-04)
 // `node esbuild.mjs --cloud`  → cloud/public/viewer.js and viewer.css (the cloud's map viewer; CLD-03)
+// `node esbuild.mjs --intellij` → out/intellij/jcef.js and jcef.css (the IntelliJ plugin's map viewer; IDE-01)
 // `node esbuild.mjs --bench`  → out/bench/ and out/eval/ (the bench harness, its fit and the eval scorer; never shipped, CST-02, CST-06, ACC-04)
 import * as esbuild from "esbuild";
 import { createHash } from "node:crypto";
@@ -286,6 +287,24 @@ export async function buildCloudViewer() {
   writeFileSync(join(root, "cloud/public/viewer.css"), page.style);
 }
 
+/** The IntelliJ plugin's map viewer and its styles, which the plugin's build packs (IDE-01). */
+export async function buildJcefViewer() {
+  const dir = join(root, "out/intellij");
+  mkdirSync(dir, { recursive: true });
+  await esbuild.build({
+    ...common,
+    metafile: false,
+    entryPoints: [join(root, "webview/jcef.ts")],
+    outfile: join(dir, "jcef.js"),
+    platform: "browser",
+    format: "iife",
+    target: "es2022",
+    minify: true,
+    define: await layoutWorkerDefine(),
+  });
+  cpSync(join(root, "webview/styles.css"), join(dir, "jcef.css"));
+}
+
 /**
  * The GitHub Action's bundle (PRC-04). It is committed, so it must come out the same on every machine.
  * @param {string} [outfile]
@@ -327,6 +346,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (process.argv.includes("--e2e")) await buildE2e();
   else if (process.argv.includes("--action")) await buildAction();
   else if (process.argv.includes("--cloud")) await buildCloudViewer();
+  else if (process.argv.includes("--intellij")) await buildJcefViewer();
   else if (process.argv.includes("--bench")) await buildBench();
   else await buildDist();
 }

@@ -18,7 +18,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | I4 Skill retention | Closed pending owner (LRN-01 `[smoke]`) | `5b7a19c` |
 | I5 Cloud for teams | Waiting for the owner (CLD-12 hard stop, CLD-10 `[ci]`, CLD-07 Stripe products) | `f732167` |
 | I6 Polish and reach | Closed pending owner (VWR-02 `[ci]`, RCH-04 `[smoke]`) | `34d09df` |
-| I7 IntelliJ plugin | In progress | |
+| I7 IntelliJ plugin | Waiting for the owner (IDE-01 needs a JDK and Gradle; the JCEF host is built) | |
 
 ## Waiting
 
@@ -634,7 +634,7 @@ The `intellij/` rows wait for a JDK and Gradle, which are not installed here (ha
 
 Done when: The plugin opens cited lines on AB3.
 
-- [ ] **IDE-01 IntelliJ plugin** `[jvm]` `[smoke]`
+- [ ] **IDE-01 IntelliJ plugin** `[jvm]` `[smoke]` — the JCEF host done 2026-10-19: `webview/hosts/jcef.ts`, `webview/jcef.ts` and `node esbuild.mjs --intellij`, which writes `out/intellij/jcef.js` and `jcef.css`. Tests: `jcef.test.ts` (2: messages go out as JSON through `sustainPost` and come in through `sustainReceive`; `sustainDark` picks the palette). The built bundle was also run once in happy-dom, where it posted `ready` and showed an empty state sent through `sustainReceive`. Each of 3 deliberate breaks failed a test. The bundle stays out of `dist/`, because `.vscodeignore` cannot leave out one file of a folder it includes. The `intellij/` project waits for a JDK and Gradle (see Waiting).
 
 ## Log
 
@@ -648,6 +648,7 @@ Done when: The plugin opens cited lines on AB3.
 - 2026-10-19 — The cloud's incremental type check kept `cloud/tsconfig.tsbuildinfo` between runs, and CLD-13's gate passed over a `mapPage.test.ts` fixture that lacked `size` and `tokenId`. The fixture was fixed, and the cloud gates now delete that file before the type check and the build.
 - 2026-10-19 — Signed-out cloud map pages showed no map. The viewer script filled the page before React hydrated it, and hydration replaced its work. `MapViewer.tsx` now loads the script through `next/script` once the page is interactive, and two `[web]` tests were seen failing without it. The fix went in with CLD-03.
 - 2026-10-19 — I6 closed pending owner. Gates after SET-04: `npm run check` exit 0 (1239 tests, 65 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 91, empty 3, multi 2 each); cloud `vitest` 45 passed. After VWR-06, the last I6 change to viewer code: cloud typecheck and build exit 0, and cloud `[web]` 12 passed in 9.2 minutes. VWR-02 `[ci]` and RCH-04 `[smoke]` wait for the owner.
+- 2026-10-19 — The v0.3 build has reached the end of what runs without the owner. Every unticked item waits for a push, a `[smoke]` run, an install or a go, and Waiting lists the steps for each.
 - 2026-10-19 — SET-05's first e2e run failed once. VS Code's built-in git extension threw an uncaught `write EPIPE` from `git check-ignore` during VWR-05's drill test, and the suite counts any uncaught error as a failure. The rerun passed on both versions. A second occurrence will get the drill test waiting for git's work on its folder to finish.
 - 2026-10-19 — SET-04 reads "every user-visible message" as every notification, modal or not. The sidebar's and the map's own text, the status bar and quick pick prompts stay where they are. The scan reads call arguments with a small scanner in the test, because TypeScript 7 ships no parser API and a parser package would be a new dependency. The new actions are Open Folder… for errors that need a folder, Refresh Map for stale citations, Open File for an unreadable map, Open Config for config errors, Open Exclude File, Open run.json, Remove Copies, Copy Note, Compare With… and Try Again.
 - 2026-10-18 — `architecture.md` had not been updated per feature during D2 to D4, as spec §7 asks; it was brought up to date at D4's close (`29f183b`) and kept current since. The layout fixtures test got a 30 s timeout: it lays out 48 diagrams and passed 5 s only narrowly when the whole suite ran in parallel.
