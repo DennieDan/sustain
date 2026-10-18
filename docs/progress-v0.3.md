@@ -8,7 +8,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 |---|---|---|
 | D1 Safe to ship | Closed pending owner (ENG-01, ENG-04 `[ci]`) | `4bbac86` |
 | D2 The product in VS Code | Closed pending owner (UI-02, UI-06, SET-01 `[smoke]`) | `1d8bcf4` |
-| D3 The living map | Not started | |
+| D3 The living map | In progress | |
 | D4 Pull request checks | Not started | |
 | D5 Sustain Cloud v1 | Not started | |
 | D6 Ship | Not started | |
@@ -147,6 +147,31 @@ Done when: Everything is reachable without the Command Palette; runs and questio
 - [x] **CST-04 Run record** `[unit]` `[e2e]` — `[e2e]` done 2026-10-18: e2e `CST-04 a terminal run's run.json transitions show in the card` (created, validating 1, rejected, validating 2, accepted; then `agent` and `mode` recorded) and `UI-02 a replayed stream…` (agent, mode, tokens and cost recorded); `sidebar.test.ts` › `CST-04 terminal-mode card`. `[unit]` done 2026-10-18: `src/model/runRecord.ts`; `repo-facts.mjs` writes `run.json` (git facts now come first, so the new run folder is not a dirty path); `validate.mjs` counts attempts and records `rejected` or `accepted` with `finishedAt`; the build fills in `skillVersion`. Tests: `repoFacts.test.ts` › `CST-04 creates the run folder with run.json…`, `CST-04 git facts … exclude the new run folder`; `validate.test.ts` › `CST-04 run.json counts validator runs and records the outcome` and four updated FR-VAL tests. ADR 0045.
 
 ## D3 The living map
+
+### D3 proposal (2026-10-18)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `webview/bridge.ts`, `webview/hosts/vscode.ts`, `webview/hosts/standalone.ts`, `webview/viewer.ts`, `webview/main.ts`, `webview/styles.css` | VWR-01: the viewer talks to its host only through the bridge; colours come from `--sustain-*` tokens each host sets | +170 / -70 |
+| `src/model/fingerprints.ts`, `src/agent/validate.ts` | FRS-01: `fingerprints.json` on acceptance, blob ids computed as git does, normalized range hashes | +110 |
+| `src/model/staleness.ts`, `src/model/git.ts` | FRS-02: fresh, moved, edited, missing, unknown per citation and per box; renames from `git diff -M --name-status` | +180 |
+| `src/extension/freshness.ts`, `panel.ts`, `webview/viewer.ts`, `src/model/messages.ts`, `statusBar.ts`, `src/model/maps.ts`, `webview/home.ts` | FRS-03: staleness on load and when a cited file changes, badges, the header, moved lines opening, counts in the maps list and status bar | +240 |
+| `src/model/changes.ts`, `src/extension/changes.ts`, `webview/viewer.ts` | FRS-04: three scopes, hunk parsing, strong and weak marks, uncovered files, Clear | +280 |
+| `skills/sustain-refresh/`, `src/agent/refresh-facts.ts`, `esbuild.mjs`, skill lists | FRS-05: the refresh skill and `refresh-facts.mjs` | +280 |
+| `src/extension/refresh.ts`, `src/extension/agents.ts`, `package.json`, `webview/home.ts`, `webview/viewer.ts` | FRS-06: Refresh in the map's title bar, the freshness header, the maps list and the box menu; the map-panel buttons D2 deferred | +180 / -20 |
+| `src/model/evidence.ts`, `src/agent/validate.ts`, `skills/sustain-architecture/` | ACC-01: the `evidence` report key, `evidence.json`, the skill text and the revise-once flow | +150 |
+| `src/agent/render-html.ts`, `src/model/openLinks.ts`, `webview/page.ts`, `esbuild.mjs` | RCH-01: the one-file diagram page with its open targets | +380 |
+
+Tests the D3 ACs call for:
+- every fixture renders the same DOM under the VS Code and standalone hosts, ignoring style values;
+- `blob` equals `git hash-object --no-filters`; rejected runs write no fingerprints;
+- staleness for CRLF, trailing whitespace, an indentation change, a duplicated block and a rename;
+- badges and the freshness header; editing a cited file badges its box within 3 s; a moved block opens at its new lines;
+- hunk parsing and mapping to boxes; the overlay in a temporary git repository;
+- `refresh-facts` on temporary repositories, with `--paths`, and the run folder's name;
+- Refresh launched from each place;
+- the declaration-only heuristic, the skill text and the revise-once flow;
+- link builders and path checks; the page rendering offline; a hostile label yielding exactly one executable script.
 
 Done when: Staleness, overlay and refresh work; the diagram page works offline.
 
