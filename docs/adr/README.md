@@ -17,7 +17,7 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0011](0011-webview-panel-viewer-with-code-beside.md) | WebviewPanel viewer with code in the other column | accepted | 2026-10-10 |
 | [0012](0012-no-validation-on-load-tolerant-parsing.md) | No validation on load; tolerant parsing; stale citations reported on click | superseded by [ADR-0048](0048-maps-show-staleness-from-fingerprints.md) | 2026-10-10 |
 | [0013](0013-archify-json-v1-and-archify-folder-layout.md) | Archify JSON v1 and the .archify folder layout | accepted | 2026-10-10 |
-| [0014](0014-desktop-vscode-vsix-single-folder.md) | Desktop VS Code, .vsix install, one chosen folder | accepted | 2026-10-10 |
+| [0014](0014-desktop-vscode-vsix-single-folder.md) | Desktop VS Code, .vsix install, one chosen folder | superseded by [ADR-0057](0057-release-from-tags-to-github-and-the-stores.md) | 2026-10-10 |
 | [0015](0015-typescript-esbuild-vitest-plain-svg-webview.md) | TypeScript, npm, esbuild, vitest; plain TypeScript SVG webview | accepted | 2026-10-10 |
 | [0016](0016-build-test-and-docs-check-harness.md) | Build, test and docs-check harness | accepted | 2026-10-10 |
 | [0017](0017-validator-output-contract-and-exit-codes.md) | Validator output contract and exit codes | accepted | 2026-10-11 |
@@ -31,7 +31,7 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0025](0025-viewer-details-not-fixed-by-the-spec.md) | Viewer details not fixed by the spec | accepted | 2026-10-11 |
 | [0026](0026-activate-test-hook-and-happy-dom-tests.md) | activate() test hook and happy-dom DOM tests | accepted | 2026-10-11 |
 | [0027](0027-navigation-and-watching-details.md) | Navigation and watching details | accepted | 2026-10-11 |
-| [0028](0028-package-with-vsce-without-license-or-repository.md) | Package with vsce, without LICENSE or repository metadata | accepted | 2026-10-11 |
+| [0028](0028-package-with-vsce-without-license-or-repository.md) | Package with vsce, without LICENSE or repository metadata | superseded by [ADR-0057](0057-release-from-tags-to-github-and-the-stores.md) | 2026-10-11 |
 | [0029](0029-learning-modes-in-one-agent-session.md) | Learning modes run in one agent session in the user's repository | accepted | 2026-10-14 |
 | [0030](0030-session-state-machine-as-bundled-scripts.md) | Session state machine as bundled scripts, not an MCP server | accepted | 2026-10-14 |
 | [0031](0031-mutation-engine-seeds-the-bugs.md) | A mutation engine seeds the bugs; the agent only chooses where | accepted | 2026-10-14 |
@@ -60,3 +60,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0054](0054-the-cloud-accepts-maps-never-code.md) | The cloud accepts maps, never code | accepted | 2026-10-18 |
 | [0055](0055-only-the-cloud-client-sends-and-only-when-asked.md) | Only the cloud client sends, and only when asked | accepted | 2026-10-18 |
 | [0056](0056-skills-ship-with-their-built-scripts.md) | Skills ship with their built scripts | accepted | 2026-10-18 |
+| [0057](0057-release-from-tags-to-github-and-the-stores.md) | Release from tags to GitHub and the stores | accepted | 2026-10-18 |

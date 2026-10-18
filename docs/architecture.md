@@ -343,7 +343,7 @@ The validator's accepted report gains `evidence: [finding]` (ADR 0050). `refresh
 
 ## Sustain Cloud
 
-`cloud/` is an npm workspace: Next.js (App Router), React, next-auth with GitHub, Drizzle ORM over PGlite in tests and local runs. Tables: `users`, `organizations`, `memberships`, `repositories` (owner, name, default branch, private, `public_maps`), `access` (user, repository, role, `checked_at`), `uploads` (repository, kind, commit, branch, pull, the validated payload, how it was signed) and `tokens` (SHA-256 only). Deleting a user or a repository deletes everything under it. `cloud/src/lib/services.ts` holds the database, GitHub's keys and the clock, which tests replace.
+`cloud/` is an npm workspace: Next.js (App Router), React, next-auth with GitHub, Drizzle ORM over PGlite in tests and local runs. Tables: `users`, `organizations`, `memberships`, `repositories` (owner, name, default branch, private, `public_maps`), `access` (user, repository, role, `checked_at`), `uploads` (repository, kind, commit, branch, pull, the validated payload, how it was signed) and `tokens` (SHA-256 only). Deleting a user or a repository deletes everything under it. `cloud/src/lib/services.ts` holds the database, GitHub's keys and the clock, which tests replace. The server opens the database in `cloud/src/instrumentation.ts`, so migrations run at start, before the first request (RCH-05).
 
 ### Upload API (CLD-02)
 
@@ -375,7 +375,8 @@ The validator's accepted report gains `evidence: [finding]` (ADR 0050). `refresh
 | `action/dist/index.js` | The committed Action bundle (PRC-04). |
 | `dist/session-webview.js`, `dist/session-webview.css` | Session-panel bundle and stylesheet; `localResourceRoots` is `dist/` for both panels. |
 | `out/e2e/`, `out/test-scripts/`, `out/test-dist/` | Test builds (gitignored, never packaged): the e2e suite (scenarios `single`, `empty`, `multi`, each in its own VS Code launch), and the script bundles the unit tests run ([ADR 0016](adr/0016-build-test-and-docs-check-harness.md)). |
-| `sustain-<version>.vsix` | `npm run package` (`vsce package --no-dependencies`, build via `vscode:prepublish`); `.vscodeignore` ships only `dist/**`, `package.json`, `README.md`, `THIRD_PARTY_NOTICES.md` (and `LICENSE` if one is added). |
+| `sustain-<version>.vsix` | `npm run package` (`scripts/package.mjs` runs `vsce package --no-dependencies`, with `--skip-license` only while there is no `LICENSE`; build via `vscode:prepublish`); `.vscodeignore` ships only `dist/**`, `package.json`, `README.md`, `THIRD_PARTY_NOTICES.md`, `media/**` (and `LICENSE` if one is added). |
+| `release/plugin/`, `release/files/` | `npm run build:release` assembles the Claude Code plugin (RCH-02). The release workflow adds the `.vsix`, `sustain-skills.zip`, `sustain-action.js` and `SHA256SUMS` on a `v*` tag; a hyphenated tag keeps them as a workflow artifact only ([ADR 0057](adr/0057-release-from-tags-to-github-and-the-stores.md), RCH-05). |
 
 ## Trust boundaries
 

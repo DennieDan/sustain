@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0057](0057-release-from-tags-to-github-and-the-stores.md)
 date: 2026-10-11
 decision-makers: implementer
 ---
