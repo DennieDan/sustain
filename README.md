@@ -97,6 +97,8 @@ Every command is also in the Command Palette under "Sustain".
 - **Refresh Architecture** asks your agent to update only the boxes whose code changed.
 - **Export Page** writes the map as one HTML file that opens anywhere.
 - **Ask** in the sidebar answers questions about the map, with links to the lines it cites.
+- **Audit Map** asks your agent to check each box against its cited code. Doubtful boxes are drawn dotted, and arrows with no import evidence grey and dashed. **Hide Checks** in the map's title bar hides them.
+- **This Box Is Wrong…** on a box saves your note beside the map and offers to refresh that box.
 
 ## Commit your map
 
@@ -105,6 +107,7 @@ Each map lives in its own run folder in `.archify/`, named after its focus and t
 - `candidate.json` is the map.
 - `fingerprints.json` holds hashes of the cited code. Sustain uses them to find the boxes that changed.
 - `run.json` records how the map was made, and `evidence.json` what the validator checked.
+- `audit.json` holds the audit's verdict on each box, and `feedback.json` your notes on boxes that are wrong.
 - `draft.json` and the `.html` page stay out of commits. Sustain lists them in `.git/info/exclude`.
 
 Name the map that checks compare with in `sustain.config.json` at the repository root.

@@ -273,7 +273,7 @@ export class ArchitecturePanel {
   }
 
   /** The shown map's components with their citations, for marking changes. */
-  components(): { id: string; sources: { path: string; line?: number; end_line?: number }[] }[] {
+  components(): { id: string; label: string; sources: { path: string; line?: number; end_line?: number }[] }[] {
     return this.shown.kind === "diagram" ? this.shown.diagram.components : [];
   }
 

@@ -167,6 +167,11 @@
         "category": "Sustain"
       },
       {
+        "command": "sustain.flagBox",
+        "title": "This Box Is Wrong…",
+        "category": "Sustain"
+      },
+      {
         "command": "sustain.exportPage",
         "title": "Export Page",
         "category": "Sustain",
@@ -262,6 +267,10 @@
         {
           "command": "sustain.refreshBox",
           "when": "false"
+        },
+        {
+          "command": "sustain.flagBox",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -323,6 +332,11 @@
           "command": "sustain.refreshBox",
           "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
           "group": "navigation@2"
+        },
+        {
+          "command": "sustain.flagBox",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
+          "group": "navigation@3"
         }
       ]
     }

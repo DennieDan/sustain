@@ -114,6 +114,30 @@ suite("FRS-06 Refresh from the UI", () => {
     assert.equal(hook.runCard()?.focus, "Refresh of Shop · 1 file");
   });
 
+  test("ACC-06 This Box Is Wrong… saves the note in feedback.json and offers Refresh this box, which refreshes it", async () => {
+    await vscode.commands.executeCommand("sustain.openArchitecture");
+    await until(() => hook.panelState().open, "the map");
+    ui.answers.inputBox.push("It also handles refunds.");
+    ui.answers.info.push("Refresh this box");
+    const prompt = await launched(() => vscode.commands.executeCommand("sustain.flagBox", { componentId: "api", webview: "sustain.architecture" }));
+    assert.equal(ui.inputBoxes[0]?.prompt, "What is wrong with API?");
+    const offer = ui.infos.find((call) => call.message === "Saved your note on API in feedback.json.");
+    assert.deepEqual(offer?.rest, ["Refresh this box"]);
+    assert.equal(prompt, `/sustain-refresh --from ${RUN} --paths src/a.ts`);
+    const feedback = JSON.parse(readFileSync(join(root, ".archify", RUN, "feedback.json"), "utf8")) as { schema: number; notes: { component: string; note: string; createdAt: string }[] };
+    assert.equal(feedback.schema, 1);
+    assert.deepEqual(feedback.notes.map((note) => [note.component, note.note]), [["api", "It also handles refunds."]]);
+    assert.match(feedback.notes[0]!.createdAt, /^\d{4}-\d{2}-\d{2}T/);
+
+    ui.answers.inputBox.push(undefined);
+    await vscode.commands.executeCommand("sustain.flagBox", { componentId: "api", webview: "sustain.architecture" });
+    ui.answers.inputBox.push("The cited line is the old client.");
+    ui.answers.info.push(undefined);
+    await vscode.commands.executeCommand("sustain.flagBox", { componentId: "api", webview: "sustain.architecture" });
+    const notes = (JSON.parse(readFileSync(join(root, ".archify", RUN, "feedback.json"), "utf8")) as typeof feedback).notes;
+    assert.deepEqual(notes.map((note) => note.note), ["It also handles refunds.", "The cited line is the old client."]);
+  });
+
   test("FRS-06 SAF-01 a missing refresh skill is installed after one modal", async () => {
     rmSync(join(homedir(), ".agents/skills/sustain-refresh"), { recursive: true, force: true });
     rmSync(join(homedir(), ".claude/skills/sustain-refresh"), { force: true });

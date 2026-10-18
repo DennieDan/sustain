@@ -7,6 +7,7 @@ import { showChangesCommand } from "./changes";
 import { exportPageCommand } from "./exportPage";
 import { refreshArchitectureCommand, refreshBoxCommand } from "./refresh";
 import { auditMapCommand } from "./audit";
+import { flagBoxCommand } from "./feedback";
 import { Review } from "./review";
 import { FreshnessService } from "./freshness";
 import { generateArchitectureCommand, resetDataNote } from "./generate";
@@ -99,6 +100,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.showChanges", () => showChangesCommand(extensionUri)),
     vscode.commands.registerCommand("sustain.refreshArchitecture", () => refreshArchitectureCommand(context, runs)),
     vscode.commands.registerCommand("sustain.auditMap", () => auditMapCommand(context, runs)),
+    vscode.commands.registerCommand("sustain.flagBox", (box?: { componentId?: unknown }) => flagBoxCommand(context, runs, box)),
     vscode.commands.registerCommand("sustain.hideChecks", () => ArchitecturePanel.setChecksShown(false)),
     vscode.commands.registerCommand("sustain.showChecks", () => ArchitecturePanel.setChecksShown(true)),
     vscode.commands.registerCommand("sustain.exportPage", () => exportPageCommand(extensionUri)),
