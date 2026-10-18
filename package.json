@@ -208,6 +208,11 @@
         "category": "Sustain"
       },
       {
+        "command": "sustain.writeAgentNotes",
+        "title": "Write Architecture Notes for Agents",
+        "category": "Sustain"
+      },
+      {
         "command": "sustain.exportPage",
         "title": "Export Page",
         "category": "Sustain",
@@ -378,6 +383,11 @@
           "command": "sustain.hideHotspots",
           "when": "activeWebviewPanelId == 'sustain.architecture' && sustain.hotspotsShown",
           "group": "navigation@6"
+        },
+        {
+          "command": "sustain.writeAgentNotes",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "z_sustain@1"
         }
       ],
       "explorer/context": [

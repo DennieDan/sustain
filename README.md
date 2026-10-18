@@ -99,6 +99,7 @@ Every command is also in the Command Palette under "Sustain".
 - **Ask** in the sidebar answers questions about the map, with links to the lines it cites.
 - **Audit Map** asks your agent to check each box against its cited code. Doubtful boxes are drawn dotted, and arrows with no import evidence grey and dashed. **Hide Checks** in the map's title bar hides them.
 - **This Box Is Wrong…** on a box saves your note beside the map and offers to refresh that box.
+- **Write Architecture Notes for Agents** puts the map's boxes, arrows and rules into `AGENTS.md`, between Sustain's markers, so coding agents follow the architecture. It writes `CLAUDE.md` too when that file does not import `AGENTS.md`. Your own text stays as it is, and each file shows as a diff first.
 - **Show Hotspots** in the map's title bar tints each box by how often its code changed over the last 90 days (`sustain.hotspots.days`). The tooltip gives the commits, lines changed and number of authors, and the sidebar lists the five busiest boxes.
 - **Rules** in `sustain.config.json` say which boxes may import which. An import that breaks one shows in the Problems panel at its line, as a red arrow on the map, and in the pull request check. Right-click an arrow to forbid it or a box to limit who imports it, or use Suggest rules in the sidebar. Every change to the file shows as a diff first.
 

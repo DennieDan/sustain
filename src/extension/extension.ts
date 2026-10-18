@@ -6,6 +6,7 @@ import { Ask } from "./ask";
 import { showChangesCommand } from "./changes";
 import { exportPageCommand } from "./exportPage";
 import { refreshArchitectureCommand, refreshBoxCommand } from "./refresh";
+import { writeAgentNotesCommand } from "./agentNotes";
 import { auditMapCommand } from "./audit";
 import { flagBoxCommand } from "./feedback";
 import { registerPreviews } from "./previewWrite";
@@ -111,6 +112,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.onlyAllowImportsFrom", (box?: { componentId?: unknown }) => onlyAllowFromCommand(rules, box)),
     vscode.commands.registerCommand("sustain.routeThrough", (box?: { componentId?: unknown }) => routeThroughCommand(rules, box)),
     vscode.commands.registerCommand("sustain.suggestRules", () => suggestRulesCommand(rules, home.root())),
+    vscode.commands.registerCommand("sustain.writeAgentNotes", () => writeAgentNotesCommand()),
     vscode.commands.registerCommand("sustain.flagBox", (box?: { componentId?: unknown }) => flagBoxCommand(context, runs, box)),
     vscode.commands.registerCommand("sustain.hideChecks", () => ArchitecturePanel.setChecksShown(false)),
     vscode.commands.registerCommand("sustain.showHotspots", () => ArchitecturePanel.setHotspotsShown(true)),
