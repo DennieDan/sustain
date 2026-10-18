@@ -16,7 +16,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | I2 Accuracy | Closed pending owner (ACC-04 `[smoke]`) | `949d927` |
 | I3 Architecture guardrails | Closed pending owner (PRC-05 `[smoke]`) | `e97077f` |
 | I4 Skill retention | Closed pending owner (LRN-01 `[smoke]`) | `5b7a19c` |
-| I5 Cloud for teams | Not started | |
+| I5 Cloud for teams | In progress | |
 | I6 Polish and reach | Not started | |
 | I7 IntelliJ plugin | Not started | |
 
@@ -515,6 +515,24 @@ Done when: Explain-back, tours and sessions on every agent work.
 - [x] **LRN-02 Java bug kinds** `[unit]` — 2026-10-19: Java rule tables in `src/agent/modes/bugfix/mutations.ts` with generic type arguments masked, `and-or-swap` (T1) and `reference-equality` (T2) in `src/model/session.ts`, `inject` on `.java` files, and the kinds in the skill's taxonomy. ADR 0062. Tests: `javaMutations.test.ts` (20 on `test/fixtures/java/DeleteCommand.java`, an AB3-style command: each Java kind, comparisons in call arguments and beside `&&`, generics, strings, comments and a cast argument left alone, the kinds refused outside their language, and `inject` seeding `reference-equality` through `session.mjs`).
 
 ## I5 Cloud for teams
+
+### I5 proposal (2026-10-19)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `cloud/src/lib/dashboard.ts`, `cloud/src/app/[owner]/page.tsx` | CLD-05: `/<org>` lists each repository the viewer can see under that account with its main map's age, freshness, uncovered changed files and open violations from the latest check, the boxes pull requests touched most, a trend of stale boxes and uncovered files over the checks against the default branch, and recent pull requests with the boxes they touched. Every figure is per repository; nothing names a person | +280 |
+| `cloud/src/db/schema.ts`, `cloud/src/db/migrations.ts`, `cloud/src/lib/shares.ts`, `cloud/src/app/s/[token]/page.tsx`, the repository's settings | CLD-06: share links stored as a hash with an expiry of 1, 7 or 30 days; owners create and revoke them in settings; `/s/<token>` shows the main map read-only until it expires or is revoked | +220 |
+| `cloud/plans.ts`, `cloud/src/lib/billing.ts`, `cloud/src/app/api/v1/billing/`, `cloud/src/app/api/stripe/webhook/route.ts`, schema | CLD-07: Free, Team and Enterprise with their limits enforced on the server (one private repository and 30 days of history on Free; pull request pages, the dashboard and share links on Team). Checkout and the Customer Portal through Stripe's REST API with `fetch`, and webhooks checked by their HMAC signature with `node:crypto`, so Stripe adds no dependency. Prices and Stripe ids come from the environment. Without Stripe keys billing is off and every space is Enterprise | +380 |
+| `cloud/Dockerfile`, `cloud/docker-compose.yml`, `cloud/src/app/api/health/route.ts`, `.github/workflows/ci.yml` | CLD-10: an image of the built app, a compose file, a health endpoint, and a CI job that builds the image and asks the endpoint | +120 |
+| — | CLD-12: a hard stop (network access in shipped extension code). It waits for the owner's go, and nothing is built | 0 |
+| `cloud/src/lib/exportData.ts`, `cloud/src/lib/retention.ts`, `cloud/src/app/api/v1/account/export/route.ts`, settings, `cloud/src/instrumentation.ts` | CLD-13: an owner's data as one JSON download; each repository's audit log of uploads with how each was signed (the token's name or the OIDC repository), the time and the size; a daily job that removes uploads older than the plan keeps | +240 |
+
+Tests the I5 ACs call for:
+- CLD-05: the dashboard `[web]`; no route returns author-level data `[unit]`.
+- CLD-06: a link that opens, then expires and is revoked `[web]`.
+- CLD-07: signed test webhooks and the limits `[unit]`; the upgrade flow against a mocked Stripe `[web]`.
+- CLD-10: the image builds and the health endpoint answers `[ci]`.
+- CLD-13: the export, the audit log and retention `[unit]`; the export and the audit log in settings `[web]`.
 
 Done when: Dashboard, billing and self-hosting work.
 
