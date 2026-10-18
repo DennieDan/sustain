@@ -31,6 +31,31 @@ export class ChangeBatch {
   }
 }
 
+/**
+ * The `candidate.json` an event under `<root>/.archify/` concerns: the one in the run folder the
+ * path lies in, or `undefined` for paths outside a run folder.
+ */
+export function candidateOf(archifyDir: string, path: string, sep: string): string | undefined {
+  if (!path.startsWith(archifyDir + sep)) return undefined;
+  const run = path.slice(archifyDir.length + sep.length).split(sep)[0];
+  return run === undefined || run === "" ? undefined : `${archifyDir}${sep}${run}${sep}candidate.json`;
+}
+
+/**
+ * Whether a candidate that `exists` now is new, judged against the candidates already `known`,
+ * which it updates. File watchers can miss a file created inside a folder created a moment
+ * before, so "new" comes from this comparison rather than from the event kind.
+ */
+export function noteCandidate(known: Set<string>, file: string, exists: boolean): boolean {
+  if (!exists) {
+    known.delete(file);
+    return false;
+  }
+  if (known.has(file)) return false;
+  known.add(file);
+  return true;
+}
+
 /** One debounced change, with the facts needed to decide what to do. */
 export interface CandidateChange {
   file: string;

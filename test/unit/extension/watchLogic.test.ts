@@ -1,6 +1,6 @@
 // FR-WAT-01: 300 ms debouncing and the reload / switch / notify / deleted decisions.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ChangeBatch, DEBOUNCE_MS, watchAction, type CandidateChange } from "../../../src/extension/watchLogic";
+import { candidateOf, ChangeBatch, DEBOUNCE_MS, noteCandidate, watchAction, type CandidateChange } from "../../../src/extension/watchLogic";
 
 describe("FR-WAT-01 debouncing", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -72,5 +72,23 @@ describe("FR-WAT-01 decisions", () => {
   ])("a candidate that is %s is ignored", (_case, overrides) => {
     expect(watchAction(change(overrides), panel)).toBeUndefined();
     expect(watchAction(change(overrides), undefined)).toBeUndefined();
+  });
+});
+
+describe("FR-WAT-01 candidates from any event in a run folder", () => {
+  test("an event anywhere in a run folder concerns that folder's candidate.json", () => {
+    const archify = "/r/.archify";
+    expect(candidateOf(archify, "/r/.archify/run-a", "/")).toBe("/r/.archify/run-a/candidate.json");
+    expect(candidateOf(archify, "/r/.archify/run-a/.candidate.json.tmp-1-2", "/")).toBe("/r/.archify/run-a/candidate.json");
+    expect(candidateOf(archify, "/r/.archify", "/")).toBeUndefined();
+    expect(candidateOf(archify, "/r/.archifyx/run-a", "/")).toBeUndefined();
+  });
+
+  test("a candidate is new once, then a change, and new again after it was deleted", () => {
+    const known = new Set<string>();
+    expect(noteCandidate(known, "/r/.archify/a/candidate.json", true)).toBe(true);
+    expect(noteCandidate(known, "/r/.archify/a/candidate.json", true)).toBe(false);
+    expect(noteCandidate(known, "/r/.archify/a/candidate.json", false)).toBe(false);
+    expect(noteCandidate(known, "/r/.archify/a/candidate.json", true)).toBe(true);
   });
 });

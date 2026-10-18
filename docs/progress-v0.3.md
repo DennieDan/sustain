@@ -210,6 +210,7 @@ Done when: The plugin opens cited lines on AB3.
 
 ## Log
 
+- 2026-10-18 — FR-WAT-01 fix, found by the first e2e run on this machine. The candidate watcher's tests failed 2–3 of 4 on the base commit too: on Linux and WSL, a `candidate.json` written inside a just-created run folder can arrive without an event. The watcher now listens on `.archify/**`, rechecks a run folder's candidate on any event in it, and decides "new" against the candidates it already knows. All four watcher tests pass on both VS Code versions.
 - 2026-10-18 — SAF-07 departs from the spec in two places. The Windows stub `git.exe` CI test became a unit test that a relative PATH entry is never searched, since spawning by absolute path is what keeps Windows away from the current folder. The `core.fsmonitor` e2e check waits for Show Changes (FRS-04, D3); the unit test covers the git calls that exist today.
 
 - 2026-10-18 — ENG-02 departs from the spec: the budget factor is 12, not 8. The measured ratio is 7.4, so 8 would flake.

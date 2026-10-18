@@ -1,15 +1,24 @@
-// Watches `<folder>/.archify/*/candidate.json` in every workspace folder (FR-WAT-01, ADR 0026).
+// Watches `<folder>/.archify/` in every workspace folder and acts on run folders' candidates
+// (FR-WAT-01, ADR 0026). Any event in a run folder rechecks its candidate.json, because file
+// watchers can miss a file created inside a folder created a moment before.
 import { existsSync } from "node:fs";
-import { basename, dirname } from "node:path";
+import { basename, dirname, join, sep } from "node:path";
 import * as vscode from "vscode";
 import { listCandidates } from "../model/discovery";
 import { ArchitecturePanel } from "./panel";
-import { ChangeBatch, DELETED_MESSAGE, watchAction } from "./watchLogic";
+import { candidateOf, ChangeBatch, DELETED_MESSAGE, noteCandidate, watchAction } from "./watchLogic";
 
 export class CandidateWatcher implements vscode.Disposable {
   private readonly watchers = new Map<string, vscode.FileSystemWatcher>();
+  /** Candidates seen so far, per workspace folder root. */
+  private readonly known = new Map<string, Set<string>>();
   private readonly batch = new ChangeBatch((changes) => {
-    for (const [file, created] of changes) void this.apply(file, created);
+    for (const file of changes.keys()) {
+      const root = dirname(dirname(dirname(file)));
+      const known = this.known.get(root) ?? new Set<string>();
+      this.known.set(root, known);
+      void this.apply(file, noteCandidate(known, file, existsSync(file)));
+    }
   });
   private readonly folderListener: vscode.Disposable;
 
@@ -26,10 +35,17 @@ export class CandidateWatcher implements vscode.Disposable {
 
   private watch(folders: readonly vscode.WorkspaceFolder[]): void {
     for (const folder of folders) {
-      const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(folder, ".archify/*/candidate.json"));
-      watcher.onDidCreate((uri) => this.batch.add(uri.fsPath, true));
-      watcher.onDidChange((uri) => this.batch.add(uri.fsPath, false));
-      watcher.onDidDelete((uri) => this.batch.add(uri.fsPath, false));
+      const root = folder.uri.fsPath;
+      this.known.set(root, new Set(listCandidates(root).map((candidate) => candidate.file)));
+      const archify = join(root, ".archify");
+      const onEvent = (uri: vscode.Uri): void => {
+        const candidate = candidateOf(archify, uri.fsPath, sep);
+        if (candidate !== undefined) this.batch.add(candidate, false);
+      };
+      const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(folder, ".archify/**"));
+      watcher.onDidCreate(onEvent);
+      watcher.onDidChange(onEvent);
+      watcher.onDidDelete(onEvent);
       this.watchers.set(folder.uri.toString(), watcher);
     }
   }

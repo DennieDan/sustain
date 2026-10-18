@@ -106,7 +106,7 @@ The learning-session skill ([ADRs 0029–0036](adr/0029-learning-modes-in-one-ag
 | `sourceTarget.ts` | No `vscode`: `resolveSource(root, source)` → open with lines, open with a stale-line warning, or "Invalid source path" / "Stale reference … no longer exists" (FR-NAV-03). |
 | `navigate.ts` | `openSource`: "no source references" status message, error or open in the other column (`panel === 1 ? 2 : 1`), select whole lines, reveal, 2 s `editor.rangeHighlightBackground` highlight (FR-NAV-01/02, [ADR 0027](adr/0027-navigation-and-watching-details.md)). |
 | `watchLogic.ts` | No `vscode`: `ChangeBatch` (300 ms debounce, per-file merge) and `watchAction` (reload / deleted / switch / notify). |
-| `watcher.ts` | `CandidateWatcher`: one `FileSystemWatcher` per workspace folder on `.archify/*/candidate.json`, applying `watchAction` to the panel or a "New architecture diagram" notification (FR-WAT-01). |
+| `watcher.ts` | `CandidateWatcher`: one `FileSystemWatcher` per workspace folder on `.archify/**`. Any event in a run folder rechecks its `candidate.json`, and `noteCandidate` decides "new" against the candidates already known, because watchers can miss a file created inside a just-created folder. Applies `watchAction` to the panel or a "New architecture diagram" notification (FR-WAT-01). |
 
 ### `src/layout/`
 
