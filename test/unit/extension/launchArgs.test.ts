@@ -1,7 +1,7 @@
 // SAF-04: agents launch with the prompt alone and only from absolute PATH entries.
 import { chmodSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { agentLaunchArgs, agentPrompt, AGENTS, findOnPath } from "../../../src/extension/agents";
+import { agentLaunchArgs, agentPrompt, AGENTS, findOnPath, headlessArgs } from "../../../src/extension/agents";
 import { devinPromptArgs } from "../../../src/extension/devin";
 import { put, tempDir } from "../support/temp";
 
@@ -39,6 +39,39 @@ describe("SAF-04 launch arguments", () => {
     expect(argv[0]).toBe("--");
     expect(argv).toHaveLength(2);
     expect(forbiddenIn(argv)).toEqual([]);
+  });
+
+  test("UI-02 Claude Code runs headless with exactly the generate tools and dontAsk", () => {
+    const argv = headlessArgs("claude", "/sustain-architecture auth", { skillDir: "/h/.claude/skills/sustain-architecture" });
+    expect(argv).toEqual([
+      "-p",
+      "/sustain-architecture auth",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "dontAsk",
+      "--allowedTools",
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(node /h/.claude/skills/sustain-architecture/scripts/repo-facts.mjs *)",
+      "Bash(node /h/.claude/skills/sustain-architecture/scripts/validate.mjs *)",
+      "Edit(./.archify/**)",
+    ]);
+    expect(forbiddenIn(argv)).toEqual([]);
+  });
+
+  test("UI-06 a question is read-only and a follow-up resumes the session", () => {
+    const argv = headlessArgs("claude", "What calls the validator?", { skillDir: "/s", readOnly: true, resume: "sess-1" });
+    expect(argv.slice(argv.indexOf("--allowedTools"))).toEqual(["--allowedTools", "Read", "Grep", "Glob"]);
+    expect(argv).toContain("--resume");
+    expect(forbiddenIn(argv)).toEqual([]);
+  });
+
+  test("UI-02 Codex runs in the workspace-write sandbox, and read-only for a question", () => {
+    expect(headlessArgs("codex", "$sustain-architecture", { skillDir: "/s" })).toEqual(["exec", "--json", "--sandbox", "workspace-write", "$sustain-architecture"]);
+    expect(headlessArgs("codex", "What calls x?", { skillDir: "/s", readOnly: true })).toEqual(["exec", "--json", "--sandbox", "read-only", "What calls x?"]);
   });
 
   test("the check spots a permission flag as one element or two", () => {
