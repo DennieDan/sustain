@@ -50,7 +50,7 @@ const USAGE =
   "  status                                 the authoritative session snapshot\n" +
   "  report --file <f>                      confirm <f> holds an unfixed seeded bug\n" +
   "  hint --level <1|2|3> [--bug <id>|--file <f>]  ledger a hint deduction\n" +
-  "  verify [--check-cmd <cmd>]             judge fixes; advance the step when clean\n" +
+  "  verify [--check-exit <code>]           judge fixes; advance the step when clean\n" +
   "  complete                               score the session, free the lock\n" +
   "  pause                                  park the session; hooks go inert\n" +
   "  resume                                 return to the phase pause parked\n" +
@@ -60,7 +60,6 @@ const USAGE =
 const JS_TS = /\.(mjs|cjs|mts|cts|js|jsx|ts|tsx)$/;
 /** `.mjs`/`.cjs` are the only files `node --check` parses unambiguously (ADR 0037). */
 const NODE_CHECKABLE = /\.(mjs|cjs)$/;
-const CHECK_OUTPUT_TAIL = 1000;
 
 const root = process.cwd();
 
@@ -425,7 +424,7 @@ function cmdHint(args: string[]): number {
 
 // -------------------------------------------------------------------------- verify
 
-/** `node --check` on .mjs/.cjs; other extensions defer to `--check-cmd` (ADR 0037). */
+/** `node --check` on .mjs/.cjs. Other extensions rely on the agent-reported `--check-exit` (SAF-02). */
 function fileParses(abs: string): { ok: boolean; message?: string } {
   if (!NODE_CHECKABLE.test(abs)) return { ok: true };
   const check = spawnSync(process.execPath, ["--check", abs], { encoding: "utf8" });
@@ -434,8 +433,10 @@ function fileParses(abs: string): { ok: boolean; message?: string } {
 }
 
 function cmdVerify(args: string[]): number {
-  const opts = flags(args, ["check-cmd"]);
+  const opts = flags(args, ["check-exit"]);
   if (opts === null) return usageError(`verify: ${USAGE.split("\n")[7]!.trim()}`);
+  const checkExit = opts["check-exit"] === undefined ? undefined : Number(opts["check-exit"]);
+  if (checkExit !== undefined && !Number.isInteger(checkExit)) return usageError("verify: --check-exit takes the check command's integer exit code");
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -468,23 +469,15 @@ function cmdVerify(args: string[]): number {
     return report(1, { status: "still-buggy", remaining, fixed: newlyFixed });
   }
 
-  if (opts["check-cmd"] !== undefined) {
-    const check = spawnSync(opts["check-cmd"], { cwd: root, shell: true, encoding: "utf8" });
-    if (check.status !== 0) {
-      const output = `${check.stdout ?? ""}${check.stderr ?? ""}`.trim();
-      session.score = scoreSession(manifest);
-      save(active);
-      return report(1, {
-        status: "check-failed",
-        command: opts["check-cmd"],
-        exitCode: check.status,
-        output: output.slice(-CHECK_OUTPUT_TAIL),
-      });
-    }
+  // The agent ran the project's check itself, so its exit code is agent-reported.
+  if (checkExit !== undefined && checkExit !== 0) {
+    session.score = scoreSession(manifest);
+    save(active);
+    return report(1, { status: "check-failed", exitCode: checkExit, reportedBy: "agent" });
   }
 
   const step = session.stepIndex;
-  appendEvent(active.dir, { type: "verified", step });
+  appendEvent(active.dir, checkExit === undefined ? { type: "verified", step } : { type: "verified", step, checkExit, reportedBy: "agent" });
   session.stepIndex += 1;
   session.phase = session.stepIndex >= session.steps.length ? "done" : "implementing";
   session.score = scoreSession(manifest);

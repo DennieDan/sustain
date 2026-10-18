@@ -3,7 +3,7 @@ name: sustain-bugfix
 description: Run a Sustain bug-hunt learning session. You implement the user's task step by step, secretly seed one bug per step, and the user finds and fixes it for points. Invoke manually with a task description.
 triggers: [user]
 disable-model-invocation: true
-allowed-tools: Read Grep Glob Edit Write Bash(node .agents/skills/sustain-bugfix/scripts/*) AskUserQuestion
+allowed-tools: Read Grep Glob Bash(node .agents/skills/sustain-bugfix/scripts/session.mjs *) AskUserQuestion
 ---
 
 # Sustain bug-hunt session
@@ -82,7 +82,7 @@ Then tell the user ONLY: the step is implemented, one bug is hidden, and the fil
 The user describes what they found and fixes it themselves.
 
 - **They name a suspect.** Judge the description first — the right file with a nonsense explanation does not count. When the description is plausible, run `report --file <f>`. `found` confirms it; `miss` means no live bug there — say so without revealing where it is.
-- **They say it is fixed.** Run `verify` (optionally `--check-cmd "<the project's quick test or lint command>"` if the user wants that gate). `still-buggy` → tell them it is not fixed, without explaining what is wrong. `ok` → the next step begins (back to step 4) or the session is done (step 8).
+- **They say it is fixed.** Run `verify`. If the user wants the project's quick test or lint command as a gate, run that command yourself first (it asks the user's permission like any command), then pass its exit code with `verify --check-exit <code>`. `still-buggy` → tell them it is not fixed, without explaining what is wrong. `ok` → the next step begins (back to step 4) or the session is done (step 8).
 - **They are stuck.** Offer a hint and run `hint --level 1` (region nudge). Escalate to `--level 2` (reveal the bug's kind) then `--level 3` (near-explicit) only on request — every level costs points, so make the cost explicit before taking it.
 
 ### 7. Pauses and exits

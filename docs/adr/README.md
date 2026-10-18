@@ -44,3 +44,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0038](0038-mutation-engine-v1-rule-tables.md) | Mutation engine v1: three kinds as ordered rewrite tables on one line | accepted | 2026-10-14 |
 | [0039](0039-lifecycle-commands-and-hook-contract.md) | Lifecycle command contract and the session-hook wire format | accepted | 2026-10-14 |
 | [0040](0040-hooks-merge-panel-read-side-and-devin-detection.md) | Hooks-merge mechanics, session-panel read side and Devin CLI detection | accepted | 2026-10-15 |
+| [0041](0041-pre-approved-skill-commands-run-no-caller-named-program.md) | Pre-approved skill commands run no caller-named program | accepted | 2026-10-18 |

@@ -388,15 +388,24 @@ describe("verify", () => {
     expect(run.json()["status"]).toBe("error");
   });
 
-  test("--check-cmd gates the step", () => {
+  test("SAF-02 an agent-reported --check-exit gates the step and is ledgered as agent-reported", () => {
     const root = fixture();
     seeded(root);
     put(root, "src/demo.ts", SUM_BELOW);
-    const failed = runScript("session", ["verify", "--check-cmd", "exit 3"], { cwd: root });
+    const failed = runScript("session", ["verify", "--check-exit", "3"], { cwd: root });
     expect(failed.status).toBe(1);
-    expect(failed.json()).toMatchObject({ status: "check-failed", exitCode: 3 });
-    const ok = runScript("session", ["verify", "--check-cmd", "exit 0"], { cwd: root });
+    expect(failed.json()).toMatchObject({ status: "check-failed", exitCode: 3, reportedBy: "agent" });
+    const ok = runScript("session", ["verify", "--check-exit", "0"], { cwd: root });
     expect(ok.status).toBe(0);
+    const run = readFileSync(join(root, ".sustain/active"), "utf8").trim();
+    expect(events(root, run).find((event) => event["type"] === "verified")).toMatchObject({ step: 0, checkExit: 0, reportedBy: "agent" });
+  });
+
+  test("SAF-02 --check-cmd is no longer accepted", () => {
+    const root = fixture();
+    seeded(root);
+    put(root, "src/demo.ts", SUM_BELOW);
+    expect(runScript("session", ["verify", "--check-cmd", "exit 0"], { cwd: root }).status).toBe(2);
   });
 });
 

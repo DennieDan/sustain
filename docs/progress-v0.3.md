@@ -67,7 +67,7 @@ Done when: Gates green; a tampered skill cannot launch; no pre-approved command 
 - [x] **ENG-02 Meaningful layout test** `[unit]` — 2026-10-18: `test/unit/layout/perf.test.ts` (2 tests) with `perfBudget.ts`. Outside vitest the 60/120 median was 729 ms and the 12-component median 99 ms (ratio 7.4); the old test failed on vitest's 5 s default timeout, not on the 1 s budget. The fake-clock test fails when the budget check is disabled.
 - [ ] **ENG-04 Third-party notices** `[unit]` `[ci]` — `[unit]` done 2026-10-18: `test/unit/notices.test.ts` (2 tests; the nested-package case fails with `indexOf` in place of `lastIndexOf`). `npm run build` writes `out/meta/bundles.json`; `npm run notices` added ajv, elkjs (EPL-2.0 OR GPL-3.0-or-later), fast-deep-equal, fast-uri and json-schema-traverse with their licence texts. `npm run check` now ends with `check:notices`. `[ci]` waits for the first push.
 - [ ] **SAF-01 Skill integrity check** `[unit]` `[e2e]`
-- [ ] **SAF-02 Safe pre-approvals** `[unit]`
+- [x] **SAF-02 Safe pre-approvals** `[unit]` — 2026-10-18: `session.mjs verify --check-exit <code>` replaces `--check-cmd` (no shell left in the scripts). Bug-hunt `allowed-tools` lost `Edit`/`Write`; both skills now pre-approve only `node …/scripts/<script>.mjs *`. Tests: `test/unit/skill/preapprovals.test.ts` (3), `test/unit/execScan.test.ts` (2; a first draft flagged `RegExp.exec` and was fixed), `session.test.ts` › `SAF-02 an agent-reported --check-exit…` and `SAF-02 --check-cmd is no longer accepted`, `skill.test.ts` › `SAF-02 SKILL.md declares…`. ADR 0041. Full vitest: 786 passed.
 - [ ] **SAF-03 Repository content is data** `[unit]` `[dom]`
 - [ ] **SAF-04 Safe launch arguments** `[unit]`
 - [ ] **SAF-05 Write confinement** `[unit]`
