@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0047](0047-the-viewer-reaches-its-host-through-a-bridge.md)
 date: 2026-10-11
 decision-makers: implementer
 ---

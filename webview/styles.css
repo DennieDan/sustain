@@ -1,4 +1,4 @@
-/* Architecture webview (FR-VIEW-05..07). Colours come only from VS Code theme variables. */
+/* The map viewer (FR-VIEW-05..07). Colours and fonts come only from the --sustain-* tokens its host sets (VWR-01). */
 
 html,
 body {
@@ -7,10 +7,10 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--vscode-editor-background);
-  color: var(--vscode-foreground);
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
+  background: var(--sustain-background);
+  color: var(--sustain-foreground);
+  font-family: var(--sustain-font-family);
+  font-size: var(--sustain-font-size);
 }
 
 [hidden] {
@@ -32,7 +32,7 @@ body {
   cursor: grab;
   user-select: none;
   touch-action: none;
-  font-family: var(--vscode-font-family);
+  font-family: var(--sustain-font-family);
 }
 
 .canvas--panning {
@@ -53,10 +53,10 @@ body {
   display: flex;
   gap: 2px;
   padding: 2px;
-  background: var(--vscode-editorWidget-background);
-  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
   border-radius: 4px;
-  box-shadow: 0 2px 8px var(--vscode-widget-shadow);
+  box-shadow: 0 2px 8px var(--sustain-shadow);
 }
 
 .toolbar__button {
@@ -66,21 +66,21 @@ body {
   border: none;
   border-radius: 3px;
   background: none;
-  color: var(--vscode-foreground);
+  color: var(--sustain-foreground);
   font: inherit;
   cursor: pointer;
 }
 
 .toolbar__button:hover {
-  background: var(--vscode-toolbar-hoverBackground);
+  background: var(--sustain-hover);
 }
 
 .toolbar__button:active {
-  background: var(--vscode-toolbar-activeBackground, var(--vscode-toolbar-hoverBackground));
+  background: var(--sustain-active);
 }
 
 .toolbar__button:focus-visible {
-  outline: 1px solid var(--vscode-focusBorder);
+  outline: 1px solid var(--sustain-accent);
   outline-offset: -1px;
 }
 
@@ -94,10 +94,10 @@ body {
   align-items: center;
   gap: 8px;
   padding: 2px 2px 2px 10px;
-  background: var(--vscode-editorWidget-background);
-  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
   border-radius: 4px;
-  box-shadow: 0 2px 8px var(--vscode-widget-shadow);
+  box-shadow: 0 2px 8px var(--sustain-shadow);
 }
 
 .highlight[hidden],
@@ -106,8 +106,8 @@ body {
 }
 
 .highlight__follow--on {
-  background: var(--vscode-inputOption-activeBackground, var(--vscode-toolbar-hoverBackground));
-  color: var(--vscode-inputOption-activeForeground, var(--vscode-foreground));
+  background: var(--sustain-toggle-background);
+  color: var(--sustain-toggle-foreground);
 }
 
 .app--highlighting .node:not(.node--highlight),
@@ -117,7 +117,7 @@ body {
 }
 
 .node--highlight .node__box {
-  stroke: var(--vscode-focusBorder);
+  stroke: var(--sustain-accent);
   stroke-width: 3px;
 }
 
@@ -127,14 +127,14 @@ body {
   padding: 4px 12px;
   border: none;
   border-radius: 2px;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
+  background: var(--sustain-button-background);
+  color: var(--sustain-button-foreground);
   font: inherit;
   cursor: pointer;
 }
 
 .empty-state__action:hover {
-  background: var(--vscode-button-hoverBackground);
+  background: var(--sustain-button-hover);
 }
 
 .empty-state {
@@ -146,7 +146,7 @@ body {
   height: 100%;
   padding: 24px;
   box-sizing: border-box;
-  color: var(--vscode-descriptionForeground);
+  color: var(--sustain-muted);
   text-align: center;
   white-space: pre-wrap;
 }
@@ -155,28 +155,28 @@ body {
 
 .boundary__box {
   fill: none;
-  stroke: var(--vscode-panel-border);
+  stroke: var(--sustain-border);
   stroke-width: 1.25px;
   stroke-dasharray: 6 4;
 }
 
 .boundary__label {
-  fill: var(--vscode-descriptionForeground);
+  fill: var(--sustain-muted);
   font-weight: 600;
 }
 
 .boundary--security-group .boundary__box {
-  stroke: var(--vscode-charts-red);
+  stroke: var(--sustain-red);
 }
 
 .boundary--security-group .boundary__label {
-  fill: var(--vscode-charts-red);
+  fill: var(--sustain-red);
 }
 
 /* Edges */
 
 .edge {
-  --edge-color: var(--vscode-foreground);
+  --edge-color: var(--sustain-foreground);
 }
 
 .edge__line {
@@ -191,7 +191,7 @@ body {
 }
 
 .edge--emphasis {
-  --edge-color: var(--vscode-focusBorder);
+  --edge-color: var(--sustain-accent);
 }
 
 .edge--emphasis .edge__line {
@@ -199,7 +199,7 @@ body {
 }
 
 .edge--security {
-  --edge-color: var(--vscode-charts-red);
+  --edge-color: var(--sustain-red);
 }
 
 .edge--security .edge__line {
@@ -211,8 +211,8 @@ body {
 }
 
 .edge-label {
-  fill: var(--vscode-foreground);
-  stroke: var(--vscode-editor-background);
+  fill: var(--sustain-foreground);
+  stroke: var(--sustain-background);
   stroke-width: 4px;
   stroke-linejoin: round;
   paint-order: stroke;
@@ -221,35 +221,35 @@ body {
 /* Nodes */
 
 .node {
-  --node-color: var(--vscode-descriptionForeground);
+  --node-color: var(--sustain-muted);
 }
 
 .node--frontend {
-  --node-color: var(--vscode-charts-blue);
+  --node-color: var(--sustain-blue);
 }
 
 .node--backend {
-  --node-color: var(--vscode-charts-green);
+  --node-color: var(--sustain-green);
 }
 
 .node--database {
-  --node-color: var(--vscode-charts-purple);
+  --node-color: var(--sustain-purple);
 }
 
 .node--cloud {
-  --node-color: var(--vscode-charts-yellow);
+  --node-color: var(--sustain-yellow);
 }
 
 .node--security {
-  --node-color: var(--vscode-charts-red);
+  --node-color: var(--sustain-red);
 }
 
 .node--messagebus {
-  --node-color: var(--vscode-charts-orange);
+  --node-color: var(--sustain-orange);
 }
 
 .node--external {
-  --node-color: var(--vscode-descriptionForeground);
+  --node-color: var(--sustain-muted);
 }
 
 /* FR-VIEW-05: fill = type colour at 12 % opacity. */
@@ -260,16 +260,16 @@ body {
 }
 
 .node__label {
-  fill: var(--vscode-foreground);
+  fill: var(--sustain-foreground);
   font-weight: bold;
 }
 
 .node__sublabel {
-  fill: var(--vscode-descriptionForeground);
+  fill: var(--sustain-muted);
 }
 
 .node__tag-badge {
-  fill: color-mix(in srgb, var(--node-color) 22%, var(--vscode-editor-background));
+  fill: color-mix(in srgb, var(--node-color) 22%, var(--sustain-background));
 }
 
 .node__tag {
@@ -284,11 +284,11 @@ body {
   max-width: 480px;
   padding: 6px 10px;
   box-sizing: border-box;
-  background: var(--vscode-editorHoverWidget-background);
-  color: var(--vscode-editorHoverWidget-foreground);
-  border: 1px solid var(--vscode-editorHoverWidget-border);
+  background: var(--sustain-tooltip-background);
+  color: var(--sustain-tooltip-foreground);
+  border: 1px solid var(--sustain-tooltip-border);
   border-radius: 4px;
-  box-shadow: 0 2px 8px var(--vscode-widget-shadow);
+  box-shadow: 0 2px 8px var(--sustain-shadow);
   line-height: 1.4;
 }
 
@@ -298,14 +298,14 @@ body {
 
 .tooltip__sublabel,
 .tooltip__type {
-  color: var(--vscode-descriptionForeground);
+  color: var(--sustain-muted);
 }
 
 .tooltip__sources {
   margin: 6px 0 0;
   padding: 6px 0 0;
   list-style: none;
-  border-top: 1px solid var(--vscode-editorHoverWidget-border);
+  border-top: 1px solid var(--sustain-tooltip-border);
 }
 
 .tooltip__source {
@@ -316,26 +316,26 @@ body {
   padding: 1px 0;
   border: none;
   background: none;
-  color: var(--vscode-textLink-foreground);
+  color: var(--sustain-link);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
 .tooltip__source:hover .tooltip__path {
-  color: var(--vscode-textLink-activeForeground);
+  color: var(--sustain-link-active);
   text-decoration: underline;
 }
 
 .tooltip__source:focus-visible {
-  outline: 1px solid var(--vscode-focusBorder);
+  outline: 1px solid var(--sustain-accent);
 }
 
 .tooltip__path {
-  font-family: var(--vscode-editor-font-family);
+  font-family: var(--sustain-mono-font-family);
   overflow-wrap: anywhere;
 }
 
 .tooltip__source-label {
-  color: var(--vscode-descriptionForeground);
+  color: var(--sustain-muted);
 }

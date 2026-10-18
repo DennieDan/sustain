@@ -27,7 +27,7 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0021](0021-command-ui-details-not-fixed-by-the-spec.md) | Command UI details not fixed by the spec | accepted | 2026-10-11 |
 | [0022](0022-authored-straight-edges-and-overlay-boundaries.md) | Straight clipped edges in authored mode; overlay rectangles for overlapping boundaries | accepted | 2026-10-11 |
 | [0023](0023-auto-layout-direction-by-fit-scale.md) | Auto layout direction chosen by fit scale | accepted | 2026-10-11 |
-| [0024](0024-theme-colour-mapping-and-svg-styling.md) | Theme colour mapping and SVG styling | accepted | 2026-10-11 |
+| [0024](0024-theme-colour-mapping-and-svg-styling.md) | Theme colour mapping and SVG styling | superseded by [ADR-0047](0047-the-viewer-reaches-its-host-through-a-bridge.md) | 2026-10-11 |
 | [0025](0025-viewer-details-not-fixed-by-the-spec.md) | Viewer details not fixed by the spec | accepted | 2026-10-11 |
 | [0026](0026-activate-test-hook-and-happy-dom-tests.md) | activate() test hook and happy-dom DOM tests | accepted | 2026-10-11 |
 | [0027](0027-navigation-and-watching-details.md) | Navigation and watching details | accepted | 2026-10-11 |
@@ -50,3 +50,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0044](0044-skills-install-per-user-by-default.md) | Skills install per user by default | accepted | 2026-10-18 |
 | [0045](0045-run-json-records-each-run.md) | run.json records each run | accepted | 2026-10-18 |
 | [0046](0046-generate-streams-headless-runs-into-the-sidebar.md) | Generate streams headless runs into the sidebar | accepted | 2026-10-18 |
+| [0047](0047-the-viewer-reaches-its-host-through-a-bridge.md) | The viewer reaches its host through a bridge and colours itself from tokens | accepted | 2026-10-18 |
