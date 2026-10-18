@@ -39,8 +39,8 @@ export function withGhosts(diagram: ViewDiagram, ghosts: readonly Ghost[]): View
   return { ...diagram, components: [...diagram.components, ...extra] };
 }
 
-/** Builds the viewer in `document.body` and starts listening to the host. */
-export function startViewer(): void {
+/** Builds the viewer in `mount` (the page's body by default) and starts listening to the host. */
+export function startViewer(mount: HTMLElement = document.body): void {
   // body > div.app > svg.canvas > g.viewport; div.toolbar > button[data-action]×4;
   // div.highlight[hidden] > span.highlight__text, button.highlight__follow; div.freshness[hidden];
   // div.empty-state[hidden]; div.tooltip[hidden]
@@ -93,7 +93,7 @@ export function startViewer(): void {
   tooltipElement.setAttribute("role", "tooltip");
   tooltipElement.hidden = true;
   app.append(svg, toolbar, highlightBar, freshnessBar, changesBar, emptyState, tooltipElement);
-  document.body.append(app);
+  mount.append(app);
 
   const viewport = new ViewportController(svg, content, toolbar, window);
   const tooltip = new TooltipController(svg, tooltipElement, (message) => post(message));

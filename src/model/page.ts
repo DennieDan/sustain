@@ -2,6 +2,7 @@
 // script with markup characters escaped; the viewer and its styles are inline and allowed by their
 // SHA-256 hashes, so nothing else can run or load.
 import { createHash } from "node:crypto";
+import type { HostMessage } from "./messages";
 import type { Repository } from "./types";
 
 /** The bundled page script and stylesheet. */
@@ -18,6 +19,8 @@ export interface PageData {
   root: string | null;
   project: string | null;
   repository: Repository | null;
+  /** Messages delivered after the map, such as freshness, an overlay or ghost boxes (CLD-03, CLD-04). */
+  messages?: HostMessage[];
 }
 
 /** JSON safe inside a script element: `<`, `>`, `&`, U+2028 and U+2029 as escapes. */

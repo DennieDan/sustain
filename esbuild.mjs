@@ -2,6 +2,7 @@
 // `node esbuild.mjs`        → dist/
 // `node esbuild.mjs --e2e`  → out/e2e/ (the @vscode/test-electron suite; never shipped)
 // `node esbuild.mjs --action` → action/dist/index.js (the GitHub Action, committed; PRC-04)
+// `node esbuild.mjs --cloud`  → cloud/public/viewer.js and viewer.css (the cloud's map viewer; CLD-03)
 import * as esbuild from "esbuild";
 import { createHash } from "node:crypto";
 import { cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -244,6 +245,14 @@ async function buildE2e() {
   });
 }
 
+/** The cloud's map viewer: the diagram page's script and styles, served from cloud/public (CLD-03). */
+export async function buildCloudViewer() {
+  const page = await buildPage();
+  mkdirSync(join(root, "cloud/public"), { recursive: true });
+  writeFileSync(join(root, "cloud/public/viewer.js"), page.script);
+  writeFileSync(join(root, "cloud/public/viewer.css"), page.style);
+}
+
 /**
  * The GitHub Action's bundle (PRC-04). It is committed, so it must come out the same on every machine.
  * @param {string} [outfile]
@@ -263,5 +272,6 @@ export async function buildAction(outfile = join(root, "action/dist/index.js")) 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.includes("--e2e")) await buildE2e();
   else if (process.argv.includes("--action")) await buildAction();
+  else if (process.argv.includes("--cloud")) await buildCloudViewer();
   else await buildDist();
 }

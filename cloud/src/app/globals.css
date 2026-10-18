@@ -1,0 +1,151 @@
+/* Sustain Cloud's styles. System fonts only: the site loads nothing from other hosts (CLD-08). */
+:root {
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --line: #d1d9e0;
+  --accent: #0969da;
+  --panel: #f6f8fa;
+  --danger: #cf222e;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --line: #3d444d;
+    --accent: #4493f8;
+    --panel: #151b23;
+    --danger: #f85149;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+a {
+  color: var(--accent);
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 48px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.site-header .brand {
+  font-weight: 700;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.site-header nav {
+  display: flex;
+  gap: 14px;
+  flex: 1;
+}
+
+.site-header nav a,
+.site-header .account a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.button {
+  display: inline-block;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--fg);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.button--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.map-shell {
+  position: fixed;
+  inset: 48px 0 0 0;
+}
+
+.map-side {
+  position: fixed;
+  top: 60px;
+  right: 12px;
+  z-index: 6;
+  width: 280px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: 13px;
+}
+
+.map-side h2 {
+  margin: 4px 0 8px;
+  font-size: 14px;
+}
+
+.map-side ol,
+.map-side ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+pre {
+  overflow: auto;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}

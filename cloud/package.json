@@ -4,9 +4,13 @@
   "private": true,
   "description": "Sustain Cloud: architecture maps for teams, never code.",
   "scripts": {
+    "viewer": "node ../esbuild.mjs --cloud",
+    "predev": "node ../esbuild.mjs --cloud",
     "dev": "next dev",
+    "prebuild": "node ../esbuild.mjs --cloud",
     "build": "next build",
     "start": "next start",
+    "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
     "test:web": "playwright test"
   },

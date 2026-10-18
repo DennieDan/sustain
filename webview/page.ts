@@ -80,8 +80,10 @@ useHost(
     post: (message) => {
       if (message.type === "openSource") open(message.componentId, message.index);
     },
-    messages: [{ type: "load", doc: data.doc, file: data.title }],
+    messages: [{ type: "load", doc: data.doc, file: data.title }, ...(data.messages ?? [])],
   }),
 );
-startViewer();
-document.body.append(bar);
+// A page with a #sustain-viewer element, such as a cloud page, gets the viewer there.
+const mount = document.getElementById("sustain-viewer") ?? document.body;
+startViewer(mount);
+mount.append(bar);

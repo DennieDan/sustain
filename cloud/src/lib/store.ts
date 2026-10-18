@@ -1,7 +1,7 @@
 // Sustain Cloud's queries: repositories, uploads, tokens, access and deletion.
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import type { Database } from "../db/client";
-import { access, repositories, tokens, uploads, users } from "../db/schema";
+import { access, memberships, repositories, tokens, uploads, users } from "../db/schema";
 import { hashToken } from "./tokens";
 
 export type Repository = typeof repositories.$inferSelect;
@@ -85,4 +85,36 @@ export async function roleOf(db: Database, userId: number, repoId: number): Prom
 export async function findUserByGithubId(db: Database, githubId: number): Promise<typeof users.$inferSelect | undefined> {
   const [row] = await db.select().from(users).where(eq(users.githubId, githubId));
   return row;
+}
+
+export async function listTokens(db: Database, repoId: number): Promise<{ id: number; name: string; createdAt: Date; lastUsedAt: Date | null }[]> {
+  return db.select({ id: tokens.id, name: tokens.name, createdAt: tokens.createdAt, lastUsedAt: tokens.lastUsedAt }).from(tokens).where(eq(tokens.repoId, repoId)).orderBy(tokens.id);
+}
+
+export async function revokeToken(db: Database, repoId: number, id: number): Promise<boolean> {
+  return (await db.delete(tokens).where(and(eq(tokens.repoId, repoId), eq(tokens.id, id))).returning({ id: tokens.id })).length > 0;
+}
+
+/** Makes a public repository's maps public or private again; a private repository's maps stay private. */
+export async function setPublicMaps(db: Database, repo: Repository, value: boolean): Promise<boolean> {
+  if (value && repo.private) return false;
+  await db.update(repositories).set({ publicMaps: value }).where(eq(repositories.id, repo.id));
+  return true;
+}
+
+/** CLD-11: one upload, gone at once. */
+export async function deleteUpload(db: Database, repoId: number, id: number): Promise<boolean> {
+  return (await db.delete(uploads).where(and(eq(uploads.repoId, repoId), eq(uploads.id, id))).returning({ id: uploads.id })).length > 0;
+}
+
+/** CLD-11: a repository's uploads, checks, tokens and access, gone at once. */
+export async function deleteRepositoryData(db: Database, repoId: number): Promise<void> {
+  await db.delete(repositories).where(eq(repositories.id, repoId));
+}
+
+/** CLD-11: the user, their access and memberships, and every repository space their account owns. */
+export async function deleteAccount(db: Database, userId: number, login: string): Promise<void> {
+  await db.delete(repositories).where(eq(repositories.owner, login));
+  await db.delete(memberships).where(eq(memberships.userId, userId));
+  await db.delete(users).where(eq(users.id, userId));
 }
