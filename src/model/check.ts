@@ -10,7 +10,9 @@ import { listCandidates } from "./discovery";
 import { importLanguage, importResolver } from "./evidence/graph";
 import { diffBetween, existsAt, fileAt, filesAt, mergeBase, renamesSince, untrackedFiles } from "./git";
 import { globToRegExp } from "./refresh";
-import { listFiles } from "./repoSize";
+import { isTestPath, listFiles } from "./repoSize";
+import { checkRules, readRules, type Violation } from "./rules";
+import type { ImportRef } from "./evidence/paths";
 import { ARCHIFY_DIR, CANDIDATE_FILE } from "./runFolder";
 import { readRunRecord } from "./runRecord";
 import { fileReader, mapFreshness, readFingerprints } from "./staleness";
@@ -131,13 +133,20 @@ export function runCheck(options: CheckOptions): CheckOutcome {
   const headFiles = head === undefined ? [...new Set([...listFiles(root).files, ...changes.map((change) => change.path)])] : filesAt(root, head, "");
   const resolve = importResolver(headFiles, text);
   const imports = { base: new Map<string, string[]>(), head: new Map<string, string[]>() };
+  const headRefs = new Map<string, ImportRef[]>();
   for (const change of changes) {
     if (change.status === "deleted" || importLanguage(change.path) === null) continue;
     const now = text(change.path);
-    if (now !== null) imports.head.set(change.path, resolve(change.path, now));
+    if (now !== null) {
+      const refs = resolve(change.path, now);
+      imports.head.set(change.path, refs.map((ref) => ref.path));
+      if (!isTestPath(change.path)) headRefs.set(change.path, refs);
+    }
     const before = change.status === "added" ? null : (fileAt(root, shared, change.oldPath)?.toString("utf8") ?? null);
-    if (before !== null) imports.base.set(change.path, resolve(change.oldPath, before));
+    if (before !== null) imports.base.set(change.path, resolve(change.oldPath, before).map((ref) => ref.path));
   }
+  // ARC-01: rule violations in the imports the diff added.
+  const violations: Violation[] = checkRules(readRules(config.config.rules ?? []).rules, diagram.components, headRefs).filter((violation) => !(imports.base.get(violation.file) ?? []).includes(violation.imported));
   const renames = prints?.revision ? renamesSince(root, prints.revision, process.env, head) : new Map<string, string>();
   const delta = deltaReport({
     components: diagram.components,
@@ -148,6 +157,7 @@ export function runCheck(options: CheckOptions): CheckOutcome {
     sourceFilesIn: (dir) => (head === undefined ? filesOnDisk(root, dir) : filesAt(root, head, dir)).filter(isSourceFile).length,
     connections: diagram.connections,
     imports,
+    violations,
   });
   const outcome = verdict(delta, options.failOn ?? config.config.check?.failOn ?? []);
   return { ok: true, diagram, report: { map: run, base, head: head ?? null, mergeBase: shared, ...delta, ...outcome } };

@@ -9,6 +9,7 @@ import { refreshArchitectureCommand, refreshBoxCommand } from "./refresh";
 import { auditMapCommand } from "./audit";
 import { flagBoxCommand } from "./feedback";
 import { Review } from "./review";
+import { RulesService } from "./rules";
 import { FreshnessService } from "./freshness";
 import { generateArchitectureCommand, resetDataNote } from "./generate";
 import { HOME_VIEW, HomeView } from "./home";
@@ -65,6 +66,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
   const ask = new Ask(context, extensionUri);
   const freshness = new FreshnessService();
   const review = new Review(context, runs);
+  const rules = new RulesService();
   const home = new HomeView(context, runs, ask, freshness, review, [candidates.onDidChange, sessions.onDidChange, freshness.onDidChange]);
   const status = new StatusItem(runs);
   const counts = ArchitecturePanel.onDidCountChanges((changed) => (status.changed = changed));
@@ -75,6 +77,8 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     freshness,
     review,
     ArchitecturePanel.useFreshness(freshness),
+    rules,
+    ArchitecturePanel.useRules(rules),
     counts,
     candidates,
     sessions,

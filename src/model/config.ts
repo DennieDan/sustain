@@ -1,11 +1,12 @@
 // PRC-01: `sustain.config.json` at the repository root, committed with the code. Browser-safe;
 // callers read the file.
+import { readRules } from "./rules";
 import { isJsonObject } from "./types";
 
 export const CONFIG_FILE = "sustain.config.json";
 
-/** What `--fail-on` and `check.failOn` accept. ARC-01 adds more. */
-export const FAIL_ON = ["stale", "new-box", "new-arrow"] as const;
+/** What `--fail-on` and `check.failOn` accept. */
+export const FAIL_ON = ["stale", "new-box", "new-arrow", "violation"] as const;
 export type FailOn = (typeof FAIL_ON)[number];
 
 export interface SustainConfig {
@@ -31,7 +32,7 @@ export function readConfig(value: unknown): ConfigResult {
   for (const key of Object.keys(value)) if (!["map", "ignore", "check", "rules"].includes(key)) errors.push(`unknown key "${key}"`);
   if (value["map"] !== undefined && (typeof value["map"] !== "string" || !/^[a-z0-9]+-[A-Za-z0-9._-]+$/.test(value["map"]))) errors.push('"map" must name a run folder in .archify/');
   if (value["ignore"] !== undefined && !strings(value["ignore"])) errors.push('"ignore" must be a list of globs');
-  if (value["rules"] !== undefined && !Array.isArray(value["rules"])) errors.push('"rules" must be a list');
+  if (value["rules"] !== undefined) errors.push(...readRules(value["rules"]).errors);
   const check = value["check"];
   if (check !== undefined) {
     if (!isJsonObject(check)) errors.push('"check" must be an object');

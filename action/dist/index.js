@@ -7626,41 +7626,6 @@ function markChanges(components, changes) {
   return { strong, weak, uncovered };
 }
 
-// src/model/types.ts
-function isJsonObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function pointerToken(token) {
-  return token.replace(/~/g, "~0").replace(/\//g, "~1");
-}
-
-// src/model/config.ts
-var CONFIG_FILE = "sustain.config.json";
-var FAIL_ON = ["stale", "new-box", "new-arrow"];
-function strings(value) {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
-}
-function readConfig(value) {
-  if (!isJsonObject(value)) return { ok: false, errors: ["the config must be a JSON object"] };
-  const errors = [];
-  for (const key of Object.keys(value)) if (!["map", "ignore", "check", "rules"].includes(key)) errors.push(`unknown key "${key}"`);
-  if (value["map"] !== void 0 && (typeof value["map"] !== "string" || !/^[a-z0-9]+-[A-Za-z0-9._-]+$/.test(value["map"]))) errors.push('"map" must name a run folder in .archify/');
-  if (value["ignore"] !== void 0 && !strings(value["ignore"])) errors.push('"ignore" must be a list of globs');
-  if (value["rules"] !== void 0 && !Array.isArray(value["rules"])) errors.push('"rules" must be a list');
-  const check = value["check"];
-  if (check !== void 0) {
-    if (!isJsonObject(check)) errors.push('"check" must be an object');
-    else {
-      for (const key of Object.keys(check)) if (key !== "failOn") errors.push(`unknown key "check.${key}"`);
-      const failOn = check["failOn"];
-      if (failOn !== void 0 && !(strings(failOn) && failOn.every((entry) => FAIL_ON.includes(entry)))) {
-        errors.push(`"check.failOn" may list only ${FAIL_ON.join(", ")}`);
-      }
-    }
-  }
-  return errors.length === 0 ? { ok: true, config: value } : { ok: false, errors };
-}
-
 // src/model/ownership.ts
 var Ownership = class {
   byFile = /* @__PURE__ */ new Map();
@@ -7703,6 +7668,121 @@ function add(map, key, id) {
   const set = map.get(key) ?? /* @__PURE__ */ new Set();
   set.add(id);
   map.set(key, set);
+}
+
+// src/model/refresh.ts
+function globToRegExp(glob) {
+  let pattern = "";
+  for (let i = 0; i < glob.length; i++) {
+    const char = glob[i];
+    if (char === "*" && glob[i + 1] === "*") {
+      const slash = glob[i + 2] === "/";
+      pattern += slash ? "(?:.*/)?" : ".*";
+      i += slash ? 2 : 1;
+    } else if (char === "*") pattern += "[^/]*";
+    else if (char === "?") pattern += "[^/]";
+    else pattern += char.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  }
+  return new RegExp(`^${pattern}(?:/.*)?$`);
+}
+
+// src/model/rules.ts
+var RULE_KINDS = ["forbid", "only-via", "isolated"];
+var PATH_PREFIX = "path:";
+var isRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+var ends = (value) => typeof value === "string" && value !== "" ? [value] : Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === "string" && entry !== "") ? value : null;
+function readRules(value) {
+  const rules = [];
+  const errors = [];
+  if (!Array.isArray(value)) return { rules, errors: ['"rules" must be a list'] };
+  const ids = /* @__PURE__ */ new Set();
+  value.forEach((entry, index) => {
+    const at = `rules[${index}]`;
+    if (!isRecord(entry)) return void errors.push(`${at} must be an object`);
+    const unknown = Object.keys(entry).filter((key) => !["id", "kind", "from", "to", "via", "reason"].includes(key));
+    for (const key of unknown) errors.push(`${at} has unknown key "${key}"`);
+    const id = entry["id"];
+    const kind = entry["kind"];
+    if (typeof id !== "string" || !/^[A-Za-z0-9._-]{1,80}$/.test(id)) errors.push(`${at}.id must be letters, digits, ".", "_" or "-"`);
+    else if (ids.has(id)) errors.push(`${at}.id "${id}" is used twice`);
+    if (typeof id === "string") ids.add(id);
+    if (!RULE_KINDS.includes(kind)) errors.push(`${at}.kind must be ${RULE_KINDS.join(", ")}`);
+    const from = ends(entry["from"]);
+    const to = entry["to"] === void 0 ? void 0 : ends(entry["to"]);
+    const via = entry["via"] === void 0 ? void 0 : ends(entry["via"]);
+    if (from === null) errors.push(`${at}.from must be a box id, a "path:" glob, or a list of them`);
+    if (to === null) errors.push(`${at}.to must be a box id, a "path:" glob, or a list of them`);
+    if (via === null) errors.push(`${at}.via must be a box id, a "path:" glob, or a list of them`);
+    if ((kind === "forbid" || kind === "only-via") && to === void 0) errors.push(`${at} needs "to"`);
+    if (kind === "only-via" && via === void 0) errors.push(`${at} needs "via"`);
+    if (typeof entry["reason"] !== "string" || entry["reason"].trim() === "") errors.push(`${at}.reason must say why the rule exists`);
+    if (unknown.length === 0 && typeof id === "string" && RULE_KINDS.includes(kind) && from && to !== null && via !== null && typeof entry["reason"] === "string" && entry["reason"].trim() !== "") {
+      if ((kind === "forbid" || kind === "only-via") && to === void 0) return;
+      if (kind === "only-via" && via === void 0) return;
+      rules.push({ id, kind, from, ...to ? { to } : {}, ...via ? { via } : {}, reason: entry["reason"] });
+    }
+  });
+  return { rules, errors };
+}
+function matcher(targets, ownership) {
+  const boxes = new Set((targets ?? []).filter((target) => !target.startsWith(PATH_PREFIX)));
+  const globs = (targets ?? []).filter((target) => target.startsWith(PATH_PREFIX)).map((target) => globToRegExp(target.slice(PATH_PREFIX.length)));
+  return (file) => globs.some((glob) => glob.test(file)) || boxes.size > 0 && ownership.owners(file).some((owner) => boxes.has(owner));
+}
+function checkRules(rules, components, refs) {
+  const ownership = new Ownership(components);
+  const violations = [];
+  for (const rule of rules) {
+    const from = matcher(rule.from, ownership);
+    const to = matcher(rule.to, ownership);
+    const via = matcher(rule.via, ownership);
+    const breaks = (file, imported) => {
+      if (rule.kind === "forbid") return from(file) && to(imported);
+      if (rule.kind === "only-via") return to(imported) && !to(file) && !via(file);
+      return from(imported) && !from(file) && !to(file);
+    };
+    const found = [];
+    for (const [file, imports] of refs) {
+      for (const ref of imports) if (ref.path !== file && breaks(file, ref.path)) found.push({ rule: rule.id, kind: rule.kind, reason: rule.reason, file, line: ref.line, imported: ref.path });
+    }
+    violations.push(...found.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line));
+  }
+  return violations;
+}
+
+// src/model/types.ts
+function isJsonObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function pointerToken(token) {
+  return token.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+
+// src/model/config.ts
+var CONFIG_FILE = "sustain.config.json";
+var FAIL_ON = ["stale", "new-box", "new-arrow", "violation"];
+function strings(value) {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+function readConfig(value) {
+  if (!isJsonObject(value)) return { ok: false, errors: ["the config must be a JSON object"] };
+  const errors = [];
+  for (const key of Object.keys(value)) if (!["map", "ignore", "check", "rules"].includes(key)) errors.push(`unknown key "${key}"`);
+  if (value["map"] !== void 0 && (typeof value["map"] !== "string" || !/^[a-z0-9]+-[A-Za-z0-9._-]+$/.test(value["map"]))) errors.push('"map" must name a run folder in .archify/');
+  if (value["ignore"] !== void 0 && !strings(value["ignore"])) errors.push('"ignore" must be a list of globs');
+  if (value["rules"] !== void 0) errors.push(...readRules(value["rules"]).errors);
+  const check = value["check"];
+  if (check !== void 0) {
+    if (!isJsonObject(check)) errors.push('"check" must be an object');
+    else {
+      for (const key of Object.keys(check)) if (key !== "failOn") errors.push(`unknown key "check.${key}"`);
+      const failOn = check["failOn"];
+      if (failOn !== void 0 && !(strings(failOn) && failOn.every((entry) => FAIL_ON.includes(entry)))) {
+        errors.push(`"check.failOn" may list only ${FAIL_ON.join(", ")}`);
+      }
+    }
+  }
+  return errors.length === 0 ? { ok: true, config: value } : { ok: false, errors };
 }
 
 // src/model/delta.ts
@@ -7794,7 +7874,8 @@ function deltaReport(inputs) {
     uncovered: uncoveredChanges.map((change) => change.path).sort(),
     candidates: candidates.sort((a, b) => a.dir.localeCompare(b.dir)),
     gone: gone.map(ref),
-    arrows: [...arrows.values()].sort((a, b) => a.from.id.localeCompare(b.from.id) || a.to.id.localeCompare(b.to.id))
+    arrows: [...arrows.values()].sort((a, b) => a.from.id.localeCompare(b.from.id) || a.to.id.localeCompare(b.to.id)),
+    violations: [...inputs.violations ?? []]
   };
 }
 function verdict(report, failOn) {
@@ -7802,6 +7883,7 @@ function verdict(report, failOn) {
   if (failOn.includes("stale") && report.stale.length + report.gone.length > 0) reasons.push(`${report.stale.length + report.gone.length} stale or gone box(es)`);
   if (failOn.includes("new-box") && report.candidates.length > 0) reasons.push(`${report.candidates.length} new box candidate(s)`);
   if (failOn.includes("new-arrow") && report.arrows.length > 0) reasons.push(`${report.arrows.length} new arrow candidate(s)`);
+  if (failOn.includes("violation") && report.violations.length > 0) reasons.push(`${report.violations.length} rule violation(s)`);
   return { result: reasons.length === 0 ? "pass" : "fail", reasons };
 }
 
@@ -7861,6 +7943,38 @@ function listCandidates(root) {
   return candidates.sort(compareCandidates);
 }
 
+// src/model/evidence/paths.ts
+function joinPath(dir, rel) {
+  const parts = dir === "" ? [] : dir.split("/");
+  for (const part of rel.split("/")) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") {
+      if (parts.length === 0) return null;
+      parts.pop();
+    } else parts.push(part);
+  }
+  return parts.join("/");
+}
+function lineAt(text, index) {
+  let line = 1;
+  for (let at = text.indexOf("\n"); at !== -1 && at < index; at = text.indexOf("\n", at + 1)) line++;
+  return line;
+}
+var ImportSet = class {
+  lines = /* @__PURE__ */ new Map();
+  add(path2, line) {
+    const seen = this.lines.get(path2);
+    if (seen === void 0 || line < seen) this.lines.set(path2, line);
+  }
+  delete(path2) {
+    this.lines.delete(path2);
+  }
+  /** Sorted by path. */
+  refs() {
+    return [...this.lines].sort(([a], [b]) => a.localeCompare(b)).map(([path2, line]) => ({ path: path2, line }));
+  }
+};
+
 // src/model/evidence/java.ts
 var PACKAGE = /^\s*package\s+([\w.]+)\s*;/m;
 var IMPORT = /^\s*import\s+(static\s+)?([\w.]+?)(\.\*)?\s*;/gm;
@@ -7878,43 +7992,36 @@ function javaIndex(files, read) {
   return index;
 }
 function javaImports(file, text, index) {
-  const found = /* @__PURE__ */ new Set();
+  const found = new ImportSet();
   for (const match of text.matchAll(IMPORT)) {
     const [, , name, star] = match;
+    const line = lineAt(text, match.index);
     if (star) {
       const classFile = index.classes.get(name);
-      if (classFile !== void 0) found.add(classFile);
-      else for (const member of index.packages.get(name) ?? []) found.add(member);
+      if (classFile !== void 0) found.add(classFile, line);
+      else for (const member of index.packages.get(name) ?? []) found.add(member, line);
       continue;
     }
     for (let target = name; target !== ""; target = target.includes(".") ? target.slice(0, target.lastIndexOf(".")) : "") {
       const classFile = index.classes.get(target);
       if (classFile !== void 0) {
-        found.add(classFile);
+        found.add(classFile, line);
         break;
       }
     }
   }
   const pkg = index.packageOf.get(file) ?? "";
-  const body = text.replace(PACKAGE, "").replace(IMPORT, "");
   for (const other of index.packages.get(pkg) ?? []) {
-    if (other !== file && new RegExp(`\\b${baseName(other)}\\b`).test(body)) found.add(other);
+    if (other === file) continue;
+    for (const use of text.matchAll(new RegExp(`\\b${baseName(other)}\\b`, "g"))) {
+      const line = lineAt(text, use.index);
+      if (/^\s*(package|import)\b/.test(text.split("\n")[line - 1] ?? "")) continue;
+      found.add(other, line);
+      break;
+    }
   }
   found.delete(file);
-  return [...found].sort();
-}
-
-// src/model/evidence/paths.ts
-function joinPath(dir, rel) {
-  const parts = dir === "" ? [] : dir.split("/");
-  for (const part of rel.split("/")) {
-    if (part === "" || part === ".") continue;
-    if (part === "..") {
-      if (parts.length === 0) return null;
-      parts.pop();
-    } else parts.push(part);
-  }
-  return parts.join("/");
+  return found.refs();
 }
 
 // src/model/evidence/python.ts
@@ -7951,18 +8058,20 @@ function absolute(name, index) {
   return [];
 }
 function pythonImports(file, text, index) {
-  const found = /* @__PURE__ */ new Set();
+  const found = new ImportSet();
   for (const match of text.matchAll(IMPORT2)) {
-    for (const part of match[1].split(",")) for (const target of absolute(part.trim().split(/[ \t]+/)[0], index)) found.add(target);
+    const line = lineAt(text, match.index);
+    for (const part of match[1].split(",")) for (const target of absolute(part.trim().split(/[ \t]+/)[0], index)) found.add(target, line);
   }
   for (const match of text.matchAll(FROM)) {
     const [, dots, module2, list] = match;
+    const line = lineAt(text, match.index);
     const names = list.replace(/[()]/g, "").split(",").map((name) => name.trim().split(/\s+/)[0]).filter((name) => /^\w+$/.test(name));
     if (dots === "") {
       for (const name of names) {
         const sub = index.modules.get(`${module2}.${name}`);
-        if (sub !== void 0) for (const target of sub) found.add(target);
-        else for (const target of absolute(module2, index)) found.add(target);
+        if (sub !== void 0) for (const target of sub) found.add(target, line);
+        else for (const target of absolute(module2, index)) found.add(target, line);
       }
       continue;
     }
@@ -7971,11 +8080,11 @@ function pythonImports(file, text, index) {
     const modulePath = base === null ? null : module2 === "" ? base : joinPath(base, module2.split(".").join("/"));
     for (const name of names) {
       const target = moduleAt(modulePath === null ? null : joinPath(modulePath, name), index.files) ?? moduleAt(modulePath, index.files);
-      if (target !== null) found.add(target);
+      if (target !== null) found.add(target, line);
     }
   }
   found.delete(file);
-  return [...found].sort();
+  return found.refs();
 }
 
 // src/model/evidence/typescript.ts
@@ -8042,7 +8151,7 @@ function throughConfig(specifier, config, files) {
   return config.baseUrl === null ? null : resolveFile(joinPath(config.baseUrl, specifier), files);
 }
 function typescriptImports(file, text, files, configFor) {
-  const found = /* @__PURE__ */ new Set();
+  const found = new ImportSet();
   for (const pattern of SPECIFIERS) {
     for (const match of text.matchAll(pattern)) {
       const specifier = match[1];
@@ -8050,10 +8159,10 @@ function typescriptImports(file, text, files, configFor) {
         const config = configFor(dirOf(file));
         return config === null ? null : throughConfig(specifier, config, files);
       })();
-      if (resolved !== null && resolved !== file) found.add(resolved);
+      if (resolved !== null && resolved !== file) found.add(resolved, lineAt(text, match.index));
     }
   }
-  return [...found].sort();
+  return found.refs();
 }
 
 // src/model/evidence/graph.ts
@@ -8269,22 +8378,6 @@ function filesAt(root, revision, dir, env = process.env) {
   return (output ?? "").split("\0").filter((path2) => path2 !== "");
 }
 
-// src/model/refresh.ts
-function globToRegExp(glob) {
-  let pattern = "";
-  for (let i = 0; i < glob.length; i++) {
-    const char = glob[i];
-    if (char === "*" && glob[i + 1] === "*") {
-      const slash = glob[i + 2] === "/";
-      pattern += slash ? "(?:.*/)?" : ".*";
-      i += slash ? 2 : 1;
-    } else if (char === "*") pattern += "[^/]*";
-    else if (char === "?") pattern += "[^/]";
-    else pattern += char.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-  }
-  return new RegExp(`^${pattern}(?:/.*)?$`);
-}
-
 // src/model/repoSize.ts
 var import_node_fs4 = require("node:fs");
 var import_node_path3 = require("node:path");
@@ -8312,6 +8405,13 @@ var MAX_FILE_BYTES = 1024 * 1024;
 var BINARY = new Set(
   "png jpg jpeg gif bmp ico webp tif tiff psd pdf zip gz tgz bz2 xz 7z rar jar war ear class o a so dylib dll exe bin wasm woff woff2 ttf otf eot mp3 mp4 m4a mov avi mkv webm wav flac ogg sqlite db pyc pyo vsix lockb".split(" ")
 );
+var TEST_DIRS = /* @__PURE__ */ new Set(["test", "tests", "__tests__", "spec", "specs", "e2e", "testdata", "fixtures"]);
+var TEST_FILES = /(\.|_)(test|spec)\.[^./]+$|^test_[^/]+\.py$|(Test|Tests|IT)\.(java|kt|scala)$|_spec\.rb$/;
+function isTestPath(path2) {
+  const segments = path2.split("/");
+  const name = segments.pop();
+  return segments.some((segment) => TEST_DIRS.has(segment.toLowerCase())) || TEST_FILES.test(name);
+}
 function skipped(path2) {
   return path2.split("/").some((segment) => SKIPPED_DIRS.includes(segment)) || isDenied(path2);
 }
@@ -8672,13 +8772,19 @@ function runCheck(options) {
   const headFiles = head === void 0 ? [.../* @__PURE__ */ new Set([...listFiles(root).files, ...changes.map((change) => change.path)])] : filesAt(root, head, "");
   const resolve = importResolver(headFiles, text);
   const imports = { base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
+  const headRefs = /* @__PURE__ */ new Map();
   for (const change of changes) {
     if (change.status === "deleted" || importLanguage(change.path) === null) continue;
     const now = text(change.path);
-    if (now !== null) imports.head.set(change.path, resolve(change.path, now));
+    if (now !== null) {
+      const refs = resolve(change.path, now);
+      imports.head.set(change.path, refs.map((ref) => ref.path));
+      if (!isTestPath(change.path)) headRefs.set(change.path, refs);
+    }
     const before = change.status === "added" ? null : fileAt(root, shared, change.oldPath)?.toString("utf8") ?? null;
-    if (before !== null) imports.base.set(change.path, resolve(change.oldPath, before));
+    if (before !== null) imports.base.set(change.path, resolve(change.oldPath, before).map((ref) => ref.path));
   }
+  const violations = checkRules(readRules(config.config.rules ?? []).rules, diagram.components, headRefs).filter((violation) => !(imports.base.get(violation.file) ?? []).includes(violation.imported));
   const renames = prints?.revision ? renamesSince(root, prints.revision, process.env, head) : /* @__PURE__ */ new Map();
   const delta = deltaReport({
     components: diagram.components,
@@ -8688,7 +8794,8 @@ function runCheck(options) {
     existedAtBase: (dir) => existsAt(root, shared, dir),
     sourceFilesIn: (dir) => (head === void 0 ? filesOnDisk(root, dir) : filesAt(root, head, dir)).filter(isSourceFile).length,
     connections: diagram.connections,
-    imports
+    imports,
+    violations
   });
   const outcome = verdict(delta, options.failOn ?? config.config.check?.failOn ?? []);
   return { ok: true, diagram, report: { map: run2, base, head: head ?? null, mergeBase: shared, ...delta, ...outcome } };
@@ -8714,8 +8821,12 @@ function deltaSummary(report) {
     plural(report.gone.length, "gone box", "gone boxes"),
     `${plural(report.uncovered.length, "file")} not on the map`,
     // PRC-06: named only when there are some, so reports without them read as before.
-    ...report.arrows.length > 0 ? [plural(report.arrows.length, "new arrow candidate")] : []
+    ...report.arrows.length > 0 ? [plural(report.arrows.length, "new arrow candidate")] : [],
+    ...report.violations.length > 0 ? [plural(report.violations.length, "rule violation")] : []
   ].join(" \xB7 ");
+}
+function violationLine(violation) {
+  return `- ${escapeMarkdown(violation.rule)}: ${path(violation.file)} line ${violation.line} imports ${path(violation.imported)}. ${escapeMarkdown(violation.reason)}`;
 }
 function arrowLine(arrow) {
   const [first] = arrow.links;
@@ -8738,6 +8849,7 @@ function deltaMarkdown(report, meta, maxItems = Number.POSITIVE_INFINITY) {
   ]);
   section("New box candidates", report.candidates.map(candidateLine));
   section("New arrow candidates", report.arrows.map(arrowLine));
+  section("Rule violations", report.violations.map(violationLine));
   section(
     "Stale boxes",
     report.stale.map((box) => `- ${escapeMarkdown(box.label)}: ${box.state === "missing" ? "a cited file is gone" : "its cited code changed since the map"}`)
@@ -9386,6 +9498,23 @@ var upload_schema_default = {
                   properties: { from: { $ref: "#/$defs/path" }, to: { $ref: "#/$defs/path" } }
                 }
               }
+            }
+          }
+        },
+        violations: {
+          type: "array",
+          maxItems: 500,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["rule", "kind", "reason", "file", "line", "imported"],
+            properties: {
+              rule: { $ref: "#/$defs/shortText" },
+              kind: { enum: ["forbid", "only-via", "isolated"] },
+              reason: { type: "string", maxLength: 400 },
+              file: { $ref: "#/$defs/path" },
+              line: { type: "integer", minimum: 1 },
+              imported: { $ref: "#/$defs/path" }
             }
           }
         },

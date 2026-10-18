@@ -90,7 +90,8 @@ export function tierOf(nonTestLines: number): Tier {
   return nonTestLines < TIER_BOUNDS.M ? "S" : nonTestLines <= TIER_BOUNDS.L ? "M" : "L";
 }
 
-function skipped(path: string): boolean {
+/** Whether a size, and the imports read with it, leave `path` out: skipped folders and deny-listed paths. */
+export function skipped(path: string): boolean {
   return path.split("/").some((segment) => SKIPPED_DIRS.includes(segment)) || isDenied(path);
 }
 

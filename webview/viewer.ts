@@ -139,7 +139,10 @@ export function startViewer(mount: HTMLElement = document.body): void {
   let lastLoad: { doc: unknown; file: string } | null = null;
   let ghosts: Ghost[] = [];
   let ghostArrows: GhostArrow[] = [];
-  /** Connections from this index on are ghost arrows. */
+  /** ARC-01: arrows for imports that break the rules. */
+  let violationArrows: { from: string; to: string; label: string }[] = [];
+  /** Connections from this index on are violation arrows, then ghost arrows. */
+  let firstViolation = Number.POSITIVE_INFINITY;
   let firstGhostArrow = Number.POSITIVE_INFINITY;
 
   /** Ghost boxes are dashed and have no box menu. */
@@ -150,7 +153,9 @@ export function startViewer(mount: HTMLElement = document.body): void {
       node.setAttribute("data-vscode-context", JSON.stringify({ webviewSection: "ghost", preventDefaultContextMenuItems: true }));
     }
     for (const edge of content.querySelectorAll(".edge, .edge-label")) {
-      edge.classList.toggle("edge--ghost", Number(edge.getAttribute("data-index")) >= firstGhostArrow);
+      const index = Number(edge.getAttribute("data-index"));
+      edge.classList.toggle("edge--ghost", index >= firstGhostArrow);
+      edge.classList.toggle("edge--violation", index >= firstViolation && index < firstGhostArrow);
     }
   }
   /** The boxes marked as citing the active file, kept across reloads (UI-03). */
@@ -283,8 +288,12 @@ export function startViewer(mount: HTMLElement = document.body): void {
     // The canvas must be displayed for its size to be the panel size.
     emptyState.hidden = true;
     app.classList.remove("app--empty");
-    firstGhostArrow = result.diagram.connections.length;
-    const diagram = withGhosts(withUncertainty(result.diagram, uncertain.shown ? uncertain.edges : []), ghosts, ghostArrows);
+    const ids = new Set(result.diagram.components.map((component) => component.id));
+    const broken = violationArrows.filter((arrow) => ids.has(arrow.from) && ids.has(arrow.to)).map((arrow) => ({ ...arrow, variant: "emphasis" as const }));
+    const checked = withUncertainty(result.diagram, uncertain.shown ? uncertain.edges : []);
+    firstViolation = checked.connections.length;
+    firstGhostArrow = firstViolation + broken.length;
+    const diagram = withGhosts({ ...checked, connections: [...checked.connections, ...broken] }, ghosts, ghostArrows);
     const scene = await layoutDiagram(diagram, { measure, viewport: viewport.size() });
     if (current !== generation) return;
     renderScene(content, diagram, scene, measure);
@@ -329,6 +338,11 @@ export function startViewer(mount: HTMLElement = document.body): void {
       ghosts = message.ghosts;
       ghostArrows = message.arrows ?? [];
       if (lastLoad === null) return;
+    }
+    if (message.type === "violations") {
+      const same = JSON.stringify(violationArrows) === JSON.stringify(message.arrows);
+      violationArrows = message.arrows;
+      if (same || lastLoad === null) return;
     }
     if (message.type === "uncertainty") {
       const relabel = JSON.stringify(uncertain.shown ? uncertain.edges : []) !== JSON.stringify(message.shown ? message.edges : []);

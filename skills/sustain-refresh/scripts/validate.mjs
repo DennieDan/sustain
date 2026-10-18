@@ -7677,6 +7677,38 @@ function add(map, key, id) {
   map.set(key, set);
 }
 
+// src/model/evidence/paths.ts
+function joinPath(dir, rel) {
+  const parts = dir === "" ? [] : dir.split("/");
+  for (const part of rel.split("/")) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") {
+      if (parts.length === 0) return null;
+      parts.pop();
+    } else parts.push(part);
+  }
+  return parts.join("/");
+}
+function lineAt(text, index) {
+  let line = 1;
+  for (let at = text.indexOf("\n"); at !== -1 && at < index; at = text.indexOf("\n", at + 1)) line++;
+  return line;
+}
+var ImportSet = class {
+  lines = /* @__PURE__ */ new Map();
+  add(path, line) {
+    const seen = this.lines.get(path);
+    if (seen === void 0 || line < seen) this.lines.set(path, line);
+  }
+  delete(path) {
+    this.lines.delete(path);
+  }
+  /** Sorted by path. */
+  refs() {
+    return [...this.lines].sort(([a], [b]) => a.localeCompare(b)).map(([path, line]) => ({ path, line }));
+  }
+};
+
 // src/model/evidence/java.ts
 var PACKAGE = /^\s*package\s+([\w.]+)\s*;/m;
 var IMPORT = /^\s*import\s+(static\s+)?([\w.]+?)(\.\*)?\s*;/gm;
@@ -7694,43 +7726,36 @@ function javaIndex(files, read) {
   return index;
 }
 function javaImports(file, text, index) {
-  const found = /* @__PURE__ */ new Set();
+  const found = new ImportSet();
   for (const match of text.matchAll(IMPORT)) {
     const [, , name, star] = match;
+    const line = lineAt(text, match.index);
     if (star) {
       const classFile = index.classes.get(name);
-      if (classFile !== void 0) found.add(classFile);
-      else for (const member of index.packages.get(name) ?? []) found.add(member);
+      if (classFile !== void 0) found.add(classFile, line);
+      else for (const member of index.packages.get(name) ?? []) found.add(member, line);
       continue;
     }
     for (let target = name; target !== ""; target = target.includes(".") ? target.slice(0, target.lastIndexOf(".")) : "") {
       const classFile = index.classes.get(target);
       if (classFile !== void 0) {
-        found.add(classFile);
+        found.add(classFile, line);
         break;
       }
     }
   }
   const pkg = index.packageOf.get(file) ?? "";
-  const body = text.replace(PACKAGE, "").replace(IMPORT, "");
   for (const other of index.packages.get(pkg) ?? []) {
-    if (other !== file && new RegExp(`\\b${baseName(other)}\\b`).test(body)) found.add(other);
+    if (other === file) continue;
+    for (const use of text.matchAll(new RegExp(`\\b${baseName(other)}\\b`, "g"))) {
+      const line = lineAt(text, use.index);
+      if (/^\s*(package|import)\b/.test(text.split("\n")[line - 1] ?? "")) continue;
+      found.add(other, line);
+      break;
+    }
   }
   found.delete(file);
-  return [...found].sort();
-}
-
-// src/model/evidence/paths.ts
-function joinPath(dir, rel) {
-  const parts = dir === "" ? [] : dir.split("/");
-  for (const part of rel.split("/")) {
-    if (part === "" || part === ".") continue;
-    if (part === "..") {
-      if (parts.length === 0) return null;
-      parts.pop();
-    } else parts.push(part);
-  }
-  return parts.join("/");
+  return found.refs();
 }
 
 // src/model/evidence/python.ts
@@ -7767,18 +7792,20 @@ function absolute(name, index) {
   return [];
 }
 function pythonImports(file, text, index) {
-  const found = /* @__PURE__ */ new Set();
+  const found = new ImportSet();
   for (const match of text.matchAll(IMPORT2)) {
-    for (const part of match[1].split(",")) for (const target of absolute(part.trim().split(/[ \t]+/)[0], index)) found.add(target);
+    const line = lineAt(text, match.index);
+    for (const part of match[1].split(",")) for (const target of absolute(part.trim().split(/[ \t]+/)[0], index)) found.add(target, line);
   }
   for (const match of text.matchAll(FROM)) {
     const [, dots, module, list] = match;
+    const line = lineAt(text, match.index);
     const names = list.replace(/[()]/g, "").split(",").map((name) => name.trim().split(/\s+/)[0]).filter((name) => /^\w+$/.test(name));
     if (dots === "") {
       for (const name of names) {
         const sub = index.modules.get(`${module}.${name}`);
-        if (sub !== void 0) for (const target of sub) found.add(target);
-        else for (const target of absolute(module, index)) found.add(target);
+        if (sub !== void 0) for (const target of sub) found.add(target, line);
+        else for (const target of absolute(module, index)) found.add(target, line);
       }
       continue;
     }
@@ -7787,11 +7814,11 @@ function pythonImports(file, text, index) {
     const modulePath = base === null ? null : module === "" ? base : joinPath(base, module.split(".").join("/"));
     for (const name of names) {
       const target = moduleAt(modulePath === null ? null : joinPath(modulePath, name), index.files) ?? moduleAt(modulePath, index.files);
-      if (target !== null) found.add(target);
+      if (target !== null) found.add(target, line);
     }
   }
   found.delete(file);
-  return [...found].sort();
+  return found.refs();
 }
 
 // src/model/evidence/typescript.ts
@@ -7858,7 +7885,7 @@ function throughConfig(specifier, config, files) {
   return config.baseUrl === null ? null : resolveFile(joinPath(config.baseUrl, specifier), files);
 }
 function typescriptImports(file, text, files, configFor) {
-  const found = /* @__PURE__ */ new Set();
+  const found = new ImportSet();
   for (const pattern of SPECIFIERS) {
     for (const match of text.matchAll(pattern)) {
       const specifier = match[1];
@@ -7866,10 +7893,10 @@ function typescriptImports(file, text, files, configFor) {
         const config = configFor(dirOf(file));
         return config === null ? null : throughConfig(specifier, config, files);
       })();
-      if (resolved !== null && resolved !== file) found.add(resolved);
+      if (resolved !== null && resolved !== file) found.add(resolved, lineAt(text, match.index));
     }
   }
-  return [...found].sort();
+  return found.refs();
 }
 
 // src/model/evidence/graph.ts
@@ -7909,15 +7936,18 @@ function importResolver(files, read) {
     return language === "typescript" ? typescriptImports(file, text, all, configFor) : [];
   };
 }
-function importLinks(files, read) {
+function importRefs(files, read) {
   const resolve2 = importResolver(files, read);
-  const links = /* @__PURE__ */ new Map();
+  const refs = /* @__PURE__ */ new Map();
   for (const file of files) {
     if (importLanguage(file) === null) continue;
     const text = read(file);
-    if (text !== null) links.set(file, resolve2(file, text));
+    if (text !== null) refs.set(file, resolve2(file, text));
   }
-  return links;
+  return refs;
+}
+function importLinks(files, read) {
+  return new Map([...importRefs(files, read)].map(([file, refs]) => [file, refs.map((ref) => ref.path)]));
 }
 function checkImports(components, connections, links) {
   const ownership = new Ownership(components);

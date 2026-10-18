@@ -44,7 +44,7 @@ function commit(root: string, message: string): void {
   git(root, "commit", "-qm", message);
 }
 
-function check(root: string, options: { head?: string; failOn?: ("stale" | "new-box" | "new-arrow")[] } = { head: "HEAD" }) {
+function check(root: string, options: { head?: string; failOn?: ("stale" | "new-box" | "new-arrow" | "violation")[] } = { head: "HEAD" }) {
   const outcome = runCheck({ root, base: "main", ...options });
   if (!outcome.ok) throw new Error(outcome.reason);
   return outcome.report;
@@ -162,7 +162,7 @@ describe("PRC-01 the map, ownership and config", () => {
     expect(readConfig({ map: "architecture-a-20261018-120000", ignore: ["docs/**"], check: { failOn: ["stale", "new-box"] }, rules: [] })).toMatchObject({ ok: true });
     expect(readConfig({ map: "../x", ignore: "docs", check: { failOn: ["everything"], other: 1 }, rules: {}, extra: true })).toEqual({
       ok: false,
-      errors: ['unknown key "extra"', '"map" must name a run folder in .archify/', '"ignore" must be a list of globs', '"rules" must be a list', 'unknown key "check.other"', '"check.failOn" may list only stale, new-box, new-arrow'],
+      errors: ['unknown key "extra"', '"map" must name a run folder in .archify/', '"ignore" must be a list of globs', '"rules" must be a list', 'unknown key "check.other"', '"check.failOn" may list only stale, new-box, new-arrow, violation'],
     });
     expect(withIgnored({ ignore: ["a/**"] }, "src/payments")).toEqual({ ignore: ["a/**", "src/payments/**"] });
     expect(withIgnored({ ignore: ["src/payments/**"] }, "src/payments")).toEqual({ ignore: ["src/payments/**"] });
@@ -202,6 +202,7 @@ describe("PRC-01 markdown", () => {
       gone: [],
       candidates: [{ dir: "src/pay", files: [], lines: 0, label: 'pay"]; click n0 "javascript:x' }],
       arrows: [],
+      violations: [],
     };
     const chart = deltaMermaid(report, {
       components: [

@@ -5,6 +5,7 @@
 import { markChanges, type FileChange } from "./changes";
 import type { FailOn } from "./config";
 import { dirOf, Ownership } from "./ownership";
+import type { Violation } from "./rules";
 import type { Freshness, MapFreshness } from "./staleness";
 
 /** Lines a directory must gain to suggest a box. */
@@ -58,6 +59,8 @@ export interface DeltaReport {
   candidates: Candidate[];
   gone: BoxRef[];
   arrows: NewArrow[];
+  /** ARC-01: imports the diff added that break the architecture rules. */
+  violations: Violation[];
 }
 
 export interface DeltaInputs {
@@ -76,6 +79,8 @@ export interface DeltaInputs {
   connections?: readonly { from: string; to: string }[];
   /** The repository files each changed file imports, at the merge base and at the head (PRC-06). */
   imports?: { base: ReadonlyMap<string, readonly string[]>; head: ReadonlyMap<string, readonly string[]> };
+  /** Rule violations the diff added (ARC-01), found by the caller. */
+  violations?: readonly Violation[];
 }
 
 /** The deepest directory holding all of `paths`. */
@@ -165,6 +170,7 @@ export function deltaReport(inputs: DeltaInputs): DeltaReport {
     candidates: candidates.sort((a, b) => a.dir.localeCompare(b.dir)),
     gone: gone.map(ref),
     arrows: [...arrows.values()].sort((a, b) => a.from.id.localeCompare(b.from.id) || a.to.id.localeCompare(b.to.id)),
+    violations: [...(inputs.violations ?? [])],
   };
 }
 
@@ -174,5 +180,6 @@ export function verdict(report: DeltaReport, failOn: readonly FailOn[]): { resul
   if (failOn.includes("stale") && report.stale.length + report.gone.length > 0) reasons.push(`${report.stale.length + report.gone.length} stale or gone box(es)`);
   if (failOn.includes("new-box") && report.candidates.length > 0) reasons.push(`${report.candidates.length} new box candidate(s)`);
   if (failOn.includes("new-arrow") && report.arrows.length > 0) reasons.push(`${report.arrows.length} new arrow candidate(s)`);
+  if (failOn.includes("violation") && report.violations.length > 0) reasons.push(`${report.violations.length} rule violation(s)`);
   return { result: reasons.length === 0 ? "pass" : "fail", reasons };
 }

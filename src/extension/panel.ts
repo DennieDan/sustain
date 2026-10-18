@@ -10,6 +10,7 @@ import { AUDIT_FILE } from "../model/audit";
 import { EVIDENCE_FILE } from "../model/evidence";
 import type { MapFreshness } from "../model/staleness";
 import { uncertainty } from "../model/uncertainty";
+import { violationArrows, type RulesService } from "./rules";
 import { parseDiagram, type ViewDiagram } from "../model/tolerant";
 import { changedBoxes, type FreshnessService } from "./freshness";
 import { webviewHtml } from "./html";
@@ -67,6 +68,23 @@ export class ArchitecturePanel {
   /** Watches the shown map's evidence.json and audit.json (ACC-03). */
   private sidecars: { dir: string; watcher: vscode.FileSystemWatcher } | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+
+  private static rules: RulesService | undefined;
+
+  /** Gives every panel the service that checks the architecture rules (ARC-01). */
+  static useRules(service: RulesService): vscode.Disposable {
+    ArchitecturePanel.rules = service;
+    return service.onDidChange((root) => {
+      if (ArchitecturePanel.instance?.root === root) ArchitecturePanel.instance.sendViolations();
+    });
+  }
+
+  /** Sends the rules' violations as arrows between the shown map's boxes (ARC-01). */
+  sendViolations(): void {
+    const violations = ArchitecturePanel.rules?.result(this.root)?.violations ?? [];
+    const message: HostMessage = { type: "violations", arrows: violationArrows(violations, this.components()) };
+    void this.panel.webview.postMessage(message);
+  }
 
   /** Whether the maps' Checks show doubtful boxes and unbacked arrows (ACC-03); one setting for the window. */
   private static checksShown = true;
@@ -228,6 +246,7 @@ export class ArchitecturePanel {
     this.sendFreshness();
     this.sendChanges();
     this.sendUncertainty();
+    this.sendViolations();
     if (this.ghosts.length + this.ghostArrows.length > 0) this.showGhosts(this.ghosts, this.ghostArrows);
   }
 

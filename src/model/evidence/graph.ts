@@ -4,7 +4,7 @@
 // repository's files and a reader.
 import { Ownership } from "../ownership";
 import { javaImports, javaIndex } from "./java";
-import { dirOf, joinPath } from "./paths";
+import { dirOf, joinPath, type ImportRef } from "./paths";
 import { pythonImports, pythonIndex } from "./python";
 import { CONFIG_NAMES, pathConfig, typescriptImports, type PathConfig } from "./typescript";
 
@@ -25,9 +25,10 @@ export function importLanguage(path: string): ImportLanguage | null {
 
 /**
  * A resolver for the repository `files`: given a file's path and text, the repository files it
- * imports. Its indexes (Java packages, Python modules, tsconfig paths) come from `files` through `read`.
+ * imports, each at the line of its first import. Its indexes (Java packages, Python modules, tsconfig
+ * paths) come from `files` through `read`.
  */
-export function importResolver(files: readonly string[], read: (path: string) => string | null): (file: string, text: string) => string[] {
+export function importResolver(files: readonly string[], read: (path: string) => string | null): (file: string, text: string) => ImportRef[] {
   const byLanguage = (language: ImportLanguage): string[] => files.filter((file) => importLanguage(file) === language);
   const all = new Set(files);
   const java = javaIndex(byLanguage("java"), read);
@@ -56,16 +57,21 @@ export function importResolver(files: readonly string[], read: (path: string) =>
   };
 }
 
-/** Each source file in a checked language, with the repository files it imports. */
-export function importLinks(files: readonly string[], read: (path: string) => string | null): Map<string, string[]> {
+/** Each source file in a checked language, with the repository files it imports and their lines. */
+export function importRefs(files: readonly string[], read: (path: string) => string | null): Map<string, ImportRef[]> {
   const resolve = importResolver(files, read);
-  const links = new Map<string, string[]>();
+  const refs = new Map<string, ImportRef[]>();
   for (const file of files) {
     if (importLanguage(file) === null) continue;
     const text = read(file);
-    if (text !== null) links.set(file, resolve(file, text));
+    if (text !== null) refs.set(file, resolve(file, text));
   }
-  return links;
+  return refs;
+}
+
+/** Each source file in a checked language, with the repository files it imports. */
+export function importLinks(files: readonly string[], read: (path: string) => string | null): Map<string, string[]> {
+  return new Map([...importRefs(files, read)].map(([file, refs]) => [file, refs.map((ref) => ref.path)]));
 }
 
 export interface ImportFinding {

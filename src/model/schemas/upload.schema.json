@@ -229,6 +229,23 @@
             }
           }
         },
+        "violations": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rule", "kind", "reason", "file", "line", "imported"],
+            "properties": {
+              "rule": { "$ref": "#/$defs/shortText" },
+              "kind": { "enum": ["forbid", "only-via", "isolated"] },
+              "reason": { "type": "string", "maxLength": 400 },
+              "file": { "$ref": "#/$defs/path" },
+              "line": { "type": "integer", "minimum": 1 },
+              "imported": { "$ref": "#/$defs/path" }
+            }
+          }
+        },
         "result": { "enum": ["pass", "fail"] },
         "reasons": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/shortText" } }
       }

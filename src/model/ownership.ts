@@ -4,7 +4,7 @@
 
 interface Citing {
   id: string;
-  sources?: { path: string }[];
+  sources?: readonly { path: string }[];
 }
 
 export class Ownership {

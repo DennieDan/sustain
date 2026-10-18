@@ -1,6 +1,7 @@
 // ACC-02: Java imports. Each file's package declaration and name give its class, so imports resolve
 // through whatever source roots the repository uses. Classes in the same package need no import, so
 // a same-package class named in the text counts as a link too. Browser-safe.
+import { ImportSet, lineAt, type ImportRef } from "./paths";
 const PACKAGE = /^\s*package\s+([\w.]+)\s*;/m;
 const IMPORT = /^\s*import\s+(static\s+)?([\w.]+?)(\.\*)?\s*;/gm;
 
@@ -28,15 +29,16 @@ export function javaIndex(files: readonly string[], read: (path: string) => stri
   return index;
 }
 
-/** The repository files `file` uses: its imports, and same-package classes it names. */
-export function javaImports(file: string, text: string, index: JavaIndex): string[] {
-  const found = new Set<string>();
+/** The repository files `file` uses, with the line of each: its imports, and same-package classes it names. */
+export function javaImports(file: string, text: string, index: JavaIndex): ImportRef[] {
+  const found = new ImportSet();
   for (const match of text.matchAll(IMPORT)) {
     const [, , name, star] = match;
+    const line = lineAt(text, match.index);
     if (star) {
       const classFile = index.classes.get(name!);
-      if (classFile !== undefined) found.add(classFile);
-      else for (const member of index.packages.get(name!) ?? []) found.add(member);
+      if (classFile !== undefined) found.add(classFile, line);
+      else for (const member of index.packages.get(name!) ?? []) found.add(member, line);
       continue;
     }
     // A static import names a member, and a nested class sits in its outer class's file, so the
@@ -44,16 +46,21 @@ export function javaImports(file: string, text: string, index: JavaIndex): strin
     for (let target = name!; target !== ""; target = target.includes(".") ? target.slice(0, target.lastIndexOf(".")) : "") {
       const classFile = index.classes.get(target);
       if (classFile !== undefined) {
-        found.add(classFile);
+        found.add(classFile, line);
         break;
       }
     }
   }
   const pkg = index.packageOf.get(file) ?? "";
-  const body = text.replace(PACKAGE, "").replace(IMPORT, "");
   for (const other of index.packages.get(pkg) ?? []) {
-    if (other !== file && new RegExp(`\\b${baseName(other)}\\b`).test(body)) found.add(other);
+    if (other === file) continue;
+    for (const use of text.matchAll(new RegExp(`\\b${baseName(other)}\\b`, "g"))) {
+      const line = lineAt(text, use.index);
+      if (/^\s*(package|import)\b/.test(text.split("\n")[line - 1] ?? "")) continue;
+      found.add(other, line);
+      break;
+    }
   }
   found.delete(file);
-  return [...found].sort();
+  return found.refs();
 }

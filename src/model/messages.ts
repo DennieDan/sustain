@@ -22,6 +22,8 @@ export type HostMessage =
   | { type: "changes"; overlay: ChangeOverlay | null }
   /** PRC-02: new box candidates drawn as dashed ghost boxes, and PRC-06's new arrows as dashed ghost arrows; never written. */
   | { type: "ghosts"; ghosts: Ghost[]; arrows?: GhostArrow[] }
+  /** ARC-01: imports that break the rules, as red arrows between the boxes, labelled with the rules. */
+  | { type: "violations"; arrows: { from: string; to: string; label: string }[] }
   /** ACC-03: doubtful boxes and unbacked arrows, and whether the map's Checks are shown. */
   | { type: "uncertainty"; boxes: Record<string, string>; edges: number[]; shown: boolean };
 

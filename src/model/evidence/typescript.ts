@@ -1,7 +1,7 @@
 // ACC-02: TypeScript and JavaScript imports: static and dynamic imports, re-exports and `require`,
 // resolved as relative paths or through the nearest tsconfig.json or jsconfig.json's `paths` and
 // `baseUrl`. Package imports leave the repository and are skipped. Browser-safe.
-import { dirOf, joinPath } from "./paths";
+import { dirOf, ImportSet, joinPath, lineAt, type ImportRef } from "./paths";
 
 const SPECIFIERS = [
   /\bimport\s+(?:type\s+)?(?:[\w$*{}\s,]+?\s+from\s+)?["']([^"'\n]+)["']/g,
@@ -84,9 +84,9 @@ function throughConfig(specifier: string, config: PathConfig, files: ReadonlySet
   return config.baseUrl === null ? null : resolveFile(joinPath(config.baseUrl, specifier), files);
 }
 
-/** The repository files `file` imports. `configFor(dir)` gives the nearest config's paths. */
-export function typescriptImports(file: string, text: string, files: ReadonlySet<string>, configFor: (dir: string) => PathConfig | null): string[] {
-  const found = new Set<string>();
+/** The repository files `file` imports, with their lines. `configFor(dir)` gives the nearest config's paths. */
+export function typescriptImports(file: string, text: string, files: ReadonlySet<string>, configFor: (dir: string) => PathConfig | null): ImportRef[] {
+  const found = new ImportSet();
   for (const pattern of SPECIFIERS) {
     for (const match of text.matchAll(pattern)) {
       const specifier = match[1]!;
@@ -96,8 +96,8 @@ export function typescriptImports(file: string, text: string, files: ReadonlySet
             const config = configFor(dirOf(file));
             return config === null ? null : throughConfig(specifier, config, files);
           })();
-      if (resolved !== null && resolved !== file) found.add(resolved);
+      if (resolved !== null && resolved !== file) found.add(resolved, lineAt(text, match.index));
     }
   }
-  return [...found].sort();
+  return found.refs();
 }

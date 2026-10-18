@@ -78,6 +78,16 @@
           "default": 300000,
           "minimum": 0,
           "description": "Runs whose estimate reaches above this many tokens need a second click before they start."
+        },
+        "sustain.rules.severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information"
+          ],
+          "default": "warning",
+          "description": "How the Problems panel shows an import that breaks an architecture rule in sustain.config.json."
         }
       }
     },

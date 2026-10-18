@@ -2,6 +2,7 @@
 // comment, and its Mermaid flowchart. Labels come from the map, so every one is escaped.
 // Browser-safe.
 import type { Candidate, DeltaReport, NewArrow } from "./delta";
+import type { Violation } from "./rules";
 
 /** The marker that identifies Sustain's pull request comment. */
 export const COMMENT_MARKER = "<!-- sustain-check -->";
@@ -38,7 +39,12 @@ export function deltaSummary(report: DeltaReport): string {
     `${plural(report.uncovered.length, "file")} not on the map`,
     // PRC-06: named only when there are some, so reports without them read as before.
     ...(report.arrows.length > 0 ? [plural(report.arrows.length, "new arrow candidate")] : []),
+    ...(report.violations.length > 0 ? [plural(report.violations.length, "rule violation")] : []),
   ].join(" · ");
+}
+
+function violationLine(violation: Violation): string {
+  return `- ${escapeMarkdown(violation.rule)}: ${path(violation.file)} line ${violation.line} imports ${path(violation.imported)}. ${escapeMarkdown(violation.reason)}`;
 }
 
 function arrowLine(arrow: NewArrow): string {
@@ -72,6 +78,7 @@ export function deltaMarkdown(report: DeltaReport, meta: MarkdownMeta, maxItems 
   ]);
   section("New box candidates", report.candidates.map(candidateLine));
   section("New arrow candidates", report.arrows.map(arrowLine));
+  section("Rule violations", report.violations.map(violationLine));
   section(
     "Stale boxes",
     report.stale.map((box) => `- ${escapeMarkdown(box.label)}: ${box.state === "missing" ? "a cited file is gone" : "its cited code changed since the map"}`),

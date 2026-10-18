@@ -138,6 +138,17 @@ body {
   display: none;
 }
 
+/* Rule violations (ARC-01): red arrows labelled with the rules */
+
+.edge--violation .edge__line {
+  stroke: var(--sustain-red);
+}
+
+.edge--violation .edge__head,
+.edge-label.edge--violation {
+  fill: var(--sustain-red);
+}
+
 /* Uncertainty (ACC-03): doubtful boxes dotted, unbacked arrows grey and dashed, and the legend */
 
 .node--doubtful .node__box {

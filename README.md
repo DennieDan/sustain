@@ -99,6 +99,7 @@ Every command is also in the Command Palette under "Sustain".
 - **Ask** in the sidebar answers questions about the map, with links to the lines it cites.
 - **Audit Map** asks your agent to check each box against its cited code. Doubtful boxes are drawn dotted, and arrows with no import evidence grey and dashed. **Hide Checks** in the map's title bar hides them.
 - **This Box Is Wrong…** on a box saves your note beside the map and offers to refresh that box.
+- **Rules** in `sustain.config.json` say which boxes may import which. An import that breaks one shows in the Problems panel at its line, as a red arrow on the map, and in the pull request check.
 
 ## Commit your map
 
