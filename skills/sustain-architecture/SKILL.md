@@ -73,6 +73,13 @@ with `<draft>` replaced by the `draft` path from step 2. It prints one JSON obje
 
 An `accepted` report has an `evidence` list. Each `DeclarationOnly` entry names a box whose citations only declare something. For each one, find a range that shows what the box does (a call site, a handler body, a registration, a query or a write) and cite it, or change the label to what the cited code shows.
 
+The repository's imports back the rest of the list:
+
+- Each `UnsupportedEdge` names an arrow that no import path backs within two hops. Check that the two boxes work together. Cite where they do, name the protocol in the label when they talk over one, or remove the arrow.
+- Each `MissingEdge` names two boxes that share at least 3 import links and no arrow. Add the arrow when they work together.
+- Each `Isolated` names a box with no imports to or from other boxes and no arrows. Connect it, merge it into the box it belongs to, or remove it.
+- `NotChecked` entries need nothing.
+
 If that changes the diagram, write the whole revised diagram to `draft.json` in the same run folder and validate it again as in step 6. This revision does not count against the 3 repairs, and it happens once: do not review the evidence of the revised diagram.
 
 ## 8. Write the diagram page

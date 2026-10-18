@@ -141,13 +141,22 @@ function countFile(path: string): number | null {
  * is taken to have its language's mean lines per counted file. Only counted files are opened, so
  * the cost grows with the number of files listed, not read.
  */
-export function repoSize(root: string, env: NodeJS.ProcessEnv = process.env, limit = COUNT_LIMIT): RepoSize {
+/**
+ * The files a size measures: tracked files, or a walk without git, leaving out the skipped folders,
+ * deny-listed paths and generated files. Sorted. ACC-02's import checks read the same list.
+ */
+export function listFiles(root: string, env: NodeJS.ProcessEnv = process.env): { listing: RepoSize["listing"]; files: string[] } {
   const tracked = trackedFiles(root, env);
   const kept = tracked === null ? walk(root) : tracked.filter((path) => !skipped(path)).sort();
   const generated = tracked === null ? new Set<string>() : generatedFiles(root, kept, env);
+  return { listing: tracked === null ? "walk" : "git", files: generated.size === 0 ? kept : kept.filter((path) => !generated.has(path)) };
+}
+
+export function repoSize(root: string, env: NodeJS.ProcessEnv = process.env, limit = COUNT_LIMIT): RepoSize {
+  const { listing, files: listed } = listFiles(root, env);
   const candidates: { path: string; language: string }[] = [];
-  for (const path of kept) {
-    const language = generated.has(path) ? null : languageOf(path);
+  for (const path of listed) {
+    const language = languageOf(path);
     if (language !== null) candidates.push({ path, language });
   }
 
@@ -189,5 +198,5 @@ export function repoSize(root: string, env: NodeJS.ProcessEnv = process.env, lim
     .sort((a, b) => b.lines - a.lines || a.language.localeCompare(b.language));
   const total = sorted.reduce((sum, entry) => sum + entry.lines, 0);
   const test = sorted.reduce((sum, entry) => sum + entry.testLines, 0);
-  return { listing: tracked === null ? "walk" : "git", files, counted, lines: { total, test, nonTest: total - test }, languages: sorted, tier: tierOf(total - test) };
+  return { listing, files, counted, lines: { total, test, nonTest: total - test }, languages: sorted, tier: tierOf(total - test) };
 }

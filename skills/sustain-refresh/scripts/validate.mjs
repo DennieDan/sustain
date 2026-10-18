@@ -7453,8 +7453,8 @@ var require__ = __commonJS({
 });
 
 // src/agent/validate.ts
-import { readFileSync as readFileSync5 } from "node:fs";
-import { dirname as dirname4, join as join8 } from "node:path";
+import { readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname4, join as join9 } from "node:path";
 
 // src/model/citations.ts
 import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
@@ -7633,6 +7633,344 @@ function assertWritable(root, path) {
   assertNotLink(path);
 }
 
+// src/model/ownership.ts
+var Ownership = class {
+  byFile = /* @__PURE__ */ new Map();
+  byDir = /* @__PURE__ */ new Map();
+  /** Every directory with a cited file somewhere below it. */
+  citedBelow = /* @__PURE__ */ new Set();
+  constructor(components) {
+    for (const component of components) {
+      for (const source of component.sources ?? []) {
+        add(this.byFile, source.path, component.id);
+        const dir = dirOf(source.path);
+        add(this.byDir, dir, component.id);
+        for (let up = dir; ; up = dirOf(up)) {
+          this.citedBelow.add(up);
+          if (up === "") break;
+        }
+      }
+    }
+  }
+  /** The boxes that own `path`, nearest first; empty when none does. */
+  owners(path) {
+    const direct = this.byFile.get(path);
+    if (direct) return [...direct];
+    for (let dir = dirOf(path); ; dir = dirOf(dir)) {
+      const boxes = this.byDir.get(dir);
+      if (boxes) return [...boxes];
+      if (dir === "") return [];
+    }
+  }
+  /** Whether some box cites a file in `dir` or below it. */
+  ownsBelow(dir) {
+    return this.citedBelow.has(dir);
+  }
+};
+function dirOf(path) {
+  const slash = path.lastIndexOf("/");
+  return slash < 0 ? "" : path.slice(0, slash);
+}
+function add(map, key, id) {
+  const set = map.get(key) ?? /* @__PURE__ */ new Set();
+  set.add(id);
+  map.set(key, set);
+}
+
+// src/model/evidence/java.ts
+var PACKAGE = /^\s*package\s+([\w.]+)\s*;/m;
+var IMPORT = /^\s*import\s+(static\s+)?([\w.]+?)(\.\*)?\s*;/gm;
+var baseName = (path) => path.slice(path.lastIndexOf("/") + 1).replace(/\.java$/, "");
+function javaIndex(files, read) {
+  const index = { classes: /* @__PURE__ */ new Map(), packages: /* @__PURE__ */ new Map(), packageOf: /* @__PURE__ */ new Map() };
+  for (const file of files) {
+    const text = read(file);
+    if (text === null) continue;
+    const pkg = PACKAGE.exec(text)?.[1] ?? "";
+    index.classes.set(pkg === "" ? baseName(file) : `${pkg}.${baseName(file)}`, file);
+    index.packages.set(pkg, [...index.packages.get(pkg) ?? [], file]);
+    index.packageOf.set(file, pkg);
+  }
+  return index;
+}
+function javaImports(file, text, index) {
+  const found = /* @__PURE__ */ new Set();
+  for (const match of text.matchAll(IMPORT)) {
+    const [, , name, star] = match;
+    if (star) {
+      const classFile = index.classes.get(name);
+      if (classFile !== void 0) found.add(classFile);
+      else for (const member of index.packages.get(name) ?? []) found.add(member);
+      continue;
+    }
+    for (let target = name; target !== ""; target = target.includes(".") ? target.slice(0, target.lastIndexOf(".")) : "") {
+      const classFile = index.classes.get(target);
+      if (classFile !== void 0) {
+        found.add(classFile);
+        break;
+      }
+    }
+  }
+  const pkg = index.packageOf.get(file) ?? "";
+  const body = text.replace(PACKAGE, "").replace(IMPORT, "");
+  for (const other of index.packages.get(pkg) ?? []) {
+    if (other !== file && new RegExp(`\\b${baseName(other)}\\b`).test(body)) found.add(other);
+  }
+  found.delete(file);
+  return [...found].sort();
+}
+
+// src/model/evidence/paths.ts
+function joinPath(dir, rel) {
+  const parts = dir === "" ? [] : dir.split("/");
+  for (const part of rel.split("/")) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") {
+      if (parts.length === 0) return null;
+      parts.pop();
+    } else parts.push(part);
+  }
+  return parts.join("/");
+}
+
+// src/model/evidence/python.ts
+var IMPORT2 = /^[ \t]*import[ \t]+([\w.]+(?:[ \t]+as[ \t]+\w+)?(?:[ \t]*,[ \t]*[\w.]+(?:[ \t]+as[ \t]+\w+)?)*)/gm;
+var FROM = /^[ \t]*from[ \t]+(\.*)([\w.]*)[ \t]+import[ \t]+(\([^)]*\)|[^\n#]+)/gm;
+function dotted(path, root) {
+  if (root !== "" && !path.startsWith(`${root}/`)) return null;
+  const rel = (root === "" ? path : path.slice(root.length + 1)).replace(/\.py$/, "").replace(/\/__init__$/, "");
+  return rel === "__init__" ? null : rel.split("/").join(".");
+}
+function pythonIndex(files) {
+  const set = new Set(files);
+  const modules = /* @__PURE__ */ new Map();
+  for (const file of files) {
+    let packageDir = null;
+    for (let dir = dirOf(file); dir !== "" && set.has(`${dir}/__init__.py`); dir = dirOf(dir)) packageDir = dir;
+    const roots = /* @__PURE__ */ new Set(["", "src", packageDir === null ? dirOf(file) : dirOf(packageDir)]);
+    for (const root of roots) {
+      const name = dotted(file, root);
+      if (name !== null && name !== "") modules.set(name, [.../* @__PURE__ */ new Set([...modules.get(name) ?? [], file])]);
+    }
+  }
+  return { files: set, modules };
+}
+function moduleAt(path, files) {
+  if (path === null) return null;
+  return [`${path}.py`, `${path}/__init__.py`].find((candidate) => files.has(candidate)) ?? null;
+}
+function absolute(name, index) {
+  for (let target = name; target !== ""; target = target.includes(".") ? target.slice(0, target.lastIndexOf(".")) : "") {
+    const files = index.modules.get(target);
+    if (files !== void 0) return files;
+  }
+  return [];
+}
+function pythonImports(file, text, index) {
+  const found = /* @__PURE__ */ new Set();
+  for (const match of text.matchAll(IMPORT2)) {
+    for (const part of match[1].split(",")) for (const target of absolute(part.trim().split(/[ \t]+/)[0], index)) found.add(target);
+  }
+  for (const match of text.matchAll(FROM)) {
+    const [, dots, module, list] = match;
+    const names = list.replace(/[()]/g, "").split(",").map((name) => name.trim().split(/\s+/)[0]).filter((name) => /^\w+$/.test(name));
+    if (dots === "") {
+      for (const name of names) {
+        const sub = index.modules.get(`${module}.${name}`);
+        if (sub !== void 0) for (const target of sub) found.add(target);
+        else for (const target of absolute(module, index)) found.add(target);
+      }
+      continue;
+    }
+    let base = dirOf(file);
+    for (let i = 1; i < dots.length && base !== null; i++) base = base === "" ? null : dirOf(base);
+    const modulePath = base === null ? null : module === "" ? base : joinPath(base, module.split(".").join("/"));
+    for (const name of names) {
+      const target = moduleAt(modulePath === null ? null : joinPath(modulePath, name), index.files) ?? moduleAt(modulePath, index.files);
+      if (target !== null) found.add(target);
+    }
+  }
+  found.delete(file);
+  return [...found].sort();
+}
+
+// src/model/evidence/typescript.ts
+var SPECIFIERS = [
+  /\bimport\s+(?:type\s+)?(?:[\w$*{}\s,]+?\s+from\s+)?["']([^"'\n]+)["']/g,
+  /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+[\w$]+)?|\{[^}]*\})\s+from\s+["']([^"'\n]+)["']/g,
+  /\brequire\s*\(\s*["']([^"'\n]+)["']\s*\)/g,
+  /\bimport\s*\(\s*["']([^"'\n]+)["']\s*\)/g
+];
+var EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
+var SOURCE_FOR = { ".js": [".ts", ".tsx"], ".jsx": [".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] };
+var CONFIG_NAMES = ["tsconfig.json", "jsconfig.json"];
+function parseLoose(text) {
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      let j = i + 1;
+      while (j < text.length && text[j] !== '"') j += text[j] === "\\" ? 2 : 1;
+      out += text.slice(i, j + 1);
+      i = j;
+    } else if (char === "/" && text[i + 1] === "/") {
+      while (i < text.length && text[i] !== "\n") i++;
+      out += "\n";
+    } else if (char === "/" && text[i + 1] === "*") {
+      i = text.indexOf("*/", i + 2);
+      if (i < 0) break;
+      i++;
+    } else out += char;
+  }
+  return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"));
+}
+function pathConfig(path, text) {
+  let options;
+  try {
+    options = parseLoose(text).compilerOptions;
+  } catch {
+    return null;
+  }
+  if (options === void 0) return null;
+  const dir = dirOf(path);
+  const baseUrl = typeof options.baseUrl === "string" ? joinPath(dir, options.baseUrl) : null;
+  const paths = options.paths !== null && typeof options.paths === "object" ? Object.entries(options.paths).flatMap(([pattern, targets]) => Array.isArray(targets) ? [[pattern, targets.filter((target) => typeof target === "string")]] : []) : [];
+  if (baseUrl === null && paths.length === 0) return null;
+  return { base: baseUrl ?? dir, baseUrl, paths };
+}
+function resolveFile(base, files) {
+  if (base === null) return null;
+  const dot = base.lastIndexOf(".");
+  const extension = dot > base.lastIndexOf("/") ? base.slice(dot) : "";
+  const candidates = [base, ...(SOURCE_FOR[extension] ?? []).map((source) => base.slice(0, dot) + source), ...EXTENSIONS.map((ext) => base + ext), ...EXTENSIONS.map((ext) => `${base}/index${ext}`)];
+  return candidates.find((candidate) => files.has(candidate)) ?? null;
+}
+function throughConfig(specifier, config, files) {
+  for (const [pattern, targets] of config.paths) {
+    const star = pattern.indexOf("*");
+    const matched = star < 0 ? specifier === pattern ? "" : null : specifier.startsWith(pattern.slice(0, star)) && specifier.endsWith(pattern.slice(star + 1)) ? specifier.slice(star, specifier.length - (pattern.length - star - 1)) : null;
+    if (matched === null) continue;
+    for (const target of targets) {
+      const found = resolveFile(joinPath(config.base, target.replace("*", matched)), files);
+      if (found !== null) return found;
+    }
+  }
+  return config.baseUrl === null ? null : resolveFile(joinPath(config.baseUrl, specifier), files);
+}
+function typescriptImports(file, text, files, configFor) {
+  const found = /* @__PURE__ */ new Set();
+  for (const pattern of SPECIFIERS) {
+    for (const match of text.matchAll(pattern)) {
+      const specifier = match[1];
+      const resolved = specifier.startsWith(".") ? resolveFile(joinPath(dirOf(file), specifier), files) : (() => {
+        const config = configFor(dirOf(file));
+        return config === null ? null : throughConfig(specifier, config, files);
+      })();
+      if (resolved !== null && resolved !== file) found.add(resolved);
+    }
+  }
+  return [...found].sort();
+}
+
+// src/model/evidence/graph.ts
+var MISSING_EDGE_LINKS = 3;
+var PROTOCOL = /\b(https?|rest|grpc|rpc|graphql|websockets?|ws|sql|queries|queue[sd]?|kafka|amqp|mqtt|pub\/?sub|events?|webhooks?|smtp|ipc|postmessage|messages?|stream(s|ing)?|sse|tcp|udp)\b/i;
+function importLanguage(path) {
+  if (path.endsWith(".java")) return "java";
+  if (/\.py$/.test(path)) return "python";
+  if (/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(path) && !path.endsWith(".d.ts")) return "typescript";
+  return null;
+}
+function importLinks(files, read) {
+  const byLanguage = (language) => files.filter((file) => importLanguage(file) === language);
+  const all = new Set(files);
+  const java = javaIndex(byLanguage("java"), read);
+  const python = pythonIndex(byLanguage("python"));
+  const configs = /* @__PURE__ */ new Map();
+  const configFor = (dir) => {
+    if (configs.has(dir)) return configs.get(dir);
+    let found = null;
+    for (const name of CONFIG_NAMES) {
+      const path = joinPath(dir, name);
+      const text = all.has(path) ? read(path) : null;
+      if (text !== null) {
+        found = pathConfig(path, text);
+        break;
+      }
+    }
+    if (found === null && dir !== "") found = configFor(dirOf(dir));
+    configs.set(dir, found);
+    return found;
+  };
+  const links = /* @__PURE__ */ new Map();
+  for (const file of files) {
+    const language = importLanguage(file);
+    if (language === null) continue;
+    const text = read(file);
+    if (text === null) continue;
+    links.set(file, language === "java" ? javaImports(file, text, java) : language === "python" ? pythonImports(file, text, python) : typescriptImports(file, text, all, configFor));
+  }
+  return links;
+}
+function checkImports(components, connections, links) {
+  const ownership = new Ownership(components);
+  const label = new Map(components.map((component) => [component.id, component.label ?? component.id]));
+  const languages = /* @__PURE__ */ new Map();
+  const counts = /* @__PURE__ */ new Map();
+  for (const [file, targets] of links) {
+    const owners = ownership.owners(file);
+    for (const owner of owners) languages.set(owner, (languages.get(owner) ?? /* @__PURE__ */ new Set()).add(importLanguage(file)));
+    for (const target of targets) {
+      for (const from of owners) {
+        for (const to of ownership.owners(target)) {
+          if (from === to) continue;
+          const row = counts.get(from) ?? /* @__PURE__ */ new Map();
+          row.set(to, (row.get(to) ?? 0) + 1);
+          counts.set(from, row);
+        }
+      }
+    }
+  }
+  const linked = (a, b) => counts.get(a)?.get(b) ?? 0;
+  const reaches = (a, b) => linked(a, b) > 0 || [...counts.get(a)?.keys() ?? []].some((middle) => linked(middle, b) > 0);
+  const arrowsBetween = (a, b) => connections.some((arrow) => arrow.from === a && arrow.to === b || arrow.from === b && arrow.to === a);
+  const findings = [];
+  connections.forEach((arrow, index) => {
+    const pointer = `/connections/${index}`;
+    const from = languages.get(arrow.from);
+    const to = languages.get(arrow.to);
+    const id = arrow.id === void 0 ? {} : { connection: arrow.id };
+    const notChecked = (message) => void findings.push({ code: "NotChecked", pointer, ...id, message });
+    if (from === void 0 || to === void 0) return notChecked("Not checked: one end has no code in Java, TypeScript, JavaScript or Python.");
+    if (PROTOCOL.test(arrow.label ?? "")) return notChecked("Not checked: the arrow names a protocol, which imports cannot show.");
+    if (![...from].some((language) => to.has(language))) return notChecked("Not checked: the arrow joins code in different languages.");
+    if (!reaches(arrow.from, arrow.to) && !reaches(arrow.to, arrow.from)) {
+      findings.push({
+        code: "UnsupportedEdge",
+        pointer,
+        ...id,
+        message: `No import path joins ${label.get(arrow.from)} and ${label.get(arrow.to)} within two hops. Cite where they work together, name the protocol in the label, or remove the arrow.`
+      });
+    }
+  });
+  const ids = components.map((component) => component.id);
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const [a, b] = [ids[i], ids[j]];
+      const total = linked(a, b) + linked(b, a);
+      if (total >= MISSING_EDGE_LINKS && !arrowsBetween(a, b)) {
+        findings.push({ code: "MissingEdge", pointer: `/components/${i}`, between: [a, b], links: total, message: `${label.get(a)} and ${label.get(b)} share ${total} import links but no arrow. Add one if they work together.` });
+      }
+    }
+  }
+  components.forEach((component, index) => {
+    if (!languages.has(component.id)) return;
+    const touched = ids.some((other) => linked(component.id, other) + linked(other, component.id) > 0) || connections.some((arrow) => arrow.from === component.id || arrow.to === component.id);
+    if (!touched) findings.push({ code: "Isolated", pointer: `/components/${index}`, component: component.id, message: `${label.get(component.id)} has no imports to or from other boxes, and no arrows. Connect it, merge it into a box it belongs to, or remove it.` });
+  });
+  return findings;
+}
+
 // src/model/evidence.ts
 var EVIDENCE_FILE = "evidence.json";
 var MAX_DECLARATION_LINES = 3;
@@ -7652,7 +7990,7 @@ function declarationOnly(lines2) {
   const content = lines2.map((line) => line.trim()).filter((line) => !neutral(line));
   return content.length > 0 && content.every(declares);
 }
-function checkEvidence(components, read) {
+function checkEvidence(components, read, imports) {
   const findings = [];
   components.forEach((component, index) => {
     const sources = component.sources ?? [];
@@ -7672,155 +8010,24 @@ function checkEvidence(components, read) {
       });
     }
   });
+  if (imports !== void 0) findings.push(...checkImports(components, imports.connections, imports.links));
   return { schema: 1, findings };
 }
 
-// src/model/fingerprints.ts
-import { createHash } from "node:crypto";
-import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join4 } from "node:path";
-
-// src/model/session.ts
-import {
-  appendFileSync,
-  closeSync as closeSync3,
-  existsSync,
-  fsyncSync as fsyncSync2,
-  mkdirSync as mkdirSync2,
-  openSync as openSync3,
-  readFileSync,
-  renameSync as renameSync2,
-  rmSync as rmSync2,
-  writeSync as writeSync2
-} from "node:fs";
-import { dirname as dirname3, join as join3 } from "node:path";
-
-// src/model/runFolder.ts
-import { closeSync as closeSync2, fsyncSync, mkdirSync, openSync as openSync2, realpathSync as realpathSync3, renameSync, rmSync, statSync as statSync2, unlinkSync, writeSync } from "node:fs";
-import { basename, dirname as dirname2, join as join2, resolve, sep as sep2 } from "node:path";
-var ARCHIFY_DIR = ".archify";
-var DRAFT_FILE = "draft.json";
-var CANDIDATE_FILE = "candidate.json";
-var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
-function parseRunName(name) {
-  const match = RUN_NAME_PATTERN.exec(name);
-  if (!match) return null;
-  return { prefix: match[1], slug: match[2], timestamp: match[3], n: match[4] === void 0 ? 1 : Number(match[4]) };
-}
-function parseRunFolderName(name) {
-  const parsed = parseRunName(name);
-  if (parsed === null || parsed.prefix !== "architecture") return null;
-  return { slug: parsed.slug, timestamp: parsed.timestamp, n: parsed.n };
-}
-function locateDraft(arg, cwd) {
-  const draft = resolve(cwd, arg);
-  const runDir = dirname2(draft);
-  const archify = dirname2(runDir);
-  const run2 = basename(runDir);
-  if (basename(draft) !== DRAFT_FILE || basename(archify) !== ARCHIFY_DIR) {
-    throw new Error(`expected a path of the form <repo>/${ARCHIFY_DIR}/<run>/${DRAFT_FILE}, got ${arg}`);
-  }
-  const parsed = parseRunFolderName(run2);
-  if (!parsed) throw new Error(`run folder "${run2}" does not match architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]`);
-  return { root: dirname2(archify), run: run2, slug: parsed.slug, draft };
-}
-function publishCandidate(draft, content) {
-  const dir = dirname2(draft);
-  const target = join2(dir, CANDIDATE_FILE);
-  const temp = join2(dir, `.${CANDIDATE_FILE}.tmp-${process.pid}-${Date.now()}`);
-  try {
-    const fd = openSync2(temp, "wx");
-    try {
-      writeSync(fd, content);
-      fsyncSync(fd);
-    } finally {
-      closeSync2(fd);
-    }
-    renameSync(temp, target);
-  } catch (error) {
-    rmSync(temp, { force: true });
-    throw error;
-  }
-  unlinkSync(draft);
-}
-
-// src/model/session.ts
-var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
-function writeAtomic(path, content) {
-  const temp = join3(dirname3(path), `.tmp-${process.pid}-${Date.now()}`);
-  try {
-    const fd = openSync3(temp, "wx");
-    try {
-      writeSync2(fd, content);
-      fsyncSync2(fd);
-    } finally {
-      closeSync3(fd);
-    }
-    renameSync2(temp, path);
-  } catch (error) {
-    rmSync2(temp, { force: true });
-    throw error;
-  }
-}
-function writeJson(path, value) {
-  writeAtomic(path, `${JSON.stringify(value, null, 2)}
-`);
-}
-
-// src/model/fingerprints.ts
-var FINGERPRINTS_FILE = "fingerprints.json";
-function gitBlobId(bytes) {
-  return createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
-}
-function normalizedLines(text) {
-  return text.split("\n").map((line) => line.trimEnd());
-}
-function hashLines(lines2) {
-  return createHash("sha256").update(lines2.join("\n")).digest("hex");
-}
-function looseLines(lines2) {
-  return lines2.map((line) => line.trimStart());
-}
-function fingerprint(doc, root, revision, now = /* @__PURE__ */ new Date()) {
-  const contents = /* @__PURE__ */ new Map();
-  const citations = [];
-  for (const component of doc.components) {
-    (component.sources ?? []).forEach((source, index) => {
-      let bytes = contents.get(source.path);
-      if (bytes === void 0) {
-        bytes = readFileSync2(join4(root, ...source.path.split("/")));
-        contents.set(source.path, bytes);
-      }
-      const print = { component: component.id, index, path: source.path, blob: gitBlobId(bytes) };
-      if (source.line !== void 0) {
-        print.line = source.line;
-        const end = source.end_line ?? source.line;
-        if (source.end_line !== void 0) print.end_line = source.end_line;
-        const block = normalizedLines(bytes.toString("utf8")).slice(source.line - 1, end);
-        print.range = hashLines(block);
-        print.loose = hashLines(looseLines(block));
-      }
-      citations.push(print);
-    });
-  }
-  return { schema: 1, revision, createdAt: now.toISOString(), citations };
-}
-function writeFingerprints(root, runDir, prints) {
-  const path = join4(runDir, FINGERPRINTS_FILE);
-  assertWritable(root, path);
-  writeJson(path, prints);
-}
+// src/model/repoSize.ts
+import { lstatSync as lstatSync2, readdirSync, readFileSync } from "node:fs";
+import { join as join3 } from "node:path";
 
 // src/model/git.ts
 import { spawnSync } from "node:child_process";
-import { realpathSync as realpathSync4 } from "node:fs";
+import { realpathSync as realpathSync3 } from "node:fs";
 
 // src/model/which.ts
-import { accessSync, constants, statSync as statSync3 } from "node:fs";
-import { delimiter, join as join5, posix, win32 } from "node:path";
+import { accessSync, constants, statSync as statSync2 } from "node:fs";
+import { delimiter, join as join2, posix, win32 } from "node:path";
 function isExecutableFile(path, platform) {
   try {
-    if (!statSync3(path).isFile()) return false;
+    if (!statSync2(path).isFile()) return false;
     if (platform !== "win32") accessSync(path, constants.X_OK);
     return true;
   } catch {
@@ -7830,11 +8037,11 @@ function isExecutableFile(path, platform) {
 function findOnPath(cli, env, platform = process.platform) {
   const pathValue = env["PATH"] ?? env["Path"] ?? "";
   const extensions = platform === "win32" ? ["", ...(env["PATHEXT"] ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean)] : [""];
-  const absolute = platform === "win32" ? win32.isAbsolute : posix.isAbsolute;
+  const absolute2 = platform === "win32" ? win32.isAbsolute : posix.isAbsolute;
   for (const dir of pathValue.split(platform === "win32" ? ";" : delimiter)) {
-    if (!absolute(dir)) continue;
+    if (!absolute2(dir)) continue;
     for (const extension of extensions) {
-      const candidate = join5(dir, cli + extension);
+      const candidate = join2(dir, cli + extension);
       if (isExecutableFile(candidate, platform)) return candidate;
     }
   }
@@ -7894,7 +8101,7 @@ function collectGitFacts(root, env = process.env) {
   const top = run(program, root, GIT_READS.topLevel);
   if (top === null) return null;
   try {
-    if (realpathSync4(top.trim()) !== realpathSync4(root)) return null;
+    if (realpathSync3(top.trim()) !== realpathSync3(root)) return null;
   } catch {
     return null;
   }
@@ -7917,10 +8124,217 @@ function repositoryFromGit(facts) {
   if (host === "gitee.com") return { url: facts.origin, revision: facts.head, provider: "gitee" };
   return { url: facts.origin, revision: facts.head, link_mode: "local-only" };
 }
+function trackedFiles(root, env = process.env) {
+  const program = gitProgram(env);
+  if (program === void 0) return null;
+  const output = run(program, root, [...GIT_PREFIX, "ls-files", "--stage", "-z"]);
+  if (output === null) return null;
+  const files = [];
+  for (const entry of output.split("\0")) {
+    const tab = entry.indexOf("	");
+    if (tab > 0 && (entry.startsWith("100644 ") || entry.startsWith("100755 "))) files.push(entry.slice(tab + 1));
+  }
+  return files;
+}
+function generatedFiles(root, paths, env = process.env) {
+  const program = gitProgram(env);
+  if (program === void 0 || paths.length === 0) return /* @__PURE__ */ new Set();
+  const result = spawnSync(program, [...GIT_PREFIX, "check-attr", "-z", "--stdin", "linguist-generated", "linguist-vendored"], {
+    cwd: root,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    input: paths.join("\0"),
+    stdio: ["pipe", "pipe", "ignore"],
+    maxBuffer: 64 * 1024 * 1024
+  });
+  if (result.error || result.status !== 0) return /* @__PURE__ */ new Set();
+  const fields = result.stdout.toString("utf8").split("\0");
+  const marked = /* @__PURE__ */ new Set();
+  for (let i = 0; i + 2 < fields.length; i += 3) if (fields[i + 2] === "set" || fields[i + 2] === "true") marked.add(fields[i]);
+  return marked;
+}
+
+// src/model/repoSize.ts
+var SKIPPED_DIRS = [".git", "node_modules", "vendor", "dist", "build", "target", "out", ".sustain"];
+var MAX_FILE_BYTES = 1024 * 1024;
+var BINARY = new Set(
+  "png jpg jpeg gif bmp ico webp tif tiff psd pdf zip gz tgz bz2 xz 7z rar jar war ear class o a so dylib dll exe bin wasm woff woff2 ttf otf eot mp3 mp4 m4a mov avi mkv webm wav flac ogg sqlite db pyc pyo vsix lockb".split(" ")
+);
+var TEST_DIRS = /* @__PURE__ */ new Set(["test", "tests", "__tests__", "spec", "specs", "e2e", "testdata", "fixtures"]);
+var TEST_FILES = /(\.|_)(test|spec)\.[^./]+$|^test_[^/]+\.py$|(Test|Tests|IT)\.(java|kt|scala)$|_spec\.rb$/;
+function isTestPath(path) {
+  const segments = path.split("/");
+  const name = segments.pop();
+  return segments.some((segment) => TEST_DIRS.has(segment.toLowerCase())) || TEST_FILES.test(name);
+}
+function skipped(path) {
+  return path.split("/").some((segment) => SKIPPED_DIRS.includes(segment)) || isDenied(path);
+}
+function walk(root) {
+  const files = [];
+  const pending = [""];
+  while (pending.length > 0) {
+    const dir = pending.pop();
+    let entries;
+    try {
+      entries = readdirSync(join3(root, dir), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const path = dir === "" ? entry.name : `${dir}/${entry.name}`;
+      if (SKIPPED_DIRS.includes(entry.name) || isDenied(path)) continue;
+      if (entry.isDirectory()) pending.push(path);
+      else if (entry.isFile()) files.push(path);
+    }
+  }
+  return files.sort();
+}
+function listFiles(root, env = process.env) {
+  const tracked = trackedFiles(root, env);
+  const kept = tracked === null ? walk(root) : tracked.filter((path) => !skipped(path)).sort();
+  const generated = tracked === null ? /* @__PURE__ */ new Set() : generatedFiles(root, kept, env);
+  return { listing: tracked === null ? "walk" : "git", files: generated.size === 0 ? kept : kept.filter((path) => !generated.has(path)) };
+}
+
+// src/model/fingerprints.ts
+import { createHash } from "node:crypto";
+import { readFileSync as readFileSync3 } from "node:fs";
+import { join as join6 } from "node:path";
+
+// src/model/session.ts
+import {
+  appendFileSync,
+  closeSync as closeSync3,
+  existsSync,
+  fsyncSync as fsyncSync2,
+  mkdirSync as mkdirSync2,
+  openSync as openSync3,
+  readFileSync as readFileSync2,
+  renameSync as renameSync2,
+  rmSync as rmSync2,
+  writeSync as writeSync2
+} from "node:fs";
+import { dirname as dirname3, join as join5 } from "node:path";
+
+// src/model/runFolder.ts
+import { closeSync as closeSync2, fsyncSync, mkdirSync, openSync as openSync2, realpathSync as realpathSync4, renameSync, rmSync, statSync as statSync3, unlinkSync, writeSync } from "node:fs";
+import { basename, dirname as dirname2, join as join4, resolve, sep as sep2 } from "node:path";
+var ARCHIFY_DIR = ".archify";
+var DRAFT_FILE = "draft.json";
+var CANDIDATE_FILE = "candidate.json";
+var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
+function parseRunName(name) {
+  const match = RUN_NAME_PATTERN.exec(name);
+  if (!match) return null;
+  return { prefix: match[1], slug: match[2], timestamp: match[3], n: match[4] === void 0 ? 1 : Number(match[4]) };
+}
+function parseRunFolderName(name) {
+  const parsed = parseRunName(name);
+  if (parsed === null || parsed.prefix !== "architecture") return null;
+  return { slug: parsed.slug, timestamp: parsed.timestamp, n: parsed.n };
+}
+function locateDraft(arg, cwd) {
+  const draft = resolve(cwd, arg);
+  const runDir = dirname2(draft);
+  const archify = dirname2(runDir);
+  const run2 = basename(runDir);
+  if (basename(draft) !== DRAFT_FILE || basename(archify) !== ARCHIFY_DIR) {
+    throw new Error(`expected a path of the form <repo>/${ARCHIFY_DIR}/<run>/${DRAFT_FILE}, got ${arg}`);
+  }
+  const parsed = parseRunFolderName(run2);
+  if (!parsed) throw new Error(`run folder "${run2}" does not match architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]`);
+  return { root: dirname2(archify), run: run2, slug: parsed.slug, draft };
+}
+function publishCandidate(draft, content) {
+  const dir = dirname2(draft);
+  const target = join4(dir, CANDIDATE_FILE);
+  const temp = join4(dir, `.${CANDIDATE_FILE}.tmp-${process.pid}-${Date.now()}`);
+  try {
+    const fd = openSync2(temp, "wx");
+    try {
+      writeSync(fd, content);
+      fsyncSync(fd);
+    } finally {
+      closeSync2(fd);
+    }
+    renameSync(temp, target);
+  } catch (error) {
+    rmSync(temp, { force: true });
+    throw error;
+  }
+  unlinkSync(draft);
+}
+
+// src/model/session.ts
+var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
+function writeAtomic(path, content) {
+  const temp = join5(dirname3(path), `.tmp-${process.pid}-${Date.now()}`);
+  try {
+    const fd = openSync3(temp, "wx");
+    try {
+      writeSync2(fd, content);
+      fsyncSync2(fd);
+    } finally {
+      closeSync3(fd);
+    }
+    renameSync2(temp, path);
+  } catch (error) {
+    rmSync2(temp, { force: true });
+    throw error;
+  }
+}
+function writeJson(path, value) {
+  writeAtomic(path, `${JSON.stringify(value, null, 2)}
+`);
+}
+
+// src/model/fingerprints.ts
+var FINGERPRINTS_FILE = "fingerprints.json";
+function gitBlobId(bytes) {
+  return createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+}
+function normalizedLines(text) {
+  return text.split("\n").map((line) => line.trimEnd());
+}
+function hashLines(lines2) {
+  return createHash("sha256").update(lines2.join("\n")).digest("hex");
+}
+function looseLines(lines2) {
+  return lines2.map((line) => line.trimStart());
+}
+function fingerprint(doc, root, revision, now = /* @__PURE__ */ new Date()) {
+  const contents = /* @__PURE__ */ new Map();
+  const citations = [];
+  for (const component of doc.components) {
+    (component.sources ?? []).forEach((source, index) => {
+      let bytes = contents.get(source.path);
+      if (bytes === void 0) {
+        bytes = readFileSync3(join6(root, ...source.path.split("/")));
+        contents.set(source.path, bytes);
+      }
+      const print = { component: component.id, index, path: source.path, blob: gitBlobId(bytes) };
+      if (source.line !== void 0) {
+        print.line = source.line;
+        const end = source.end_line ?? source.line;
+        if (source.end_line !== void 0) print.end_line = source.end_line;
+        const block = normalizedLines(bytes.toString("utf8")).slice(source.line - 1, end);
+        print.range = hashLines(block);
+        print.loose = hashLines(looseLines(block));
+      }
+      citations.push(print);
+    });
+  }
+  return { schema: 1, revision, createdAt: now.toISOString(), citations };
+}
+function writeFingerprints(root, runDir, prints) {
+  const path = join6(runDir, FINGERPRINTS_FILE);
+  assertWritable(root, path);
+  writeJson(path, prints);
+}
 
 // src/model/runRecord.ts
-import { readdirSync, readFileSync as readFileSync3 } from "node:fs";
-import { join as join6 } from "node:path";
+import { readdirSync as readdirSync2, readFileSync as readFileSync4 } from "node:fs";
+import { join as join7 } from "node:path";
 
 // src/model/types.ts
 function isJsonObject(value) {
@@ -7952,14 +8366,14 @@ function newRunRecord(fields, now = /* @__PURE__ */ new Date()) {
 }
 function readRunRecord(runDir) {
   try {
-    const value = JSON.parse(readFileSync3(join6(runDir, RUN_FILE), "utf8"));
+    const value = JSON.parse(readFileSync4(join7(runDir, RUN_FILE), "utf8"));
     return isJsonObject(value) && value["schema"] === 1 && typeof value["phase"] === "string" ? value : null;
   } catch {
     return null;
   }
 }
 function writeRunRecord(root, runDir, record2) {
-  const path = join6(runDir, RUN_FILE);
+  const path = join7(runDir, RUN_FILE);
   assertWritable(root, path);
   writeJson(path, record2);
 }
@@ -8523,12 +8937,12 @@ function checkSubmission(value, app, checkCitations2) {
 }
 
 // src/model/staleness.ts
-import { readFileSync as readFileSync4 } from "node:fs";
-import { join as join7 } from "node:path";
+import { readFileSync as readFileSync5 } from "node:fs";
+import { join as join8 } from "node:path";
 function fileReader(root) {
   return (path) => {
     try {
-      return readFileSync4(join7(root, ...path.split("/")));
+      return readFileSync5(join8(root, ...path.split("/")));
     } catch {
       return null;
     }
@@ -8562,7 +8976,7 @@ function main(args) {
   let text;
   try {
     location = locateDraft(args[0], process.cwd());
-    text = readFileSync5(location.draft, "utf8");
+    text = readFileSync6(location.draft, "utf8");
   } catch (error) {
     return usageError(error.message);
   }
@@ -8606,14 +9020,16 @@ function main(args) {
   }
   const doc = value;
   const read = fileReader(location.root);
-  const evidence = checkEvidence(doc.components, (path) => read(path)?.toString("utf8") ?? null);
+  const readText = (path) => read(path)?.toString("utf8") ?? null;
+  const sources = listFiles(location.root).files.filter((path) => importLanguage(path) !== null && !isTestPath(path));
+  const evidence = checkEvidence(doc.components, readText, { connections: doc.connections ?? [], links: importLinks(sources, readText) });
   try {
     const runDir = dirname4(location.draft);
-    assertWritable(location.root, join8(runDir, CANDIDATE_FILE));
+    assertWritable(location.root, join9(runDir, CANDIDATE_FILE));
     publishCandidate(location.draft, stringifyDocument(value));
     writeFingerprints(location.root, runDir, fingerprint(doc, location.root, git?.head ?? null));
-    assertWritable(location.root, join8(runDir, EVIDENCE_FILE));
-    writeJson(join8(runDir, EVIDENCE_FILE), evidence);
+    assertWritable(location.root, join9(runDir, EVIDENCE_FILE));
+    writeJson(join9(runDir, EVIDENCE_FILE), evidence);
     record(location, { phase: "accepted", finishedAt: (/* @__PURE__ */ new Date()).toISOString() });
   } catch (error) {
     return usageError(`cannot publish ${CANDIDATE_FILE}: ${error.message}`);

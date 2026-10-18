@@ -1,6 +1,8 @@
 // ACC-01: whether each box cites behaviour or only declarations. A box is DeclarationOnly when
-// every citation is at most 3 lines and those lines only declare something. Browser-safe; the
-// validator passes in the cited files' text.
+// every citation is at most 3 lines and those lines only declare something. ACC-02 adds what the
+// imports say about each arrow and box (see evidence/graph.ts). Browser-safe; the validator passes
+// in the cited files' text and the import links.
+import { checkImports, type ImportFinding } from "./evidence/graph";
 
 export const EVIDENCE_FILE = "evidence.json";
 
@@ -17,7 +19,7 @@ export interface EvidenceFinding {
 
 export interface Evidence {
   schema: 1;
-  findings: EvidenceFinding[];
+  findings: (EvidenceFinding | ImportFinding)[];
 }
 
 const DECLARATION =
@@ -53,9 +55,16 @@ interface Cited {
   sources?: { path: string; line?: number; end_line?: number }[];
 }
 
-/** The evidence report for `components`; `read` gives a cited file's text, or `null`. */
-export function checkEvidence(components: readonly Cited[], read: (path: string) => string | null): Evidence {
-  const findings: EvidenceFinding[] = [];
+/**
+ * The evidence report for `components`; `read` gives a cited file's text, or `null`. With `imports`,
+ * the arrows and boxes are checked against the repository's import links too (ACC-02).
+ */
+export function checkEvidence(
+  components: readonly Cited[],
+  read: (path: string) => string | null,
+  imports?: { connections: readonly { id?: string; from: string; to: string; label?: string }[]; links: ReadonlyMap<string, readonly string[]> },
+): Evidence {
+  const findings: (EvidenceFinding | ImportFinding)[] = [];
   components.forEach((component, index) => {
     const sources = component.sources ?? [];
     if (sources.length === 0) return;
@@ -74,5 +83,6 @@ export function checkEvidence(components: readonly Cited[], read: (path: string)
       });
     }
   });
+  if (imports !== undefined) findings.push(...checkImports(components, imports.connections, imports.links));
   return { schema: 1, findings };
 }

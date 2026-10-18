@@ -9,6 +9,9 @@ const DRAFT = `.archify/${RUN}/draft.json`;
 
 type Json = Record<string, unknown>;
 
+/** ACC-02: the fixture's "HTTP" arrow names a protocol, which imports cannot show. */
+const HTTP_NOT_CHECKED = { code: "NotChecked", pointer: "/connections/0", connection: "web-api", message: "Not checked: the arrow names a protocol, which imports cannot show." };
+
 function draftDoc(): Json & { meta: Json; components: Json[] } {
   return {
     meta: { title: "Demo", subtitle: "Sub", legend: { mode: "auto" } },
@@ -46,7 +49,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
     const run = runScript("validate", [DRAFT], { cwd: root, env: envWithoutGit() });
     expect(run.status).toBe(0);
     expect(run.stderr).toBe("");
-    expect(run.json()).toEqual({ status: "accepted", candidate: `.archify/${RUN}/candidate.json`, errors: [], warnings: [], evidence: [] });
+    expect(run.json()).toEqual({ status: "accepted", candidate: `.archify/${RUN}/candidate.json`, errors: [], warnings: [], evidence: [HTTP_NOT_CHECKED] });
   });
 
   test("rejected: exit 1, errors with pointers, the hint, no candidate", () => {
@@ -153,8 +156,8 @@ describe("FR-VAL-01 CLI exit paths", () => {
     put(root, "src/model.ts", "export interface Model {\n  id: string;\n}\n");
     const report = runScript("validate", [DRAFT], { cwd: root }).json();
     const finding = { code: "DeclarationOnly", pointer: "/components/1", component: "api", message: expect.stringContaining("a call site") };
-    expect(report.evidence).toEqual([finding]);
-    expect(JSON.parse(readFileSync(join(root, ".archify", RUN, "evidence.json"), "utf8"))).toEqual({ schema: 1, findings: [finding] });
+    expect(report.evidence).toEqual([finding, HTTP_NOT_CHECKED]);
+    expect(JSON.parse(readFileSync(join(root, ".archify", RUN, "evidence.json"), "utf8"))).toEqual({ schema: 1, findings: [finding, HTTP_NOT_CHECKED] });
   });
 
   test("ACC-01 a revised draft in an accepted run folder replaces the candidate and its sidecars", () => {
@@ -162,16 +165,16 @@ describe("FR-VAL-01 CLI exit paths", () => {
     doc.components[1]!["sources"] = [{ path: "src/model.ts", line: 1 }];
     const { root } = setup(doc);
     put(root, "src/model.ts", "export interface Model {\n  id: string;\n}\nexport const save = (m: Model) => db.insert(m);\n");
-    expect(runScript("validate", [DRAFT], { cwd: root }).json().evidence).toHaveLength(1);
+    expect(runScript("validate", [DRAFT], { cwd: root }).json().evidence).toHaveLength(2);
 
     doc.components[1]!["sources"] = [{ path: "src/model.ts", line: 4 }];
     doc.components[1]!["label"] = "Saves models";
     setup(doc, { root });
     const revised = runScript("validate", [DRAFT], { cwd: root });
     expect(revised.status).toBe(0);
-    expect(revised.json().evidence).toEqual([]);
+    expect(revised.json().evidence).toEqual([HTTP_NOT_CHECKED]);
     expect(candidate(root).components[1]!["label"]).toBe("Saves models");
-    expect(JSON.parse(readFileSync(join(root, ".archify", RUN, "evidence.json"), "utf8")).findings).toEqual([]);
+    expect(JSON.parse(readFileSync(join(root, ".archify", RUN, "evidence.json"), "utf8")).findings).toEqual([HTTP_NOT_CHECKED]);
     const prints = JSON.parse(readFileSync(join(root, ".archify", RUN, "fingerprints.json"), "utf8"));
     expect(prints.citations[1]).toMatchObject({ component: "api", path: "src/model.ts", line: 4 });
     expect(JSON.parse(readFileSync(join(root, ".archify", RUN, "run.json"), "utf8"))).toMatchObject({ phase: "accepted", attempts: 2 });

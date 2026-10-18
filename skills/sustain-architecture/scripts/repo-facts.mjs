@@ -412,13 +412,17 @@ function countFile(path) {
   for (let at = data.indexOf(10); at !== -1; at = data.indexOf(10, at + 1)) lines++;
   return data.length > 0 && data[data.length - 1] !== 10 ? lines + 1 : lines;
 }
-function repoSize(root, env = process.env, limit = COUNT_LIMIT) {
+function listFiles(root, env = process.env) {
   const tracked = trackedFiles(root, env);
   const kept = tracked === null ? walk(root) : tracked.filter((path) => !skipped(path)).sort();
   const generated = tracked === null ? /* @__PURE__ */ new Set() : generatedFiles(root, kept, env);
+  return { listing: tracked === null ? "walk" : "git", files: generated.size === 0 ? kept : kept.filter((path) => !generated.has(path)) };
+}
+function repoSize(root, env = process.env, limit = COUNT_LIMIT) {
+  const { listing, files: listed } = listFiles(root, env);
   const candidates = [];
-  for (const path of kept) {
-    const language = generated.has(path) ? null : languageOf(path);
+  for (const path of listed) {
+    const language = languageOf(path);
     if (language !== null) candidates.push({ path, language });
   }
   const step = Math.max(1, candidates.length / limit);
@@ -456,7 +460,7 @@ function repoSize(root, env = process.env, limit = COUNT_LIMIT) {
   const sorted = [...languages.values()].map((entry) => ({ ...entry, lines: Math.round(entry.lines), testLines: Math.round(entry.testLines) })).sort((a, b) => b.lines - a.lines || a.language.localeCompare(b.language));
   const total = sorted.reduce((sum, entry) => sum + entry.lines, 0);
   const test = sorted.reduce((sum, entry) => sum + entry.testLines, 0);
-  return { listing: tracked === null ? "walk" : "git", files, counted, lines: { total, test, nonTest: total - test }, languages: sorted, tier: tierOf(total - test) };
+  return { listing, files, counted, lines: { total, test, nonTest: total - test }, languages: sorted, tier: tierOf(total - test) };
 }
 
 // src/model/runFolder.ts

@@ -75,7 +75,7 @@ node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs <draft>
 
 ## 7. Review the evidence once
 
-An `accepted` report has an `evidence` list. For each `DeclarationOnly` box you added or changed, cite a range that shows what it does, or change its label to what the cited code shows. If that changes the diagram, write the whole revised diagram to `draft.json` in the same run folder and validate it again. This revision does not count against the 3 repairs, and it happens once.
+An `accepted` report has an `evidence` list. For each `DeclarationOnly` box you added or changed, cite a range that shows what it does, or change its label to what the cited code shows. Entries for `UnsupportedEdge`, `MissingEdge` and `Isolated` that touch a box you re-examined need the same care. Back an arrow without imports with a citation or remove it, add an arrow between boxes that share imports, and connect, merge or remove an isolated box. Leave an entry when the code shows the map is right. `NotChecked` entries need nothing. If that changes the diagram, write the whole revised diagram to `draft.json` in the same run folder and validate it again. This revision does not count against the 3 repairs, and it happens once.
 
 ## 8. Write the diagram page
 

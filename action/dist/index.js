@@ -8927,12 +8927,15 @@ var upload_schema_default = {
           items: {
             type: "object",
             additionalProperties: false,
-            required: ["code", "pointer", "component", "message"],
+            required: ["code", "pointer", "message"],
             properties: {
-              code: { const: "DeclarationOnly" },
+              code: { enum: ["DeclarationOnly", "UnsupportedEdge", "MissingEdge", "Isolated", "NotChecked"] },
               pointer: { type: "string", maxLength: 100 },
               component: { $ref: "#/$defs/shortText" },
-              message: { type: "string", maxLength: 400 }
+              connection: { $ref: "#/$defs/shortText" },
+              between: { type: "array", minItems: 2, maxItems: 2, items: { $ref: "#/$defs/shortText" } },
+              links: { $ref: "#/$defs/count" },
+              message: { type: "string", maxLength: 700 }
             }
           }
         }

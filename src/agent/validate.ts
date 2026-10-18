@@ -4,7 +4,9 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { checkCitations } from "../model/citations";
 import { assertWritable } from "../model/confine";
-import { checkEvidence, EVIDENCE_FILE, type EvidenceFinding } from "../model/evidence";
+import { checkEvidence, EVIDENCE_FILE, type Evidence } from "../model/evidence";
+import { importLanguage, importLinks } from "../model/evidence/graph";
+import { isTestPath, listFiles } from "../model/repoSize";
 import { fingerprint, writeFingerprints } from "../model/fingerprints";
 import { collectGitFacts, repositoryFromGit } from "../model/git";
 import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftLocation } from "../model/runFolder";
@@ -23,7 +25,7 @@ interface Report {
   errors: { pointer: string; message: string }[];
   warnings: { pointer: string; message: string }[];
   /** ACC-01: what to review once after acceptance; only on an accepted report. */
-  evidence?: EvidenceFinding[];
+  evidence?: Evidence["findings"];
   hint?: string;
 }
 
@@ -101,7 +103,9 @@ function main(args: string[]): number {
   }
   const doc = value as ArchifyDoc;
   const read = fileReader(location.root);
-  const evidence = checkEvidence(doc.components, (path) => read(path)?.toString("utf8") ?? null);
+  const readText = (path: string): string | null => read(path)?.toString("utf8") ?? null;
+  const sources = listFiles(location.root).files.filter((path) => importLanguage(path) !== null && !isTestPath(path));
+  const evidence = checkEvidence(doc.components, readText, { connections: doc.connections ?? [], links: importLinks(sources, readText) });
   try {
     const runDir = dirname(location.draft);
     assertWritable(location.root, join(runDir, CANDIDATE_FILE));
