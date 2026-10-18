@@ -384,6 +384,8 @@ The validator's accepted report gains `evidence: [finding]` (ADR 0050). `refresh
 
 `cloud/` is an npm workspace: Next.js (App Router), React, next-auth with GitHub, Drizzle ORM over PGlite in tests and local runs. Tables: `users`, `organizations`, `memberships`, `repositories` (owner, name, default branch, private, `public_maps`), `access` (user, repository, role, `checked_at`), `uploads` (repository, kind, commit, branch, pull, the validated payload, how it was signed) and `tokens` (SHA-256 only). Deleting a user or a repository deletes everything under it. `cloud/src/lib/services.ts` holds the database, GitHub's keys and the clock, which tests replace. The server opens the database in `cloud/src/instrumentation.ts`, so migrations run at start, before the first request (RCH-05).
 
+`/<owner>` is the team dashboard (CLD-05, `cloud/src/lib/dashboard.ts`), for a signed-in user. It has one row for each repository of that account the user can see on GitHub: when the main map was uploaded and its box count; stale boxes, uncovered files and new rule violations from the latest check against the default branch, run on it or for a pull request into it; the boxes the most pull requests touched in the last 90 days; stale boxes over the last 10 such checks; and the latest check of the five most recent pull requests with the boxes each touched. Nothing on it, or in any upload, names a person.
+
 ### Upload API (CLD-02)
 
 | Request | Body | Answers |

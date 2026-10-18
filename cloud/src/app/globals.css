@@ -69,6 +69,27 @@ a {
   padding: 28px 20px 60px;
 }
 
+.page--wide {
+  max-width: 1200px;
+}
+
+/* CLD-05: the team dashboard's table scrolls sideways on a narrow screen. */
+.dashboard {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+}
+
+.dashboard th,
+.dashboard td {
+  vertical-align: top;
+}
+
+.dashboard__pulls {
+  margin: 0;
+  padding-left: 16px;
+}
+
 .muted {
   color: var(--muted);
 }

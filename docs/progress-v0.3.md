@@ -537,7 +537,7 @@ Tests the I5 ACs call for:
 
 Done when: Dashboard, billing and self-hosting work.
 
-- [ ] **CLD-05 Team dashboard** `[web]` `[unit]`
+- [x] **CLD-05 Team dashboard** `[web]` `[unit]` — 2026-10-19: `cloud/src/lib/dashboard.ts` and the `/<owner>` page. Tests: `dashboard.test.ts` (2: a repository's row from its map and checks; no person in the dashboard, nor a field for one in the closed upload schema), `cld05-dashboard.spec.ts` (an organization's row with its figures, hotspot and pull request link).
 - [ ] **CLD-06 Share links** `[web]`
 - [ ] **CLD-07 Plans and billing** `[unit]` `[web]`
 - [ ] **CLD-10 Self-hosting** `[ci]`
