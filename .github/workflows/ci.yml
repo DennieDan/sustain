@@ -92,3 +92,25 @@ jobs:
       - run: npm run -w cloud build
       - run: npx -w cloud playwright install --with-deps chromium
       - run: npm run -w cloud test:web
+
+  skills-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm run build
+      - run: git diff --exit-code skills
+
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm run build:release
+      - run: npx --yes @anthropic-ai/claude-code@2.1.302 plugin validate release/plugin

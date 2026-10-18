@@ -5,7 +5,7 @@
 // `node esbuild.mjs --cloud`  → cloud/public/viewer.js and viewer.css (the cloud's map viewer; CLD-03)
 import * as esbuild from "esbuild";
 import { createHash } from "node:crypto";
-import { cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -169,12 +169,29 @@ export async function buildSkillsAndCli(out) {
   return results;
 }
 
+/**
+ * Copies the built scripts, and the refresh skill's shared references, back into skills/, so the
+ * committed skills work as they are for `npx skills add` (RCH-02). CI fails when these are stale.
+ * @param {string} out
+ */
+function syncCommittedSkills(out) {
+  for (const name of readdirSync(join(out, "skills"))) {
+    const built = join(out, "skills", name, "scripts");
+    if (!existsSync(built)) continue;
+    rmSync(join(root, "skills", name, "scripts"), { recursive: true, force: true });
+    cpSync(built, join(root, "skills", name, "scripts"), { recursive: true });
+  }
+  rmSync(join(root, "skills/sustain-refresh/references"), { recursive: true, force: true });
+  cpSync(join(root, "skills/sustain-architecture/references"), join(root, "skills/sustain-refresh/references"), { recursive: true });
+}
+
 async function buildDist() {
   rmSync(dist, { recursive: true, force: true });
   /** @type {import("esbuild").BuildResult[]} */
   const results = [];
 
   results.push(...(await buildSkillsAndCli(dist)));
+  syncCommittedSkills(dist);
 
   results.push(await esbuild.build({
     ...common,
