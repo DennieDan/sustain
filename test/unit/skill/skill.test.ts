@@ -29,7 +29,7 @@ function parseNestedYaml(text: string): Record<string, Record<string, string | b
 }
 
 describe("FR-SKL-01 skill frontmatter", () => {
-  test("SAF-02 SKILL.md declares the manual-only skill with its pre-approved tools", () => {
+  test("SAF-02 SET-01 SKILL.md declares the manual-only skill with its pre-approved tools", () => {
     const parsed = parseFrontMatter(read("SKILL.md"));
     expect(parsed?.fields).toEqual({
       name: "sustain-architecture",
@@ -37,7 +37,7 @@ describe("FR-SKL-01 skill frontmatter", () => {
         "Generate an Archify architecture diagram of this repository for the Sustain VS Code viewer. Invoke manually with an optional focus.",
       "disable-model-invocation": "true",
       "allowed-tools":
-        "Read Grep Glob Bash(node .agents/skills/sustain-architecture/scripts/repo-facts.mjs *) Bash(node .agents/skills/sustain-architecture/scripts/validate.mjs *)",
+        "Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *)",
     });
   });
 
@@ -62,5 +62,14 @@ describe("FR-SKL-03 format reference", () => {
 
   test("keeps the Archify attribution", () => {
     expect(reference).toContain("github.com/tt-a1i/archify, MIT");
+  });
+});
+
+describe("SET-01 install anywhere", () => {
+  test.each(["sustain-architecture", "sustain-bugfix"])("%s finds its scripts through its own folder, never a repository path", (name) => {
+    const text = readFileSync(join(repoRoot, "skills", name, "SKILL.md"), "utf8");
+    expect(text).not.toContain(".agents/skills/");
+    expect(text).not.toContain(".claude/skills/");
+    expect(text).toContain("${CLAUDE_SKILL_DIR}/scripts/");
   });
 });

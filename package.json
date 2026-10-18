@@ -23,6 +23,21 @@
     "onStartupFinished"
   ],
   "contributes": {
+    "configuration": {
+      "title": "Sustain",
+      "properties": {
+        "sustain.skillScope": {
+          "type": "string",
+          "enum": ["user", "project"],
+          "enumDescriptions": [
+            "Install the skills in your home folder (~/.claude/skills, ~/.agents/skills). Nothing is added to the repository.",
+            "Install the skills in the repository (.claude/skills, .agents/skills)."
+          ],
+          "default": "user",
+          "description": "Where Sustain installs its agent skills."
+        }
+      }
+    },
     "commands": [
       {
         "command": "sustain.installSkills",

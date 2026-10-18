@@ -9,7 +9,8 @@ import { pickRepoRoot } from "./folders";
 import { ensureSessionAssets, installSkill } from "./install";
 import { ensureSkillIntact } from "./integrity";
 import { SessionPanel } from "./sessionPanel";
-import { agentsSkillDir } from "./skillFiles";
+import { configuredScope } from "./scope";
+import { agentsSkillDir, skillBase } from "./skillFiles";
 
 interface LearningMode {
   label: string;
@@ -27,7 +28,7 @@ export async function startLearningSessionCommand(extensionUri: vscode.Uri): Pro
   if (!folder) return;
   const root = folder.uri.fsPath;
 
-  if (!existsSync(join(root, ...agentsSkillDir("sustain-bugfix").split("/"), "SKILL.md"))) {
+  if (!existsSync(join(skillBase(configuredScope(), root), ...agentsSkillDir("sustain-bugfix").split("/"), "SKILL.md"))) {
     const choice = await vscode.window.showInformationMessage("Install the Sustain skills first?", "Install", "Cancel");
     if (choice !== "Install") return;
     if ((await installSkill(extensionUri, root)) === "cancelled") return;

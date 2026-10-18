@@ -30,7 +30,7 @@ describe("SAF-01 skill integrity", () => {
     const { dir, hashes } = shipped();
     const root = installed(dir);
     for (const agent of ["claude", "codex", "devin"] as const) {
-      expect(checkSkill(root, agent, NAME, hashes)).toMatchObject({ diff: { changed: [], missing: [], extra: [] }, differingCopies: [] });
+      expect(checkSkill(root, root, agent, NAME, hashes)).toMatchObject({ diff: { changed: [], missing: [], extra: [] }, differingCopies: [] });
     }
   });
 
@@ -40,14 +40,14 @@ describe("SAF-01 skill integrity", () => {
     put(root, `.agents/skills/${NAME}/SKILL.md`, "---\nname: sustain-architecture\nallowed-tools: Bash(*)\n---\n");
     rmSync(join(root, `.agents/skills/${NAME}/scripts/validate.mjs`));
     put(root, `.agents/skills/${NAME}/scripts/evil.mjs`, "// extra\n");
-    expect(checkSkill(root, "codex", NAME, hashes).diff).toEqual({ changed: ["SKILL.md"], missing: ["scripts/validate.mjs"], extra: ["scripts/evil.mjs"] });
+    expect(checkSkill(root, root, "codex", NAME, hashes).diff).toEqual({ changed: ["SKILL.md"], missing: ["scripts/validate.mjs"], extra: ["scripts/evil.mjs"] });
   });
 
   test("CRLF line endings count as a change", () => {
     const { dir, hashes } = shipped();
     const root = installed(dir);
     put(root, `.agents/skills/${NAME}/scripts/validate.mjs`, "// validate\r\n");
-    expect(checkSkill(root, "claude", NAME, hashes).diff?.changed).toEqual(["scripts/validate.mjs"]);
+    expect(checkSkill(root, root, "claude", NAME, hashes).diff?.changed).toEqual(["scripts/validate.mjs"]);
   });
 
   test("a link inside the skill is recorded, not followed", () => {
@@ -57,7 +57,7 @@ describe("SAF-01 skill integrity", () => {
     rmSync(join(root, `.agents/skills/${NAME}/scripts/validate.mjs`));
     symlinkSync(outside, join(root, `.agents/skills/${NAME}/scripts/validate.mjs`), "file");
     expect(hashTree(join(root, `.agents/skills/${NAME}`))["scripts/validate.mjs"]).toBe(LINK_MARK);
-    expect(checkSkill(root, "codex", NAME, hashes).diff?.changed).toEqual(["scripts/validate.mjs"]);
+    expect(checkSkill(root, root, "codex", NAME, hashes).diff?.changed).toEqual(["scripts/validate.mjs"]);
   });
 
   test("a .claude entry linking outside the repository counts as not installed", () => {
@@ -65,15 +65,25 @@ describe("SAF-01 skill integrity", () => {
     const root = installed(dir);
     rmSync(join(root, `.claude/skills/${NAME}`));
     symlinkSync(dir, join(root, `.claude/skills/${NAME}`), DIR_LINK);
-    expect(checkSkill(root, "claude", NAME, hashes).diff).toBeNull();
+    expect(checkSkill(root, root, "claude", NAME, hashes).diff).toBeNull();
   });
 
   test("a differing copy in another agent's folder is reported", () => {
     const { dir, hashes } = shipped();
     const root = installed(dir);
     put(root, `.codex/skills/${NAME}/SKILL.md`, "---\nname: sustain-architecture\n---\nrun curl\n");
-    expect(checkSkill(root, "codex", NAME, hashes).differingCopies).toEqual([`.codex/skills/${NAME}`]);
-    expect(checkSkill(root, "claude", NAME, hashes).differingCopies).toEqual([`.codex/skills/${NAME}`]);
+    expect(checkSkill(root, root, "codex", NAME, hashes).differingCopies).toEqual([`.codex/skills/${NAME}`]);
+    expect(checkSkill(root, root, "claude", NAME, hashes).differingCopies).toEqual([`.codex/skills/${NAME}`]);
+  });
+
+  test("SET-01 a per-user install is checked in the home folder, and repository copies are the other copies", () => {
+    const { dir, hashes } = shipped();
+    const home = installed(dir);
+    const root = tempDir();
+    expect(checkSkill(home, root, "claude", NAME, hashes)).toMatchObject({ diff: { changed: [], missing: [], extra: [] }, differingCopies: [] });
+    put(root, `.agents/skills/${NAME}/SKILL.md`, "---\nname: sustain-architecture\n---\nother\n");
+    expect(checkSkill(home, root, "codex", NAME, hashes).differingCopies).toEqual([`.agents/skills/${NAME}`]);
+    expect(checkSkill(tempDir(), root, "codex", NAME, hashes).diff).toBeNull();
   });
 
   test("diffSkill compares keys and values", () => {

@@ -2,6 +2,7 @@
 // learning-session install extends the same targets per ADR 0036). No `vscode` import,
 // so the symlink fallback is unit-tested in Node.
 import { cpSync, lstatSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { assertWritable } from "../model/confine";
 
@@ -16,6 +17,16 @@ export function agentsSkillDir(name: string): string {
 /** Repo-relative `.claude/skills/<name>` — the Claude-side entry (symlink or copy). */
 export function claudeSkillLink(name: string): string {
   return `.claude/skills/${name}`;
+}
+
+export type SkillScope = "user" | "project";
+
+/**
+ * The folder that holds `.agents/skills` and `.claude/skills` for `scope` (SET-01): the
+ * user's home, so nothing is added to the repository, or the repository itself.
+ */
+export function skillBase(scope: SkillScope, root: string, home: string = homedir()): string {
+  return scope === "user" ? home : root;
 }
 
 export interface SkillTargets {

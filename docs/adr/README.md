@@ -9,7 +9,7 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0003](0003-target-claude-code-and-codex.md) | Target Claude Code and Codex | accepted | 2026-10-10 |
 | [0004](0004-one-skill-with-bundled-scripts.md) | One skill with bundled repo-facts and validate scripts | accepted | 2026-10-10 |
 | [0005](0005-manual-invocation-and-claude-pre-approvals.md) | Manual skill invocation and Claude tool pre-approvals | accepted | 2026-10-10 |
-| [0006](0006-install-skill-into-agents-with-claude-symlink.md) | Install the skill into .agents/skills with a .claude symlink | accepted | 2026-10-10 |
+| [0006](0006-install-skill-into-agents-with-claude-symlink.md) | Install the skill into .agents/skills with a .claude symlink | superseded by [ADR-0044](0044-skills-install-per-user-by-default.md) | 2026-10-10 |
 | [0007](0007-validator-as-dependency-free-node-bundles.md) | Validator and repo facts as dependency-free Node bundles | accepted | 2026-10-10 |
 | [0008](0008-validator-publishes-draft-as-candidate.md) | Validator publishes draft.json as candidate.json | accepted | 2026-10-10 |
 | [0009](0009-validator-owns-geometry-and-meta-fields.md) | Validator owns geometry, presentation and repository metadata | accepted | 2026-10-10 |
@@ -47,3 +47,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0041](0041-pre-approved-skill-commands-run-no-caller-named-program.md) | Pre-approved skill commands run no caller-named program | accepted | 2026-10-18 |
 | [0042](0042-session-hooks-live-only-while-a-session-runs.md) | Session hooks live only while a session runs | accepted | 2026-10-18 |
 | [0043](0043-skills-are-checked-against-the-shipped-copy-before-launch.md) | Skills are checked against the shipped copy before launch | accepted | 2026-10-18 |
+| [0044](0044-skills-install-per-user-by-default.md) | Skills install per user by default | accepted | 2026-10-18 |

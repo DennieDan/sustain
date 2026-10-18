@@ -51,7 +51,7 @@ export const SKILL_FOLDERS: readonly string[] = [".agents/skills", ".claude/skil
 
 export type AgentId = "claude" | "codex" | "devin";
 
-/** The repository folder `agent` loads skill `name` from. SET-01 adds the per-user scope. */
+/** The folder `agent` loads skill `name` from, relative to the install base (home or repository). */
 export function effectiveSkillDir(agent: AgentId, name: string): string {
   return agent === "claude" ? `.claude/skills/${name}` : `.agents/skills/${name}`;
 }
@@ -67,7 +67,7 @@ function realSkillDir(root: string, rel: string): string | null {
 }
 
 export interface SkillCheck {
-  /** The folder the agent loads, relative to the root. */
+  /** The folder the agent loads, relative to the install base. */
   effective: string;
   /** How it differs from the shipped copy, or `null` when it is absent or leaves the root. */
   diff: SkillDiff | null;
@@ -75,15 +75,18 @@ export interface SkillCheck {
   differingCopies: string[];
 }
 
-/** Compares the effective skill and every other same-named copy with the shipped hashes. */
-export function checkSkill(root: string, agent: AgentId, name: string, expected: Record<string, string>): SkillCheck {
+/**
+ * Compares the skill the agent loads from `base` (the user's home or the repository, SET-01)
+ * and every other same-named copy in the repository `root` with the shipped hashes.
+ */
+export function checkSkill(base: string, root: string, agent: AgentId, name: string, expected: Record<string, string>): SkillCheck {
   const effective = effectiveSkillDir(agent, name);
-  const effectiveReal = realSkillDir(root, effective);
+  const effectiveReal = realSkillDir(base, effective);
   const diff = effectiveReal === null ? null : diffSkill(expected, hashTree(effectiveReal));
   const differingCopies: string[] = [];
   for (const folder of SKILL_FOLDERS) {
     const rel = `${folder}/${name}`;
-    if (rel === effective) continue;
+    if (base === root && rel === effective) continue;
     const real = realSkillDir(root, rel);
     if (real === null || real === effectiveReal) continue;
     if (diffSize(diffSkill(expected, hashTree(real))) > 0) differingCopies.push(rel);

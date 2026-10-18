@@ -12,23 +12,28 @@ export const DEVIN_HOOKS_FILE = join(".devin", "hooks.v1.json");
 /** A hook object is Sustain's iff its `command` contains this marker (ADR 0040). */
 export const SUSTAIN_HOOK_MARKER = ".agents/skills/sustain-";
 
-const SESSION_HOOK_COMMAND = 'node "$DEVIN_PROJECT_DIR/.agents/skills/sustain-bugfix/scripts/session-hook.mjs"';
+/**
+ * The command that runs `session-hook.mjs`: from the repository for a project install, or by
+ * absolute path from the per-user install at `base` (SET-01). Both contain {@link SUSTAIN_HOOK_MARKER}.
+ */
+export function sessionHookCommand(base?: string): string {
+  if (base === undefined) return 'node "$DEVIN_PROJECT_DIR/.agents/skills/sustain-bugfix/scripts/session-hook.mjs"';
+  return `node "${join(base, ".agents", "skills", "sustain-bugfix", "scripts", "session-hook.mjs").split("\\").join("/")}"`;
+}
 const HUNT_BLOCKLIST = "^(edit|write|apply_patch|notebook_edit|run_subagent)$";
 const HOOK_TIMEOUT = 5;
 
-function promptHookGroup(): Record<string, unknown> {
-  return { matcher: "", hooks: [{ type: "command", command: SESSION_HOOK_COMMAND, timeout: HOOK_TIMEOUT }] };
+function promptHookGroup(command: string): Record<string, unknown> {
+  return { matcher: "", hooks: [{ type: "command", command, timeout: HOOK_TIMEOUT }] };
 }
 
-/** The Sustain-managed block, identical to what the committed `.devin/hooks.v1.json` holds. */
-export function sustainHooks(): Record<string, unknown[]> {
+/** The Sustain-managed block, running `command` (see {@link sessionHookCommand}). */
+export function sustainHooks(command: string = sessionHookCommand()): Record<string, unknown[]> {
   return {
-    PreToolUse: [
-      { matcher: HUNT_BLOCKLIST, hooks: [{ type: "command", command: SESSION_HOOK_COMMAND, timeout: HOOK_TIMEOUT }] },
-    ],
-    UserPromptSubmit: [promptHookGroup()],
-    PostCompaction: [promptHookGroup()],
-    SessionStart: [promptHookGroup()],
+    PreToolUse: [{ matcher: HUNT_BLOCKLIST, hooks: [{ type: "command", command, timeout: HOOK_TIMEOUT }] }],
+    UserPromptSubmit: [promptHookGroup(command)],
+    PostCompaction: [promptHookGroup(command)],
+    SessionStart: [promptHookGroup(command)],
   };
 }
 
@@ -75,7 +80,7 @@ function readHooksFile(path: string): Record<string, unknown> | null {
  * Idempotent: merging twice is a no-op. Throws on a corrupt or non-array event entry —
  * the caller warns and nothing is overwritten.
  */
-export function mergeHooks(root: string): boolean {
+export function mergeHooks(root: string, command: string = sessionHookCommand()): boolean {
   const path = join(root, DEVIN_HOOKS_FILE);
   const existing = readHooksFile(path) ?? {};
   const merged: Record<string, unknown> = {};
@@ -87,7 +92,7 @@ export function mergeHooks(root: string): boolean {
     const kept = stripSustain(groups);
     if (kept.length > 0) merged[event] = kept;
   }
-  for (const [event, groups] of Object.entries(sustainHooks())) {
+  for (const [event, groups] of Object.entries(sustainHooks(command))) {
     merged[event] = [...((merged[event] as unknown[] | undefined) ?? []), ...groups];
   }
   if (JSON.stringify(existing ?? {}) === JSON.stringify(merged)) return false;

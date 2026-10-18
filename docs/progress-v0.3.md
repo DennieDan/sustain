@@ -7,7 +7,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | Milestone | Status | Commit |
 |---|---|---|
 | D1 Safe to ship | Closed pending owner (ENG-01, ENG-04 `[ci]`) | `4bbac86` |
-| D2 The product in VS Code | Not started | |
+| D2 The product in VS Code | In progress | |
 | D3 The living map | Not started | |
 | D4 Pull request checks | Not started | |
 | D5 Sustain Cloud v1 | Not started | |
@@ -26,6 +26,7 @@ Items only the owner can do, with exact steps.
 
 - Push `kerk` and enable GitHub Actions so `[ci]` items can run: ENG-01 (the workflow's four jobs) and ENG-04 (the stale-notices check). Then tick them with the run's link.
 - Install and sign in to `claude`, `codex` and `devin` for `[smoke]` checks; approve any paid agent calls first (spec §6).
+- SET-01 `[smoke]`: with the default per-user install, run `/sustain-architecture` in Claude Code and `$sustain-architecture` in Codex from a repository with no `.agents/` folder, and confirm each finds the skill and its scripts.
 
 ## D1 Safe to ship
 
@@ -83,6 +84,40 @@ Done when: Gates green; a tampered skill cannot launch; no pre-approved command 
 
 ## D2 The product in VS Code
 
+### D2 proposal (2026-10-18)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `package.json`, `media/sustain.svg` | Activity Bar container, the `sustain.home` view, menus (editor title, Explorer, box, view title), commands, settings | +120 |
+| `src/model/scope.ts`, `skills/*/SKILL.md`, `src/model/integrity.ts`, `src/extension/skillFiles.ts` | Per-user install by default (`sustain.skillScope`), `${CLAUDE_SKILL_DIR}` in skill bodies and rules, scope-aware integrity | +90 / -20 |
+| `src/model/runRecord.ts`, `src/agent/repo-facts.ts`, `src/agent/validate.ts` | `run.json` written at creation and updated by the validator | +70 |
+| `src/model/preflight.ts` | Setup checks: Node, agent CLIs with versions, skills intact, git repository | +90 |
+| `src/model/messages.ts` | Home state and sidebar messages | +80 |
+| `src/extension/home.ts`, `webview/sidebar.ts`, `webview/sidebar.css` | The sidebar: header, composer, run card, maps, setup, learning session, Ask | +500 |
+| `src/model/agentStream/*.ts` | Claude Code and Codex stream parsers to feed items and usage | +180 |
+| `src/extension/runner.ts` | Headless runs: argv per SAF-04, live card, cancel, denials, open on acceptance | +160 |
+| `src/extension/generate.ts` | One click from the sidebar, one modal from the palette, the last agent remembered | +60 / -30 |
+| `src/extension/showInMap.ts`, `panel.ts`, `webview/main.ts` | Show in Map, follow editor, highlighted boxes | +120 |
+| `src/extension/statusBar.ts` | The status bar item | +50 |
+| `src/extension/menus.ts` | Map this folder, Show in architecture map, Open code from a box | +50 |
+| `src/model/ask.ts`, `webview/answer.ts` | Ask prompt, safe answer renderer, `path:line` and box links | +150 |
+
+Tests the D2 ACs call for:
+- contributions, and every command reachable from a menu, the sidebar or a title bar;
+- the sidebar's states: empty, maps, running, setup failing, session active;
+- revealing the container shows the view; Generate launches with the typed focus;
+- stream parsers on Claude and Codex fixture streams; headless argv per SAF-04;
+- a stub agent replaying a stream: feed, tokens, acceptance, Cancel, a denial offering terminal mode;
+- editor-title contributions and `when` clauses; Show in Map highlights; follow editor tracks;
+- status bar transitions; its click focuses the view;
+- Explorer and box menu contributions; box context data; the folder action's focus;
+- no SKILL.md hard-codes a repository-root script path; install into a temporary HOME and into the repository;
+- setup check version parsing and results; checklist states; stubbed PATHs;
+- one interaction from the sidebar, at most two from the palette;
+- `run.json` written and updated; terminal-mode card transitions;
+- Ask prompt, argv, renderer, link detection; a stub answer whose links open the cited lines.
+
+
 Done when: Everything is reachable without the Command Palette; runs and questions stream in the sidebar.
 
 - [ ] **UI-01 Sustain sidebar** `[unit]` `[dom]` `[e2e]`
@@ -91,7 +126,7 @@ Done when: Everything is reachable without the Command Palette; runs and questio
 - [ ] **UI-04 Status bar item** `[unit]` `[e2e]`
 - [ ] **UI-05 Explorer and box menus** `[unit]` `[dom]` `[e2e]`
 - [ ] **UI-06 Ask about the map** `[unit]` `[dom]` `[e2e]` `[smoke]`
-- [ ] **SET-01 Install anywhere** `[unit]` `[e2e]` `[smoke]`
+- [ ] **SET-01 Install anywhere** `[unit]` `[e2e]` `[smoke]` — `[unit]` `[e2e]` done 2026-10-18: `sustain.skillScope` (default `user`) picks the base; skills use `${CLAUDE_SKILL_DIR}`; integrity checks the base copy and repository copies; a per-user session hook runs by absolute path. Tests: `skill.test.ts` › `SET-01 … never a repository path` (2) and the updated frontmatter test; `integrity.test.ts` › `SET-01 a per-user install …`; e2e install into a temporary HOME (every launch now gets its own HOME) and `SET-01 with sustain.skillScope set to project …`. The real `~/.claude/skills` and `~/.agents/skills` stay empty. ADR 0044 supersedes ADR 0006. `[smoke]`: each agent loading the per-user skill waits for the agent CLIs.
 - [ ] **SET-02 Setup check** `[unit]` `[dom]` `[e2e]`
 - [ ] **SET-03 One-click Generate** `[e2e]`
 - [ ] **CST-04 Run record** `[unit]` `[e2e]`

@@ -8,14 +8,15 @@ import { pickRepoRoot } from "./folders";
 import { ensureGitExclude } from "./hooksFiles";
 import { installSkill } from "./install";
 import { ensureSkillIntact } from "./integrity";
-import { agentsSkillDir } from "./skillFiles";
+import { configuredScope } from "./scope";
+import { agentsSkillDir, skillBase } from "./skillFiles";
 
 export async function generateArchitectureCommand(extensionUri: vscode.Uri): Promise<void> {
   const folder = await pickRepoRoot();
   if (!folder) return;
   const root = folder.uri.fsPath;
 
-  if (!existsSync(join(root, ...agentsSkillDir("sustain-architecture").split("/"), "SKILL.md"))) {
+  if (!existsSync(join(skillBase(configuredScope(), root), ...agentsSkillDir("sustain-architecture").split("/"), "SKILL.md"))) {
     const choice = await vscode.window.showInformationMessage("Install the sustain-architecture skill first?", "Install", "Cancel");
     if (choice !== "Install") return;
     if ((await installSkill(extensionUri, root)) === "cancelled") return;

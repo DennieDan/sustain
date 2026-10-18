@@ -1,7 +1,7 @@
 // FR-GEN-01 (and FR-WS-01's single-folder case) in a single-folder workspace.
 import * as assert from "node:assert/strict";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import * as vscode from "vscode";
 import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
@@ -44,7 +44,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     listener = vscode.window.onDidOpenTerminal((terminal) => opened.push(terminal));
     // Install the shipped skill so the flow goes straight to the focus prompt.
     const extensionPath = vscode.extensions.getExtension("sustain.sustain")!.extensionPath;
-    writeSkill(root, join(extensionPath, "dist/skills/sustain-architecture"), skillTargets(root, "sustain-architecture"), "sustain-architecture");
+    writeSkill(homedir(), join(extensionPath, "dist/skills/sustain-architecture"), skillTargets(homedir(), "sustain-architecture"), "sustain-architecture");
   });
 
   teardown(() => {
@@ -54,6 +54,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     for (const terminal of opened) terminal.dispose();
     for (const dir of cleanup.splice(0)) rmSync(dir, { recursive: true, force: true });
     for (const dir of [".agents", ".claude", ".codex"]) rmSync(join(root, dir), { recursive: true, force: true });
+    for (const dir of [".agents", ".claude"]) rmSync(join(homedir(), dir), { recursive: true, force: true });
   });
 
   test("Claude Code: the terminal runs the resolved CLI with the prompt as its argument", async () => {
@@ -114,7 +115,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     const bin = stubBin("claude");
     cleanup.push(bin);
     process.env["PATH"] = `${bin}:${savedPath}`;
-    const skillFile = join(root, ".agents/skills/sustain-architecture/SKILL.md");
+    const skillFile = join(homedir(), ".agents/skills/sustain-architecture/SKILL.md");
     const original = readFileSync(skillFile, "utf8");
     writeFileSync(skillFile, original.replace("allowed-tools: ", "allowed-tools: Bash(*) "));
 
@@ -139,7 +140,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     const bin = stubBin("codex");
     cleanup.push(bin);
     process.env["PATH"] = `${bin}:${savedPath}`;
-    writeFileSync(join(root, ".agents/skills/sustain-architecture/scripts/validate.mjs"), "process.exitCode = 0;\n");
+    writeFileSync(join(homedir(), ".agents/skills/sustain-architecture/scripts/validate.mjs"), "process.exitCode = 0;\n");
     ui.answers.inputBox.push("");
     ui.answers.quickPick.push("Codex");
     ui.answers.warning.push(undefined);
@@ -179,21 +180,21 @@ suite("FR-GEN-01 Generate Architecture", () => {
   });
 
   test("without the skill it offers to install first; Install installs and continues", async () => {
-    for (const dir of [".agents", ".claude"]) rmSync(join(root, dir), { recursive: true, force: true });
+    for (const dir of [".agents", ".claude"]) rmSync(join(homedir(), dir), { recursive: true, force: true });
     ui.answers.info.push("Install");
     ui.answers.inputBox.push(undefined);
     await vscode.commands.executeCommand("sustain.generateArchitecture");
     assert.equal(ui.infos[0]!.message, "Install the sustain-architecture skill first?");
     assert.deepEqual(ui.infos[0]!.rest, ["Install", "Cancel"]);
-    assert.ok(existsSync(join(root, ".agents/skills/sustain-architecture/SKILL.md")));
+    assert.ok(existsSync(join(homedir(), ".agents/skills/sustain-architecture/SKILL.md")));
     assert.equal(ui.inputBoxes.length, 1, "the flow continued to the focus prompt");
   });
 
   test("without the skill, Cancel stops and installs nothing", async () => {
-    for (const dir of [".agents", ".claude"]) rmSync(join(root, dir), { recursive: true, force: true });
+    for (const dir of [".agents", ".claude"]) rmSync(join(homedir(), dir), { recursive: true, force: true });
     ui.answers.info.push("Cancel");
     await vscode.commands.executeCommand("sustain.generateArchitecture");
-    assert.equal(existsSync(join(root, ".agents")), false);
+    assert.equal(existsSync(join(homedir(), ".agents")), false);
     assert.equal(ui.inputBoxes.length, 0);
   });
 });

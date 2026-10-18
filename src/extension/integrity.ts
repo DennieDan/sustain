@@ -4,7 +4,8 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import { assertWritable } from "../model/confine";
 import { checkSkill, diffSize, type AgentId, type SkillHashes } from "../model/integrity";
-import { skillTargets, writeSkill } from "./skillFiles";
+import { configuredScope } from "./scope";
+import { skillBase, skillTargets, writeSkill } from "./skillFiles";
 
 const AGENT_LABELS: Record<AgentId, string> = { claude: "Claude Code", codex: "Codex", devin: "Devin" };
 
@@ -30,7 +31,8 @@ export async function ensureSkillIntact(extensionUri: vscode.Uri, root: string, 
   const expected = shipped.skills[name];
   if (expected === undefined) throw new Error(`Sustain ${shipped.version} ships no ${name} skill`);
 
-  let check = checkSkill(root, agent, name, expected);
+  const base = skillBase(configuredScope(), root);
+  let check = checkSkill(base, root, agent, name, expected);
   if (check.diff === null || diffSize(check.diff) > 0) {
     const what = check.diff === null ? "not installed" : `${diffSize(check.diff)} files`;
     const choice = await vscode.window.showWarningMessage(
@@ -39,14 +41,15 @@ export async function ensureSkillIntact(extensionUri: vscode.Uri, root: string, 
       "Reinstall",
     );
     if (choice !== "Reinstall") return false;
-    writeSkill(root, vscode.Uri.joinPath(extensionUri, "dist", "skills", name).fsPath, skillTargets(root, name), name);
-    check = checkSkill(root, agent, name, expected);
+    writeSkill(base, vscode.Uri.joinPath(extensionUri, "dist", "skills", name).fsPath, skillTargets(base, name), name);
+    check = checkSkill(base, root, agent, name, expected);
   }
 
   if (check.differingCopies.length === 0) return true;
   const copies = check.differingCopies.join(", ");
   if (agent === "claude") {
-    void vscode.window.showWarningMessage(`Other copies of ${name} differ from Sustain's: ${copies}. Claude Code loads the one in ${check.effective}.`);
+    const loaded = base === root ? check.effective : `~/${check.effective}`;
+    void vscode.window.showWarningMessage(`Other copies of ${name} differ from Sustain's: ${copies}. Claude Code loads the one in ${loaded}.`);
     return true;
   }
   const choice = await vscode.window.showWarningMessage(

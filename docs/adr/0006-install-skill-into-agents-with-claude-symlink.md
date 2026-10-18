@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0044](0044-skills-install-per-user-by-default.md)
 date: 2026-10-10
 decision-makers: owner
 ---
