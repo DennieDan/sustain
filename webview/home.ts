@@ -86,6 +86,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   const reviewSlot = el("div", "review-slot");
   const rulesSlot = el("div", "rules-slot");
   const hotspotsSlot = el("div", "hotspots-slot");
+  const healthSlot = el("div", "health-slot");
   const setup = el("details", "section setup");
   const session = el("div", "session-slot");
   // UI-06: the Ask chat sits at the bottom; its text box persists like the composer's.
@@ -119,7 +120,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   question.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !askButton.disabled) askButton.click();
   });
-  container.append(header, composer, runSlot, maps, reviewSlot, rulesSlot, hotspotsSlot, setup, session, askSection);
+  container.append(header, composer, runSlot, healthSlot, maps, reviewSlot, rulesSlot, hotspotsSlot, setup, session, askSection);
 
   let current: HomeState | null = null;
   let figures: HTMLElement | null = null;
@@ -266,6 +267,21 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     rulesSlot.append(block);
   }
 
+  /** ARC-05: the Health section, each line opening its view. */
+  function renderHealth(state: HomeState): void {
+    healthSlot.replaceChildren();
+    if (state.root === null || state.health === null || state.maps.length === 0) return;
+    const block = section("Health", "health");
+    const list = el("ul", "health__list");
+    for (const item of state.health) {
+      const entry = el("li", `health__item${item.attention ? " health__item--attention" : ""}`);
+      entry.append(button(item.text, "link health__open", () => post({ type: "openHealth", item: item.kind })));
+      list.append(entry);
+    }
+    block.append(list);
+    healthSlot.append(block);
+  }
+
   /** ARC-03: the five most changed boxes over the window. */
   function renderHotspots(state: HomeState): void {
     hotspotsSlot.replaceChildren();
@@ -394,6 +410,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
       renderReview(state);
       renderRules(state);
       renderHotspots(state);
+      renderHealth(state);
       renderSetup(state.setup);
       renderSession(state);
       renderAsk(state.ask);

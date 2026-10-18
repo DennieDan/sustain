@@ -99,6 +99,7 @@ Every command is also in the Command Palette under "Sustain".
 - **Ask** in the sidebar answers questions about the map, with links to the lines it cites.
 - **Audit Map** asks your agent to check each box against its cited code. Doubtful boxes are drawn dotted, and arrows with no import evidence grey and dashed. **Hide Checks** in the map's title bar hides them.
 - **This Box Is Wrong…** on a box saves your note beside the map and offers to refresh that box.
+- **Health** at the top of the sidebar says whether boxes changed since the map, how many changed lines no box covers, whether any import breaks a rule, and which box changes most. Each line opens its view.
 - **Review changes** in the sidebar compares a branch with its base. When the branch has its own newer map, **Compare with base map** draws what changed, and **Update map for this branch** refreshes the map for the new folders and changed boxes the review found.
 - **Compare With…** in the map's title-bar menu draws what changed since another map. New boxes and arrows are outlined, and removed ones are drawn see-through. Sustain Cloud's map history offers the same.
 - **Write Architecture Notes for Agents** puts the map's boxes, arrows and rules into `AGENTS.md`, between Sustain's markers, so coding agents follow the architecture. It writes `CLAUDE.md` too when that file does not import `AGENTS.md`. Your own text stays as it is, and each file shows as a diff first.

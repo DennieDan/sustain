@@ -2,10 +2,14 @@
 // HomeState it is sent and posts what the user did; this class does the work.
 import { randomBytes } from "node:crypto";
 import { rmSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { listCandidates } from "../model/discovery";
+import { untrackedFiles, numstatSince } from "../model/git";
+import { healthItems, uncoveredLines, type HealthItem, type HealthKind } from "../model/health";
 import { listMaps } from "../model/maps";
+import { ARCHIFY_DIR, CANDIDATE_FILE } from "../model/runFolder";
+import { fileReader, readFingerprints } from "../model/staleness";
 import type { HomeHostMessage, HomeState, HomeWebviewMessage, MapItem, SessionSummary } from "../model/messages";
 import { runPreflight, type Check } from "../model/preflight";
 import { assertWritable } from "../model/confine";
@@ -32,11 +36,15 @@ import { readSessionSnapshot } from "./sessionFiles";
 export const HOME_VIEW = "sustain.home";
 const ROOT_KEY = "sustain.homeRoot";
 
+/** How long the Health section's measurements are reused (ARC-05). */
+const HEALTH_TTL_MS = 5_000;
+
 export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
   private view: vscode.WebviewView | undefined;
   private setup: Check[] | null = null;
   private setupRoot: string | null = null;
   private readonly disposables: vscode.Disposable[] = [];
+  private readonly healthCache = new Map<string, { at: number; items: HealthItem[] }>();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -122,8 +130,47 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
       review: this.review.view(root),
       rules: root === null ? null : (({ map, rules }) => ({ map, rules }))(this.rules.result(root) ?? { map: null, rules: [], violations: [] }),
       hotspots: root === null ? null : this.hotspots(root),
+      health: root === null ? null : this.health(root),
       serverNow: new Date().toISOString(),
     };
+  }
+
+  /** ARC-05: each Health line opens its view. */
+  private async openHealth(root: string, item: HealthKind): Promise<void> {
+    const { map } = rulesMap(root);
+    if (item === "violations") {
+      await vscode.commands.executeCommand("workbench.actions.view.problems");
+      return;
+    }
+    if (map === null) return;
+    ArchitecturePanel.show(this.context.extensionUri, root, join(root, ARCHIFY_DIR, map, CANDIDATE_FILE));
+    if (item === "hotspot") ArchitecturePanel.setHotspotsShown(true);
+    if (item === "uncovered") await vscode.commands.executeCommand("sustain.showChanges");
+  }
+
+  /** ARC-05: the Health section for `root`'s main map, measured at most every few seconds. */
+  private health(root: string): HealthItem[] | null {
+    const cached = this.healthCache.get(root);
+    if (cached !== undefined && Date.now() - cached.at < HEALTH_TTL_MS) return cached.items;
+    const { map, components } = rulesMap(root);
+    if (map === null) return null;
+    const candidate = join(root, ARCHIFY_DIR, map, CANDIDATE_FILE);
+    const state = this.freshness.of(root, candidate);
+    const revision = readFingerprints(dirname(candidate))?.revision ?? null;
+    const changes = revision === null ? null : numstatSince(root, revision);
+    const read = fileReader(root);
+    const untracked = untrackedFiles(root).map((path) => ({ path, lines: read(path)?.toString("utf8").split("\n").filter((line) => line !== "").length ?? 0 }));
+    const rules = this.rules.result(root);
+    const top = hotspotsFor(root, components).find((box) => box.commits > 0);
+    const items = healthItems({
+      freshness: state.revision === null && state.citations.length === 0 ? null : { changed: changedBoxes(state), total: components.length },
+      uncovered: changes === null ? null : uncoveredLines(changes, untracked, components),
+      violations: rules === null || rules.rules.length === 0 ? null : rules.violations.length,
+      hotspot: top === undefined ? null : { label: components.find((component) => component.id === top.id)?.label ?? top.id, commits: top.commits },
+      days: hotspotDays(),
+    });
+    this.healthCache.set(root, { at: Date.now(), items });
+    return items;
   }
 
   /** ARC-03: the rules map's five most changed boxes, or `null` without a map. */
@@ -224,6 +271,9 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         return;
       case "suggestRules":
         await suggestRulesCommand(this.rules, root);
+        return;
+      case "openHealth":
+        if (root !== null) await this.openHealth(root, message.item);
         return;
       case "compareBase":
         this.review.compareBase();

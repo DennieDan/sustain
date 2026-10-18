@@ -38,6 +38,7 @@ function state(fields: Partial<HomeState> = {}): HomeState {
     review: null,
     rules: null,
     hotspots: null,
+    health: null,
     serverNow: NOW.toISOString(),
     ...fields,
   };
@@ -334,6 +335,26 @@ describe("ARC-03 Hotspots", () => {
     expect(text(".hotspot")).toEqual(["API · 9 commits · 120 lines", "DB · 1 commit · 1 line"]);
     home.render(state({ maps: [map({})], hotspots: { days: 30, boxes: [] } }));
     expect(text(".hotspots__empty")).toEqual(["No box's code changed in that time."]);
+  });
+});
+
+describe("ARC-05 Health", () => {
+  test("each line shows, the ones that need a look stand out, and a click opens its view", () => {
+    home.render(state({
+      maps: [map({})],
+      health: [
+        { kind: "freshness", text: "3 of 16 boxes changed since the map.", attention: true },
+        { kind: "uncovered", text: "Every changed line since the map is in a box.", attention: false },
+        { kind: "violations", text: "1 import breaks a rule.", attention: true },
+        { kind: "hotspot", text: "API changed most, with 9 commits in the last 90 days.", attention: false },
+      ],
+    }));
+    expect(text(".health__open")).toEqual(["3 of 16 boxes changed since the map.", "Every changed line since the map is in a box.", "1 import breaks a rule.", "API changed most, with 9 commits in the last 90 days."]);
+    expect([...container.querySelectorAll(".health__item")].map((item) => item.classList.contains("health__item--attention"))).toEqual([true, false, true, false]);
+    for (const label of ["3 of 16 boxes changed since the map.", "Every changed line since the map is in a box.", "1 import breaks a rule.", "API changed most, with 9 commits in the last 90 days."]) click(label);
+    expect(posted).toEqual(["freshness", "uncovered", "violations", "hotspot"].map((item) => ({ type: "openHealth", item })));
+    home.render(state({ maps: [map({})], health: null }));
+    expect(container.querySelector(".health")).toBeNull();
   });
 });
 

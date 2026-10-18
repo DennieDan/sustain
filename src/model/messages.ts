@@ -1,4 +1,5 @@
 // Messages between the extension host and the webviews (FR-VIEW-04). Types only.
+import type { HealthItem, HealthKind } from "./health";
 import type { MapDiff } from "./diff";
 import type { FeedItem, StreamUsage } from "./agentStream/feed";
 import type { Block } from "./ask";
@@ -220,6 +221,8 @@ export interface HomeState {
   review: ReviewView | null;
   /** ARC-02: the folder's rules with their violation counts, or `null` without a folder. */
   rules: RulesView | null;
+  /** ARC-05: the Health section's lines, or `null` without a main map. */
+  health: HealthItem[] | null;
   /** ARC-03: the five most changed boxes of the rules map over the window, or `null` without one. */
   hotspots: { days: number; boxes: { id: string; label: string; commits: number; lines: number }[] } | null;
   /** Host time at send, for the run card's elapsed time. */
@@ -246,6 +249,7 @@ export type HomeWebviewMessage =
   | { type: "suggestRules" }
   | { type: "compareBase" }
   | { type: "updateBranchMap" }
+  | { type: "openHealth"; item: HealthKind }
   | { type: "showFiles"; dir: string }
   | { type: "addToMap"; dir: string }
   | { type: "ignoreCandidate"; dir: string }
