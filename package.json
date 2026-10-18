@@ -97,6 +97,30 @@
         "title": "Cancel Run",
         "category": "Sustain",
         "icon": "$(debug-stop)"
+      },
+      {
+        "command": "sustain.showInMap",
+        "title": "Show in Map",
+        "category": "Sustain",
+        "icon": {
+          "light": "media/sustain-light.svg",
+          "dark": "media/sustain-dark.svg"
+        }
+      },
+      {
+        "command": "sustain.showFileInMap",
+        "title": "Show in Architecture Map",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.mapFolder",
+        "title": "Map This Folder with Sustain",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.openBoxCode",
+        "title": "Open Code",
+        "category": "Sustain"
       }
     ],
     "viewsContainers": {
@@ -149,6 +173,44 @@
         {
           "command": "sustain.cancelRun",
           "when": "sustain.running"
+        },
+        {
+          "command": "sustain.showFileInMap",
+          "when": "false"
+        },
+        {
+          "command": "sustain.mapFolder",
+          "when": "false"
+        },
+        {
+          "command": "sustain.openBoxCode",
+          "when": "false"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "sustain.showInMap",
+          "when": "resourceScheme == file",
+          "group": "navigation@100"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "sustain.mapFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "sustain@1"
+        },
+        {
+          "command": "sustain.showFileInMap",
+          "when": "!explorerResourceIsFolder",
+          "group": "sustain@2"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "sustain.openBoxCode",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
+          "group": "navigation@1"
         }
       ]
     }

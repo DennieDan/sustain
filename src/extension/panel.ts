@@ -1,8 +1,9 @@
 // The architecture WebviewPanel (FR-VIEW-04, ADR 0011): one per window, showing one file.
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { basename, relative, sep } from "node:path";
+import { basename, isAbsolute, relative, sep } from "node:path";
 import * as vscode from "vscode";
+import { citingBoxes } from "../model/citing";
 import type { HostMessage, WebviewMessage } from "../model/messages";
 import { parseDiagram, type ViewDiagram } from "../model/tolerant";
 import { webviewHtml } from "./html";
@@ -10,8 +11,16 @@ import { openSource } from "./navigate";
 
 export const VIEW_TYPE = "sustain.architecture";
 
-/** What the panel currently shows: a diagram, or an empty state with a message. */
-type Shown = { kind: "diagram"; doc: unknown; diagram: ViewDiagram } | { kind: "empty"; message: string };
+/** What the panel currently shows: a diagram, or an empty state with a message and maybe an action. */
+type Shown = { kind: "diagram"; doc: unknown; diagram: ViewDiagram } | { kind: "empty"; message: string; action?: "mapFolder" };
+
+export const NO_MAP_MESSAGE = "No map of this folder yet.";
+
+/** `file` relative to `root`, `/`-separated, or `null` when it lies outside. */
+function repoRelative(root: string, file: string): string | null {
+  const rel = relative(root, file);
+  return rel === "" || rel.startsWith("..") || isAbsolute(rel) ? null : rel.split(sep).join("/");
+}
 
 /** How a file is named in messages: repo-relative when inside the root, else the base name. */
 function displayName(root: string, file: string): string {
@@ -23,6 +32,10 @@ export class ArchitecturePanel {
   private static instance: ArchitecturePanel | undefined;
 
   private shown: Shown = { kind: "empty", message: "" };
+  /** The file whose citing boxes are marked (UI-03), absolute, or `null`. */
+  private highlightFile: string | null = null;
+  /** Follow editor: the marks move with the active editor. */
+  private follow = false;
   private readonly disposables: vscode.Disposable[] = [];
 
   private constructor(
@@ -48,6 +61,9 @@ export class ArchitecturePanel {
       panel.onDidChangeViewState(({ webviewPanel }) => {
         if (webviewPanel.visible) this.send();
       }),
+      vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (this.follow && editor?.document.uri.scheme === "file") this.highlight(editor.document.uri.fsPath);
+      }),
       panel.onDidDispose(() => this.dispose()),
     );
   }
@@ -57,20 +73,51 @@ export class ArchitecturePanel {
     return ArchitecturePanel.instance;
   }
 
-  /** Opens (or reveals and reloads) the panel on `file`, whose citations resolve against `root`. */
-  static show(extensionUri: vscode.Uri, root: string, file: string): ArchitecturePanel {
+  /**
+   * Opens (or reveals and reloads) the panel on `file`, whose citations resolve against `root`.
+   * `preserveFocus` keeps the editor active, for Show in Map (UI-03).
+   */
+  static show(extensionUri: vscode.Uri, root: string, file: string, preserveFocus = false): ArchitecturePanel {
+    const panel = ArchitecturePanel.reveal(extensionUri, root, file, preserveFocus);
+    if (panel.file !== file || panel.root !== root || panel.shown.kind !== "diagram") panel.showFile(root, file);
+    else panel.reload();
+    return panel;
+  }
+
+  /** Opens the panel on a folder without a map, offering to map it (UI-03). */
+  static showNoMap(extensionUri: vscode.Uri, root: string, preserveFocus = false): ArchitecturePanel {
+    const panel = ArchitecturePanel.reveal(extensionUri, root, "", preserveFocus);
+    panel.root = root;
+    panel.file = "";
+    panel.panel.title = "Architecture";
+    panel.shown = { kind: "empty", message: NO_MAP_MESSAGE, action: "mapFolder" };
+    panel.send();
+    return panel;
+  }
+
+  private static reveal(extensionUri: vscode.Uri, root: string, file: string, preserveFocus: boolean): ArchitecturePanel {
     const existing = ArchitecturePanel.instance;
     if (existing) {
-      existing.panel.reveal(existing.panel.viewColumn);
-      existing.showFile(root, file);
+      existing.panel.reveal(existing.panel.viewColumn, preserveFocus);
       return existing;
     }
     const column = vscode.window.visibleTextEditors.length === 0 ? vscode.ViewColumn.Active : vscode.ViewColumn.Beside;
-    const panel = vscode.window.createWebviewPanel(VIEW_TYPE, "Architecture", column, { retainContextWhenHidden: false });
+    const panel = vscode.window.createWebviewPanel(VIEW_TYPE, "Architecture", { viewColumn: column, preserveFocus }, { retainContextWhenHidden: false });
     const created = new ArchitecturePanel(panel, extensionUri, root, file);
     ArchitecturePanel.instance = created;
-    created.reload();
     return created;
+  }
+
+  /** The boxes marked as citing the highlighted file, and whether they follow the editor. */
+  get highlightState(): { ids: string[]; file: string | null; follow: boolean } {
+    const rel = this.highlightFile === null ? null : repoRelative(this.root, this.highlightFile);
+    return { ids: rel !== null && this.shown.kind === "diagram" ? citingBoxes(this.shown.diagram, rel) : [], file: rel, follow: this.follow };
+  }
+
+  /** Marks the boxes citing `file` (absolute), or clears the marks for `null` (UI-03). */
+  highlight(file: string | null): void {
+    this.highlightFile = file;
+    this.sendHighlight();
   }
 
   /** Switches the open panel to `file` (resolved against `root`) without revealing it. */
@@ -115,7 +162,15 @@ export class ArchitecturePanel {
 
   private send(): void {
     const message: HostMessage =
-      this.shown.kind === "diagram" ? { type: "load", doc: this.shown.doc, file: this.file } : { type: "empty", message: this.shown.message };
+      this.shown.kind === "diagram"
+        ? { type: "load", doc: this.shown.doc, file: this.file }
+        : { type: "empty", message: this.shown.message, ...(this.shown.action ? { action: this.shown.action } : {}) };
+    void this.panel.webview.postMessage(message);
+    this.sendHighlight();
+  }
+
+  private sendHighlight(): void {
+    const message: HostMessage = { type: "highlight", ...this.highlightState };
     void this.panel.webview.postMessage(message);
   }
 
@@ -124,13 +179,31 @@ export class ArchitecturePanel {
    * uses the diagram the webview was last sent, resolved against the panel's repo root.
    */
   async handleMessage(message: WebviewMessage): Promise<void> {
-    if (message.type === "ready") {
-      this.send();
-      return;
+    switch (message.type) {
+      case "ready":
+        this.send();
+        return;
+      case "setFollow": {
+        this.follow = message.on;
+        const editor = vscode.window.activeTextEditor;
+        if (this.follow && editor?.document.uri.scheme === "file") this.highlight(editor.document.uri.fsPath);
+        else this.sendHighlight();
+        return;
+      }
+      case "mapFolder":
+        await vscode.commands.executeCommand("sustain.mapFolder", vscode.Uri.file(this.root));
+        return;
+      case "openSource":
+        await this.openBox(message.componentId, message.index);
+        return;
     }
+  }
+
+  /** Opens source `index` of box `componentId` (FR-NAV-01; Open code in the box menu, UI-05). */
+  async openBox(componentId: string, index = 0): Promise<void> {
     if (this.shown.kind !== "diagram") return;
-    const component = this.shown.diagram.components.find((candidate) => candidate.id === message.componentId);
-    if (component) await openSource(this.root, component, message.index, this.panel.viewColumn);
+    const component = this.shown.diagram.components.find((candidate) => candidate.id === componentId);
+    if (component) await openSource(this.root, component, index, this.panel.viewColumn);
   }
 
   private dispose(): void {

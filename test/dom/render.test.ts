@@ -244,3 +244,20 @@ describe("FR-VIEW-05 renderScene", () => {
     expect(second?.querySelector(".edge__head")?.getAttribute("d")).toBe("M100 0 L104.5 9 L95.5 9 Z");
   });
 });
+
+describe("UI-05 box context menus", () => {
+  test("every box carries its context for the native menu, with the browser's items left out", () => {
+    const content = contentGroup();
+    renderScene(content, ALL_KINDS, gridScene(ALL_KINDS), fixedMeasure);
+    const contexts = [...content.querySelectorAll(".node")].map((node) => JSON.parse(node.getAttribute("data-vscode-context") ?? "null") as unknown);
+    expect(contexts).toEqual(ALL_KINDS.components.map((component) => ({ webviewSection: "box", componentId: component.id, preventDefaultContextMenuItems: true })));
+  });
+
+  test("a hostile id stays inside the JSON string", () => {
+    const id = '"}, "webviewSection": "evil';
+    const diagram: ViewDiagram = { components: [{ id, label: "x", type: "backend", sources: [] }], connections: [], boundaries: [] };
+    const content = contentGroup();
+    renderScene(content, diagram, gridScene(diagram), fixedMeasure);
+    expect(JSON.parse(content.querySelector(".node")!.getAttribute("data-vscode-context")!)).toEqual({ webviewSection: "box", componentId: id, preventDefaultContextMenuItems: true });
+  });
+});

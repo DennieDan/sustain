@@ -98,21 +98,22 @@ export async function launchGenerate(context: vscode.ExtensionContext, runs: Run
   runs.startTerminal(request, terminal);
 }
 
-/** `Sustain: Generate Architecture`: the focus, the agent when several are found, then one modal for any notes. */
+/** `Sustain: Generate Architecture`: the focus, then the agent and notes as {@link confirmAndLaunch} asks. */
 export async function generateArchitectureCommand(context: vscode.ExtensionContext, runs: Runs): Promise<void> {
   const folder = await pickRepoRoot();
   if (!folder) return;
-  const root = folder.uri.fsPath;
-
   const focus = await vscode.window.showInputBox({ prompt: "Focus (optional)" });
   if (focus === undefined) return;
+  await confirmAndLaunch(context, runs, folder.uri.fsPath, focus);
+}
 
+/** The agent when several are found (or none, to explain the missing CLI), one modal for any notes, then the launch. */
+export async function confirmAndLaunch(context: vscode.ExtensionContext, runs: Runs, root: string, focus: string): Promise<void> {
   const found = foundAgents();
   let agent: Agent | undefined;
   if (found.length === 1) {
     agent = AGENTS.find((entry) => entry.cli === found[0]!.cli);
   } else {
-    // None found: both are offered, and the launch explains the missing CLI.
     const last = chosenAgent(context, found);
     const ordered = [...AGENTS].sort((a, b) => Number(b.cli === last) - Number(a.cli === last));
     const picked = await vscode.window.showQuickPick(

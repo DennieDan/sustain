@@ -12,6 +12,7 @@ const BROWSER_SAFE_MODEL: Record<string, true> = {
   "src/model/tolerant.ts": true,
   "src/model/checks.ts": true,
   "src/model/home.ts": true,
+  "src/model/citing.ts": true,
 };
 const NODE_MODEL: Record<string, true> = {
   "src/model/citations.ts": true,

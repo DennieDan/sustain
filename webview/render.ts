@@ -65,7 +65,7 @@ function renderEdge(edge: SceneEdge): SVGGElement | undefined {
  * - Boundary: `g.boundary.boundary--<kind>[data-index]` > `rect.boundary__box`, `text.boundary__label`.
  * - Edge: `g.edge.edge--<variant>[data-index][data-from][data-to]` > `path.edge__line`, `path.edge__head`.
  * - Edge label: `text.edge-label.edge-label--<variant>[data-index]` at `labelAt` (halo via CSS `paint-order`).
- * - Node: `g.node.node--<type>[data-id][data-index]` > `rect.node__box`, `text.node__label`,
+ * - Node: `g.node.node--<type>[data-id][data-index][data-vscode-context]` > `rect.node__box`, `text.node__label`,
  *   optional `text.node__sublabel`, optional `rect.node__tag-badge` + `text.node__tag`. Lines are
  *   stacked with `measure`'s heights and centred vertically and horizontally in the box.
  *
@@ -102,6 +102,8 @@ export function renderScene(content: SVGGElement, diagram: ViewDiagram, scene: S
     if (!component) continue;
     const { x, y, w, h } = node.rect;
     const g = svgEl("g", { class: `node node--${node.type}`, "data-id": node.id, "data-index": node.index });
+    // UI-05: the box's native context menu (Open code), with the browser's own items left out.
+    g.setAttribute("data-vscode-context", JSON.stringify({ webviewSection: "box", componentId: node.id, preventDefaultContextMenuItems: true }));
     g.append(svgEl("rect", { class: "node__box", x, y, width: w, height: h, rx: NODE_RADIUS }));
     const lines: { className: string; text: string; sizePx: number; bold: boolean }[] = [
       { className: "node__label", text: component.label, sizePx: LABEL_PX, bold: true },

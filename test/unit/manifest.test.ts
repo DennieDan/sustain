@@ -54,3 +54,22 @@ test("UI-01 the sidebar title bar has Refresh and Check Setup, and runs default 
   expect(title.map((entry) => entry.command)).toEqual(expect.arrayContaining(["sustain.refreshHome", "sustain.checkSetup"]));
   expect(manifest.contributes.configuration.properties["sustain.runMode"]).toMatchObject({ default: "sidebar", enum: ["sidebar", "terminal"] });
 });
+
+test("UI-03 Show in Map sits in every file editor's title bar with the Sustain icon, and not on the map", () => {
+  expect(manifest.contributes.menus["editor/title"]).toContainEqual({ command: "sustain.showInMap", when: "resourceScheme == file", group: "navigation@100" });
+  const command = manifest.contributes.commands.find((entry) => entry.command === "sustain.showInMap") as { icon?: { light: string; dark: string } };
+  expect(command.icon).toEqual({ light: "media/sustain-light.svg", dark: "media/sustain-dark.svg" });
+  for (const path of Object.values(command.icon!)) expect(readFileSync(join(repoRoot, path), "utf8")).toContain("<svg");
+});
+
+test("UI-05 the Explorer maps folders and shows files; boxes open their code", () => {
+  expect(manifest.contributes.menus["explorer/context"]).toEqual([
+    { command: "sustain.mapFolder", when: "explorerResourceIsFolder", group: "sustain@1" },
+    { command: "sustain.showFileInMap", when: "!explorerResourceIsFolder", group: "sustain@2" },
+  ]);
+  expect(manifest.contributes.menus["webview/context"]).toEqual([
+    { command: "sustain.openBoxCode", when: "webviewId == 'sustain.architecture' && webviewSection == 'box'", group: "navigation@1" },
+  ]);
+  const hidden = manifest.contributes.menus["commandPalette"]!.filter((entry) => entry.when === "false").map((entry) => entry.command);
+  expect(hidden).toEqual(["sustain.showFileInMap", "sustain.mapFolder", "sustain.openBoxCode"]);
+});

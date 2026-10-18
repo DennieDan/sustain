@@ -162,3 +162,44 @@ describe("FR-VIEW-04/06 webview main", () => {
     }
   });
 });
+
+describe("UI-03 boxes citing the active file", () => {
+  beforeEach(() => send({ type: "highlight", ids: [], file: null, follow: false }));
+
+  test("the citing boxes are marked, the rest dimmed, and the bar names the file", async () => {
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    expect(document.querySelector<HTMLElement>(".highlight")!.hidden).toBe(true);
+    send({ type: "highlight", ids: ["web"], file: "web/src/main.ts", follow: false });
+    expect([...document.querySelectorAll(".node--highlight")].map((node) => node.getAttribute("data-id"))).toEqual(["web"]);
+    expect(app().classList.contains("app--highlighting")).toBe(true);
+    expect(document.querySelector(".highlight__text")!.textContent).toBe("1 box cites main.ts");
+
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(vi.mocked(layoutDiagram).mock.calls.length).toBe(2));
+    await vi.waitFor(() => expect(document.querySelectorAll(".node--highlight").length).toBe(1));
+
+    send({ type: "highlight", ids: [], file: "README.md", follow: false });
+    expect(document.querySelector(".highlight__text")!.textContent).toBe("No box cites README.md");
+    expect(app().classList.contains("app--highlighting")).toBe(false);
+  });
+
+  test("Follow editor posts the toggle and shows its state", () => {
+    send({ type: "highlight", ids: [], file: "a.ts", follow: false });
+    const follow = document.querySelector<HTMLButtonElement>(".highlight__follow")!;
+    follow.click();
+    expect(posted).toEqual([{ type: "setFollow", on: true }]);
+    send({ type: "highlight", ids: [], file: "a.ts", follow: true });
+    expect(follow.getAttribute("aria-pressed")).toBe("true");
+    follow.click();
+    expect(posted.at(-1)).toEqual({ type: "setFollow", on: false });
+  });
+
+  test("a folder without a map offers to map it", () => {
+    send({ type: "empty", message: "No map of this folder yet.", action: "mapFolder" });
+    const empty = document.querySelector<HTMLElement>(".empty-state")!;
+    expect(empty.firstChild?.textContent).toBe("No map of this folder yet.");
+    empty.querySelector<HTMLButtonElement>(".empty-state__action")!.click();
+    expect(posted).toEqual([{ type: "mapFolder" }]);
+  });
+});

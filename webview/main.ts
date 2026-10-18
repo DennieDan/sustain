@@ -26,7 +26,8 @@ const TOOLBAR: [action: string, text: string, title: string][] = [
 const vscode = acquireVsCodeApi();
 
 // body > div.app > svg.canvas > g.viewport; div.toolbar > button[data-action]×4;
-// div.empty-state[hidden]; div.tooltip[hidden]
+// div.highlight[hidden] > span.highlight__text, button.highlight__follow; div.empty-state[hidden];
+// div.tooltip[hidden]
 const app = document.createElement("div");
 app.className = "app app--empty";
 const svg = document.createElementNS(SVG_NS, "svg");
@@ -47,6 +48,19 @@ for (const [action, text, title] of TOOLBAR) {
   button.textContent = text;
   toolbar.append(button);
 }
+// UI-03: which boxes cite the active file, and the Follow editor toggle.
+const highlightBar = document.createElement("div");
+highlightBar.className = "highlight";
+highlightBar.hidden = true;
+const highlightText = document.createElement("span");
+highlightText.className = "highlight__text";
+const followButton = document.createElement("button");
+followButton.type = "button";
+followButton.className = "toolbar__button highlight__follow";
+followButton.textContent = "Follow editor";
+followButton.title = "Keep the highlight in step with the active editor";
+followButton.setAttribute("aria-pressed", "false");
+highlightBar.append(highlightText, followButton);
 const emptyState = document.createElement("div");
 emptyState.className = "empty-state";
 emptyState.hidden = true;
@@ -54,7 +68,7 @@ const tooltipElement = document.createElement("div");
 tooltipElement.className = "tooltip";
 tooltipElement.setAttribute("role", "tooltip");
 tooltipElement.hidden = true;
-app.append(svg, toolbar, emptyState, tooltipElement);
+app.append(svg, toolbar, highlightBar, emptyState, tooltipElement);
 document.body.append(app);
 
 const viewport = new ViewportController(svg, content, toolbar, window);
@@ -66,15 +80,39 @@ const canvasContext = document.createElement("canvas").getContext("2d");
 
 /** File of the diagram on screen; a reload of the same file keeps the viewport (FR-VIEW-06). */
 let shownFile: string | undefined;
+/** The boxes marked as citing the active file, kept across reloads (UI-03). */
+let highlight: { ids: string[]; file: string | null; follow: boolean } = { ids: [], file: null, follow: false };
+
+followButton.addEventListener("click", () => vscode.postMessage({ type: "setFollow", on: !highlight.follow }));
+
+function applyHighlight(): void {
+  const marked = new Set(highlight.ids);
+  for (const node of content.querySelectorAll(".node")) node.classList.toggle("node--highlight", marked.has(node.getAttribute("data-id") ?? ""));
+  app.classList.toggle("app--highlighting", highlight.file !== null && marked.size > 0);
+  followButton.setAttribute("aria-pressed", String(highlight.follow));
+  followButton.classList.toggle("highlight__follow--on", highlight.follow);
+  highlightBar.hidden = highlight.file === null && !highlight.follow;
+  const name = highlight.file?.split("/").pop() ?? "";
+  highlightText.textContent =
+    highlight.file === null ? "" : marked.size === 0 ? `No box cites ${name}` : `${marked.size} box${marked.size === 1 ? " cites" : "es cite"} ${name}`;
+}
 /** Incremented per host message so a slower, older layout never replaces a newer state. */
 let generation = 0;
 
-function showEmpty(message: string): void {
+function showEmpty(message: string, action?: "mapFolder"): void {
   content.replaceChildren();
   tooltip.setDiagram(undefined);
   viewport.bounds = undefined;
   shownFile = undefined;
-  emptyState.textContent = message;
+  emptyState.replaceChildren(document.createTextNode(message));
+  if (action === "mapFolder") {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "empty-state__action";
+    button.textContent = "Map this folder";
+    button.addEventListener("click", () => vscode.postMessage({ type: "mapFolder" }));
+    emptyState.append(button);
+  }
   emptyState.hidden = false;
   app.classList.add("app--empty");
 }
@@ -97,6 +135,7 @@ async function load(doc: unknown, file: string, current: number): Promise<void> 
   const scene = await layoutDiagram(result.diagram, { measure, viewport: viewport.size() });
   if (current !== generation) return;
   renderScene(content, result.diagram, scene, measure);
+  applyHighlight();
   tooltip.setDiagram(result.diagram);
   viewport.bounds = scene.bounds;
   if (file !== shownFile) viewport.fit();
@@ -105,9 +144,14 @@ async function load(doc: unknown, file: string, current: number): Promise<void> 
 
 window.addEventListener("message", (event: MessageEvent<HostMessage>) => {
   const message = event.data;
+  if (message.type === "highlight") {
+    highlight = { ids: message.ids, file: message.file, follow: message.follow };
+    applyHighlight();
+    return;
+  }
   const current = ++generation;
   if (message.type === "empty") {
-    showEmpty(message.message);
+    showEmpty(message.message, message.action);
     return;
   }
   load(message.doc, message.file, current).catch((error: unknown) => {

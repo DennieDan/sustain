@@ -5,11 +5,22 @@ import type { LeaderboardEntry } from "./leaderboard";
 import type { Check, CheckId } from "./preflight";
 import type { RunPhase } from "./runRecord";
 
-/** Host → architecture webview. `doc` is the parsed diagram JSON; `file` its absolute path. */
-export type HostMessage = { type: "load"; doc: unknown; file: string } | { type: "empty"; message: string };
+/**
+ * Host → architecture webview. `doc` is the parsed diagram JSON; `file` its absolute path. An
+ * empty state may offer to map the folder (UI-03). `highlight` marks the boxes citing `file`, a
+ * repository-relative path, or clears the marks when it is `null` (UI-03).
+ */
+export type HostMessage =
+  | { type: "load"; doc: unknown; file: string }
+  | { type: "empty"; message: string; action?: "mapFolder" }
+  | { type: "highlight"; ids: string[]; file: string | null; follow: boolean };
 
 /** Architecture webview → host. `index` is into the component's tolerant `sources` list. */
-export type WebviewMessage = { type: "ready" } | { type: "openSource"; componentId: string; index: number };
+export type WebviewMessage =
+  | { type: "ready" }
+  | { type: "openSource"; componentId: string; index: number }
+  | { type: "setFollow"; on: boolean }
+  | { type: "mapFolder" };
 
 /** What the session webview renders — public `session.json` fields plus the leaderboard. */
 export interface SessionView {

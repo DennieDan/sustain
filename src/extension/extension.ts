@@ -10,12 +10,15 @@ import { ArchitecturePanel } from "./panel";
 import { Runs } from "./runs";
 import { SessionPanel } from "./sessionPanel";
 import { SessionWatcher } from "./sessionWatcher";
+import { mapFolderCommand, openBoxCodeCommand, showInMapCommand } from "./showInMap";
 import { StatusItem } from "./statusBar";
 import { CandidateWatcher } from "./watcher";
 
 /** Returned by `activate()` for the e2e tests only (FR-TEST-01); not a user-facing API. */
 export interface TestHook {
   panelState(): { file: string | undefined; open: boolean };
+  /** The boxes the map marks as citing a file, and whether they follow the editor (UI-03). */
+  panelHighlight(): { ids: string[]; file: string | null; follow: boolean } | undefined;
   /** Delivers `message` as if the webview had posted it; resolves when it has been handled. */
   postFromWebview(message: WebviewMessage): Promise<void>;
   sessionPanelState(): { open: boolean };
@@ -64,9 +67,14 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     }),
     vscode.commands.registerCommand("sustain.refreshHome", () => home.send()),
     vscode.commands.registerCommand("sustain.cancelRun", () => runs.cancel()),
+    vscode.commands.registerCommand("sustain.showInMap", (uri?: vscode.Uri) => showInMapCommand(extensionUri, uri)),
+    vscode.commands.registerCommand("sustain.showFileInMap", (uri?: vscode.Uri) => showInMapCommand(extensionUri, uri)),
+    vscode.commands.registerCommand("sustain.mapFolder", (uri?: vscode.Uri) => mapFolderCommand(context, runs, uri)),
+    vscode.commands.registerCommand("sustain.openBoxCode", openBoxCodeCommand),
   );
   return {
     panelState: () => ({ file: ArchitecturePanel.current?.file, open: ArchitecturePanel.current !== undefined }),
+    panelHighlight: () => ArchitecturePanel.current?.highlightState,
     postFromWebview: async (message) => ArchitecturePanel.current?.handleMessage(message),
     sessionPanelState: () => ({ open: SessionPanel.current !== undefined }),
     postFromSessionWebview: async (message) => SessionPanel.current?.handleMessage(message),
