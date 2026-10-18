@@ -10,7 +10,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | D2 The product in VS Code | Closed pending owner (UI-02, UI-06, SET-01 `[smoke]`) | `1d8bcf4` |
 | D3 The living map | Closed pending owner (RCH-01 `[smoke]`) | `3850c3e` |
 | D4 Pull request checks | Closed pending owner (PRC-04 `[ci]`) | `eced4f5` |
-| D5 Sustain Cloud v1 | In progress | |
+| D5 Sustain Cloud v1 | Closed pending owner (deployment, see Waiting) | `574992c` |
 | D6 Ship | Not started | |
 | I1 Cost | Not started | |
 | I2 Accuracy | Not started | |
@@ -29,6 +29,7 @@ Items only the owner can do, with exact steps.
 - SET-01 `[smoke]`: with the default per-user install, run `/sustain-architecture` in Claude Code and `$sustain-architecture` in Codex from a repository with no `.agents/` folder, and confirm each finds the skill and its scripts.
 - UI-02 `[smoke]`: with `sustain.runMode` on "In sidebar", press Generate once with Claude Code and once with Codex in a small repository. Confirm the card shows reads, writes and validation, tokens and the final cost, and that the map opens on acceptance. Save each run's stdout (`claude -p … --output-format stream-json --verbose > claude-generate.jsonl`, `codex exec --json … > codex-generate.jsonl`) over the hand-written files in `test/fixtures/streams/`, then run `npm test`. If Claude Code reports a denial for the skill's own scripts, the `--allowedTools` rules need the folder `${CLAUDE_SKILL_DIR}` really resolves to (see "Where the D2 build differs").
 - PRC-04 `[ci]`: this repository ignores `.archify/`, so the Action has no map to check here. Generate a map with an empty focus, force-add its run folder (`git add -f .archify/<run>/candidate.json .archify/<run>/run.json .archify/<run>/fingerprints.json`), push `kerk` and open a pull request. Confirm the `sustain-check` job comments once and updates that comment on the next push, and that `action-dist` passes.
+- D5 deployment (hard stops: hosting, OAuth app, publishing). (1) Choose a managed Node host and a managed Postgres; add the Postgres driver (for example `pg`) and point `cloud/src/db/client.ts` at it, since the code runs on PGlite until then. (2) Create a GitHub OAuth app with the callback `https://<domain>/api/auth/callback/github` and set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `NEXTAUTH_URL` and a random `NEXTAUTH_SECRET`. (3) Choose the domain, set it as `cloud-url` in workflows and as `SUSTAIN_CLOUD_URL` for `publish`. (4) Push, so CI's `cloud` job installs Playwright's Chromium (`npx -w cloud playwright install --with-deps chromium`) and runs the `[web]` suite.
 - RCH-01 `[smoke]`: open a page written by `render-html.mjs` from disk on Windows, macOS and Linux. With each target in "Open in", click a box and note which open: VS Code, Cursor, JetBrains (needs JetBrains Toolbox), GitHub (needs a github.com origin) and Copy.
 - UI-06 `[smoke]`: ask one question per agent from the sidebar about a mapped repository. Confirm the answer cites `path:line`, the links open the lines, and a second Claude Code question resumes the session.
 
@@ -241,16 +242,29 @@ Done when: The Action comments on this repository's pull requests; Review shows 
 
 ### D5 proposal (2026-10-18)
 
-| Location | Change | Est. LoC |
-|---|---|---|
-| `package.json` (workspaces), `cloud/package.json`, `cloud/next.config.ts`, `cloud/tsconfig.json` | The `cloud/` workspace: Next.js 16 App Router, React 19, next-auth 4, Drizzle ORM with PGlite, Playwright; exact versions | +80 |
-| `cloud/src/db/schema.ts`, `cloud/src/db/client.ts`, `cloud/src/lib/store.ts` | Tables for users, organizations, repositories, access, uploads and tokens; PGlite for tests and local runs; queries | +260 |
-| `cloud/src/lib/github.ts`, `cloud/src/lib/access.ts`, `cloud/src/auth.ts`, `cloud/src/app/api/auth/` | CLD-01: GitHub sign-in, organizations mirrored, permission to role mapping, rechecks at sign-in and hourly | +220 |
-| `cloud/src/lib/oidc.ts`, `cloud/src/lib/tokens.ts`, `cloud/src/lib/upload.ts`, `schemas/sidecars/*.schema.json`, `cloud/src/app/api/v1/uploads/route.ts` | CLD-02: the upload API: OIDC or hashed tokens, schemas with no extra properties, the secret scan, 1 MiB, a rate limit | +330 |
-| `cloud/src/app/[owner]/[repo]/`, `cloud/src/lib/viewerPage.ts`, `esbuild.mjs` | CLD-03, CLD-04: map pages with history and freshness, pull request pages with the overlay, candidates and stale boxes, in the standalone viewer | +260 |
-| `cloud/src/app/(site)/`, `cloud/src/lib/markdown.ts` | CLD-08: landing, docs from the README and `docs/`, privacy with the upload schema, the pricing note, the gallery; no analytics | +260 |
-| `src/cli/commands.ts`, `src/cloud/client.ts`, `action/src/main.ts` | CLD-09: `sustain.mjs publish [--run] [--dry-run]` with `SUSTAIN_TOKEN`, and the Action's `upload` through OIDC | +180 |
-| `cloud/src/app/settings/`, `cloud/src/lib/store.ts` | CLD-11: delete a map, a repository's data or the account, at once; tokens, public maps | +150 |
+| Location | Change | Est. LoC | Built |
+|---|---|---|---|
+| `package.json` (workspaces), `cloud/package.json`, `cloud/next.config.ts`, `cloud/tsconfig.json` | The `cloud/` workspace: Next.js 16 App Router, React 19, next-auth 4, Drizzle ORM with PGlite, Playwright; exact versions | +80 | +310 with the schema, migration and client |
+| `cloud/src/db/schema.ts`, `cloud/src/db/client.ts`, `cloud/src/lib/store.ts` | Tables for users, organizations, repositories, access, uploads and tokens; PGlite for tests and local runs; queries | +260 | in the rows around it |
+| `cloud/src/lib/github.ts`, `cloud/src/lib/access.ts`, `cloud/src/auth.ts`, `cloud/src/app/api/auth/` | CLD-01: GitHub sign-in, organizations mirrored, permission to role mapping, rechecks at sign-in and hourly | +220 | +225 / -2 |
+| `cloud/src/lib/oidc.ts`, `cloud/src/lib/tokens.ts`, `cloud/src/lib/upload.ts`, `schemas/sidecars/*.schema.json`, `cloud/src/app/api/v1/uploads/route.ts` | CLD-02: the upload API: OIDC or hashed tokens, schemas with no extra properties, the secret scan, 1 MiB, a rate limit | +330 | +499 |
+| `cloud/src/app/[owner]/[repo]/`, `cloud/src/lib/viewerPage.ts`, `esbuild.mjs` | CLD-03, CLD-04: map pages with history and freshness, pull request pages with the overlay, candidates and stale boxes, in the standalone viewer | +260 | +1,208 / -19 with CLD-08, CLD-11 and the `[web]` setup |
+| `cloud/src/app/(site)/`, `cloud/src/lib/markdown.ts` | CLD-08: landing, docs from the README and `docs/`, privacy with the upload schema, the pricing note, the gallery; no analytics | +260 | in the row above |
+| `src/cli/commands.ts`, `src/cloud/client.ts`, `action/src/main.ts` | CLD-09: `sustain.mjs publish [--run] [--dry-run]` with `SUSTAIN_TOKEN`, and the Action's `upload` through OIDC | +180 | +193 / -10 |
+| `cloud/src/app/settings/`, `cloud/src/lib/store.ts` | CLD-11: delete a map, a repository's data or the account, at once; tokens, public maps | +150 | in the CLD-03 row |
+
+Where the D5 build differs from the proposal:
+- The upload schema is one file, `src/model/schemas/upload.schema.json`, with the sidecars and the check as `$defs`, and its check lives in `src/model/upload.ts`, so `publish` runs the same check as the server.
+- next-auth is version 4, its latest stable release; version 5 is still a beta. Its GitHub provider's endpoints and profile request are replaced with ones built from `GITHUB_OAUTH_URL` and `GITHUB_API_URL`, because the stock one hard-codes an email lookup at api.github.com.
+- OIDC tokens are verified with `node:crypto` against GitHub's JWKS, with no JWT library. `SUSTAIN_OIDC_JWKS_URL` points the `[web]` tests at the mock's keys.
+- The database is PGlite in memory or in a folder (`SUSTAIN_DB`). A managed Postgres needs a driver package, which the spec does not name, so production waits for the owner's hosting choice (see Waiting). Next loads modules once per bundle, so one instance per process lives on `globalThis`.
+- The map pages use the diagram page's bundle (`cloud/public/viewer.js`, built by `node esbuild.mjs --cloud`) with extra messages for freshness, the overlay and ghosts; the viewer can mount into an element.
+- The docs publish the README, `docs/architecture.md` and `docs/spec-v0.3.md`. `vision.md` and progress hold plans and are left out until the owner says otherwise.
+- Owner changes use small API routes checked for an owner role and a same-site Origin; the check compares the Origin with the Host header, because Next's request URL does not carry the browser's host.
+- The site sends security headers (`nosniff`, `same-origin` referrers, no framing) but no CSP yet: Next needs nonces for its inline scripts, which is iterate work. Every map string reaches pages as escaped JSON or React text.
+- A GitHub account named like a site route (docs, gallery, privacy, settings, signin, api) cannot have map pages.
+- The Action takes a `cloud-url` input for uploads, and a failed upload is logged without failing the job.
+- The `[web]` suite runs the built app against a mock GitHub with a fresh PGlite folder, using Playwright's Chromium or the newest cached headless shell. On this machine it used the cached Chromium 151 headless shell.
 
 Tests the D5 ACs call for:
 - permission mapping; sign-in against a mocked GitHub;
@@ -261,13 +275,13 @@ Tests the D5 ACs call for:
 
 Done when: Uploads, map pages and PR pages work against mocks.
 
-- [ ] **CLD-01 Accounts and organizations** `[unit]` `[web]`
-- [ ] **CLD-02 Upload API** `[unit]`
-- [ ] **CLD-03 Map pages** `[web]`
-- [ ] **CLD-04 Pull request pages** `[web]`
-- [ ] **CLD-08 Public site** `[web]`
-- [ ] **CLD-09 Upload from the CLI and the Action** `[unit]`
-- [ ] **CLD-11 Delete data** `[unit]` `[web]`
+- [x] **CLD-01 Accounts and organizations** `[unit]` `[web]` — 2026-10-18: `cloud/src/auth.ts`, `cloud/src/lib/access.ts`, `cloud/src/lib/github.ts`. Tests: `cloud/test/unit/access.test.ts` (11: the mapping table, rank, sign-in mirroring organizations, access reused for an hour then rechecked and removed, rechecks at sign-in, no access); `[web]` `cld01-signin.spec.ts` (2: sign-in through the mock GitHub with organizations mirrored; a signed-out visit returning after sign-in).
+- [x] **CLD-02 Upload API** `[unit]` — 2026-10-18: `src/model/upload.ts`, `src/model/schemas/upload.schema.json`, `cloud/src/lib/oidc.ts`, `tokens.ts`, `cloud/src/app/api/v1/uploads/route.ts`. `cloud/test/unit/upload.test.ts` (14): an extra `content` field rejected at the top, in a map component, in a sidecar and in a check; a secret rejected; 413, 400, 422 and 401; OIDC accepted with test keys and refused for another repository, audience, issuer, an expired token, an unknown key, another algorithm and another key's signature; tokens stored as their hash, used for their repository only; the hourly limit. ADR 0054.
+- [x] **CLD-03 Map pages** `[web]` — 2026-10-18: `cloud/src/app/[owner]/[repo]/page.tsx`, `cloud/src/lib/mapPage.ts`, `pages.ts`, the viewer bundle. `[web]` `cld03-map.spec.ts` (2: the main map draws with freshness from the latest check and history, and a box opens GitHub at the map's commit; an owner makes a public repository's maps public, after which a visitor and the gallery see them while a private space still asks to sign in); unit `mapPage.test.ts`.
+- [x] **CLD-04 Pull request pages** `[web]` — 2026-10-18: `cloud/src/app/[owner]/[repo]/pull/[n]/page.tsx`. `[web]` `cld04-pull.spec.ts` (2: strong and weak boxes, a ghost candidate, a stale box and the counts; a pull request without a check).
+- [x] **CLD-08 Public site** `[web]` — 2026-10-18: landing with "Free during beta.", `/docs` from the README and `docs/`, `/privacy` with the upload schema, `/gallery`. `[web]` `cld08-site.spec.ts` (every request stays on the site); unit `markdown.test.ts` (2: links to the web, anchors and published docs only, script URLs as text).
+- [x] **CLD-09 Upload from the CLI and the Action** `[unit]` — 2026-10-18: `sustain.mjs publish`, `src/cloud/client.ts`, the Action's `upload`. Tests: `cli.test.ts` › `CLD-09 publish` (4 against a fake cloud: the payload signed with the token, the dry run sending nothing, a secret stopping the upload, refusals and missing settings); `action.test.ts` › `CLD-09 the Action's upload` (2: the OIDC request with audience `sustain-cloud`, the upload signed with that token, the page linked; nothing sent without `upload`, and a missing permission logged); `noNetwork.test.ts` allowing only `src/cloud/client.ts`. ADR 0055.
+- [x] **CLD-11 Delete data** `[unit]` `[web]` — 2026-10-18: the account and repository routes and settings pages. Tests: `cloud/test/unit/delete.test.ts` (5: one map, a repository's data, an account with only its own spaces, owners only and same-site only, tokens and public maps); `[web]` `cld11-delete.spec.ts` (a map, a token shown once, a repository's data and the account, each at once).
 
 ## D6 Ship
 
@@ -354,6 +368,9 @@ Done when: The plugin opens cited lines on AB3.
 - [ ] **IDE-01 IntelliJ plugin** `[jvm]` `[smoke]`
 
 ## Log
+
+- 2026-10-18 — D5 closed pending owner. Gates: `npm run check` exit 0 (1073 tests, 55 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud `[web]` 8 passed against the built app. Every new test was seen to fail once with its behaviour broken: 16 deliberate breaks across D5. Deployment is a hard stop and waits for the owner (see Waiting).
+- 2026-10-18 — `architecture.md` had not been updated per feature during D2 to D4, as spec §7 asks; it was brought up to date at D4's close (`29f183b`) and kept current since. The layout fixtures test got a 30 s timeout: it lays out 48 diagrams and passed 5 s only narrowly when the whole suite ran in parallel.
 
 - 2026-10-18 — D4 closed pending owner. Gates: `npm run check` exit 0 (1066 tests, 53 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each). Every new test was seen to fail once with its behaviour broken: 18 deliberate breaks across D4. PRC-04 waits for a committed map of this repository and a push (see Waiting).
 
