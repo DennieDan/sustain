@@ -138,7 +138,7 @@ Sustain makes no AI calls of its own. Your agent does the work, on your account.
 ## How to remove it
 
 1. Uninstall Sustain from the Extensions view.
-2. Delete `sustain-architecture`, `sustain-refresh` and `sustain-bugfix` from `~/.agents/skills/` and `~/.claude/skills/`.
+2. Delete `sustain-architecture`, `sustain-refresh`, `sustain-audit` and `sustain-bugfix` from `~/.agents/skills/` and `~/.claude/skills/`.
 3. In each repository you mapped, delete `.archify/` and `.sustain/` if you no longer want them, and the three Sustain lines from `.git/info/exclude`.
 
 To leave Sustain Cloud, choose **Delete my account** in its settings. Your account and every repository space it owns are removed at once.

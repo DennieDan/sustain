@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustain.dev/schemas/audit-draft.schema.json",
+  "title": "Sustain audit draft (ACC-05)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["boxes", "arrows"],
+  "properties": {
+    "boxes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component", "verdict", "reason"],
+        "properties": {
+          "component": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "verdict": { "enum": ["supports", "partial", "contradicts"] },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 200 }
+        }
+      }
+    },
+    "arrows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["connection", "from", "to", "evidence"],
+        "properties": {
+          "connection": { "type": "integer", "minimum": 0 },
+          "from": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "to": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "evidence": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": {
+                "path": { "type": "string", "minLength": 1, "maxLength": 240 },
+                "line": { "type": "integer", "minimum": 1 },
+                "end_line": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -30,6 +30,7 @@ const SCRIPT_ENTRIES = {
   validate: "src/agent/validate.ts",
   session: "src/agent/session.ts",
   "session-hook": "src/agent/session-hook.ts",
+  "audit-record": "src/agent/audit-record.ts",
 };
 
 /**
@@ -150,6 +151,7 @@ export async function buildSkillsAndCli(out) {
   // The refresh skill reads the same format reference as the architecture skill (FRS-05).
   cpSync(join(root, "skills/sustain-architecture/references"), join(out, "skills/sustain-refresh/references"), { recursive: true });
   results.push(await buildScripts(join(out, "skills/sustain-refresh/scripts"), ["refresh-facts", "validate", "render-html"]));
+  results.push(await buildScripts(join(out, "skills/sustain-audit/scripts"), ["audit-record"]));
   writeSkillHashes(out);
   const page = await buildPage();
   results.push(

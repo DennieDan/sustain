@@ -79,6 +79,13 @@ describe("SAF-04 launch arguments", () => {
     expect(forbiddenIn(argv)).toEqual([]);
   });
 
+  test("ACC-05 an audit names the audit skill, may give work to subagents, and may run only its recorder", () => {
+    expect(skillPrompt("claude", "sustain-audit", "architecture-a-20261018-120000")).toBe("/sustain-audit architecture-a-20261018-120000");
+    const argv = headlessArgs("claude", "/sustain-audit x", { skillDir: "/h/.claude/skills/sustain-audit", scripts: SKILL_SCRIPTS["sustain-audit"], subagents: true });
+    expect(argv.slice(argv.indexOf("--allowedTools") + 1)).toEqual(["Read", "Grep", "Glob", "Task", "Bash(node /h/.claude/skills/sustain-audit/scripts/audit-record.mjs *)", "Edit(./.archify/**)"]);
+    expect(forbiddenIn(argv)).toEqual([]);
+  });
+
   test("UI-06 a question is read-only and a follow-up resumes the session", () => {
     const argv = headlessArgs("claude", "What calls the validator?", { skillDir: "/s", readOnly: true, resume: "sess-1" });
     expect(argv.slice(argv.indexOf("--allowedTools"))).toEqual(["--allowedTools", "Read", "Grep", "Glob"]);

@@ -9,6 +9,7 @@ import { repoRoot } from "../support/sourceScan";
 
 const SCRIPTS: Record<string, string[]> = {
   "sustain-architecture": ["render-html.mjs", "repo-facts.mjs", "validate.mjs"],
+  "sustain-audit": ["audit-record.mjs"],
   "sustain-bugfix": ["session-hook.mjs", "session.mjs"],
   "sustain-refresh": ["refresh-facts.mjs", "render-html.mjs", "validate.mjs"],
 };

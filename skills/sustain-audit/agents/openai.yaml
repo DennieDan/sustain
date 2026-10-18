@@ -1,0 +1,5 @@
+interface:
+  display_name: "Sustain Audit"
+  short_description: "Check a Sustain architecture diagram against its cited code"
+policy:
+  allow_implicit_invocation: false

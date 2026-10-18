@@ -22,12 +22,13 @@ export function agentLaunchArgs(prompt: string): string[] {
 }
 
 /** The skills a run launches (FR-GEN-01, FRS-05). */
-export type SkillName = "sustain-architecture" | "sustain-refresh";
+export type SkillName = "sustain-architecture" | "sustain-refresh" | "sustain-audit";
 
 /** The scripts each skill runs, which its Bash rules name exactly. */
 export const SKILL_SCRIPTS: Readonly<Record<SkillName, readonly string[]>> = {
   "sustain-architecture": ["repo-facts.mjs", "validate.mjs", "render-html.mjs"],
   "sustain-refresh": ["refresh-facts.mjs", "validate.mjs", "render-html.mjs"],
+  "sustain-audit": ["audit-record.mjs"],
 };
 
 export interface HeadlessOptions {
@@ -39,6 +40,8 @@ export interface HeadlessOptions {
   readOnly?: boolean;
   /** Claude Code session to continue a follow-up question in. */
   resume?: string;
+  /** Lets Claude Code give work to fresh subagents with its Task tool, as the audit does (ACC-05). */
+  subagents?: boolean;
 }
 
 /**
@@ -54,6 +57,7 @@ export function headlessArgs(cli: "claude" | "codex", prompt: string, options: H
         "Read",
         "Grep",
         "Glob",
+        ...(options.subagents ? ["Task"] : []),
         ...(options.scripts ?? SKILL_SCRIPTS["sustain-architecture"]).map((script) => `Bash(node ${options.skillDir}/scripts/${script} *)`),
         "Edit(./.archify/**)",
       ];

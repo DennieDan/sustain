@@ -114,7 +114,7 @@ export async function launchTask(context: vscode.ExtensionContext, runs: Runs, r
   const request = { root, focus: task.title, agent: { cli: agent.cli, label: agent.label }, task, estimate: launchEstimate(root, agent.cli, estimateKind(task.skill)) };
   if (mode === "sidebar" && canRunHeadless(binary)) {
     const skillDir = join(skillBase(configuredScope(), root), agent.cli === "claude" ? ".claude" : ".agents", "skills", task.skill);
-    const args = headlessArgs(agent.cli, prompt, { skillDir, scripts: SKILL_SCRIPTS[task.skill] });
+    const args = headlessArgs(agent.cli, prompt, { skillDir, scripts: SKILL_SCRIPTS[task.skill], subagents: task.skill === "sustain-audit" });
     runs.startHeadless(request, binary, args, agent.cli === "claude" ? claudeParser() : codexParser());
     return;
   }
@@ -158,7 +158,7 @@ export async function confirmAndLaunch(context: vscode.ExtensionContext, runs: R
   // The estimate alone asks only above the threshold (CST-03); every other note always asks (SET-03).
   if (notes.some((note) => note.kind !== "estimate" || note.confirm === true)) {
     const ask = notes.some((note) => note.kind === "repair") ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
-    const verb = task.skill === "sustain-refresh" ? "Refresh" : "Generate";
+    const verb = task.skill === "sustain-refresh" ? "Refresh" : task.skill === "sustain-audit" ? "Audit" : "Generate";
     const choice = await ask(`${verb} with ${agent.label}?`, { modal: true, detail: notes.map((note) => note.text).join("\n\n") }, verb);
     if (choice !== verb) return;
   }

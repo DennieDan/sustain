@@ -173,6 +173,12 @@
         "icon": "$(globe)"
       },
       {
+        "command": "sustain.auditMap",
+        "title": "Audit Map",
+        "category": "Sustain",
+        "icon": "$(checklist)"
+      },
+      {
         "command": "sustain.reviewChanges",
         "title": "Review Changes",
         "category": "Sustain"
@@ -266,6 +272,11 @@
           "command": "sustain.exportPage",
           "when": "activeWebviewPanelId == 'sustain.architecture'",
           "group": "navigation@3"
+        },
+        {
+          "command": "sustain.auditMap",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "navigation@4"
         }
       ],
       "explorer/context": [

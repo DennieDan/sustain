@@ -44,7 +44,7 @@ describe("RCH-03 install and verify-skills", () => {
     const root = tempDir();
     const installed = cli(["install", "--scope", "project", "--root", root], { cwd: root });
     expect(installed.status).toBe(0);
-    expect(installed.json()).toEqual({ status: "installed", base: root, skills: ["sustain-architecture", "sustain-bugfix", "sustain-refresh"] });
+    expect(installed.json()).toEqual({ status: "installed", base: root, skills: ["sustain-architecture", "sustain-audit", "sustain-bugfix", "sustain-refresh"] });
     expect(existsSync(join(root, ".claude/skills/sustain-refresh/SKILL.md"))).toBe(true);
 
     const intact = cli(["verify-skills", "--scope", "project"], { cwd: root });

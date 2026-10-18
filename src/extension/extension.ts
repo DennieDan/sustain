@@ -6,6 +6,7 @@ import { Ask } from "./ask";
 import { showChangesCommand } from "./changes";
 import { exportPageCommand } from "./exportPage";
 import { refreshArchitectureCommand, refreshBoxCommand } from "./refresh";
+import { auditMapCommand } from "./audit";
 import { Review } from "./review";
 import { FreshnessService } from "./freshness";
 import { generateArchitectureCommand, resetDataNote } from "./generate";
@@ -97,6 +98,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.openBoxCode", openBoxCodeCommand),
     vscode.commands.registerCommand("sustain.showChanges", () => showChangesCommand(extensionUri)),
     vscode.commands.registerCommand("sustain.refreshArchitecture", () => refreshArchitectureCommand(context, runs)),
+    vscode.commands.registerCommand("sustain.auditMap", () => auditMapCommand(context, runs)),
     vscode.commands.registerCommand("sustain.exportPage", () => exportPageCommand(extensionUri)),
     vscode.commands.registerCommand("sustain.reviewChanges", () => review.command(home.root())),
     vscode.commands.registerCommand("sustain.refreshBox", (box?: { componentId?: unknown }) => refreshBoxCommand(context, runs, box)),

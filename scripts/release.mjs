@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
 /** The skills a Claude Code user installs; the bugfix skill is for Devin's learning sessions. */
-export const PLUGIN_SKILLS = ["sustain-architecture", "sustain-refresh"];
+export const PLUGIN_SKILLS = ["sustain-architecture", "sustain-refresh", "sustain-audit"];
 
 const DESCRIPTION = "Architecture maps of your repository whose boxes open the code they cite, refreshed as the code changes.";
 

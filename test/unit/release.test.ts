@@ -15,9 +15,14 @@ test("RCH-02 build:release assembles the plugin with its manifests and the commi
   expect(manifest.description).toMatch(/^Architecture maps/);
   const marketplace = JSON.parse(readFileSync(join(plugin, ".claude-plugin/marketplace.json"), "utf8"));
   expect(marketplace).toMatchObject({ name: "sustain", owner: { name: "Sustain" }, plugins: [{ name: "sustain", source: "./", version: pkg.version }] });
-  expect(PLUGIN_SKILLS).toEqual(["sustain-architecture", "sustain-refresh"]);
+  expect(PLUGIN_SKILLS).toEqual(["sustain-architecture", "sustain-refresh", "sustain-audit"]);
+  const files: Record<string, string[]> = {
+    "sustain-architecture": ["SKILL.md", "scripts/validate.mjs", "scripts/render-html.mjs", "references/archify-format.md"],
+    "sustain-refresh": ["SKILL.md", "scripts/validate.mjs", "scripts/render-html.mjs", "references/archify-format.md"],
+    "sustain-audit": ["SKILL.md", "agents/openai.yaml", "scripts/audit-record.mjs"],
+  };
   for (const name of PLUGIN_SKILLS) {
-    for (const file of ["SKILL.md", "scripts/validate.mjs", "scripts/render-html.mjs", "references/archify-format.md"]) {
+    for (const file of files[name]!) {
       expect(readFileSync(join(plugin, "skills", name, file), "utf8"), `${name}/${file}`).toBe(readFileSync(join(repoRoot, "skills", name, file), "utf8"));
     }
   }

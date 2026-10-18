@@ -32,9 +32,9 @@ export function confirmAbove(): number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : DEFAULT_CONFIRM_ABOVE;
 }
 
-/** The estimate kind a skill's run spends. */
+/** The estimate kind a skill's run spends; an audit reads cited ranges as a refresh does. */
 export function estimateKind(skill: SkillName): EstimateKind {
-  return skill === "sustain-refresh" ? "refresh" : "full";
+  return skill === "sustain-architecture" ? "full" : "refresh";
 }
 
 /** The estimate of a `kind` run by `agent` in `root`, or `null` when the folder cannot be measured. */
