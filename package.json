@@ -94,6 +94,11 @@
           "default": 90,
           "minimum": 1,
           "description": "How many days of git history the map's Hotspots count."
+        },
+        "sustain.usageLog": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keep daily counts of which Sustain actions you use, on this machine only. The log holds no paths, labels, repository names or anything you typed. Export or clear it from the Sustain sidebar's menu."
         }
       }
     },
@@ -294,6 +299,16 @@
         "command": "sustain.removeSustain",
         "title": "Remove Sustain from This Folder",
         "category": "Sustain"
+      },
+      {
+        "command": "sustain.exportUsageLog",
+        "title": "Export Usage Log",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.clearUsageLog",
+        "title": "Clear Usage Log",
+        "category": "Sustain"
       }
     ],
     "viewsContainers": {
@@ -345,6 +360,16 @@
           "command": "sustain.removeSustain",
           "when": "view == sustain.home",
           "group": "z_sustain@9"
+        },
+        {
+          "command": "sustain.exportUsageLog",
+          "when": "view == sustain.home && config.sustain.usageLog",
+          "group": "z_sustain@7"
+        },
+        {
+          "command": "sustain.clearUsageLog",
+          "when": "view == sustain.home && config.sustain.usageLog",
+          "group": "z_sustain@8"
         }
       ],
       "commandPalette": [

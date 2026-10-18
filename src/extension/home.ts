@@ -27,6 +27,8 @@ import { ArchitecturePanel } from "./panel";
 import { exportPageCommand } from "./exportPage";
 import { createTourCommand } from "./tour";
 import { copyPromptCommand } from "./copyPrompt";
+import { countUsage } from "./usageLog";
+import type { UsageEvent } from "../model/usageLog";
 import { refreshArchitectureCommand } from "./refresh";
 import type { Review } from "./review";
 import type { Runs } from "./runs";
@@ -38,6 +40,18 @@ import { readSessionSnapshot } from "./sessionFiles";
 
 export const HOME_VIEW = "sustain.home";
 const ROOT_KEY = "sustain.homeRoot";
+
+/** SET-05: the sidebar actions the usage log counts, by message type. */
+const SIDEBAR_USAGE: Partial<Record<HomeWebviewMessage["type"], UsageEvent>> = {
+  generate: "generate",
+  refreshMap: "refresh",
+  ask: "ask",
+  review: "review",
+  exportMap: "exportPage",
+  practiceStart: "checkUnderstanding",
+  createTour: "createTour",
+  copyPromptFor: "copyPrompt",
+};
 
 /** How long the Health section's measurements are reused (ARC-05). */
 const HEALTH_TTL_MS = 5_000;
@@ -226,6 +240,9 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
 
   /** Handles a message from the sidebar (also the e2e test hook's entry point). */
   async handleMessage(message: HomeWebviewMessage): Promise<void> {
+    // SET-05: the sidebar's own actions count too; those that run a command are counted there.
+    const usage = SIDEBAR_USAGE[message.type];
+    if (usage !== undefined) countUsage(usage);
     const root = this.root();
     switch (message.type) {
       case "ready":

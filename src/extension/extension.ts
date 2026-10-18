@@ -17,6 +17,8 @@ import { createTourCommand, playTourCommand } from "./tour";
 import { drillDownCommand } from "./drill";
 import { copyPromptForCommand } from "./copyPrompt";
 import { removeSustainCommand } from "./removeSustain";
+import { countUsage, UsageLogService } from "./usageLog";
+import type { UsageEvent, UsageLog } from "../model/usageLog";
 import { registerPreviews } from "./previewWrite";
 import { Review } from "./review";
 import { RulesService } from "./rules";
@@ -53,6 +55,8 @@ export interface TestHook {
   panelTour(): TourStop[] | null | undefined;
   /** The run folder of the map the shown drill-down came from (VWR-05). */
   panelOverview(): string | null | undefined;
+  /** The usage log (SET-05). */
+  usageLog(): UsageLog;
   reviewReport(): CheckReport | null;
   /** Delivers `message` as if the webview had posted it; resolves when it has been handled. */
   postFromWebview(message: WebviewMessage): Promise<void>;
@@ -85,6 +89,12 @@ export function activate(context: vscode.ExtensionContext): TestHook {
   const review = new Review(context, runs);
   const rules = new RulesService();
   const practice = new Practice(context);
+  // SET-05: counted commands add to the usage log while it is on.
+  const usage = new UsageLogService(context);
+  const counted = <A extends unknown[], R>(event: UsageEvent, run: (...args: A) => R) => (...args: A): R => {
+    countUsage(event);
+    return run(...args);
+  };
   const home = new HomeView(context, runs, ask, freshness, review, rules, practice, [candidates.onDidChange, sessions.onDidChange, freshness.onDidChange]);
   const status = new StatusItem(runs);
   const counts = ArchitecturePanel.onDidCountChanges((changed) => (status.changed = changed));
@@ -109,10 +119,10 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     running,
     vscode.window.registerWebviewViewProvider(HOME_VIEW, home),
     vscode.commands.registerCommand("sustain.installSkills", () => installSkillsCommand(extensionUri)),
-    vscode.commands.registerCommand("sustain.generateArchitecture", () => generateArchitectureCommand(context, runs)),
+    vscode.commands.registerCommand("sustain.generateArchitecture", counted("generate", () => generateArchitectureCommand(context, runs))),
     vscode.commands.registerCommand("sustain.openArchitecture", () => openArchitectureCommand(extensionUri)),
     vscode.commands.registerCommand("sustain.openArchitectureFile", () => openArchitectureFileCommand(extensionUri)),
-    vscode.commands.registerCommand("sustain.startLearning", () => startLearningSessionCommand(extensionUri)),
+    vscode.commands.registerCommand("sustain.startLearning", counted("learn", () => startLearningSessionCommand(extensionUri))),
     vscode.commands.registerCommand("sustain.checkSetup", async () => {
       await vscode.commands.executeCommand(`${HOME_VIEW}.focus`);
       await home.checkSetup();
@@ -123,9 +133,9 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.showFileInMap", (uri?: vscode.Uri) => showInMapCommand(extensionUri, uri)),
     vscode.commands.registerCommand("sustain.mapFolder", (uri?: vscode.Uri) => mapFolderCommand(context, runs, uri)),
     vscode.commands.registerCommand("sustain.openBoxCode", openBoxCodeCommand),
-    vscode.commands.registerCommand("sustain.showChanges", () => showChangesCommand(extensionUri)),
-    vscode.commands.registerCommand("sustain.refreshArchitecture", () => refreshArchitectureCommand(context, runs)),
-    vscode.commands.registerCommand("sustain.auditMap", () => auditMapCommand(context, runs)),
+    vscode.commands.registerCommand("sustain.showChanges", counted("showChanges", () => showChangesCommand(extensionUri))),
+    vscode.commands.registerCommand("sustain.refreshArchitecture", counted("refresh", () => refreshArchitectureCommand(context, runs))),
+    vscode.commands.registerCommand("sustain.auditMap", counted("audit", () => auditMapCommand(context, runs))),
     vscode.commands.registerCommand("sustain.forbidArrow", (arrow?: { from?: unknown; to?: unknown }) => forbidArrowCommand(rules, arrow)),
     vscode.commands.registerCommand("sustain.onlyAllowImportsFrom", (box?: { componentId?: unknown }) => onlyAllowFromCommand(rules, box)),
     vscode.commands.registerCommand("sustain.routeThrough", (box?: { componentId?: unknown }) => routeThroughCommand(rules, box)),
@@ -137,16 +147,18 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.showHotspots", () => ArchitecturePanel.setHotspotsShown(true)),
     vscode.commands.registerCommand("sustain.hideHotspots", () => ArchitecturePanel.setHotspotsShown(false)),
     vscode.commands.registerCommand("sustain.showChecks", () => ArchitecturePanel.setChecksShown(true)),
-    vscode.commands.registerCommand("sustain.exportPage", () => exportPageCommand(extensionUri)),
-    vscode.commands.registerCommand("sustain.reviewChanges", () => review.command(home.root())),
+    vscode.commands.registerCommand("sustain.exportPage", counted("exportPage", () => exportPageCommand(extensionUri))),
+    vscode.commands.registerCommand("sustain.reviewChanges", counted("review", () => review.command(home.root()))),
     vscode.commands.registerCommand("sustain.refreshBox", (box?: { componentId?: unknown }) => refreshBoxCommand(context, runs, box)),
-    vscode.commands.registerCommand("sustain.checkUnderstanding", (box?: { componentId?: unknown }) => practice.command(home.root(), box)),
-    vscode.commands.registerCommand("sustain.playTour", () => playTourCommand(context, runs)),
-    vscode.commands.registerCommand("sustain.find", () => ArchitecturePanel.current?.find()),
-    vscode.commands.registerCommand("sustain.drillDown", (box?: { componentId?: unknown }) => drillDownCommand(context, runs, box)),
-    vscode.commands.registerCommand("sustain.copyPromptFor", () => copyPromptForCommand(extensionUri)),
+    vscode.commands.registerCommand("sustain.checkUnderstanding", counted("checkUnderstanding", (box?: { componentId?: unknown }) => practice.command(home.root(), box))),
+    vscode.commands.registerCommand("sustain.playTour", counted("tour", () => playTourCommand(context, runs))),
+    vscode.commands.registerCommand("sustain.find", counted("find", () => ArchitecturePanel.current?.find())),
+    vscode.commands.registerCommand("sustain.drillDown", counted("drillDown", (box?: { componentId?: unknown }) => drillDownCommand(context, runs, box))),
+    vscode.commands.registerCommand("sustain.copyPromptFor", counted("copyPrompt", () => copyPromptForCommand(extensionUri))),
     vscode.commands.registerCommand("sustain.removeSustain", () => removeSustainCommand()),
-    vscode.commands.registerCommand("sustain.createTour", () => createTourCommand(context, runs)),
+    vscode.commands.registerCommand("sustain.exportUsageLog", () => usage.exportLog()),
+    vscode.commands.registerCommand("sustain.clearUsageLog", () => usage.clear()),
+    vscode.commands.registerCommand("sustain.createTour", counted("createTour", () => createTourCommand(context, runs))),
   );
   return {
     panelState: () => ({ file: ArchitecturePanel.current?.file, open: ArchitecturePanel.current !== undefined }),
@@ -157,6 +169,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     panelGhosts: () => ArchitecturePanel.current?.ghostBoxes,
     panelTour: () => ArchitecturePanel.current?.tourStops,
     panelOverview: () => ArchitecturePanel.current?.overviewParent,
+    usageLog: () => usage.read(),
     reviewReport: () => review.report,
     postFromWebview: async (message) => ArchitecturePanel.current?.handleMessage(message),
     sessionPanelState: () => ({ open: SessionPanel.current !== undefined }),
