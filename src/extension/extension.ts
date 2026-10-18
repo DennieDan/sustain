@@ -137,6 +137,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.refreshBox", (box?: { componentId?: unknown }) => refreshBoxCommand(context, runs, box)),
     vscode.commands.registerCommand("sustain.checkUnderstanding", (box?: { componentId?: unknown }) => practice.command(home.root(), box)),
     vscode.commands.registerCommand("sustain.playTour", () => playTourCommand(context, runs)),
+    vscode.commands.registerCommand("sustain.find", () => ArchitecturePanel.current?.find()),
     vscode.commands.registerCommand("sustain.createTour", () => createTourCommand(context, runs)),
   );
   return {

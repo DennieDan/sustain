@@ -657,3 +657,51 @@ body {
 .tour__code:hover {
   text-decoration: underline;
 }
+
+/* Finder (VWR-03): the search bar under the toolbar, matches outlined, the rest dimmed */
+
+.finder {
+  position: absolute;
+  top: 44px;
+  right: 72px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px 2px 6px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.finder[hidden],
+.app--empty .finder {
+  display: none;
+}
+
+.finder__input {
+  width: 200px;
+  font: inherit;
+  color: var(--sustain-foreground);
+  background: var(--sustain-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 2px;
+}
+
+.finder__count {
+  min-width: 56px;
+  color: var(--sustain-muted);
+}
+
+.app--finding .node:not(.node--found) {
+  opacity: 0.3;
+}
+
+.node--found .node__box {
+  stroke: var(--sustain-accent);
+  stroke-width: 2px;
+}
+
+.node--found-current .node__box {
+  stroke-width: 4px;
+}

@@ -30,6 +30,12 @@ export function clampScale(scale: number): number {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
 
+/** VWR-03: centres `rect` in the panel, one zoom step above 100 % unless it would not fit. */
+export function focusView(rect: Rect, size: Size): ViewState {
+  const scale = clampScale(Math.min(ZOOM_STEP, (size.width - 2 * FIT_PADDING) / rect.w, (size.height - 2 * FIT_PADDING) / rect.h));
+  return { x: size.width / 2 - (rect.x + rect.w / 2) * scale, y: size.height / 2 - (rect.y + rect.h / 2) * scale, scale };
+}
+
 /** The view that shows `bounds` centred in `size`, at the largest scale that fits within 10–400 %. */
 export function fitView(bounds: Rect, size: Size): ViewState {
   const availW = Math.max(1, size.width - 2 * FIT_PADDING);
@@ -131,6 +137,8 @@ export class ViewportController {
 
   private onKey(event: KeyboardEvent): void {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
+    // Keys typed into a text box, such as the finder's, are text.
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
     const name = KEY_ACTIONS[event.key];
     if (name === undefined) return;
     event.preventDefault();

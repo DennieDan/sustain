@@ -501,3 +501,74 @@ describe("SKL-03 finished tours", () => {
     expect(posted).toEqual([{ type: "tourFinished" }]);
   });
 });
+
+describe("VWR-03 finder", () => {
+  const DOC = {
+    meta: { title: "Find" },
+    components: [
+      { id: "api", label: "Orders API", sublabel: "REST", type: "backend", sources: [{ path: "src/orders/handler.ts" }] },
+      { id: "db", label: "Store", sublabel: "Postgres", type: "database", sources: [{ path: "db/schema.sql" }] },
+      { id: "web", label: "Shop", sublabel: "orders page", type: "frontend", sources: [{ path: "web/src/main.ts" }] },
+    ],
+  };
+  const key = (target: EventTarget, init: KeyboardEventInit): void => void target.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init }));
+  const finder = (): HTMLElement => document.querySelector<HTMLElement>(".finder")!;
+  const input = (): HTMLInputElement => finder().querySelector<HTMLInputElement>("input")!;
+  const found = (): string[] => [...document.querySelectorAll(".node--found")].map((node) => node.getAttribute("data-id")!);
+  const current = (): string | null => document.querySelector(".node--found-current")?.getAttribute("data-id") ?? null;
+  const type = (text: string): void => {
+    input().value = text;
+    input().dispatchEvent(new Event("input"));
+  };
+
+  test("/ opens the finder, typing marks boxes by label, sublabel or cited path, and the rest are dimmed", async () => {
+    send({ type: "load", doc: DOC, file: "/r/find.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(3));
+    expect(finder().hidden).toBe(true);
+    key(window, { key: "/" });
+    expect(finder().hidden).toBe(false);
+    expect(document.activeElement).toBe(input());
+    // Keys typed into the finder are text, not the map's zoom keys.
+    const view = transform();
+    key(input(), { key: "f" });
+    key(input(), { key: "-" });
+    expect(transform()).toBe(view);
+    type("orders");
+    expect(found()).toEqual(["api", "web"]);
+    expect(app().classList.contains("app--finding")).toBe(true);
+    expect(finder().querySelector(".finder__count")!.textContent).toBe("1 of 2");
+    type("SCHEMA.sql");
+    expect(found()).toEqual(["db"]);
+    type("nothing like it");
+    expect(found()).toEqual([]);
+    expect(finder().querySelector(".finder__count")!.textContent).toBe("No match");
+    key(input(), { key: "Escape" });
+    expect(finder().hidden).toBe(true);
+    expect(app().classList.contains("app--finding")).toBe(false);
+  });
+
+  test("Ctrl+F opens it too; Enter centres and zooms on the match, and the arrow keys cycle", async () => {
+    send({ type: "load", doc: DOC, file: "/r/find.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(3));
+    key(window, { key: "f", ctrlKey: true });
+    expect(finder().hidden).toBe(false);
+    type("orders");
+    const before = transform();
+    key(input(), { key: "Enter" });
+    expect(current()).toBe("api");
+    const centred = transform();
+    expect(centred).not.toBe(before);
+    const box = document.querySelector('.node[data-id="api"] .node__box')!;
+    const [x, y, w, h] = ["x", "y", "width", "height"].map((name) => Number(box.getAttribute(name)));
+    const [, tx, ty, scale] = /translate\(([-\d.e]+) ([-\d.e]+)\) scale\(([-\d.e]+)\)/.exec(centred!)!.map(Number);
+    expect(tx! + (x! + w! / 2) * scale!).toBeCloseTo(400);
+    expect(ty! + (y! + h! / 2) * scale!).toBeCloseTo(300);
+    key(input(), { key: "ArrowDown" });
+    expect(current()).toBe("web");
+    key(input(), { key: "ArrowDown" });
+    expect(current()).toBe("api");
+    key(input(), { key: "ArrowUp" });
+    expect(current()).toBe("web");
+    key(input(), { key: "Escape" });
+  });
+});

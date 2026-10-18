@@ -37,7 +37,9 @@ export type HostMessage =
   /** SKL-02: the shown map's tour, or `null` when it has none. */
   | { type: "tour"; stops: TourStop[] | null }
   /** SKL-02: play the tour from its first stop. */
-  | { type: "playTour" };
+  | { type: "playTour" }
+  /** VWR-03: open the finder, for Find in the map's title bar. */
+  | { type: "find" };
 
 /** A new box candidate on the map (PRC-02). */
 export interface Ghost {

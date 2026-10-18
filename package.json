@@ -193,6 +193,12 @@
         "category": "Sustain"
       },
       {
+        "command": "sustain.find",
+        "title": "Find in Map",
+        "category": "Sustain",
+        "icon": "$(search)"
+      },
+      {
         "command": "sustain.playTour",
         "title": "Tour",
         "category": "Sustain",
@@ -404,6 +410,11 @@
           "command": "sustain.hideHotspots",
           "when": "activeWebviewPanelId == 'sustain.architecture' && sustain.hotspotsShown",
           "group": "navigation@6"
+        },
+        {
+          "command": "sustain.find",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "navigation@0"
         },
         {
           "command": "sustain.playTour",

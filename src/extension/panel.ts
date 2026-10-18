@@ -347,6 +347,12 @@ export class ArchitecturePanel {
     return this.tour;
   }
 
+  /** VWR-03: opens the map's finder. */
+  find(): void {
+    const message: HostMessage = { type: "find" };
+    void this.panel.webview.postMessage(message);
+  }
+
   /** Plays the shown map's tour from its first stop. */
   playTour(): void {
     const message: HostMessage = { type: "playTour" };

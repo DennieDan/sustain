@@ -2,7 +2,7 @@
 // diagram. It talks to whatever hosts it only through the bridge (VWR-01), so the VS Code
 // webview, the diagram page and the cloud site share it.
 import { layoutDiagram } from "../src/layout/layout";
-import type { MeasureText } from "../src/layout/scene";
+import type { MeasureText, Scene } from "../src/layout/scene";
 import type { ChangeOverlay, Ghost, GhostArrow, HostMessage } from "../src/model/messages";
 import { NO_IMPORT_EVIDENCE } from "../src/model/uncertainty";
 import { diffSummary, type MapDiff } from "../src/model/diff";
@@ -11,10 +11,11 @@ import { readDiagram, type ViewDiagram } from "../src/model/tolerant";
 import { onMessage, post } from "./bridge";
 import { NodeClicks } from "./click";
 import { renderScene } from "./render";
+import { Finder } from "./finder";
 import { TooltipController } from "./tooltip";
 import { workerRunner } from "./layoutWorkers";
 import { TourPlayer } from "./tour";
-import { ViewportController } from "./viewport";
+import { focusView, ViewportController } from "./viewport";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 /** Line height of measured text, as a multiple of the font size. */
@@ -155,7 +156,29 @@ export function startViewer(mount: HTMLElement = document.body): void {
       for (const node of content.querySelectorAll(".node")) node.classList.toggle("node--tour", id !== null && node.getAttribute("data-id") === id);
     },
   );
-  app.append(svg, toolbar, tour.start, highlightBar, freshnessBar, changesBar, compareBar, emptyState, tooltipElement, legend, tour.card);
+  // VWR-03: the finder marks matching boxes and centres on one.
+  let shownScene: Scene | undefined;
+  const finder = new Finder({
+    mark: (ids, current) => {
+      const found = new Set(ids ?? []);
+      for (const node of content.querySelectorAll(".node")) {
+        const id = node.getAttribute("data-id") ?? "";
+        node.classList.toggle("node--found", found.has(id));
+        node.classList.toggle("node--found-current", id === current);
+      }
+      app.classList.toggle("app--finding", ids !== null);
+    },
+    focus: (id) => {
+      const node = shownScene?.nodes.find((entry) => entry.id === id);
+      if (node) viewport.set(focusView(node.rect, viewport.size()));
+    },
+  });
+  window.addEventListener("keydown", (event) => {
+    if (!Finder.opens(event) || app.classList.contains("app--empty")) return;
+    event.preventDefault();
+    finder.open();
+  });
+  app.append(svg, toolbar, tour.start, finder.element, highlightBar, freshnessBar, changesBar, compareBar, emptyState, tooltipElement, legend, tour.card);
   mount.append(app);
 
   const viewport = new ViewportController(svg, content, toolbar, window);
@@ -393,6 +416,8 @@ export function startViewer(mount: HTMLElement = document.body): void {
     applyFreshness();
     applyChanges();
     tour.reapply();
+    shownScene = scene;
+    finder.setDiagram(result.diagram);
     tooltip.setDiagram(diagram);
     viewport.bounds = scene.bounds;
     if (file !== shownFile) viewport.fit();
@@ -406,6 +431,10 @@ export function startViewer(mount: HTMLElement = document.body): void {
     }
     if (message.type === "playTour") {
       tour.play();
+      return;
+    }
+    if (message.type === "find") {
+      if (lastLoad !== null) finder.open();
       return;
     }
     if (message.type === "highlight") {
@@ -465,6 +494,8 @@ export function startViewer(mount: HTMLElement = document.body): void {
     if (message.type === "empty") {
       lastLoad = null;
       tour.setTour(null);
+      finder.close();
+      finder.setDiagram(null);
       showEmpty(message.message, message.action);
       return;
     }
