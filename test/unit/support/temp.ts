@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
+import type { RepoSize } from "../../../src/model/repoSize";
 import { SCRIPTS_DIR } from "./buildScripts";
 
 const created: string[] = [];
@@ -63,6 +64,8 @@ export interface RepoFacts {
   runFolder: string;
   draft: string;
   git: { head: string; origin: string | null; dirtyCount: number; dirty: string[] } | null;
+  /** CST-01. */
+  size: RepoSize;
 }
 
 /** session.mjs stdout: `status` plus command-specific fields (ADR 0037). */

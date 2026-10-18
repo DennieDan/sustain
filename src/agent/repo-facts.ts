@@ -1,7 +1,9 @@
 // `node <skill>/scripts/repo-facts.mjs [--focus <text>]`, run with cwd = repo root (FR-RF-01):
-// creates the run folder with its run.json (CST-04) and prints where the draft goes (ADR 0018).
+// creates the run folder with its run.json (CST-04) and prints where the draft goes (ADR 0018), with
+// the repository's size (CST-01).
 import { basename, join } from "node:path";
 import { collectGitFacts } from "../model/git";
+import { repoSize } from "../model/repoSize";
 import { ARCHIFY_DIR, createRunFolder, DRAFT_FILE, runTimestamp, slugify } from "../model/runFolder";
 import { newRunRecord, writeRunRecord } from "../model/runRecord";
 
@@ -31,6 +33,7 @@ function main(args: string[]): number {
     runFolder: `${ARCHIFY_DIR}/${run}`,
     draft: `${ARCHIFY_DIR}/${run}/${DRAFT_FILE}`,
     git: git && { head: git.head, origin: git.origin, dirtyCount: git.dirtyCount, dirty: git.dirty },
+    size: repoSize(root),
   };
   process.stdout.write(`${JSON.stringify(facts, null, 2)}\n`);
   return 0;

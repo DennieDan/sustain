@@ -1,1 +1,6 @@
 * text=auto eol=lf
+
+# Generated files, left out of GitHub's language statistics and Sustain's repository size (CST-01).
+skills/*/scripts/*.mjs linguist-generated=true
+skills/sustain-refresh/references/** linguist-generated=true
+action/dist/** linguist-generated=true

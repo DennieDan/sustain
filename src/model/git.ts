@@ -224,6 +224,41 @@ export function numstatSince(root: string, revision: string, env: NodeJS.Process
   return stats;
 }
 
+/** Tracked regular files, relative to `root`, or `null` when git cannot list them (CST-01). Links and submodules are left out. */
+export function trackedFiles(root: string, env: NodeJS.ProcessEnv = process.env): string[] | null {
+  const program = gitProgram(env);
+  if (program === undefined) return null;
+  const output = run(program, root, [...GIT_PREFIX, "ls-files", "--stage", "-z"]);
+  if (output === null) return null;
+  const files: string[] = [];
+  for (const entry of output.split("\0")) {
+    const tab = entry.indexOf("\t");
+    if (tab > 0 && (entry.startsWith("100644 ") || entry.startsWith("100755 "))) files.push(entry.slice(tab + 1));
+  }
+  return files;
+}
+
+/**
+ * The `paths` that `.gitattributes` marks `linguist-generated` or `linguist-vendored`, the marks
+ * GitHub's language statistics follow (CST-01). Empty when git cannot tell.
+ */
+export function generatedFiles(root: string, paths: readonly string[], env: NodeJS.ProcessEnv = process.env): Set<string> {
+  const program = gitProgram(env);
+  if (program === undefined || paths.length === 0) return new Set();
+  const result = spawnSync(program, [...GIT_PREFIX, "check-attr", "-z", "--stdin", "linguist-generated", "linguist-vendored"], {
+    cwd: root,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    input: paths.join("\0"),
+    stdio: ["pipe", "pipe", "ignore"],
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (result.error || result.status !== 0) return new Set();
+  const fields = result.stdout.toString("utf8").split("\0");
+  const marked = new Set<string>();
+  for (let i = 0; i + 2 < fields.length; i += 3) if (fields[i + 2] === "set" || fields[i + 2] === "true") marked.add(fields[i]!);
+  return marked;
+}
+
 /** Untracked files that are not ignored, repository-relative. */
 export function untrackedFiles(root: string, env: NodeJS.ProcessEnv = process.env): string[] {
   const program = gitProgram(env);

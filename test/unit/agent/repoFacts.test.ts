@@ -14,7 +14,7 @@ describe("FR-RF-01 repo-facts CLI", () => {
     expect(run.status).toBe(0);
     expect(run.stderr).toBe("");
     const facts = run.json();
-    expect(Object.keys(facts)).toEqual(["root", "runFolder", "draft", "git"]);
+    expect(Object.keys(facts)).toEqual(["root", "runFolder", "draft", "git", "size"]);
     expect(facts.root).toBe(root);
     const name = facts.runFolder.replace(/^\.archify\//, "");
     expect(name).toMatch(RUN_NAME);
@@ -32,6 +32,12 @@ describe("FR-RF-01 repo-facts CLI", () => {
       attempts: 0,
     });
     expect(facts.git).toBeNull();
+  });
+
+  test("CST-01 prints the repository's size, leaving the new run folder out", () => {
+    const root = gitRepo({ "src/app.ts": "a\nb\nc\n", "src/app.test.ts": "t\n" });
+    const facts = runScript("repo-facts", [], { cwd: root }).json();
+    expect(facts.size).toMatchObject({ listing: "git", files: 2, lines: { total: 4, test: 1, nonTest: 3 }, tier: "S" });
   });
 
   test("without --focus the slug comes from the repo folder name", () => {

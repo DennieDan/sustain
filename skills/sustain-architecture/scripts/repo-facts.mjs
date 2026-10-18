@@ -1,5 +1,5 @@
 // src/agent/repo-facts.ts
-import { basename as basename2, join as join5 } from "node:path";
+import { basename as basename2, join as join6 } from "node:path";
 
 // src/model/git.ts
 import { spawnSync } from "node:child_process";
@@ -99,10 +99,240 @@ function collectGitFacts(root, env = process.env) {
     dirty: allDirty.slice(0, MAX_DIRTY_PATHS)
   };
 }
+function trackedFiles(root, env = process.env) {
+  const program = gitProgram(env);
+  if (program === void 0) return null;
+  const output = run(program, root, [...GIT_PREFIX, "ls-files", "--stage", "-z"]);
+  if (output === null) return null;
+  const files = [];
+  for (const entry of output.split("\0")) {
+    const tab = entry.indexOf("	");
+    if (tab > 0 && (entry.startsWith("100644 ") || entry.startsWith("100755 "))) files.push(entry.slice(tab + 1));
+  }
+  return files;
+}
+function generatedFiles(root, paths, env = process.env) {
+  const program = gitProgram(env);
+  if (program === void 0 || paths.length === 0) return /* @__PURE__ */ new Set();
+  const result = spawnSync(program, [...GIT_PREFIX, "check-attr", "-z", "--stdin", "linguist-generated", "linguist-vendored"], {
+    cwd: root,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    input: paths.join("\0"),
+    stdio: ["pipe", "pipe", "ignore"],
+    maxBuffer: 64 * 1024 * 1024
+  });
+  if (result.error || result.status !== 0) return /* @__PURE__ */ new Set();
+  const fields = result.stdout.toString("utf8").split("\0");
+  const marked = /* @__PURE__ */ new Set();
+  for (let i = 0; i + 2 < fields.length; i += 3) if (fields[i + 2] === "set" || fields[i + 2] === "true") marked.add(fields[i]);
+  return marked;
+}
+
+// src/model/repoSize.ts
+import { lstatSync, readdirSync, readFileSync } from "node:fs";
+import { join as join2 } from "node:path";
+
+// src/model/deny.ts
+var DENIED_NAMES = [".git", ".archify", ".npmrc", ".pypirc", ".netrc"];
+var ENV_EXCEPTIONS = [".env.example", ".env.sample"];
+var DENIED_PREFIXES = ["id_rsa", "id_ed25519"];
+var DENIED_EXTENSIONS = ["pem", "key", "p12", "pfx"];
+function segmentDenied(segment) {
+  const name = segment.toLowerCase();
+  if (DENIED_NAMES.includes(name)) return true;
+  if (name === ".env" || name.startsWith(".env.") && !ENV_EXCEPTIONS.includes(name)) return true;
+  if (DENIED_PREFIXES.some((prefix) => name.startsWith(prefix))) return true;
+  const dot = name.lastIndexOf(".");
+  return dot >= 0 && DENIED_EXTENSIONS.includes(name.slice(dot + 1));
+}
+function isDenied(path) {
+  return path.split("/").some(segmentDenied);
+}
+
+// src/model/repoSize.ts
+var SKIPPED_DIRS = [".git", "node_modules", "vendor", "dist", "build", "target", "out", ".sustain"];
+var COUNT_LIMIT = 2e3;
+var MAX_FILE_BYTES = 1024 * 1024;
+var TIER_BOUNDS = { M: 2e4, L: 15e4 };
+var LANGUAGES = {
+  ts: "TypeScript",
+  tsx: "TypeScript",
+  mts: "TypeScript",
+  cts: "TypeScript",
+  js: "JavaScript",
+  jsx: "JavaScript",
+  mjs: "JavaScript",
+  cjs: "JavaScript",
+  py: "Python",
+  java: "Java",
+  kt: "Kotlin",
+  kts: "Kotlin",
+  scala: "Scala",
+  groovy: "Groovy",
+  gradle: "Gradle",
+  go: "Go",
+  rs: "Rust",
+  rb: "Ruby",
+  php: "PHP",
+  cs: "C#",
+  fs: "F#",
+  swift: "Swift",
+  dart: "Dart",
+  c: "C",
+  h: "C",
+  cc: "C++",
+  cpp: "C++",
+  cxx: "C++",
+  hpp: "C++",
+  hh: "C++",
+  m: "Objective-C",
+  mm: "Objective-C",
+  ex: "Elixir",
+  exs: "Elixir",
+  erl: "Erlang",
+  hs: "Haskell",
+  clj: "Clojure",
+  lua: "Lua",
+  r: "R",
+  jl: "Julia",
+  sh: "Shell",
+  bash: "Shell",
+  zsh: "Shell",
+  ps1: "PowerShell",
+  sql: "SQL",
+  html: "HTML",
+  htm: "HTML",
+  css: "CSS",
+  scss: "CSS",
+  sass: "CSS",
+  less: "CSS",
+  vue: "Vue",
+  svelte: "Svelte",
+  md: "Markdown",
+  mdx: "Markdown",
+  rst: "reStructuredText",
+  adoc: "AsciiDoc",
+  json: "JSON",
+  yml: "YAML",
+  yaml: "YAML",
+  toml: "TOML",
+  xml: "XML",
+  proto: "Protocol Buffers",
+  graphql: "GraphQL",
+  tf: "Terraform"
+};
+var NAMED = { dockerfile: "Dockerfile", makefile: "Makefile", gemfile: "Ruby", rakefile: "Ruby" };
+var BINARY = new Set(
+  "png jpg jpeg gif bmp ico webp tif tiff psd pdf zip gz tgz bz2 xz 7z rar jar war ear class o a so dylib dll exe bin wasm woff woff2 ttf otf eot mp3 mp4 m4a mov avi mkv webm wav flac ogg sqlite db pyc pyo vsix lockb".split(" ")
+);
+var GENERATED = /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lock|Cargo\.lock|poetry\.lock|Pipfile\.lock|composer\.lock|Gemfile\.lock|go\.sum)$|\.min\.(js|css)$|\.map$/;
+var TEST_DIRS = /* @__PURE__ */ new Set(["test", "tests", "__tests__", "spec", "specs", "e2e", "testdata", "fixtures"]);
+var TEST_FILES = /(\.|_)(test|spec)\.[^./]+$|^test_[^/]+\.py$|(Test|Tests|IT)\.(java|kt|scala)$|_spec\.rb$/;
+function languageOf(path) {
+  if (GENERATED.test(path)) return null;
+  const name = path.slice(path.lastIndexOf("/") + 1);
+  const named = NAMED[name.toLowerCase()];
+  if (named !== void 0) return named;
+  const dot = name.lastIndexOf(".");
+  const extension = dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
+  if (BINARY.has(extension)) return null;
+  return LANGUAGES[extension] ?? "Other";
+}
+function isTestPath(path) {
+  const segments = path.split("/");
+  const name = segments.pop();
+  return segments.some((segment) => TEST_DIRS.has(segment.toLowerCase())) || TEST_FILES.test(name);
+}
+function tierOf(nonTestLines) {
+  return nonTestLines < TIER_BOUNDS.M ? "S" : nonTestLines <= TIER_BOUNDS.L ? "M" : "L";
+}
+function skipped(path) {
+  return path.split("/").some((segment) => SKIPPED_DIRS.includes(segment)) || isDenied(path);
+}
+function walk(root) {
+  const files = [];
+  const pending = [""];
+  while (pending.length > 0) {
+    const dir = pending.pop();
+    let entries;
+    try {
+      entries = readdirSync(join2(root, dir), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const path = dir === "" ? entry.name : `${dir}/${entry.name}`;
+      if (SKIPPED_DIRS.includes(entry.name) || isDenied(path)) continue;
+      if (entry.isDirectory()) pending.push(path);
+      else if (entry.isFile()) files.push(path);
+    }
+  }
+  return files.sort();
+}
+function countFile(path) {
+  let data;
+  try {
+    const stat = lstatSync(path);
+    if (!stat.isFile() || stat.size > MAX_FILE_BYTES) return null;
+    data = readFileSync(path);
+  } catch {
+    return null;
+  }
+  if (data.subarray(0, 8e3).includes(0)) return null;
+  let lines = 0;
+  for (let at = data.indexOf(10); at !== -1; at = data.indexOf(10, at + 1)) lines++;
+  return data.length > 0 && data[data.length - 1] !== 10 ? lines + 1 : lines;
+}
+function repoSize(root, env = process.env, limit = COUNT_LIMIT) {
+  const tracked = trackedFiles(root, env);
+  const kept = tracked === null ? walk(root) : tracked.filter((path) => !skipped(path)).sort();
+  const generated = tracked === null ? /* @__PURE__ */ new Set() : generatedFiles(root, kept, env);
+  const candidates = [];
+  for (const path of kept) {
+    const language = generated.has(path) ? null : languageOf(path);
+    if (language !== null) candidates.push({ path, language });
+  }
+  const step = Math.max(1, candidates.length / limit);
+  const counts = /* @__PURE__ */ new Map();
+  const means = /* @__PURE__ */ new Map();
+  for (let at = 0; at < candidates.length; at += step) {
+    const index = Math.floor(at);
+    const file = candidates[index];
+    const count = countFile(join2(root, file.path));
+    counts.set(index, count);
+    if (count === null) continue;
+    const seen = means.get(file.language) ?? { files: 0, lines: 0 };
+    means.set(file.language, { files: seen.files + 1, lines: seen.lines + count });
+  }
+  const all = [...means.values()].reduce((sum, entry) => ({ files: sum.files + entry.files, lines: sum.lines + entry.lines }), { files: 0, lines: 0 });
+  const meanLines = (language) => {
+    const entry = means.get(language) ?? all;
+    return entry.files > 0 ? entry.lines / entry.files : 0;
+  };
+  const languages = /* @__PURE__ */ new Map();
+  let files = 0;
+  let counted = 0;
+  for (const [index, file] of candidates.entries()) {
+    const known = counts.get(index);
+    if (known === null) continue;
+    if (known !== void 0) counted++;
+    const count = known ?? meanLines(file.language);
+    files++;
+    const entry = languages.get(file.language) ?? { language: file.language, files: 0, lines: 0, testLines: 0 };
+    entry.files++;
+    entry.lines += count;
+    if (isTestPath(file.path)) entry.testLines += count;
+    languages.set(file.language, entry);
+  }
+  const sorted = [...languages.values()].map((entry) => ({ ...entry, lines: Math.round(entry.lines), testLines: Math.round(entry.testLines) })).sort((a, b) => b.lines - a.lines || a.language.localeCompare(b.language));
+  const total = sorted.reduce((sum, entry) => sum + entry.lines, 0);
+  const test = sorted.reduce((sum, entry) => sum + entry.testLines, 0);
+  return { listing: tracked === null ? "walk" : "git", files, counted, lines: { total, test, nonTest: total - test }, languages: sorted, tier: tierOf(total - test) };
+}
 
 // src/model/runFolder.ts
 import { closeSync, fsyncSync, mkdirSync, openSync, realpathSync as realpathSync2, renameSync, rmSync, statSync as statSync2, unlinkSync, writeSync } from "node:fs";
-import { basename, dirname, join as join2, resolve, sep } from "node:path";
+import { basename, dirname, join as join3, resolve, sep } from "node:path";
 var ARCHIFY_DIR = ".archify";
 var DRAFT_FILE = "draft.json";
 var SLUG_MAX = 40;
@@ -144,7 +374,7 @@ function createRunFolder(root, slug, timestamp, options = {}) {
   if (!/^[a-z0-9]+$/.test(prefix)) throw new Error(`"${prefix}" is not a valid run folder prefix`);
   const base = `${prefix}-${slug}-${timestamp}`;
   if (!parseRunName(base) || /[/\\]/.test(base)) throw new Error(`"${base}" is not a valid run folder name`);
-  const parent = join2(root, dir);
+  const parent = join3(root, dir);
   mkdirSync(parent, { recursive: true });
   const parentReal = realpathSync2(parent);
   if (!isInside(realpathSync2(root), parentReal) || !statSync2(parentReal).isDirectory()) {
@@ -153,7 +383,7 @@ function createRunFolder(root, slug, timestamp, options = {}) {
   for (let n = 1; n <= MAX_COLLISIONS; n += 1) {
     const name = n === 1 ? base : `${base}-${n}`;
     try {
-      mkdirSync(join2(parentReal, name));
+      mkdirSync(join3(parentReal, name));
       return name;
     } catch (error) {
       if (error.code !== "EEXIST") throw error;
@@ -163,10 +393,10 @@ function createRunFolder(root, slug, timestamp, options = {}) {
 }
 
 // src/model/runRecord.ts
-import { join as join4 } from "node:path";
+import { join as join5 } from "node:path";
 
 // src/model/confine.ts
-import { lstatSync, realpathSync as realpathSync3 } from "node:fs";
+import { lstatSync as lstatSync2, realpathSync as realpathSync3 } from "node:fs";
 import { dirname as dirname2, isAbsolute, relative } from "node:path";
 function isWithin(parentReal, childReal) {
   const rel = relative(parentReal, childReal);
@@ -174,7 +404,7 @@ function isWithin(parentReal, childReal) {
 }
 function lstatOrNull(path) {
   try {
-    return lstatSync(path);
+    return lstatSync2(path);
   } catch {
     return null;
   }
@@ -204,15 +434,15 @@ import {
   fsyncSync as fsyncSync2,
   mkdirSync as mkdirSync2,
   openSync as openSync2,
-  readFileSync,
+  readFileSync as readFileSync2,
   renameSync as renameSync2,
   rmSync as rmSync2,
   writeSync as writeSync2
 } from "node:fs";
-import { dirname as dirname3, join as join3 } from "node:path";
+import { dirname as dirname3, join as join4 } from "node:path";
 var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
 function writeAtomic(path, content) {
-  const temp = join3(dirname3(path), `.tmp-${process.pid}-${Date.now()}`);
+  const temp = join4(dirname3(path), `.tmp-${process.pid}-${Date.now()}`);
   try {
     const fd = openSync2(temp, "wx");
     try {
@@ -249,7 +479,7 @@ function newRunRecord(fields, now = /* @__PURE__ */ new Date()) {
   };
 }
 function writeRunRecord(root, runDir, record) {
-  const path = join4(runDir, RUN_FILE);
+  const path = join5(runDir, RUN_FILE);
   assertWritable(root, path);
   writeJson(path, record);
 }
@@ -268,7 +498,7 @@ function main(args) {
   let run2;
   try {
     run2 = createRunFolder(root, slugify(focus, basename2(root)), runTimestamp(/* @__PURE__ */ new Date()));
-    writeRunRecord(root, join5(root, ARCHIFY_DIR, run2), newRunRecord({ focus, skillVersion: SKILL_VERSION }));
+    writeRunRecord(root, join6(root, ARCHIFY_DIR, run2), newRunRecord({ focus, skillVersion: SKILL_VERSION }));
   } catch (error) {
     process.stderr.write(`repo-facts.mjs: ${error.message}
 `);
@@ -278,7 +508,8 @@ function main(args) {
     root,
     runFolder: `${ARCHIFY_DIR}/${run2}`,
     draft: `${ARCHIFY_DIR}/${run2}/${DRAFT_FILE}`,
-    git: git && { head: git.head, origin: git.origin, dirtyCount: git.dirtyCount, dirty: git.dirty }
+    git: git && { head: git.head, origin: git.origin, dirtyCount: git.dirtyCount, dirty: git.dirty },
+    size: repoSize(root)
   };
   process.stdout.write(`${JSON.stringify(facts, null, 2)}
 `);
