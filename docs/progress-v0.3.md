@@ -453,7 +453,7 @@ Done when: Rule violations show on the map, in Problems and in PR checks.
 - [ ] **ARC-05 Architecture health** `[unit]` `[dom]`
 - [ ] **PRC-03 Branch maps** `[e2e]`
 - [ ] **PRC-05 Map update in CI** `[unit]` `[smoke]`
-- [ ] **FRS-07 Compare maps** `[unit]` `[dom]` (pulled forward from I6 for PRC-03)
+- [x] **FRS-07 Compare maps** `[unit]` `[dom]` (pulled forward from I6 for PRC-03) — 2026-10-19: `src/model/diff.ts`, `src/extension/compare.ts`, the viewer's compare overlay and bar, the cloud map page's `?compare=<id>`. Tests: `diff.test.ts` (2: boxes matched by id or by shared files with arrows following them, and a map against itself), `main.test.ts` › FRS-07 (added outlined, removed see-through with no menu, the bar and Clear, clearing).
 
 ## I4 Skill retention
 
@@ -480,7 +480,7 @@ Done when: Dashboard, billing and self-hosting work.
 
 Done when: Gates green.
 
-- [ ] **FRS-07 Compare maps** `[unit]` `[dom]`
+- [x] **FRS-07 Compare maps** `[unit]` `[dom]` — built in I3 for PRC-03 (see there).
 - [ ] **VWR-02 Layout in workers** `[unit]` `[ci]`
 - [ ] **VWR-03 Finder** `[dom]`
 - [ ] **VWR-04 Keyboard and screen readers** `[dom]`

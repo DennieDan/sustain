@@ -138,6 +138,58 @@ body {
   display: none;
 }
 
+/* Compare (FRS-07): added boxes and arrows outlined, the older map's removed ones see-through, the summary on top */
+
+.node--added .node__box {
+  stroke: var(--sustain-green);
+  stroke-width: 3px;
+}
+
+.node--removed .node__box {
+  fill: none;
+  stroke: var(--sustain-muted);
+  stroke-dasharray: 6 4;
+}
+
+.node--removed .node__label,
+.node--removed .node__sublabel {
+  fill: var(--sustain-muted);
+}
+
+.edge--added .edge__line {
+  stroke: var(--sustain-green);
+}
+
+.edge--added .edge__head {
+  fill: var(--sustain-green);
+}
+
+.edge--removed .edge__line {
+  stroke: var(--sustain-muted);
+}
+
+.edge--removed .edge__head,
+.edge-label.edge--removed {
+  fill: var(--sustain-muted);
+}
+
+.compare {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 60%;
+  padding: 4px 4px 4px 10px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.app--empty .compare {
+  display: none;
+}
+
 /* Hotspots (ARC-03): boxes tinted by how often their code changes, four steps */
 
 .node--heat-1 .node__box {
@@ -199,6 +251,12 @@ body {
 
 .app--empty .checks-legend {
   display: none;
+}
+
+/* The changes bar takes the bottom right, so the legend moves under the toolbar. */
+.changes:not([hidden]) ~ .checks-legend {
+  top: 48px;
+  bottom: auto;
 }
 
 .node--edited .node__box {

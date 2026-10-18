@@ -1,6 +1,9 @@
 // CLD-03 and CLD-04: what the viewer gets on a cloud page. Boxes open GitHub at the map's commit;
 // freshness comes from the latest check, and a pull request page adds its overlay and candidates.
+// FRS-07: a map page can also compare its map with an earlier one.
 import type { CheckReport } from "../../../src/model/check";
+import { diffMaps } from "../../../src/model/diff";
+import { readDiagram } from "../../../src/model/tolerant";
 import { freshnessHeader } from "../../../src/model/home";
 import type { HostMessage } from "../../../src/model/messages";
 import type { PageData } from "../../../src/model/page";
@@ -24,7 +27,12 @@ export function checkOf(row: UploadRow | undefined): CheckReport | null {
   return row === undefined ? null : (payload(row).check ?? null);
 }
 
-export function mapPageData(repo: Repository, map: UploadRow, check: UploadRow | undefined, pull?: number): PageData {
+/** How a history entry is named: its branch and short commit. */
+export function mapName(row: UploadRow): string {
+  return `${row.branch} at ${row.commit.slice(0, 7)}`;
+}
+
+export function mapPageData(repo: Repository, map: UploadRow, check: UploadRow | undefined, pull?: number, against?: UploadRow): PageData {
   const doc = mapOf(map) ?? {};
   const report = checkOf(check);
   const messages: HostMessage[] = [];
@@ -37,6 +45,9 @@ export function mapPageData(repo: Repository, map: UploadRow, check: UploadRow |
       messages.push({ type: "ghosts", ghosts: report.candidates.map((candidate) => ({ label: candidate.label, files: candidate.files.length })) });
     }
   }
+  const shown = readDiagram(doc);
+  const older = against === undefined ? null : readDiagram(mapOf(against) ?? {});
+  if (shown.ok && older !== null && older.ok) messages.push({ type: "compare", compare: { against: mapName(against!), diff: diffMaps(older.diagram, shown.diagram) } });
   return {
     title: doc.meta?.title ?? `${repo.owner}/${repo.name}`,
     doc,

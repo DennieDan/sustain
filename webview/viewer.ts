@@ -5,6 +5,7 @@ import { layoutDiagram } from "../src/layout/layout";
 import type { MeasureText } from "../src/layout/scene";
 import type { ChangeOverlay, Ghost, GhostArrow, HostMessage } from "../src/model/messages";
 import { NO_IMPORT_EVIDENCE } from "../src/model/uncertainty";
+import { diffSummary, type MapDiff } from "../src/model/diff";
 import type { Freshness } from "../src/model/staleness";
 import { readDiagram, type ViewDiagram } from "../src/model/tolerant";
 import { onMessage, post } from "./bridge";
@@ -43,6 +44,24 @@ export function withGhosts(diagram: ViewDiagram, ghosts: readonly Ghost[], arrow
     sources: [],
   }));
   return { ...diagram, components: [...diagram.components, ...extra], connections: [...diagram.connections, ...newArrows] };
+}
+
+/** Removed boxes' ids hold a colon too, like ghosts', so they never clash with the map's. */
+const REMOVED_PREFIX = "removed:";
+
+/**
+ * FRS-07: `diagram` with the older map's removed boxes added as see-through boxes, and its removed
+ * arrows added after the map's own, wherever both of their ends are drawn.
+ */
+export function withRemoved(diagram: ViewDiagram, diff: MapDiff | null): { diagram: ViewDiagram; arrows: number } {
+  if (diff === null || (diff.boxes.removed.length === 0 && diff.arrows.removed.length === 0)) return { diagram, arrows: 0 };
+  const removedIds = new Map(diff.boxes.removed.map((box, index) => [box.id, `${REMOVED_PREFIX}${index}`]));
+  const boxes = diff.boxes.removed.map((box, index) => ({ id: `${REMOVED_PREFIX}${index}`, type: "external" as const, label: box.label, sublabel: "removed", sources: [] }));
+  const drawn = new Set([...diagram.components.map((component) => component.id), ...boxes.map((box) => box.id)]);
+  const arrows = diff.arrows.removed
+    .map((arrow) => ({ from: removedIds.get(arrow.from) ?? arrow.from, to: removedIds.get(arrow.to) ?? arrow.to, ...(arrow.label ? { label: arrow.label } : {}), variant: "dashed" as const }))
+    .filter((arrow) => drawn.has(arrow.from) && drawn.has(arrow.to));
+  return { diagram: { ...diagram, components: [...diagram.components, ...boxes], connections: [...diagram.connections, ...arrows] }, arrows: arrows.length };
 }
 
 /** `diagram` with each arrow in `edges` dashed and labelled as having no import evidence (ACC-03). */
@@ -110,6 +129,10 @@ export function startViewer(mount: HTMLElement = document.body): void {
   tooltipElement.className = "tooltip";
   tooltipElement.setAttribute("role", "tooltip");
   tooltipElement.hidden = true;
+  // FRS-07: what the comparison found, and Clear.
+  const compareBar = document.createElement("div");
+  compareBar.className = "compare";
+  compareBar.hidden = true;
   // ACC-03: what the dotted boxes and grey dashed arrows mean.
   const legend = document.createElement("div");
   legend.className = "checks-legend";
@@ -123,7 +146,7 @@ export function startViewer(mount: HTMLElement = document.body): void {
     row.textContent = text!;
     legend.append(row);
   }
-  app.append(svg, toolbar, highlightBar, freshnessBar, changesBar, emptyState, tooltipElement, legend);
+  app.append(svg, toolbar, highlightBar, freshnessBar, changesBar, compareBar, emptyState, tooltipElement, legend);
   mount.append(app);
 
   const viewport = new ViewportController(svg, content, toolbar, window);
@@ -139,6 +162,43 @@ export function startViewer(mount: HTMLElement = document.body): void {
   let lastLoad: { doc: unknown; file: string } | null = null;
   let ghosts: Ghost[] = [];
   let ghostArrows: GhostArrow[] = [];
+  /** FRS-07: the comparison with an older map, kept across reloads until cleared. */
+  let compare: { against: string; diff: MapDiff } | null = null;
+  /** Connections from this index on are the older map's removed arrows. */
+  let firstRemoved = Number.POSITIVE_INFINITY;
+
+  function applyCompare(): void {
+    const added = new Set(compare?.diff.boxes.added ?? []);
+    const addedArrows = new Set(compare?.diff.arrows.added ?? []);
+    for (const node of content.querySelectorAll(".node")) {
+      const id = node.getAttribute("data-id") ?? "";
+      node.classList.toggle("node--added", added.has(id));
+      node.classList.toggle("node--removed", id.startsWith(REMOVED_PREFIX));
+      if (id.startsWith(REMOVED_PREFIX)) node.setAttribute("data-vscode-context", JSON.stringify({ webviewSection: "ghost", preventDefaultContextMenuItems: true }));
+    }
+    for (const edge of content.querySelectorAll(".edge, .edge-label")) {
+      const index = Number(edge.getAttribute("data-index"));
+      edge.classList.toggle("edge--added", addedArrows.has(index));
+      edge.classList.toggle("edge--removed", index >= firstRemoved && index < firstViolation);
+    }
+    const notes: Record<string, string> = {};
+    if (compare !== null) {
+      for (const id of compare.diff.boxes.added) notes[id] = `New since ${compare.against}.`;
+      for (const box of compare.diff.boxes.relabelled) notes[box.id] = `Was ${box.label} in ${compare.against}.`;
+      compare.diff.boxes.removed.forEach((box, index) => (notes[`${REMOVED_PREFIX}${index}`] = `Removed since ${compare!.against}.`));
+    }
+    tooltip.setNotes("compare", notes);
+    compareBar.replaceChildren();
+    compareBar.hidden = compare === null;
+    if (compare === null) return;
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "toolbar__button compare__clear";
+    clear.textContent = "Clear";
+    clear.addEventListener("click", () => post({ type: "clearCompare" }));
+    compareBar.append(document.createTextNode(`Compared with ${compare.against}: ${diffSummary(compare.diff)} `), clear);
+  }
+
   /** ARC-01: arrows for imports that break the rules. */
   let violationArrows: { from: string; to: string; label: string }[] = [];
   /** Connections from this index on are violation arrows, then ghost arrows. */
@@ -303,7 +363,10 @@ export function startViewer(mount: HTMLElement = document.body): void {
     app.classList.remove("app--empty");
     const ids = new Set(result.diagram.components.map((component) => component.id));
     const broken = violationArrows.filter((arrow) => ids.has(arrow.from) && ids.has(arrow.to)).map((arrow) => ({ ...arrow, variant: "emphasis" as const }));
-    const checked = withUncertainty(result.diagram, uncertain.shown ? uncertain.edges : []);
+    const uncertainOnes = withUncertainty(result.diagram, uncertain.shown ? uncertain.edges : []);
+    const compared = withRemoved(uncertainOnes, compare?.diff ?? null);
+    const checked = compared.diagram;
+    firstRemoved = uncertainOnes.connections.length;
     firstViolation = checked.connections.length;
     firstGhostArrow = firstViolation + broken.length;
     const diagram = withGhosts({ ...checked, connections: [...checked.connections, ...broken] }, ghosts, ghostArrows);
@@ -313,6 +376,7 @@ export function startViewer(mount: HTMLElement = document.body): void {
     applyGhosts();
     applyUncertainty();
     applyHotspots();
+    applyCompare();
     applyHighlight();
     applyFreshness();
     applyChanges();
@@ -351,6 +415,10 @@ export function startViewer(mount: HTMLElement = document.body): void {
     if (message.type === "ghosts") {
       ghosts = message.ghosts;
       ghostArrows = message.arrows ?? [];
+      if (lastLoad === null) return;
+    }
+    if (message.type === "compare") {
+      compare = message.compare;
       if (lastLoad === null) return;
     }
     if (message.type === "hotspots") {

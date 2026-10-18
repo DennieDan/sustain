@@ -1,4 +1,5 @@
 // Messages between the extension host and the webviews (FR-VIEW-04). Types only.
+import type { MapDiff } from "./diff";
 import type { FeedItem, StreamUsage } from "./agentStream/feed";
 import type { Block } from "./ask";
 import type { RunStatus } from "./agentStream/tracker";
@@ -22,6 +23,8 @@ export type HostMessage =
   | { type: "changes"; overlay: ChangeOverlay | null }
   /** PRC-02: new box candidates drawn as dashed ghost boxes, and PRC-06's new arrows as dashed ghost arrows; never written. */
   | { type: "ghosts"; ghosts: Ghost[]; arrows?: GhostArrow[] }
+  /** FRS-07: the shown map compared with an older one, or `null` to clear. */
+  | { type: "compare"; compare: { against: string; diff: MapDiff } | null }
   /** ARC-03: each box's heat level (0 to 4) and tooltip line, and whether the Hotspots toggle shows them. */
   | { type: "hotspots"; boxes: Record<string, { level: number; note: string }>; shown: boolean }
   /** ARC-01: imports that break the rules, as red arrows between the boxes, labelled with the rules. */
@@ -58,6 +61,8 @@ export type WebviewMessage =
   | { type: "setFollow"; on: boolean }
   | { type: "mapFolder" }
   | { type: "clearChanges" }
+  /** FRS-07: the compare bar's Clear. */
+  | { type: "clearCompare" }
   | { type: "refresh" };
 
 /** What the session webview renders — public `session.json` fields plus the leaderboard. */

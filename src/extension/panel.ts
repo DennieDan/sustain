@@ -7,6 +7,7 @@ import { citingBoxes } from "../model/citing";
 import { freshnessHeader } from "../model/home";
 import type { ChangeOverlay, Ghost, GhostArrow, HostMessage, WebviewMessage } from "../model/messages";
 import { AUDIT_FILE } from "../model/audit";
+import type { MapDiff } from "../model/diff";
 import { EVIDENCE_FILE } from "../model/evidence";
 import type { MapFreshness } from "../model/staleness";
 import { uncertainty } from "../model/uncertainty";
@@ -66,6 +67,8 @@ export class ArchitecturePanel {
   /** New box candidates drawn as ghost boxes (PRC-02), cleared with the overlay. */
   private ghosts: Ghost[] = [];
   private ghostArrows: GhostArrow[] = [];
+  /** FRS-07: the shown map compared with another, until cleared or another file is shown. */
+  private compare: { against: string; diff: MapDiff } | null = null;
   /** Watches the shown map's evidence.json and audit.json (ACC-03). */
   private sidecars: { dir: string; watcher: vscode.FileSystemWatcher } | undefined;
   private readonly disposables: vscode.Disposable[] = [];
@@ -84,6 +87,22 @@ export class ArchitecturePanel {
   sendViolations(): void {
     const violations = ArchitecturePanel.rules?.result(this.root)?.violations ?? [];
     const message: HostMessage = { type: "violations", arrows: violationArrows(violations, this.components()) };
+    void this.panel.webview.postMessage(message);
+  }
+
+  /** Compares the shown map with `against`'s, or clears the comparison for `null` (FRS-07). */
+  showCompare(compare: { against: string; diff: MapDiff } | null): void {
+    this.compare = compare;
+    this.sendCompare();
+  }
+
+  /** The comparison on the shown map, for the tests. */
+  get comparison(): { against: string; diff: MapDiff } | null {
+    return this.compare;
+  }
+
+  private sendCompare(): void {
+    const message: HostMessage = { type: "compare", compare: this.compare };
     void this.panel.webview.postMessage(message);
   }
 
@@ -215,6 +234,7 @@ export class ArchitecturePanel {
     if (file !== this.file) {
       this.changes = null;
       this.ghosts = [];
+      this.compare = null;
     }
     this.root = root;
     this.file = file;
@@ -266,6 +286,7 @@ export class ArchitecturePanel {
     this.sendUncertainty();
     this.sendViolations();
     this.sendHotspots();
+    this.sendCompare();
     if (this.ghosts.length + this.ghostArrows.length > 0) this.showGhosts(this.ghosts, this.ghostArrows);
   }
 
@@ -374,6 +395,9 @@ export class ArchitecturePanel {
         return;
       case "clearChanges":
         this.showChanges(null);
+        return;
+      case "clearCompare":
+        this.showCompare(null);
         return;
       case "refresh":
         await vscode.commands.executeCommand("sustain.refreshArchitecture");

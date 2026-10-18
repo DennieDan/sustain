@@ -7,6 +7,7 @@ import type { Scene } from "../../src/layout/scene";
 import type { HostMessage, WebviewMessage } from "../../src/model/messages";
 import { fitView } from "../../webview/viewport";
 import { uncertainty } from "../../src/model/uncertainty";
+import { diffMaps } from "../../src/model/diff";
 import { gridScene } from "./support/scene";
 
 vi.mock("../../src/layout/layout", () => ({ layoutDiagram: vi.fn() }));
@@ -368,5 +369,50 @@ describe("ARC-03 hotspots on the map", () => {
     expect(heat()).toEqual(["node--heat-4", "node--heat-2", null]);
     send({ type: "hotspots", boxes, shown: false });
     expect(heat()).toEqual([null, null, null]);
+  });
+});
+
+describe("FRS-07 compare maps", () => {
+  const BEFORE = {
+    components: [
+      { id: "api", label: "API", sources: [{ path: "src/api/a.ts" }] },
+      { id: "cache", label: "Cache", sources: [{ path: "src/cache/a.ts" }] },
+    ],
+    connections: [{ from: "api", to: "cache", label: "reads" }],
+  };
+  const AFTER = {
+    meta: { title: "Now" },
+    components: [
+      { id: "api", label: "Server", type: "backend", sources: [{ path: "src/api/a.ts" }] },
+      { id: "mail", label: "Mail", type: "external", sources: [{ path: "src/mail/a.ts" }] },
+    ],
+    connections: [{ from: "api", to: "mail" }],
+  };
+
+  test("added boxes and arrows are outlined, removed ones are drawn see-through, and the bar sums it up with Clear", async () => {
+    send({ type: "load", doc: AFTER, file: "/r/now.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    const diff = diffMaps(BEFORE, { components: AFTER.components, connections: AFTER.connections });
+    send({ type: "compare", compare: { against: "architecture-old-20261001-090000", diff } });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(3));
+    const node = (id: string): Element => document.querySelector(`.node[data-id="${id}"]`)!;
+    expect(node("mail").classList.contains("node--added")).toBe(true);
+    expect(node("api").classList.contains("node--added")).toBe(false);
+    expect(node("removed:0").classList.contains("node--removed")).toBe(true);
+    expect([...node("removed:0").querySelectorAll("text")].map((text) => text.textContent)).toEqual(["Cache", "removed"]);
+    expect(JSON.parse(node("removed:0").getAttribute("data-vscode-context")!).webviewSection).toBe("ghost");
+    expect(document.querySelector('.edge[data-index="0"]')!.classList.contains("edge--added")).toBe(true);
+    const removed = document.querySelector('.edge[data-index="1"]')!;
+    expect([removed.classList.contains("edge--removed"), removed.getAttribute("data-from"), removed.getAttribute("data-to")]).toEqual([true, "api", "removed:0"]);
+    const bar = document.querySelector<HTMLElement>(".compare")!;
+    expect(bar.hidden).toBe(false);
+    expect(bar.textContent).toBe("Compared with architecture-old-20261001-090000: 1 box added · 1 removed · 1 relabelled · 1 arrow added · 1 removed Clear");
+    posted.length = 0;
+    bar.querySelector("button")!.click();
+    expect(posted).toEqual([{ type: "clearCompare" }]);
+    send({ type: "compare", compare: null });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    expect(bar.hidden).toBe(true);
+    expect(document.querySelectorAll(".node--added, .edge--added").length).toBe(0);
   });
 });

@@ -1,17 +1,18 @@
 // CLD-03: a repository's main map, the latest uploaded from its default branch, with freshness from
-// the latest check and the history of maps. `?map=<id>` shows an earlier one.
+// the latest check and the history of maps. `?map=<id>` shows an earlier one, and `?compare=<id>`
+// draws what changed since another (FRS-07).
 import { notFound, redirect } from "next/navigation";
 import { MapViewer } from "../../../components/MapViewer";
-import { mapPageData } from "../../../lib/mapPage";
+import { mapName, mapPageData } from "../../../lib/mapPage";
 import { openSpace } from "../../../lib/pages";
 import { services } from "../../../lib/services";
 import { latestCheck, mainMap, mapHistory } from "../../../lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function MapPage({ params, searchParams }: { params: Promise<{ owner: string; repo: string }>; searchParams: Promise<{ map?: string }> }) {
+export default async function MapPage({ params, searchParams }: { params: Promise<{ owner: string; repo: string }>; searchParams: Promise<{ map?: string; compare?: string }> }) {
   const { owner, repo: name } = await params;
-  const { map: chosen } = await searchParams;
+  const { map: chosen, compare } = await searchParams;
   const space = await openSpace(owner, name);
   if (space === "sign-in") redirect(`/signin?callbackUrl=${encodeURIComponent(`/${owner}/${name}`)}`);
   if (space === "not-found") notFound();
@@ -29,9 +30,11 @@ export default async function MapPage({ params, searchParams }: { params: Promis
     );
   }
   const check = await latestCheck(db, space.repo);
+  const against = compare === undefined ? undefined : history.find((row) => String(row.id) === compare && row.id !== shown.id);
+  const here = (query: Record<string, number>): string => `/${owner}/${name}?${new URLSearchParams(Object.entries({ ...(chosen === undefined ? {} : { map: chosen }), ...query }).map(([key, value]) => [key, String(value)])).toString()}`;
   return (
     <>
-      <MapViewer data={mapPageData(space.repo, shown, check)} />
+      <MapViewer data={mapPageData(space.repo, shown, check, undefined, against)} />
       <aside className="map-side" aria-label="Map history">
         <h2>
           {owner}/{name}
@@ -52,6 +55,14 @@ export default async function MapPage({ params, searchParams }: { params: Promis
               <a href={`/${owner}/${name}?map=${row.id}`}>
                 {row.createdAt.toISOString().slice(0, 16).replace("T", " ")} · {row.branch} · {row.commit.slice(0, 7)}
               </a>
+              {row.id === shown.id ? null : (
+                <>
+                  {" · "}
+                  <a href={here({ compare: row.id })} aria-label={`Compare with ${mapName(row)}`}>
+                    Compare
+                  </a>
+                </>
+              )}
             </li>
           ))}
         </ol>

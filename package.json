@@ -213,6 +213,11 @@
         "category": "Sustain"
       },
       {
+        "command": "sustain.compareMaps",
+        "title": "Compare With…",
+        "category": "Sustain"
+      },
+      {
         "command": "sustain.exportPage",
         "title": "Export Page",
         "category": "Sustain",
@@ -388,6 +393,11 @@
           "command": "sustain.writeAgentNotes",
           "when": "activeWebviewPanelId == 'sustain.architecture'",
           "group": "z_sustain@1"
+        },
+        {
+          "command": "sustain.compareMaps",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "z_sustain@0"
         }
       ],
       "explorer/context": [
