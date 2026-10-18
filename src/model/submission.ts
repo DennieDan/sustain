@@ -4,6 +4,7 @@
 import { semanticChecks } from "./checks";
 import { validateArchitecture } from "./schema";
 import { isJsonObject, pointerToken, type ArchifyDoc, type Issue, type JsonObject, type Repository } from "./types";
+import { findSecrets } from "./secrets";
 
 const META_DROPS = ["viewBox", "views", "animation", "translations", "visual_preset", "engineering_profile"];
 const COMPONENT_DROPS = ["pos", "size", "row", "col", "icon", "brand"];
@@ -74,12 +75,12 @@ export interface SubmissionResult {
 
 /**
  * Runs steps 1–4 on a parsed draft, mutating it into the candidate. Schema errors stop
- * before steps 3–4; otherwise semantic checks and `checkCitations` both run.
+ * before steps 3–4; otherwise semantic checks, the secret scan (SAF-03) and `checkCitations` all run.
  */
 export function checkSubmission(value: unknown, app: AppOwned, checkCitations: (doc: ArchifyDoc) => Issue[]): SubmissionResult {
   const removed = applyAppOwnedFields(value, app);
   const schemaErrors = validateArchitecture(value);
   if (schemaErrors.length > 0) return { removed, errors: schemaErrors };
   const doc = value as ArchifyDoc;
-  return { removed, errors: [...semanticChecks(doc), ...checkCitations(doc)] };
+  return { removed, errors: [...semanticChecks(doc), ...findSecrets(doc), ...checkCitations(doc)] };
 }

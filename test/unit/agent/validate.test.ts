@@ -63,6 +63,15 @@ describe("FR-VAL-01 CLI exit paths", () => {
     expect(report.errors[0]!.message).toMatch(/^Schema: /);
   });
 
+  test("SAF-03 a secret-shaped string rejects the draft at its pointer", () => {
+    const doc = draftDoc();
+    doc.components[0]!["sublabel"] = "key AKIAIOSFODNN7EXAMPLE";
+    const { root } = setup(doc);
+    const run = runScript("validate", [DRAFT], { cwd: root });
+    expect(run.status).toBe(1);
+    expect(run.json().errors).toEqual([{ pointer: "/components/0/sublabel", message: "SecretLike: looks like a secret (AWS access key). Remove it from the diagram." }]);
+  });
+
   test("an absolute draft path works from any cwd", () => {
     const { root, draftPath } = setup(draftDoc());
     const run = runScript("validate", [draftPath], { cwd: tempDir() });

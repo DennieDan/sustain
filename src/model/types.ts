@@ -91,7 +91,8 @@ export type IssueCode =
   | "BoundaryOverlap"
   | "InvalidCitationPath"
   | "DeniedCitation"
-  | "BrokenCitation";
+  | "BrokenCitation"
+  | "SecretLike";
 
 /** One finding, located by the RFC 6901 JSON pointer of the offending instance (`""` = whole document). */
 export interface Issue {
