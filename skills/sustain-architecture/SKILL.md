@@ -63,6 +63,12 @@ with `<draft>` replaced by the `draft` path from step 2. It prints one JSON obje
 - You may repair at most 3 times (4 validator runs in total). After the 4th rejection, stop and report the remaining errors and the draft path.
 - Exit code 2 means the command itself was wrong (message on stderr): fix the command, not the draft.
 
-## 7. Report
+## 7. Review the evidence once
+
+An `accepted` report has an `evidence` list. Each `DeclarationOnly` entry names a box whose citations only declare something. For each one, find a range that shows what the box does (a call site, a handler body, a registration, a query or a write) and cite it, or change the label to what the cited code shows.
+
+If that changes the diagram, write the whole revised diagram to `draft.json` in the same run folder and validate it again as in step 6. This revision does not count against the 3 repairs, and it happens once: do not review the evidence of the revised diagram.
+
+## 8. Report
 
 On `accepted`, report the `candidate` path and the number of components, and tell the user that the Sustain viewer will offer to open the new diagram.

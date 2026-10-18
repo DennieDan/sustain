@@ -53,6 +53,7 @@ export interface ValidateReport {
   candidate?: string;
   errors: { pointer: string; message: string }[];
   warnings: { pointer: string; message: string }[];
+  evidence?: { code: string; pointer: string; component: string; message: string }[];
   hint?: string;
 }
 

@@ -4,11 +4,14 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { checkCitations } from "../model/citations";
 import { assertWritable } from "../model/confine";
+import { checkEvidence, EVIDENCE_FILE, type EvidenceFinding } from "../model/evidence";
 import { fingerprint, writeFingerprints } from "../model/fingerprints";
 import { collectGitFacts, repositoryFromGit } from "../model/git";
 import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftLocation } from "../model/runFolder";
 import { newRunRecord, readRunRecord, RUN_FILE, updateRunRecord, type RunRecord } from "../model/runRecord";
+import { writeJson } from "../model/session";
 import { checkSubmission, REMOVED_FIELD_MESSAGE } from "../model/submission";
+import { fileReader } from "../model/staleness";
 import { stringifyDocument, type ArchifyDoc, type Issue } from "../model/types";
 
 const MAX_LISTED_ERRORS = 50;
@@ -19,6 +22,8 @@ interface Report {
   candidate?: string;
   errors: { pointer: string; message: string }[];
   warnings: { pointer: string; message: string }[];
+  /** ACC-01: what to review once after acceptance; only on an accepted report. */
+  evidence?: EvidenceFinding[];
   hint?: string;
 }
 
@@ -94,10 +99,16 @@ function main(args: string[]): number {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return 1;
   }
+  const doc = value as ArchifyDoc;
+  const read = fileReader(location.root);
+  const evidence = checkEvidence(doc.components, (path) => read(path)?.toString("utf8") ?? null);
   try {
-    assertWritable(location.root, join(dirname(location.draft), CANDIDATE_FILE));
+    const runDir = dirname(location.draft);
+    assertWritable(location.root, join(runDir, CANDIDATE_FILE));
     publishCandidate(location.draft, stringifyDocument(value));
-    writeFingerprints(location.root, dirname(location.draft), fingerprint(value as ArchifyDoc, location.root, git?.head ?? null));
+    writeFingerprints(location.root, runDir, fingerprint(doc, location.root, git?.head ?? null));
+    assertWritable(location.root, join(runDir, EVIDENCE_FILE));
+    writeJson(join(runDir, EVIDENCE_FILE), evidence);
     record(location, { phase: "accepted", finishedAt: new Date().toISOString() });
   } catch (error) {
     return usageError(`cannot publish ${CANDIDATE_FILE}: ${(error as Error).message}`);
@@ -107,6 +118,7 @@ function main(args: string[]): number {
     candidate: `${ARCHIFY_DIR}/${location.run}/${CANDIDATE_FILE}`,
     errors: [],
     warnings,
+    evidence: evidence.findings,
   };
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   return 0;

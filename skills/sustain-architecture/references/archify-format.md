@@ -12,14 +12,15 @@ Work in this order:
 
 1. **Map the slice.** Use the manifests, entry points, registrations and configuration to find the runtime units relevant to the request (the focus, if one is given; otherwise a system overview of the main user journey).
 2. **Trace ownership.** Follow imports and call sites until each responsibility reaches its actual input, output or side effect. Take relationships from the observed actor, operation and target at their call sites. Keep the controller that requests an operation separate from the runtime that runs it and the store that receives the bytes. A responsibility statement ("maintains tasks") doesn't prove direct I/O.
-3. **Record evidence while reading.** Keep exact repository-relative paths and inclusive line ranges for each component. A function that is exported or configured but never called on the normal path is optional, not a required runtime edge.
+3. **Record evidence while reading.** Keep exact repository-relative paths and inclusive line ranges for each component. Each component cites at least one range that shows its behaviour: a call site, a handler body, a registration, a query or a write. A declaration alone (a class or function signature, an interface, a type) shows that code exists, not what it does. A function that is exported or configured but never called on the normal path is optional, not a required runtime edge.
 4. **Name uncertainty.** Never turn a label, a package description or a config value into a service or behavior you haven't observed. If something stays unknown, say so in a sublabel or card instead of inventing it.
 5. **Stop** when every requested responsibility and relationship has supporting source and the remaining unknowns can't change the picture. Batch independent reads. Each read should answer a question that could change the diagram. On a small repository, aim to write the draft within about 25 reads and searches.
 
 ## Composition
 
 - Default to a system overview led by the main user journey, unless the focus asks for a narrower mechanism, a module map or a deployment topology. Name a narrower scope in the title.
-- Group cooperating roles in accurately named subsystems when that still explains the interaction. Separate roles when grouping would hide control ownership, a trust or persistence boundary, or lifecycle behavior.
+- Each label states behaviour you observed in the cited code, such as "Validates and publishes drafts", rather than a name copied from a file or class.
+- Group cooperating roles in accurately named subsystems when that still explains the interaction. A group needs a shared runtime role, owner or boundary; shared naming alone is not one. Separate roles when grouping would hide control ownership, a trust or persistence boundary, or lifecycle behavior.
 - Typical size: 6 to 16 components. There is no quota; prefer fewer, truer nodes.
 - Relationship labels carry meaning: action, protocol, direction, async behavior. Keep them short (one to four words).
 - Add a boundary only when it expresses real isolation, ownership, runtime or persistence. Add cards only when they answer an extra reader question (2 to 4 cards at most, short items).
@@ -50,3 +51,5 @@ Don't write `schema_version`, `diagram_type`, `meta.output`, `meta.locale`, `met
 4. **Citations:** every `path` is a repository-relative `/` path without `.` or `..` segments, is not on the deny-list, resolves (after symlinks) to a regular text file inside the repository of at most 2 MiB; `line ≥ 1`, `end_line ≥ line`, and both within the file's line count. A trailing newline does not count as an extra line.
 
 Each error carries a JSON pointer such as `/components/3/sources/0/end_line` and a message that starts with the rule's category (for example `BrokenCitation:`). Fix exactly those and write the whole diagram again. On success the validator writes the diagram as `candidate.json` in the same run folder and deletes the draft; `candidate.json` is what the viewer opens.
+
+An accepted report also lists `evidence`. A `DeclarationOnly` entry names a component whose every citation is at most 3 lines that only declare something. Review the list once, as the skill describes.

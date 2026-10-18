@@ -46,7 +46,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
     const run = runScript("validate", [DRAFT], { cwd: root, env: envWithoutGit() });
     expect(run.status).toBe(0);
     expect(run.stderr).toBe("");
-    expect(run.json()).toEqual({ status: "accepted", candidate: `.archify/${RUN}/candidate.json`, errors: [], warnings: [] });
+    expect(run.json()).toEqual({ status: "accepted", candidate: `.archify/${RUN}/candidate.json`, errors: [], warnings: [], evidence: [] });
   });
 
   test("rejected: exit 1, errors with pointers, the hint, no candidate", () => {
@@ -87,7 +87,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
     const { root, draftPath } = setup(draftDoc());
     const run = runScript("validate", [draftPath], { cwd: tempDir() });
     expect(run.status).toBe(0);
-    expect(runFiles(root)).toEqual(["candidate.json", "fingerprints.json", "run.json"]);
+    expect(runFiles(root)).toEqual(["candidate.json", "evidence.json", "fingerprints.json", "run.json"]);
   });
 
   test("malformed JSON is a rejection at pointer \"\"", () => {
@@ -144,6 +144,38 @@ describe("FR-VAL-01 CLI exit paths", () => {
       ["web", 0, "src/web.ts", git(root, "hash-object", "--no-filters", "src/web.ts").trim()],
       ["api", 0, "src/api.ts", git(root, "hash-object", "--no-filters", "src/api.ts").trim()],
     ]);
+  });
+
+  test("ACC-01 an accepted report lists declaration-only boxes and evidence.json records them", () => {
+    const doc = draftDoc();
+    doc.components[1]!["sources"] = [{ path: "src/model.ts", line: 1 }];
+    const { root } = setup(doc);
+    put(root, "src/model.ts", "export interface Model {\n  id: string;\n}\n");
+    const report = runScript("validate", [DRAFT], { cwd: root }).json();
+    const finding = { code: "DeclarationOnly", pointer: "/components/1", component: "api", message: expect.stringContaining("a call site") };
+    expect(report.evidence).toEqual([finding]);
+    expect(JSON.parse(readFileSync(join(root, ".archify", RUN, "evidence.json"), "utf8"))).toEqual({ schema: 1, findings: [finding] });
+  });
+
+  test("ACC-01 a revised draft in an accepted run folder replaces the candidate and its sidecars", () => {
+    const doc = draftDoc();
+    doc.components[1]!["sources"] = [{ path: "src/model.ts", line: 1 }];
+    const { root } = setup(doc);
+    put(root, "src/model.ts", "export interface Model {\n  id: string;\n}\nexport const save = (m: Model) => db.insert(m);\n");
+    expect(runScript("validate", [DRAFT], { cwd: root }).json().evidence).toHaveLength(1);
+
+    doc.components[1]!["sources"] = [{ path: "src/model.ts", line: 4 }];
+    doc.components[1]!["label"] = "Saves models";
+    setup(doc, { root });
+    const revised = runScript("validate", [DRAFT], { cwd: root });
+    expect(revised.status).toBe(0);
+    expect(revised.json().evidence).toEqual([]);
+    expect(candidate(root).components[1]!["label"]).toBe("Saves models");
+    expect(JSON.parse(readFileSync(join(root, ".archify", RUN, "evidence.json"), "utf8")).findings).toEqual([]);
+    const prints = JSON.parse(readFileSync(join(root, ".archify", RUN, "fingerprints.json"), "utf8"));
+    expect(prints.citations[1]).toMatchObject({ component: "api", path: "src/model.ts", line: 4 });
+    expect(JSON.parse(readFileSync(join(root, ".archify", RUN, "run.json"), "utf8"))).toMatchObject({ phase: "accepted", attempts: 2 });
+    expect(runFiles(root)).toEqual(["candidate.json", "evidence.json", "fingerprints.json", "run.json"]);
   });
 
   test("CST-04 a read-only run folder is an I/O error: exit 2 and the draft stays", () => {
@@ -301,7 +333,7 @@ describe("FR-VAL-06 publish", () => {
   test("CST-04 an accepted run leaves candidate.json and run.json, the candidate written as 2-space JSON with a trailing newline", () => {
     const { root } = setup(draftDoc());
     expect(runScript("validate", [DRAFT], { cwd: root, env: envWithoutGit() }).status).toBe(0);
-    expect(runFiles(root)).toEqual(["candidate.json", "fingerprints.json", "run.json"]);
+    expect(runFiles(root)).toEqual(["candidate.json", "evidence.json", "fingerprints.json", "run.json"]);
     const text = readFileSync(join(root, ".archify", RUN, "candidate.json"), "utf8");
     expect(text).toBe(`${JSON.stringify(JSON.parse(text), null, 2)}\n`);
   });

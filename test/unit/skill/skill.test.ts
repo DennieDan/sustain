@@ -95,3 +95,21 @@ describe("FRS-05 refresh skill", () => {
     for (const phrase of ["`boxes`", "`moved`", "`uncovered`", "`newFolders`", "With `paths`, change nothing outside that scope.", "including its `id`"]) expect(text).toContain(phrase);
   });
 });
+
+describe("ACC-01 behaviour over names", () => {
+  test("the format reference asks for behaviour ranges, observed labels and real groupings", () => {
+    const reference = readFileSync(join(skillDir, "references/archify-format.md"), "utf8");
+    expect(reference).toContain("cites at least one range that shows its behaviour: a call site, a handler body, a registration, a query or a write");
+    expect(reference).toContain("Each label states behaviour you observed");
+    expect(reference).toContain("A group needs a shared runtime role, owner or boundary; shared naming alone is not one.");
+    expect(reference).toContain("`DeclarationOnly`");
+  });
+
+  test.each(["sustain-architecture", "sustain-refresh"])("%s reviews the evidence once, outside the repair count", (name) => {
+    const text = readFileSync(join(repoRoot, "skills", name, "SKILL.md"), "utf8");
+    expect(text).toContain("## 7. Review the evidence once");
+    expect(text).toContain("in the same run folder and validate it again");
+    expect(text).toContain("This revision does not count against the 3 repairs");
+    expect(text).toMatch(/it happens once/);
+  });
+});

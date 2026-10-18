@@ -53,3 +53,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0047](0047-the-viewer-reaches-its-host-through-a-bridge.md) | The viewer reaches its host through a bridge and colours itself from tokens | accepted | 2026-10-18 |
 | [0048](0048-maps-show-staleness-from-fingerprints.md) | Maps show staleness from fingerprints on load and on change | accepted | 2026-10-18 |
 | [0049](0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md) | A refresh skill updates a map from its fingerprints | accepted | 2026-10-18 |
+| [0050](0050-the-validator-reports-evidence-on-acceptance.md) | The validator reports evidence on acceptance | accepted | 2026-10-18 |
