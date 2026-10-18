@@ -10,7 +10,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | D2 The product in VS Code | Closed pending owner (UI-02, UI-06, SET-01 `[smoke]`) | `1d8bcf4` |
 | D3 The living map | Closed pending owner (RCH-01 `[smoke]`) | `3850c3e` |
 | D4 Pull request checks | Closed pending owner (PRC-04 `[ci]`) | `eced4f5` |
-| D5 Sustain Cloud v1 | Not started | |
+| D5 Sustain Cloud v1 | In progress | |
 | D6 Ship | Not started | |
 | I1 Cost | Not started | |
 | I2 Accuracy | Not started | |
@@ -238,6 +238,26 @@ Done when: The Action comments on this repository's pull requests; Review shows 
 - [ ] **PRC-04 GitHub Action** `[unit]` `[ci]` — `[unit]` done 2026-10-18: `action/` with its committed bundle; `test/unit/action.test.ts` (5: a comment posted then updated on a recorded `pull_request` payload with a fake API; fail-on; hostile labels in the comment and chart; comment off and bad events; the committed bundle equals a fresh build), `noNetwork.test.ts` › `PRC-04 in the Action only the GitHub client uses the network…`, `ci.test.ts` › the `action-dist` and `sustain-check` jobs. ADR 0053. `[ci]` waits for the owner (see Waiting).
 
 ## D5 Sustain Cloud v1
+
+### D5 proposal (2026-10-18)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `package.json` (workspaces), `cloud/package.json`, `cloud/next.config.ts`, `cloud/tsconfig.json` | The `cloud/` workspace: Next.js 16 App Router, React 19, next-auth 4, Drizzle ORM with PGlite, Playwright; exact versions | +80 |
+| `cloud/src/db/schema.ts`, `cloud/src/db/client.ts`, `cloud/src/lib/store.ts` | Tables for users, organizations, repositories, access, uploads and tokens; PGlite for tests and local runs; queries | +260 |
+| `cloud/src/lib/github.ts`, `cloud/src/lib/access.ts`, `cloud/src/auth.ts`, `cloud/src/app/api/auth/` | CLD-01: GitHub sign-in, organizations mirrored, permission to role mapping, rechecks at sign-in and hourly | +220 |
+| `cloud/src/lib/oidc.ts`, `cloud/src/lib/tokens.ts`, `cloud/src/lib/upload.ts`, `schemas/sidecars/*.schema.json`, `cloud/src/app/api/v1/uploads/route.ts` | CLD-02: the upload API: OIDC or hashed tokens, schemas with no extra properties, the secret scan, 1 MiB, a rate limit | +330 |
+| `cloud/src/app/[owner]/[repo]/`, `cloud/src/lib/viewerPage.ts`, `esbuild.mjs` | CLD-03, CLD-04: map pages with history and freshness, pull request pages with the overlay, candidates and stale boxes, in the standalone viewer | +260 |
+| `cloud/src/app/(site)/`, `cloud/src/lib/markdown.ts` | CLD-08: landing, docs from the README and `docs/`, privacy with the upload schema, the pricing note, the gallery; no analytics | +260 |
+| `src/cli/commands.ts`, `src/cloud/client.ts`, `action/src/main.ts` | CLD-09: `sustain.mjs publish [--run] [--dry-run]` with `SUSTAIN_TOKEN`, and the Action's `upload` through OIDC | +180 |
+| `cloud/src/app/settings/`, `cloud/src/lib/store.ts` | CLD-11: delete a map, a repository's data or the account, at once; tokens, public maps | +150 |
+
+Tests the D5 ACs call for:
+- permission mapping; sign-in against a mocked GitHub;
+- an extra `content` field rejected, a secret rejected, OIDC verified with test keys, tokens stored hashed;
+- map pages, pull request pages and the public site against a mocked GitHub;
+- the publish payload, the dry run, the scan and both authentication paths against a fake server;
+- deletion of a map, a repository's data and an account.
 
 Done when: Uploads, map pages and PR pages work against mocks.
 
