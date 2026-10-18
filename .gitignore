@@ -18,3 +18,4 @@ cloud/playwright-report/
 cloud/public/viewer.js
 cloud/public/viewer.css
 release/
+bench/results/

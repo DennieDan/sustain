@@ -1,0 +1,63 @@
+{
+  "entries": [
+    {
+      "id": "sustain",
+      "url": ".",
+      "commit": "080b865c39d1ab6f689c8c1020bd54d23d16c82e",
+      "changeTo": "c3b722bf3348fb855d46b9a306c0a2769c3c4054",
+      "tier": "S",
+      "language": "TypeScript",
+      "strip": ["docs/**", "bench/**", "README.md"],
+      "questions": ["How does a click on a box open the cited lines in the editor?", "Which code checks a draft map before it is accepted?"]
+    },
+    {
+      "id": "ab3",
+      "url": "https://github.com/se-edu/addressbook-level3.git",
+      "commit": "ecdc9bf0a169609a4758b8768f0f1e9795c7c1c0",
+      "changeTo": "56d1ffbb9cc8df72b97c112fcfdd0cac635652db",
+      "tier": "S",
+      "language": "Java",
+      "strip": ["docs/**", "README.md"],
+      "questions": ["Which component parses a user command, and where does the parsed command run?", "Where is the address book saved to disk, and in which format?"]
+    },
+    {
+      "id": "markbind",
+      "url": "https://github.com/MarkBind/markbind.git",
+      "commit": "50f43f07b661255887ff5556adc3c03478bb7ae5",
+      "changeTo": "dab9fc72ed26f007c5db47384fbf163c2360fec2",
+      "tier": "M",
+      "language": "TypeScript",
+      "strip": ["docs/**", "README.md"],
+      "questions": ["How does a Markdown page become an HTML file, from the build command to the written file?", "Where are site plugins loaded and called?"]
+    },
+    {
+      "id": "zulip",
+      "url": "https://github.com/zulip/zulip.git",
+      "commit": "bf1ab61d9ef959094aabfe2d81af2a189893674a",
+      "changeTo": "4dacd6db094d5a8f5bacc4fe4e3f58da358a20b0",
+      "tier": "L",
+      "language": "Python",
+      "strip": ["docs/**", "README.md"],
+      "questions": ["Which code delivers a new message to the other clients of a realm?", "Where are a user's message permissions checked before a message is sent?"]
+    },
+    {
+      "id": "reposense",
+      "url": "https://github.com/reposense/RepoSense.git",
+      "commit": "21570530a5243754a1a7be42d280b9a48c00ca82",
+      "changeTo": "9a4ec5ab8d7e496b7d39bc5d7fe2d4d8bd55751a",
+      "tier": "M",
+      "language": "Java",
+      "strip": ["docs/**", "README.md"],
+      "heldOut": true,
+      "questions": ["Where is git blame output analysed, and how does the result reach the report?", "Which code reads the repository configuration files?"]
+    },
+    {
+      "id": "injection",
+      "fixture": "bench/fixtures/injection",
+      "tier": "S",
+      "language": "TypeScript",
+      "strip": [],
+      "questions": ["What does this service store, and where?"]
+    }
+  ]
+}

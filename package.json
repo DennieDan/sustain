@@ -301,6 +301,8 @@
     "build": "node esbuild.mjs",
     "action": "node esbuild.mjs --action",
     "build:release": "node scripts/release.mjs",
+    "bench": "node esbuild.mjs --bench && node out/bench/bench.mjs",
+    "bench:plan": "node esbuild.mjs --bench && node out/bench/plan.mjs",
     "bench:fit": "node esbuild.mjs --bench && node out/bench/fit.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
