@@ -3,6 +3,7 @@
 import { notFound, redirect } from "next/navigation";
 import { MapViewer } from "../../../../../components/MapViewer";
 import { checkOf, mapOf, mapPageData } from "../../../../../lib/mapPage";
+import { planOfAccount } from "../../../../../lib/billing";
 import { openSpace } from "../../../../../lib/pages";
 import { services } from "../../../../../lib/services";
 import { latestCheck, mainMap } from "../../../../../lib/store";
@@ -17,6 +18,18 @@ export default async function PullPage({ params }: { params: Promise<{ owner: st
   if (space === "sign-in") redirect(`/signin?callbackUrl=${encodeURIComponent(`/${owner}/${name}/pull/${pull}`)}`);
   if (space === "not-found") notFound();
   const db = await services().db();
+  // CLD-07: pull request pages come with the Team plan.
+  const plan = await planOfAccount(db, owner);
+  if (!plan.pullPages) {
+    return (
+      <main className="page">
+        <h1>
+          {owner}/{name} #{pull}
+        </h1>
+        <p className="muted plan-note">Pull request pages come with the Team plan. {owner} is on {plan.label}.</p>
+      </main>
+    );
+  }
   const check = await latestCheck(db, space.repo, pull);
   const report = checkOf(check);
   const map = mapOf(check) !== null ? check : await mainMap(db, space.repo);

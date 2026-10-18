@@ -1,5 +1,5 @@
 "use client";
-// Owner actions on the settings pages (CLD-03, CLD-06, CLD-11): each asks first when it deletes, calls
+// Owner actions on the settings pages (CLD-03, CLD-06, CLD-07, CLD-11): each asks first when it deletes, calls
 // the API from this site, and reloads the page.
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -100,5 +100,27 @@ export function NewShareLink({ url, days }: { url: string; days: readonly number
         </p>
       ) : null}
     </div>
+  );
+}
+
+/** CLD-07: Upgrade to Team or Manage billing: asks the server for Stripe's page and goes there. */
+export function PlanButton({ url, account, label }: { url: string; account: string; label: string }) {
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      <button
+        type="button"
+        className="button"
+        onClick={async () => {
+          const response = await call("POST", url, { account });
+          const body = (await response.json()) as { url?: string; message?: string };
+          if (response.ok && body.url) window.location.href = body.url;
+          else setError(body.message ?? "Stripe did not answer.");
+        }}
+      >
+        {label}
+      </button>
+      {error ? <span className="muted"> {error}</span> : null}
+    </>
   );
 }

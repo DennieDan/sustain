@@ -76,4 +76,17 @@ CREATE TABLE share_links (
 );
 `,
   },
+  {
+    id: "0003_account_plans",
+    sql: `
+CREATE TABLE account_plans (
+  account text PRIMARY KEY,
+  plan text NOT NULL CHECK (plan IN ('free', 'team', 'enterprise')),
+  stripe_customer text,
+  stripe_subscription text,
+  seats integer,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+`,
+  },
 ];

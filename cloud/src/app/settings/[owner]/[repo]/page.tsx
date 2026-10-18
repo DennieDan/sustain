@@ -3,6 +3,7 @@
 import { notFound, redirect } from "next/navigation";
 import { DeleteButton, NewShareLink, NewToken, PublicToggle } from "../../../../components/Actions";
 import { checkAccess } from "../../../../lib/access";
+import { planOfAccount } from "../../../../lib/billing";
 import { services } from "../../../../lib/services";
 import { listShares, SHARE_DAYS } from "../../../../lib/shares";
 import { listTokens, mapHistory } from "../../../../lib/store";
@@ -21,6 +22,7 @@ export default async function RepositorySettings({ params }: { params: Promise<{
   const maps = await mapHistory(db, access.repo.id);
   const tokens = await listTokens(db, access.repo.id);
   const shares = await listShares(db, access.repo.id, now());
+  const plan = await planOfAccount(db, owner);
   return (
     <main className="page">
       <h1>
@@ -53,7 +55,7 @@ export default async function RepositorySettings({ params }: { params: Promise<{
           </li>
         ))}
       </ul>
-      <NewShareLink url={`${api}/shares`} days={SHARE_DAYS} />
+      {plan.shareLinks ? <NewShareLink url={`${api}/shares`} days={SHARE_DAYS} /> : <p className="muted plan-note">Share links come with the Team plan. {owner} is on {plan.label}.</p>}
       <h2>Maps</h2>
       <ul className="maps">
         {maps.map((map) => (

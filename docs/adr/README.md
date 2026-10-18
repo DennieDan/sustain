@@ -66,3 +66,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0060](0060-tours-are-a-sidecar-the-viewer-plays.md) | Tours are a sidecar the viewer plays | accepted | 2026-10-19 |
 | [0061](0061-sessions-enforce-the-hunt-in-each-agents-own-hooks.md) | Sessions enforce the hunt in each agent's own hooks | accepted | 2026-10-19 |
 | [0062](0062-bug-kinds-per-language.md) | Bug kinds per language | accepted | 2026-10-19 |
+| [0063](0063-plans-are-enforced-on-the-server-and-billed-through-stripes-api.md) | Plans are enforced on the server and billed through Stripe's API | accepted | 2026-10-19 |

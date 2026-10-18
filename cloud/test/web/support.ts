@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
 export const GITHUB = "http://127.0.0.1:3211";
+/** The port of the app instance with billing on (CLD-07). */
+export const BILLED_APP = 3213;
 export const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 /** An Archify example whose first box cites src/api.ts lines 3 to 9, so it has something to open. */
 export const MAP: Record<string, unknown> = (() => {

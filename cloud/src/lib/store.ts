@@ -1,5 +1,6 @@
 // Sustain Cloud's queries: repositories, uploads, tokens, access and deletion.
 import { and, desc, eq, gte, sql } from "drizzle-orm";
+import type { Plan } from "../../plans";
 import type { Database } from "../db/client";
 import { access, memberships, repositories, tokens, uploads, users } from "../db/schema";
 import { hashToken } from "./tokens";
@@ -66,8 +67,15 @@ export async function mainMap(db: Database, repo: Repository): Promise<UploadRow
   return row;
 }
 
-export async function mapHistory(db: Database, repoId: number): Promise<UploadRow[]> {
-  return db.select().from(uploads).where(and(eq(uploads.repoId, repoId), eq(uploads.kind, "map"))).orderBy(desc(uploads.createdAt), desc(uploads.id));
+/** The repository's maps, newest first; with `since`, only those uploaded from then on (CLD-07). */
+export async function mapHistory(db: Database, repoId: number, since: Date | null = null): Promise<UploadRow[]> {
+  const kept = since === null ? and(eq(uploads.repoId, repoId), eq(uploads.kind, "map")) : and(eq(uploads.repoId, repoId), eq(uploads.kind, "map"), gte(uploads.createdAt, since));
+  return db.select().from(uploads).where(kept).orderBy(desc(uploads.createdAt), desc(uploads.id));
+}
+
+/** CLD-07: the oldest upload time `plan` keeps, or `null` when it keeps all history. */
+export function historySince(plan: Plan, now: Date): Date | null {
+  return plan.historyDays === null ? null : new Date(now.getTime() - plan.historyDays * 86_400_000);
 }
 
 /** The latest check, of a pull request when `pull` is given, else of the default branch. */

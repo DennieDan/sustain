@@ -1,6 +1,8 @@
 // CLD-02: POST /api/v1/uploads. Authenticated by a GitHub Actions OIDC token for the repository or
 // by the repository's upload token; the body must pass checkUpload and stay under 1 MiB.
 import { checkUpload, MAX_UPLOAD_BYTES, type Upload } from "../../../../../../src/model/upload";
+import { privateRepositoriesKept, planOfAccount } from "../../../../lib/billing";
+import { privateRepositoryRefusal } from "../../../../../plans";
 import { verifyOidc } from "../../../../lib/oidc";
 import { services } from "../../../../lib/services";
 import { repositoryForToken, saveUpload, upsertRepository, uploadsInLastHour, UPLOADS_PER_HOUR } from "../../../../lib/store";
@@ -50,6 +52,11 @@ export async function POST(request: Request): Promise<Response> {
     via = "oidc";
   }
   if ((await uploadsInLastHour(db, repo.id, now())) >= UPLOADS_PER_HOUR) return refuse(429, `A repository may upload ${UPLOADS_PER_HOUR} times an hour.`);
+  // CLD-07: the account's plan decides how many private repositories it keeps maps of.
+  if (repo.private) {
+    const refusal = privateRepositoryRefusal(await planOfAccount(db, owner), await privateRepositoriesKept(db, owner, repo.id));
+    if (refusal !== null) return refuse(402, refusal);
+  }
 
   const { repo: _repo, commit, branch, kind, ...rest } = upload;
   const saved = await saveUpload(db, { repoId: repo.id, kind, commit, branch, pull: upload.meta.pull ?? null, payload: rest, via, createdAt: now() });

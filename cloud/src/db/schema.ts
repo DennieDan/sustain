@@ -1,4 +1,4 @@
-// Sustain Cloud's tables (CLD-01, CLD-02, CLD-06, CLD-11). Maps and checks are stored as validated JSON;
+// Sustain Cloud's tables (CLD-01, CLD-02, CLD-06, CLD-07, CLD-11). Maps and checks are stored as validated JSON;
 // nothing here ever holds code. Deleting a user or repository removes everything under it.
 import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
 
@@ -88,4 +88,15 @@ export const shareLinks = pgTable("share_links", {
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
   createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** CLD-07: each account's plan, kept from Stripe's webhooks. An account without a row is on Free. */
+export const accountPlans = pgTable("account_plans", {
+  /** The GitHub login that owns repositories. */
+  account: text("account").primaryKey(),
+  plan: text("plan", { enum: ["free", "team", "enterprise"] }).notNull(),
+  stripeCustomer: text("stripe_customer"),
+  stripeSubscription: text("stripe_subscription"),
+  seats: integer("seats"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

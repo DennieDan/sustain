@@ -3,6 +3,7 @@
 // pull requests touch most, a trend over recent checks, and recent pull requests. Nothing is per person.
 import { redirect } from "next/navigation";
 import { relativeAge } from "../../../../src/model/home";
+import { planOfAccount } from "../../lib/billing";
 import { dashboardFor, TREND_CHECKS, type DashboardRepo } from "../../lib/dashboard";
 import { services } from "../../lib/services";
 
@@ -50,7 +51,18 @@ export default async function DashboardPage({ params }: { params: Promise<{ owne
   const user = await currentUser();
   if (user === null) redirect(`/signin?callbackUrl=${encodeURIComponent(`/${owner}`)}`);
   const now = clock();
-  const rows = await dashboardFor(await openDb(), github(), user, owner, now);
+  const db = await openDb();
+  // CLD-07: the dashboard comes with the Team plan.
+  const plan = await planOfAccount(db, owner);
+  if (!plan.dashboard) {
+    return (
+      <main className="page">
+        <h1>{owner}</h1>
+        <p className="muted plan-note">The team dashboard comes with the Team plan. {owner} is on {plan.label}.</p>
+      </main>
+    );
+  }
+  const rows = await dashboardFor(db, github(), user, owner, now);
   return (
     <main className="page page--wide">
       <h1>{owner}</h1>
