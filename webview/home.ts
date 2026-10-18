@@ -2,9 +2,10 @@
 // session. Built from the HomeState the host sends; every string goes in as text. The composer's
 // text box persists across states, so typing survives updates.
 import { mapStatus, relativeAge, runFigures, tokenCount } from "../src/model/home";
-import type { AskTurn, AskView, HomeState, HomeWebviewMessage, MapItem, ReviewView, RunCard } from "../src/model/messages";
+import type { AskTurn, AskView, HomeState, HomeWebviewMessage, MapItem, PracticeQuestionView, PracticeView, ReviewView, RunCard } from "../src/model/messages";
+import type { Grade } from "../src/model/practice";
 import type { Check } from "../src/model/preflight";
-import { renderAnswer } from "./answer";
+import { renderAnswer, spanNode } from "./answer";
 
 export type Post = (message: HomeWebviewMessage) => void;
 
@@ -31,6 +32,14 @@ function section(title: string, className: string): HTMLElement {
 const STATUS_LABEL: Record<RunCard["status"], string> = { running: "Running", done: "Done", failed: "Failed", cancelled: "Cancelled" };
 /** The Generate button once a run above `sustain.confirmAboveTokens` needs a second click (CST-03). */
 const SECOND_CLICK = "Click again to generate";
+
+/** SKL-01: the explain-back's scopes and what their buttons say. */
+const PRACTICE_SCOPES = [
+  ["branch", "This branch"],
+  ["uncommitted", "Uncommitted changes"],
+  ["box", "A box…"],
+] as const;
+const GRADE_LABEL: Record<Grade, string> = { correct: "Correct", partial: "Partial", wrong: "Wrong" };
 
 /** "Validating, attempt 2" and the like, from run.json's phase. */
 export function phaseLine(run: RunCard): string | null {
@@ -89,6 +98,11 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   const healthSlot = el("div", "health-slot");
   const setup = el("details", "section setup");
   const session = el("div", "session-slot");
+  // SKL-01: rebuilt only when the practice view changes, so an answer being typed keeps its box.
+  const practiceSlot = el("div", "practice-slot");
+  let practiceKey = "";
+  let practiceArmed: string | null = null;
+  const drafts = new Map<string, string>();
   // UI-06: the Ask chat sits at the bottom; its text box persists like the composer's.
   const askSection = section("Ask", "ask");
   const askTurns = el("div", "ask__turns");
@@ -120,7 +134,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   question.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !askButton.disabled) askButton.click();
   });
-  container.append(header, composer, runSlot, healthSlot, maps, reviewSlot, rulesSlot, hotspotsSlot, setup, session, askSection);
+  container.append(header, composer, runSlot, healthSlot, maps, reviewSlot, rulesSlot, hotspotsSlot, setup, practiceSlot, session, askSection);
 
   let current: HomeState | null = null;
   let figures: HTMLElement | null = null;
@@ -370,6 +384,79 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     session.append(block);
   }
 
+  function practiceQuestion(scope: string, entry: PracticeQuestionView, index: number, busy: boolean): HTMLElement {
+    const item = el("li", `practice-question practice-question--${entry.status}`);
+    item.append(el("div", "practice-question__text", entry.question));
+    if (entry.status === "open" || entry.status === "failed") {
+      const draftKey = `${scope}\n${index}\n${entry.question}`;
+      const answer = el("textarea", "practice-question__answer");
+      answer.rows = 3;
+      answer.setAttribute("aria-label", `Your answer to question ${index + 1}`);
+      answer.value = drafts.get(draftKey) ?? entry.answer ?? "";
+      answer.addEventListener("input", () => drafts.set(draftKey, answer.value));
+      const send = button("Answer", "button practice-question__send", () => {
+        if (answer.value.trim() !== "") post({ type: "practiceAnswer", index, answer: answer.value });
+      });
+      send.disabled = busy;
+      if (entry.error !== null) item.append(el("p", "practice-question__error", entry.error));
+      item.append(answer, send);
+      return item;
+    }
+    item.append(el("div", "practice-question__given", entry.answer ?? ""));
+    if (entry.status === "grading") item.append(el("p", "practice-question__pending", "Grading…"));
+    if (entry.grade !== null) {
+      const grade = el("div", `practice-grade practice-grade--${entry.grade.grade}`);
+      grade.append(el("span", "practice-grade__label", GRADE_LABEL[entry.grade.grade]), el("span", "practice-grade__reason", entry.grade.reason));
+      if (entry.grade.cite !== null) grade.append(spanNode(entry.grade.cite, post));
+      item.append(grade);
+    }
+    return item;
+  }
+
+  /** SKL-01: the Practice section, with the explain-back's scopes and the folder's latest check. */
+  function renderPractice(root: string | null, view: PracticeView): void {
+    const key = JSON.stringify([root, view]);
+    if (key === practiceKey) return;
+    practiceKey = key;
+    practiceSlot.replaceChildren();
+    if (root === null) return;
+    const block = section("Practice", "practice");
+    const check = view.check;
+    const busy = check !== null && (check.status === "running" || check.questions.some((entry) => entry.status === "grading"));
+    if (!view.confirm) practiceArmed = null;
+    const scopes = el("div", "practice__scopes");
+    const buttons: HTMLButtonElement[] = [];
+    for (const [scope, label] of PRACTICE_SCOPES) {
+      const start = button(practiceArmed === scope ? "Click again to start" : label, "button", () => {
+        if (view.confirm && practiceArmed !== scope) {
+          practiceArmed = scope;
+          PRACTICE_SCOPES.forEach(([, text], index) => (buttons[index]!.textContent = text));
+          start.textContent = "Click again to start";
+          return;
+        }
+        practiceArmed = null;
+        start.textContent = label;
+        post({ type: "practiceStart", scope, ...(view.confirm ? { confirmed: true } : {}) });
+      });
+      start.disabled = view.blocked !== null || busy;
+      buttons.push(start);
+      scopes.append(start);
+    }
+    block.append(el("p", "practice__intro", "Your agent asks three questions about the code and grades your answers. The results stay on this machine."), scopes);
+    if (view.blocked !== null) block.append(el("p", "practice__note", view.blocked));
+    else if (view.estimate !== null) block.append(el("p", "practice__estimate", view.estimate));
+    if (check !== null) {
+      block.append(el("div", "practice__scope", check.scope));
+      if (check.status === "running") block.append(el("p", "practice__pending", "Your agent is writing three questions…"), button("Stop", "button", () => post({ type: "practiceCancel" })));
+      if (check.error !== null) block.append(el("p", "practice__error", check.error));
+      const list = el("ol", "practice__questions");
+      check.questions.forEach((entry, index) => list.append(practiceQuestion(check.scope, entry, index, busy)));
+      block.append(list);
+      if (!busy) block.append(button("Clear", "link", () => post({ type: "practiceClear" })));
+    }
+    practiceSlot.append(block);
+  }
+
   function askTurn(turn: AskTurn): HTMLElement {
     const entry = el("div", `turn turn--${turn.status}`);
     entry.append(el("div", "turn__question", turn.question));
@@ -412,6 +499,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
       renderHotspots(state);
       renderHealth(state);
       renderSetup(state.setup);
+      renderPractice(state.root, state.practice);
       renderSession(state);
       renderAsk(state.ask);
     },

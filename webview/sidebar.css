@@ -322,6 +322,104 @@ select.header__folder,
   gap: 6px;
 }
 
+.practice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.practice__scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.practice__intro,
+.practice__note,
+.practice__estimate,
+.practice__pending,
+.practice-question__pending {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+}
+
+.practice__scope {
+  font-weight: 600;
+}
+
+.practice__error,
+.practice-question__error {
+  margin: 0;
+  color: var(--vscode-errorForeground);
+}
+
+.practice__questions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.practice-question {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.practice-question__text {
+  overflow-wrap: anywhere;
+}
+
+.practice-question__answer {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  padding: 6px;
+  font: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+}
+
+.practice-question__answer:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.practice-question__given {
+  padding: 4px 8px;
+  background: var(--vscode-textBlockQuote-background, var(--vscode-input-background));
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+.practice-grade {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+
+.practice-grade__label {
+  font-weight: 600;
+}
+
+.practice-grade--correct .practice-grade__label {
+  color: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+.practice-grade--partial .practice-grade__label {
+  color: var(--vscode-editorWarning-foreground, var(--vscode-charts-yellow));
+}
+
+.practice-grade--wrong .practice-grade__label {
+  color: var(--vscode-errorForeground);
+}
+
 .ask {
   display: flex;
   flex-direction: column;

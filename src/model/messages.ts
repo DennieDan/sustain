@@ -2,9 +2,10 @@
 import type { HealthItem, HealthKind } from "./health";
 import type { MapDiff } from "./diff";
 import type { FeedItem, StreamUsage } from "./agentStream/feed";
-import type { Block } from "./ask";
+import type { Block, Span } from "./ask";
 import type { RunStatus } from "./agentStream/tracker";
 import type { LeaderboardEntry } from "./leaderboard";
+import type { Grade } from "./practice";
 import type { Check, CheckId } from "./preflight";
 import type { RunPhase } from "./runRecord";
 import type { Freshness } from "./staleness";
@@ -176,6 +177,28 @@ export interface AskView {
   confirm: boolean;
 }
 
+/** One explain-back question in the sidebar (SKL-01). Its expected answer stays in the extension host. */
+export interface PracticeQuestionView {
+  question: string;
+  /** The user's answer, once sent. */
+  answer: string | null;
+  status: "open" | "grading" | "graded" | "failed";
+  /** The grade, with its citation only when the host found the file citable. */
+  grade: { grade: Grade; reason: string; cite: Extract<Span, { kind: "cite" }> | null } | null;
+  error: string | null;
+}
+
+/** The sidebar's Practice section (SKL-01). */
+export interface PracticeView {
+  /** Why a check cannot start now, or `null` when it can. */
+  blocked: string | null;
+  /** What one run of the check costs (CST-03), and whether starting needs a second click. */
+  estimate: string | null;
+  confirm: boolean;
+  /** The folder's latest check, or `null` before the first. */
+  check: { scope: string; status: RunStatus; error: string | null; questions: PracticeQuestionView[] } | null;
+}
+
 /** The sidebar's Rules section (ARC-02). */
 export interface RulesView {
   /** The map the rules use, or `null` without one. */
@@ -219,6 +242,8 @@ export interface HomeState {
   session: SessionSummary | null;
   ask: AskView;
   review: ReviewView | null;
+  /** SKL-01: the explain-back. */
+  practice: PracticeView;
   /** ARC-02: the folder's rules with their violation counts, or `null` without a folder. */
   rules: RulesView | null;
   /** ARC-05: the Health section's lines, or `null` without a main map. */
@@ -261,4 +286,8 @@ export type HomeWebviewMessage =
   | { type: "cancelAsk" }
   | { type: "clearAsk" }
   | { type: "openCitation"; path: string; line: number; endLine: number | null }
-  | { type: "focusBox"; id: string };
+  | { type: "focusBox"; id: string }
+  | { type: "practiceStart"; scope: "branch" | "uncommitted" | "box"; confirmed?: boolean }
+  | { type: "practiceAnswer"; index: number; answer: string }
+  | { type: "practiceCancel" }
+  | { type: "practiceClear" };

@@ -497,7 +497,7 @@ Tests the I4 ACs call for:
 
 Done when: Explain-back, tours and sessions on every agent work.
 
-- [ ] **SKL-01 Explain-back** `[unit]` `[dom]` `[e2e]`
+- [x] **SKL-01 Explain-back** `[unit]` `[dom]` `[e2e]` — 2026-10-19: `src/model/practice.ts` (the prompts, the question and grade checks, and `checkView`, which leaves the keys out), `src/extension/practice.ts`, the sidebar's Practice section, `Sustain: Check My Understanding` in the palette and the box menu. ADR 0059. Tests: `practice.test.ts` (6: both prompts, the changed lines from a diff, three questions accepted and the refusals, the grades), `sidebar.test.ts` › SKL-01 (4: no key in the state or the DOM, a draft kept across states, the grade and its checked link, the scopes and the second click, the running and blocked states); e2e `single.practice.test.ts` (a stub agent's questions without keys, a grade with a link that opens the line).
 - [ ] **SKL-02 Guided tours** `[unit]` `[dom]` `[e2e]`
 - [ ] **SKL-03 Practice log** `[unit]` `[dom]`
 - [ ] **LRN-01 Learning sessions on Claude Code and Codex** `[unit]` `[e2e]` `[smoke]`

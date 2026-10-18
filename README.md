@@ -76,13 +76,14 @@ Every command is also in the Command Palette under "Sustain".
 | Place | What's there |
 |---|---|
 | Activity Bar | The Sustain icon, which opens the sidebar |
-| Sidebar | The folder and its map status, the composer (focus, agent, run mode and Generate), the live run, your maps, Review changes, the setup checklist, learning sessions and Ask |
+| Sidebar | The folder and its map status, the composer (focus, agent, run mode and Generate), the live run, your maps, Review changes, the setup checklist, Practice, learning sessions and Ask |
 | Sidebar title bar | Refresh and Check Setup |
 | Editor title, any file | Show in Map |
 | Editor title, map | Refresh Architecture, Show Changes on Diagram and Export Page |
 | Status bar | Sustain's state, the time of a running generation or the number of changed boxes. A click opens the sidebar. |
 | Explorer right-click | Map This Folder with Sustain, and Show in Architecture Map |
-| Box right-click | Open Code and Refresh This Box |
+| Box right-click | Open Code, Refresh This Box, This Box Is Wrong…, Check My Understanding, Only Allow Imports From… and Route Dependencies Through… |
+| Arrow right-click | Forbid This Dependency |
 | Maps list | Open, Refresh, Export page and Delete on each map |
 | Pull request | The Sustain check and its comment |
 | Sustain Cloud | Map pages, pull request pages, the docs and a gallery of public maps |
@@ -104,6 +105,7 @@ Every command is also in the Command Palette under "Sustain".
 - **Compare With…** in the map's title-bar menu draws what changed since another map. New boxes and arrows are outlined, and removed ones are drawn see-through. Sustain Cloud's map history offers the same.
 - **Write Architecture Notes for Agents** puts the map's boxes, arrows and rules into `AGENTS.md`, between Sustain's markers, so coding agents follow the architecture. It writes `CLAUDE.md` too when that file does not import `AGENTS.md`. Your own text stays as it is, and each file shows as a diff first.
 - **Show Hotspots** in the map's title bar tints each box by how often its code changed over the last 90 days (`sustain.hotspots.days`). The tooltip gives the commits, lines changed and number of authors, and the sidebar lists the five busiest boxes.
+- **Practice** in the sidebar checks your understanding of this branch's changes, the uncommitted changes or a box. Your agent asks three questions, and grades each answer with a link to the code. The expected answers never reach the sidebar, and the results stay in VS Code's storage for the workspace.
 - **Rules** in `sustain.config.json` say which boxes may import which. An import that breaks one shows in the Problems panel at its line, as a red arrow on the map, and in the pull request check. Right-click an arrow to forbid it or a box to limit who imports it, or use Suggest rules in the sidebar. Every change to the file shows as a diff first.
 
 ## Commit your map
@@ -132,7 +134,7 @@ Sustain makes no AI calls of its own. Your agent does the work, on your account.
 - Before every run, Sustain states an estimate under Generate, in the confirmation and on the run card, such as "About 180k–260k tokens (about $0.50–$0.80 at API prices; on a subscription it uses part of your plan's limit)". The skill states it too. Runs above `sustain.confirmAboveTokens`, 300,000 tokens by default, need a second click.
 - A run in the sidebar shows its elapsed time and tokens as it goes, and the final tokens and cost when the agent reports them. `run.json` keeps the figures.
 - Refresh reads only the code that changed since the map was made.
-- Ask spends tokens on each question.
+- Ask spends tokens on each question, and Practice on its questions and on each grade.
 - Viewing a map, the freshness badges, Show Changes, Review changes, the diagram page and the pull request check spend no tokens.
 
 ## What it touches on your machine

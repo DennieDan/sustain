@@ -4,6 +4,7 @@ import type { MapDiff } from "../model/diff";
 import type { ChangeOverlay, Ghost, HomeState, HomeWebviewMessage, RunCard, SessionWebviewMessage, WebviewMessage } from "../model/messages";
 import type { MapFreshness } from "../model/staleness";
 import { Ask } from "./ask";
+import { Practice } from "./practice";
 import { showChangesCommand } from "./changes";
 import { exportPageCommand } from "./exportPage";
 import { refreshArchitectureCommand, refreshBoxCommand } from "./refresh";
@@ -74,7 +75,8 @@ export function activate(context: vscode.ExtensionContext): TestHook {
   const freshness = new FreshnessService();
   const review = new Review(context, runs);
   const rules = new RulesService();
-  const home = new HomeView(context, runs, ask, freshness, review, rules, [candidates.onDidChange, sessions.onDidChange, freshness.onDidChange]);
+  const practice = new Practice(context);
+  const home = new HomeView(context, runs, ask, freshness, review, rules, practice, [candidates.onDidChange, sessions.onDidChange, freshness.onDidChange]);
   const status = new StatusItem(runs);
   const counts = ArchitecturePanel.onDidCountChanges((changed) => (status.changed = changed));
   const running = runs.onDidChange(() => void vscode.commands.executeCommand("setContext", "sustain.running", runs.current?.status === "running"));
@@ -82,6 +84,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     registerPreviews(),
     runs,
     ask,
+    practice,
     freshness,
     review,
     ArchitecturePanel.useFreshness(freshness),
@@ -126,6 +129,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.exportPage", () => exportPageCommand(extensionUri)),
     vscode.commands.registerCommand("sustain.reviewChanges", () => review.command(home.root())),
     vscode.commands.registerCommand("sustain.refreshBox", (box?: { componentId?: unknown }) => refreshBoxCommand(context, runs, box)),
+    vscode.commands.registerCommand("sustain.checkUnderstanding", (box?: { componentId?: unknown }) => practice.command(home.root(), box)),
   );
   return {
     panelState: () => ({ file: ArchitecturePanel.current?.file, open: ArchitecturePanel.current !== undefined }),

@@ -3,7 +3,8 @@
 import type { Block, Span } from "../src/model/ask";
 import type { HomeWebviewMessage } from "../src/model/messages";
 
-function spanNode(span: Span, post: (message: HomeWebviewMessage) => void): Node {
+/** One span as a DOM node; a citation or box name becomes a button that asks the host. */
+export function spanNode(span: Span, post: (message: HomeWebviewMessage) => void): Node {
   switch (span.kind) {
     case "text":
       return document.createTextNode(span.text);

@@ -188,6 +188,11 @@
         "category": "Sustain"
       },
       {
+        "command": "sustain.checkUnderstanding",
+        "title": "Check My Understanding",
+        "category": "Sustain"
+      },
+      {
         "command": "sustain.forbidArrow",
         "title": "Forbid This Dependency",
         "category": "Sustain"
@@ -427,6 +432,11 @@
           "command": "sustain.flagBox",
           "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
           "group": "navigation@3"
+        },
+        {
+          "command": "sustain.checkUnderstanding",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
+          "group": "navigation@4"
         },
         {
           "command": "sustain.onlyAllowImportsFrom",

@@ -15,6 +15,7 @@ import { runPreflight, type Check } from "../model/preflight";
 import { assertWritable } from "../model/confine";
 import { AGENTS } from "./agents";
 import type { Ask } from "./ask";
+import type { Practice } from "./practice";
 import { changedBoxes, type FreshnessService } from "./freshness";
 import { findDevinCli } from "./devin";
 import { launchEstimate } from "./estimates";
@@ -53,9 +54,10 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
     private readonly freshness: FreshnessService,
     private readonly review: Review,
     private readonly rules: RulesService,
+    private readonly practice: Practice,
     changes: vscode.Event<unknown>[],
   ) {
-    for (const change of [runs.onDidChange, ask.onDidChange, review.onDidChange, rules.onDidChange, ...changes]) this.disposables.push(change(() => this.send()));
+    for (const change of [runs.onDidChange, ask.onDidChange, review.onDidChange, rules.onDidChange, practice.onDidChange, ...changes]) this.disposables.push(change(() => this.send()));
     this.disposables.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => this.send()),
       vscode.workspace.onDidChangeConfiguration((event) => {
@@ -128,6 +130,7 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
       session: root === null ? null : sessionSummary(root),
       ask: this.ask.view(root),
       review: this.review.view(root),
+      practice: this.practice.view(root),
       rules: root === null ? null : (({ map, rules }) => ({ map, rules }))(this.rules.result(root) ?? { map: null, rules: [], violations: [] }),
       hotspots: root === null ? null : this.hotspots(root),
       health: root === null ? null : this.health(root),
@@ -325,6 +328,18 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         return;
       case "focusBox":
         if (root !== null) this.ask.focusBox(root, message.id);
+        return;
+      case "practiceStart":
+        if (root !== null) await this.practice.start(root, message.scope, message.confirmed === true);
+        return;
+      case "practiceAnswer":
+        if (root !== null) await this.practice.answer(root, message.index, message.answer);
+        return;
+      case "practiceCancel":
+        this.practice.cancel();
+        return;
+      case "practiceClear":
+        if (root !== null) await this.practice.clear(root);
         return;
     }
   }
