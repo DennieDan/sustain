@@ -1,12 +1,12 @@
-// A repository's settings, for its owners: upload tokens, public maps, share links, and deleting maps
-// or all of its data (CLD-02, CLD-03, CLD-06, CLD-11).
+// A repository's settings, for its owners: upload tokens, public maps, share links, the audit log of
+// uploads, and deleting maps or all of its data (CLD-02, CLD-03, CLD-06, CLD-11, CLD-13).
 import { notFound, redirect } from "next/navigation";
 import { DeleteButton, NewShareLink, NewToken, PublicToggle } from "../../../../components/Actions";
 import { checkAccess } from "../../../../lib/access";
 import { planOfAccount } from "../../../../lib/billing";
 import { services } from "../../../../lib/services";
 import { listShares, SHARE_DAYS } from "../../../../lib/shares";
-import { listTokens, mapHistory } from "../../../../lib/store";
+import { auditLog, listTokens, mapHistory } from "../../../../lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,7 @@ export default async function RepositorySettings({ params }: { params: Promise<{
   const tokens = await listTokens(db, access.repo.id);
   const shares = await listShares(db, access.repo.id, now());
   const plan = await planOfAccount(db, owner);
+  const audit = await auditLog(db, access.repo.id);
   return (
     <main className="page">
       <h1>
@@ -65,6 +66,32 @@ export default async function RepositorySettings({ params }: { params: Promise<{
           </li>
         ))}
       </ul>
+      <h2>Uploads</h2>
+      <p className="muted">The latest uploads, with how each was signed.</p>
+      {audit.length === 0 ? (
+        <p className="muted">No uploads yet.</p>
+      ) : (
+        <table className="audit">
+          <thead>
+            <tr>
+              <th scope="col">When</th>
+              <th scope="col">What</th>
+              <th scope="col">Signed by</th>
+              <th scope="col">Size</th>
+            </tr>
+          </thead>
+          <tbody>
+            {audit.map((entry) => (
+              <tr key={entry.id}>
+                <td>{entry.createdAt.toISOString().slice(0, 16).replace("T", " ")}</td>
+                <td>{entry.kind}</td>
+                <td>{entry.via}</td>
+                <td>{entry.size === null ? "—" : `${(entry.size / 1024).toFixed(1)} KB`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <h2>Delete this repository&apos;s data</h2>
       <p className="muted">Removes every map, check and token of this repository at once.</p>
       <DeleteButton url={api} label="Delete all data" confirmText={`Delete all of ${owner}/${name}'s data now?`} then="home" />

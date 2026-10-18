@@ -1,4 +1,4 @@
-// Sustain Cloud's tables (CLD-01, CLD-02, CLD-06, CLD-07, CLD-11). Maps and checks are stored as validated JSON;
+// Sustain Cloud's tables (CLD-01, CLD-02, CLD-06, CLD-07, CLD-11, CLD-13). Maps and checks are stored as validated JSON;
 // nothing here ever holds code. Deleting a user or repository removes everything under it.
 import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
 
@@ -63,6 +63,10 @@ export const uploads = pgTable(
     pull: integer("pull"),
     payload: jsonb("payload").notNull(),
     via: text("via", { enum: ["oidc", "token"] }).notNull(),
+    /** CLD-13: the upload token that signed it, while the token exists. */
+    tokenId: integer("token_id"),
+    /** CLD-13: the request body's size in bytes. */
+    size: integer("size"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("uploads_repo_kind_created").on(table.repoId, table.kind, table.createdAt)],

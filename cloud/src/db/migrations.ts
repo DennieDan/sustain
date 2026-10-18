@@ -89,4 +89,11 @@ CREATE TABLE account_plans (
 );
 `,
   },
+  {
+    id: "0004_upload_audit",
+    sql: `
+ALTER TABLE uploads ADD COLUMN token_id integer REFERENCES tokens(id) ON DELETE SET NULL;
+ALTER TABLE uploads ADD COLUMN size integer;
+`,
+  },
 ];

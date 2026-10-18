@@ -1,5 +1,5 @@
 // The account: organizations, repository spaces and roles, the plans of the accounts the user owns
-// repositories of, and deleting the account (CLD-01, CLD-07, CLD-11).
+// repositories of, exporting the user's data, and deleting the account (CLD-01, CLD-07, CLD-11, CLD-13).
 import { redirect } from "next/navigation";
 import { billingConfig } from "../../../plans";
 import { DeleteButton, PlanButton } from "../../components/Actions";
@@ -65,6 +65,13 @@ export default async function SettingsPage() {
           ))}
         </ul>
       )}
+      <h2>Your data</h2>
+      <p>
+        <a href="/api/v1/account/export" download>
+          Export your data
+        </a>{" "}
+        <span className="muted">as one JSON file: your account, your organizations, and every repository you own with its plan, tokens, share links and uploads. Token and link secrets are never kept, so they are not in it.</span>
+      </p>
       <h2>Delete your account</h2>
       <p className="muted">Removes your account and every repository space it owns, with their maps, checks and tokens, at once.</p>
       <DeleteButton url="/api/v1/account" label="Delete my account" confirmText="Delete your account and everything it owns now?" then="signout" />

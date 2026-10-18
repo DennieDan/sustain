@@ -34,10 +34,13 @@ export async function POST(request: Request): Promise<Response> {
   const [owner, name] = upload.repo.split("/") as [string, string];
   let repo;
   let via: "oidc" | "token";
+  let tokenId: number | null = null;
   if (bearer.startsWith(TOKEN_PREFIX)) {
-    repo = await repositoryForToken(db, bearer);
-    if (!repo || repo.owner !== owner || repo.name !== name) return refuse(403, "This token does not belong to that repository.");
+    const held = await repositoryForToken(db, bearer);
+    repo = held?.repo;
+    if (!held || !repo || repo.owner !== owner || repo.name !== name) return refuse(403, "This token does not belong to that repository.");
     via = "token";
+    tokenId = held.tokenId;
     if (upload.meta.defaultBranch) repo = await upsertRepository(db, { githubId: repo.githubId, owner, name, private: repo.private, defaultBranch: upload.meta.defaultBranch });
   } else {
     const verified = verifyOidc(bearer, upload.repo, await jwks(), now().getTime());
@@ -59,7 +62,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const { repo: _repo, commit, branch, kind, ...rest } = upload;
-  const saved = await saveUpload(db, { repoId: repo.id, kind, commit, branch, pull: upload.meta.pull ?? null, payload: rest, via, createdAt: now() });
+  const saved = await saveUpload(db, { repoId: repo.id, kind, commit, branch, pull: upload.meta.pull ?? null, payload: rest, via, tokenId, size: bytes.byteLength, createdAt: now() });
   const url = kind === "check" && upload.meta.pull !== undefined ? `/${owner}/${name}/pull/${upload.meta.pull}` : `/${owner}/${name}`;
   return Response.json({ status: "accepted", id: saved.id, url }, { status: 201 });
 }

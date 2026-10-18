@@ -1,5 +1,6 @@
 // Sustain Cloud's queries: repositories, uploads, tokens, access and deletion.
 import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Plan } from "../../plans";
 import type { Database } from "../db/client";
 import { access, memberships, repositories, tokens, uploads, users } from "../db/schema";
@@ -30,12 +31,12 @@ export async function upsertRepository(db: Database, facts: { githubId: number; 
   return row!;
 }
 
-/** The repository an upload token belongs to, recording its use. */
-export async function repositoryForToken(db: Database, token: string): Promise<Repository | undefined> {
+/** The repository an upload token belongs to and the token's id, recording its use. */
+export async function repositoryForToken(db: Database, token: string): Promise<{ repo: Repository; tokenId: number } | undefined> {
   const [row] = await db.select({ repo: repositories, tokenId: tokens.id }).from(tokens).innerJoin(repositories, eq(tokens.repoId, repositories.id)).where(eq(tokens.hash, hashToken(token)));
   if (!row) return undefined;
   await db.update(tokens).set({ lastUsedAt: new Date() }).where(eq(tokens.id, row.tokenId));
-  return row.repo;
+  return row;
 }
 
 export async function createTokenRecord(db: Database, repoId: number, name: string, token: string, createdBy: number | null): Promise<number> {
@@ -125,4 +126,27 @@ export async function deleteAccount(db: Database, userId: number, login: string)
   await db.delete(repositories).where(eq(repositories.owner, login));
   await db.delete(memberships).where(eq(memberships.userId, userId));
   await db.delete(users).where(eq(users.id, userId));
+}
+
+/** CLD-13: entries of the audit log, newest first. */
+export const AUDIT_ENTRIES = 50;
+
+/** CLD-13: the repository's latest uploads, each with how it was signed, its time and its size. */
+export async function auditLog(db: Database, repoId: number): Promise<{ id: number; kind: "map" | "check"; via: string; size: number | null; createdAt: Date }[]> {
+  const signer = alias(tokens, "signer");
+  const rows = await db
+    .select({ id: uploads.id, kind: uploads.kind, via: uploads.via, token: signer.name, size: uploads.size, createdAt: uploads.createdAt, owner: repositories.owner, name: repositories.name })
+    .from(uploads)
+    .innerJoin(repositories, eq(uploads.repoId, repositories.id))
+    .leftJoin(signer, eq(uploads.tokenId, signer.id))
+    .where(eq(uploads.repoId, repoId))
+    .orderBy(desc(uploads.createdAt), desc(uploads.id))
+    .limit(AUDIT_ENTRIES);
+  return rows.map((row) => ({
+    id: row.id,
+    kind: row.kind,
+    via: row.via === "oidc" ? `GitHub Actions OIDC for ${row.owner}/${row.name}` : row.token === null ? "an upload token since revoked" : `the upload token ${row.token}`,
+    size: row.size,
+    createdAt: row.createdAt,
+  }));
 }
