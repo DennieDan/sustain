@@ -1,14 +1,17 @@
-// What the routes depend on, replaceable in tests: the database, GitHub's OIDC keys and the clock.
+// What the routes depend on, replaceable in tests: the database, GitHub's OIDC keys, the GitHub
+// API and the clock.
 import { database, type Database } from "../db/client";
+import { githubApi, type GitHubApi } from "./github";
 import { githubJwks, type Jwks } from "./oidc";
 
 export interface Services {
   db: () => Promise<Database>;
   jwks: () => Promise<Jwks>;
+  github: () => GitHubApi;
   now: () => Date;
 }
 
-let current: Services = { db: database, jwks: () => githubJwks(), now: () => new Date() };
+let current: Services = { db: database, jwks: () => githubJwks(), github: () => githubApi(), now: () => new Date() };
 
 export function services(): Services {
   return current;
