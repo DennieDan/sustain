@@ -2,7 +2,7 @@
 name: sustain-architecture
 description: Generate an Archify architecture diagram of this repository for the Sustain VS Code viewer. Invoke manually with an optional focus.
 disable-model-invocation: true
-allowed-tools: Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *)
+allowed-tools: Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/render-html.mjs *)
 ---
 
 # Sustain architecture diagram
@@ -69,6 +69,16 @@ An `accepted` report has an `evidence` list. Each `DeclarationOnly` entry names 
 
 If that changes the diagram, write the whole revised diagram to `draft.json` in the same run folder and validate it again as in step 6. This revision does not count against the 3 repairs, and it happens once: do not review the evidence of the revised diagram.
 
-## 8. Report
+## 8. Write the diagram page
 
-On `accepted`, report the `candidate` path and the number of components, and tell the user that the Sustain viewer will offer to open the new diagram.
+Run, from the repository root, with `<candidate>` replaced by the accepted report's `candidate` path:
+
+```sh
+node ${CLAUDE_SKILL_DIR}/scripts/render-html.mjs <candidate>
+```
+
+It writes a standalone HTML page of the diagram beside the candidate and prints its `page` path. If it exits non-zero, mention its stderr in the report; the diagram itself is still accepted.
+
+## 9. Report
+
+On `accepted`, report the `candidate` path, the `page` path and the number of components, and tell the user that the Sustain viewer will offer to open the new diagram.

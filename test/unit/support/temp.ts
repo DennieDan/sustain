@@ -91,9 +91,9 @@ const SCRIPT_NODE = process.env["SUSTAIN_SCRIPT_NODE"] ?? process.execPath;
 export function runScript(script: "validate", args: string[], options: RunOptions): ScriptRun<ValidateReport>;
 export function runScript(script: "repo-facts", args: string[], options: RunOptions): ScriptRun<RepoFacts>;
 export function runScript(script: "session", args: string[], options: RunOptions): ScriptRun<SessionReport>;
-export function runScript(script: "refresh-facts", args: string[], options: RunOptions): ScriptRun<Record<string, unknown>>;
+export function runScript(script: "refresh-facts" | "render-html", args: string[], options: RunOptions): ScriptRun<Record<string, unknown>>;
 export function runScript(
-  script: "validate" | "repo-facts" | "session" | "refresh-facts",
+  script: "validate" | "repo-facts" | "session" | "refresh-facts" | "render-html",
   args: string[],
   options: RunOptions,
 ): ScriptRun<ValidateReport | RepoFacts | SessionReport | Record<string, unknown>> {

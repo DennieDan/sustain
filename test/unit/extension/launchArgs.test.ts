@@ -57,6 +57,7 @@ describe("SAF-04 launch arguments", () => {
       "Glob",
       "Bash(node /h/.claude/skills/sustain-architecture/scripts/repo-facts.mjs *)",
       "Bash(node /h/.claude/skills/sustain-architecture/scripts/validate.mjs *)",
+      "Bash(node /h/.claude/skills/sustain-architecture/scripts/render-html.mjs *)",
       "Edit(./.archify/**)",
     ]);
     expect(forbiddenIn(argv)).toEqual([]);
@@ -72,6 +73,7 @@ describe("SAF-04 launch arguments", () => {
       "Glob",
       "Bash(node /h/.claude/skills/sustain-refresh/scripts/refresh-facts.mjs *)",
       "Bash(node /h/.claude/skills/sustain-refresh/scripts/validate.mjs *)",
+      "Bash(node /h/.claude/skills/sustain-refresh/scripts/render-html.mjs *)",
       "Edit(./.archify/**)",
     ]);
     expect(forbiddenIn(argv)).toEqual([]);

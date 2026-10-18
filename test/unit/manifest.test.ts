@@ -80,3 +80,7 @@ test("FRS-06 Refresh sits in the map's title bar and in a box's menu", () => {
   expect(manifest.contributes.menus["editor/title"]).toContainEqual({ command: "sustain.refreshArchitecture", when: "activeWebviewPanelId == 'sustain.architecture'", group: "navigation@1" });
   expect(manifest.contributes.menus["webview/context"]).toContainEqual({ command: "sustain.refreshBox", when: "webviewId == 'sustain.architecture' && webviewSection == 'box'", group: "navigation@2" });
 });
+
+test("RCH-01 Export Page sits in the map's title bar", () => {
+  expect(manifest.contributes.menus["editor/title"]).toContainEqual({ command: "sustain.exportPage", when: "activeWebviewPanelId == 'sustain.architecture'", group: "navigation@3" });
+});

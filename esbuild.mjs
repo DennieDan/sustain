@@ -23,10 +23,34 @@ const common = {
 const SCRIPT_ENTRIES = {
   "repo-facts": "src/agent/repo-facts.ts",
   "refresh-facts": "src/agent/refresh-facts.ts",
+  "render-html": "src/agent/render-html.ts",
   validate: "src/agent/validate.ts",
   session: "src/agent/session.ts",
   "session-hook": "src/agent/session-hook.ts",
 };
+
+/**
+ * The diagram page's script and stylesheet (RCH-01): the viewer with its layout, for a browser, with
+ * any `</script` in string literals escaped so the script can sit inline in the page.
+ * @returns {Promise<{ script: string, style: string, metafile: import("esbuild").Metafile | undefined }>}
+ */
+export async function buildPage() {
+  const result = await esbuild.build({
+    ...common,
+    entryPoints: [join(root, "webview/page.ts")],
+    write: false,
+    platform: "browser",
+    format: "iife",
+    target: "es2022",
+    minify: true,
+    supported: { "inline-script": false },
+  });
+  const output = result.outputFiles?.[0];
+  if (output === undefined) throw new Error("buildPage: esbuild returned no output");
+  const script = output.text.trimEnd();
+  const style = `${readFileSync(join(root, "webview/styles.css"), "utf8")}\n${readFileSync(join(root, "webview/page.css"), "utf8")}`;
+  return { script, style, metafile: result.metafile };
+}
 
 /**
  * The skill scripts: ESM for Node ≥ 18 with every dependency inlined (ADR 0007).
@@ -35,6 +59,7 @@ const SCRIPT_ENTRIES = {
  *   which stages every script side by side in out/test-scripts/)
  */
 export async function buildScripts(outdir, names = Object.keys(SCRIPT_ENTRIES)) {
+  const page = names.includes("render-html") ? await buildPage() : null;
   return esbuild.build({
     ...common,
     entryPoints: Object.fromEntries(
@@ -49,7 +74,10 @@ export async function buildScripts(outdir, names = Object.keys(SCRIPT_ENTRIES)) 
     platform: "node",
     format: "esm",
     target: "node18",
-    define: { "process.env.SUSTAIN_VERSION": JSON.stringify(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version) },
+    define: {
+      "process.env.SUSTAIN_VERSION": JSON.stringify(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version),
+      ...(page ? { "process.env.SUSTAIN_PAGE_SCRIPT": JSON.stringify(page.script), "process.env.SUSTAIN_PAGE_STYLE": JSON.stringify(page.style) } : {}),
+    },
   });
 }
 
@@ -100,11 +128,11 @@ async function buildDist() {
 
   // Static skill files (SKILL.md, agents/, references/) ship as-is.
   cpSync(join(root, "skills"), join(dist, "skills"), { recursive: true });
-  results.push(await buildScripts(join(dist, "skills/sustain-architecture/scripts"), ["repo-facts", "validate"]));
+  results.push(await buildScripts(join(dist, "skills/sustain-architecture/scripts"), ["repo-facts", "validate", "render-html"]));
   results.push(await buildScripts(join(dist, "skills/sustain-bugfix/scripts"), ["session", "session-hook"]));
   // The refresh skill reads the same format reference as the architecture skill (FRS-05).
   cpSync(join(root, "skills/sustain-architecture/references"), join(dist, "skills/sustain-refresh/references"), { recursive: true });
-  results.push(await buildScripts(join(dist, "skills/sustain-refresh/scripts"), ["refresh-facts", "validate"]));
+  results.push(await buildScripts(join(dist, "skills/sustain-refresh/scripts"), ["refresh-facts", "validate", "render-html"]));
   writeSkillHashes();
 
   results.push(await esbuild.build({
@@ -149,7 +177,12 @@ async function buildDist() {
   cpSync(join(root, "webview/styles.css"), join(dist, "webview.css"));
   cpSync(join(root, "webview/session.css"), join(dist, "session-webview.css"));
   cpSync(join(root, "webview/sidebar.css"), join(dist, "sidebar.css"));
-  writeBundleInputs(results.flatMap((result) => (result.metafile ? [result.metafile] : [])));
+  // Export Page in the extension builds pages from the same assets as render-html.mjs.
+  const page = await buildPage();
+  writeFileSync(join(dist, "page.js"), page.script);
+  writeFileSync(join(dist, "page.css"), page.style);
+  const pageInputs = page.metafile;
+  writeBundleInputs([...results.flatMap((result) => (result.metafile ? [result.metafile] : [])), ...(pageInputs ? [pageInputs] : [])]);
 }
 
 async function buildE2e() {

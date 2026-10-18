@@ -18,6 +18,7 @@ import { webviewHtml } from "./html";
 import { installSkill } from "./install";
 import { skillStatus } from "./integrity";
 import { ArchitecturePanel } from "./panel";
+import { exportPageCommand } from "./exportPage";
 import { refreshArchitectureCommand } from "./refresh";
 import type { Runs } from "./runs";
 import { SessionPanel } from "./sessionPanel";
@@ -193,6 +194,9 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         return;
       case "deleteMap":
         if (root !== null && this.isCandidate(root, message.file)) await this.deleteMap(root, message.file);
+        return;
+      case "exportMap":
+        if (root !== null && this.isCandidate(root, message.file)) await exportPageCommand(this.context.extensionUri, message.file);
         return;
       case "refreshMap":
         if (root !== null && this.isCandidate(root, message.file)) {

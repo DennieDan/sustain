@@ -184,6 +184,7 @@ export type HomeWebviewMessage =
   | { type: "openMap"; file: string }
   | { type: "deleteMap"; file: string }
   | { type: "refreshMap"; file: string }
+  | { type: "exportMap"; file: string }
   | { type: "fix"; check: CheckId }
   | { type: "checkSetup" }
   | { type: "openSession" }

@@ -1,0 +1,29 @@
+/* The diagram page's own controls (RCH-01), drawn over the map with the same tokens. */
+.open {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  color: var(--sustain-foreground);
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+  font-family: var(--sustain-font-family);
+  font-size: var(--sustain-font-size);
+}
+
+.open select {
+  color: inherit;
+  background: var(--sustain-background);
+  border: 1px solid var(--sustain-widget-border);
+  font: inherit;
+}
+
+.open__note {
+  color: var(--sustain-muted);
+}

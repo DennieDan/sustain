@@ -2,7 +2,7 @@
 name: sustain-refresh
 description: Bring an existing Sustain architecture diagram up to date with the code. Invoke manually with --from <run folder> and optional --paths <glob>.
 disable-model-invocation: true
-allowed-tools: Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/refresh-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *)
+allowed-tools: Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/refresh-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/render-html.mjs *)
 ---
 
 # Sustain refresh
@@ -75,6 +75,10 @@ node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs <draft>
 
 An `accepted` report has an `evidence` list. For each `DeclarationOnly` box you added or changed, cite a range that shows what it does, or change its label to what the cited code shows. If that changes the diagram, write the whole revised diagram to `draft.json` in the same run folder and validate it again. This revision does not count against the 3 repairs, and it happens once.
 
-## 8. Report
+## 8. Write the diagram page
 
-On `accepted`, report the `candidate` path, which boxes you changed, added or removed, and that the Sustain viewer will open the refreshed diagram.
+Run `node ${CLAUDE_SKILL_DIR}/scripts/render-html.mjs <candidate>` from the repository root, with the accepted report's `candidate` path. It writes the refreshed diagram's standalone HTML page and prints its `page` path. If it exits non-zero, mention its stderr in the report.
+
+## 9. Report
+
+On `accepted`, report the `candidate` path, the `page` path, which boxes you changed, added or removed, and that the Sustain viewer will open the refreshed diagram.

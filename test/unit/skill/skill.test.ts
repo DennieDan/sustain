@@ -37,7 +37,7 @@ describe("FR-SKL-01 skill frontmatter", () => {
         "Generate an Archify architecture diagram of this repository for the Sustain VS Code viewer. Invoke manually with an optional focus.",
       "disable-model-invocation": "true",
       "allowed-tools":
-        "Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *)",
+        "Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/render-html.mjs *)",
     });
   });
 
@@ -82,7 +82,8 @@ describe("FRS-05 refresh skill", () => {
       name: "sustain-refresh",
       description: "Bring an existing Sustain architecture diagram up to date with the code. Invoke manually with --from <run folder> and optional --paths <glob>.",
       "disable-model-invocation": "true",
-      "allowed-tools": "Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/refresh-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *)",
+      "allowed-tools":
+        "Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/refresh-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/render-html.mjs *)",
     });
     expect(parseNestedYaml(readFileSync(join(refreshDir, "agents/openai.yaml"), "utf8"))).toEqual({
       interface: { display_name: "Sustain Refresh", short_description: "Bring a Sustain architecture diagram up to date" },

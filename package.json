@@ -138,6 +138,12 @@
         "command": "sustain.refreshBox",
         "title": "Refresh This Box",
         "category": "Sustain"
+      },
+      {
+        "command": "sustain.exportPage",
+        "title": "Export Page",
+        "category": "Sustain",
+        "icon": "$(globe)"
       }
     ],
     "viewsContainers": {
@@ -223,6 +229,11 @@
           "command": "sustain.refreshArchitecture",
           "when": "activeWebviewPanelId == 'sustain.architecture'",
           "group": "navigation@1"
+        },
+        {
+          "command": "sustain.exportPage",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "navigation@3"
         }
       ],
       "explorer/context": [

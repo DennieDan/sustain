@@ -17,6 +17,9 @@ const BROWSER_SAFE_MODEL: Record<string, true> = {
   "src/model/changes.ts": true,
   "src/model/refresh.ts": true,
   "src/model/evidence.ts": true,
+  "src/model/citationPath.ts": true,
+  "src/model/deny.ts": true,
+  "src/model/openLinks.ts": true,
 };
 const NODE_MODEL: Record<string, true> = {
   "src/model/citations.ts": true,
@@ -32,6 +35,7 @@ const NODE_MODEL: Record<string, true> = {
   "src/model/maps.ts": true,
   "src/model/fingerprints.ts": true,
   "src/model/staleness.ts": true,
+  "src/model/page.ts": true,
 };
 const NODE_ALLOWED: Record<string, true> = {
   "node:fs": true,
