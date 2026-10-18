@@ -585,7 +585,8 @@ Tests the I6 ACs call for:
 
 Done when: Gates green.
 
-- [x] **FRS-07 Compare maps** `[unit]` `[dom]` — built in I3 for PRC-03 (see there).
+FRS-07 Compare maps was built in I3 for PRC-03, and is ticked there.
+
 - [ ] **VWR-02 Layout in workers** `[unit]` `[ci]` — `[unit]` done 2026-10-19: `webview/layoutWorkers.ts` (ELK's API with one Blob worker per direction), `src/layout/elkInThread.ts`, the engine passed into `runElk` and `layoutDiagram`, ELK's worker code embedded by `esbuild.mjs`, and `worker-src blob:` in the webview's and the page's CSP. ADR 0064 supersedes 0010. Tests: `worker.test.ts` (ELK's embedded worker code through ELK's API lays out every fixture as the thread does, in two workers), `html.test.ts` and `page.test.ts` › VWR-02 (the CSP strings). `perf.test.ts` › VWR-02 runs on CI's Ubuntu only; here, with `CI=true`, its median was about 0.44 s. `[ci]` waits for the owner's push.
 - [x] **VWR-03 Finder** `[dom]` — 2026-10-19: `webview/finder.ts`, `focusView` in `viewport.ts`, the viewer's marks, Find in Map in the map's title bar (`find`), and the viewport leaving keys typed into a text box alone. Tests: `main.test.ts` › VWR-03 (2: `/` opens it, matches by label, sublabel and path in any case, the rest dimmed, typed keys left out of zooming, Escape; Ctrl+F, Enter centring the match, and the arrow keys cycling).
 - [x] **VWR-04 Keyboard and screen readers** `[dom]` — 2026-10-19: `webview/a11y.ts`, the boxes' `tabindex`, `role` and `aria-label` in `render.ts`, Enter and Space in the viewer, the focus ring and `.sr-only`. Tests: `main.test.ts` › VWR-04 (2: focus, names and Enter or Space opening only boxes with code; the hidden list of boxes and arrows and its buttons), `inert.test.ts` › SAF-03 VWR-04 (a hostile label in the accessible name stays attribute text).
@@ -595,7 +596,7 @@ Done when: Gates green.
 - [ ] **SET-04 Messages that say what to do** `[unit]`
 - [ ] **SET-05 Opt-in usage log** `[unit]` `[e2e]`
 - [ ] **SAF-08 Remove Sustain from a folder** `[e2e]`
-- [ ] **ENG-03 Spec traceability check** `[unit]`
+- [x] **ENG-03 Spec traceability check** `[unit]` — 2026-10-19: `checkTraceability`, `specIds` and `checklistIds` in `scripts/check-docs.mjs`, run by `check:docs`. Tests: `checkDocs.test.ts` › ENG-03 (2: an ID on two checklist lines, one on none, and an undefined ID; the check run on a docs folder), and its existing check of the repository's own docs, which found FRS-07 on both the I3 and the I6 checklist and now passes.
 
 ## I7 IntelliJ plugin
 
