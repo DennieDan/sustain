@@ -1,5 +1,5 @@
 // FR-RF-01 (and FR-GIT-01 through the CLI) against the built repo-facts.mjs.
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { runTimestamp } from "../../../src/model/runFolder";
@@ -8,7 +8,7 @@ import { envWithoutGit, git, gitRepo, put, runScript, tempDir } from "../support
 const RUN_NAME = /^architecture-([a-z0-9-]+)-(\d{8}-\d{6})(-\d+)?$/;
 
 describe("FR-RF-01 repo-facts CLI", () => {
-  test("creates the run folder and prints root, runFolder, draft and git", () => {
+  test("CST-04 creates the run folder with run.json and prints root, runFolder, draft and git", () => {
     const root = tempDir();
     const run = runScript("repo-facts", ["--focus", "Payment service: retries & queues"], { cwd: root, env: envWithoutGit() });
     expect(run.status).toBe(0);
@@ -20,7 +20,17 @@ describe("FR-RF-01 repo-facts CLI", () => {
     expect(name).toMatch(RUN_NAME);
     expect(RUN_NAME.exec(name)![1]).toBe("payment-service-retries-queues");
     expect(facts.draft).toBe(`${facts.runFolder}/draft.json`);
-    expect(readdirSync(join(root, facts.runFolder))).toEqual([]);
+    expect(readdirSync(join(root, facts.runFolder))).toEqual(["run.json"]);
+    expect(JSON.parse(readFileSync(join(root, facts.runFolder, "run.json"), "utf8"))).toMatchObject({
+      schema: 1,
+      kind: "full",
+      focus: "Payment service: retries & queues",
+      paths: [],
+      base: null,
+      parent: null,
+      phase: "created",
+      attempts: 0,
+    });
     expect(facts.git).toBeNull();
   });
 
@@ -50,7 +60,7 @@ describe("FR-RF-01 repo-facts CLI", () => {
     expect(existsSync(join(root, ".archify", name))).toBe(true);
   });
 
-  test("git facts come from the repo root", () => {
+  test("CST-04 git facts come from the repo root and exclude the new run folder", () => {
     const root = gitRepo({ "a.txt": "a\n" });
     git(root, "remote", "add", "origin", "https://user:pw@github.com/acme/widget.git");
     writeFileSync(join(root, "a.txt"), "changed\n");

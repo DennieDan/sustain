@@ -48,3 +48,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0042](0042-session-hooks-live-only-while-a-session-runs.md) | Session hooks live only while a session runs | accepted | 2026-10-18 |
 | [0043](0043-skills-are-checked-against-the-shipped-copy-before-launch.md) | Skills are checked against the shipped copy before launch | accepted | 2026-10-18 |
 | [0044](0044-skills-install-per-user-by-default.md) | Skills install per user by default | accepted | 2026-10-18 |
+| [0045](0045-run-json-records-each-run.md) | run.json records each run | accepted | 2026-10-18 |

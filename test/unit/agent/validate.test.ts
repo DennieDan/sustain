@@ -83,11 +83,11 @@ describe("FR-VAL-01 CLI exit paths", () => {
     expect(readdirSync(join(outside, RUN))).toEqual(["draft.json"]);
   });
 
-  test("an absolute draft path works from any cwd", () => {
+  test("CST-04 an absolute draft path works from any cwd", () => {
     const { root, draftPath } = setup(draftDoc());
     const run = runScript("validate", [draftPath], { cwd: tempDir() });
     expect(run.status).toBe(0);
-    expect(runFiles(root)).toEqual(["candidate.json"]);
+    expect(runFiles(root)).toEqual(["candidate.json", "run.json"]);
   });
 
   test("malformed JSON is a rejection at pointer \"\"", () => {
@@ -113,7 +113,20 @@ describe("FR-VAL-01 CLI exit paths", () => {
     expect(run.stderr).toMatch(/^validate\.mjs: /);
   });
 
-  test("a publish failure is an I/O error: exit 2 and the draft stays", () => {
+  test("CST-04 run.json counts validator runs and records the outcome", () => {
+    const doc = draftDoc();
+    doc.components[1]!["type"] = "nope";
+    const { root } = setup(doc);
+    const runJson = () => JSON.parse(readFileSync(join(root, ".archify", RUN, "run.json"), "utf8"));
+    expect(runScript("validate", [DRAFT], { cwd: root }).status).toBe(1);
+    expect(runJson()).toMatchObject({ phase: "rejected", attempts: 1 });
+    setup(draftDoc(), { root });
+    expect(runScript("validate", [DRAFT], { cwd: root }).status).toBe(0);
+    expect(runJson()).toMatchObject({ phase: "accepted", attempts: 2 });
+    expect(Date.parse(runJson().finishedAt)).not.toBeNaN();
+  });
+
+  test("CST-04 a read-only run folder is an I/O error: exit 2 and the draft stays", () => {
     const { root, draftText } = setup(draftDoc());
     const dir = join(root, ".archify", RUN);
     chmodSync(dir, 0o555);
@@ -121,7 +134,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
       const run = runScript("validate", [DRAFT], { cwd: root });
       expect(run.status).toBe(2);
       expect(run.stdout).toBe("");
-      expect(run.stderr).toMatch(/cannot publish candidate\.json/);
+      expect(run.stderr).toMatch(/cannot write run\.json/);
     } finally {
       chmodSync(dir, 0o755);
     }
@@ -265,22 +278,22 @@ describe("FR-VAL-03..05 checks through the CLI", () => {
 });
 
 describe("FR-VAL-06 publish", () => {
-  test("an accepted run leaves only candidate.json, written as 2-space JSON with a trailing newline", () => {
+  test("CST-04 an accepted run leaves candidate.json and run.json, the candidate written as 2-space JSON with a trailing newline", () => {
     const { root } = setup(draftDoc());
     expect(runScript("validate", [DRAFT], { cwd: root, env: envWithoutGit() }).status).toBe(0);
-    expect(runFiles(root)).toEqual(["candidate.json"]);
+    expect(runFiles(root)).toEqual(["candidate.json", "run.json"]);
     const text = readFileSync(join(root, ".archify", RUN, "candidate.json"), "utf8");
     expect(text).toBe(`${JSON.stringify(JSON.parse(text), null, 2)}\n`);
   });
 
-  test("a rejected run leaves only draft.json, byte-identical", () => {
+  test("CST-04 a rejected run leaves draft.json byte-identical and run.json", () => {
     const doc = draftDoc();
     doc.components[0]!["sources"] = [{ path: ".env" }];
     const { root, draftText } = setup(doc);
     const run = runScript("validate", [DRAFT], { cwd: root });
     expect(run.status).toBe(1);
     expect(run.json().errors[0]!.message).toMatch(/^DeniedCitation: /);
-    expect(runFiles(root)).toEqual(["draft.json"]);
+    expect(runFiles(root)).toEqual(["draft.json", "run.json"]);
     expect(readFileSync(join(root, DRAFT), "utf8")).toBe(draftText);
   });
 });

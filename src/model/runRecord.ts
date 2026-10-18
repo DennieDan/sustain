@@ -1,0 +1,81 @@
+// CST-04: run.json records a run's kind, scope and progress beside its candidate.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { assertWritable } from "./confine";
+import { writeJson } from "./session";
+import { isJsonObject } from "./types";
+
+export const RUN_FILE = "run.json";
+
+export type RunKind = "full" | "refresh" | "drill";
+export type RunPhase = "created" | "validating" | "accepted" | "rejected";
+
+export interface RunTokens {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+export interface RunRecord {
+  schema: 1;
+  kind: RunKind;
+  focus: string;
+  /** Path globs a refresh or drill-down is limited to; empty for a whole run. */
+  paths: string[];
+  /** The run folder a refresh starts from. */
+  base: string | null;
+  /** The run folder a drill-down came from. */
+  parent: string | null;
+  createdAt: string;
+  skillVersion: string;
+  phase: RunPhase;
+  /** Validator runs so far. */
+  attempts: number;
+  finishedAt?: string;
+  /** Added by the extension when it launched the run. */
+  agent?: string;
+  mode?: "panel" | "terminal";
+  tokens?: RunTokens;
+  costUsd?: number;
+}
+
+/** A fresh record for a run created now. */
+export function newRunRecord(fields: { kind?: RunKind; focus: string; paths?: string[]; base?: string | null; parent?: string | null; skillVersion: string }, now = new Date()): RunRecord {
+  return {
+    schema: 1,
+    kind: fields.kind ?? "full",
+    focus: fields.focus,
+    paths: fields.paths ?? [],
+    base: fields.base ?? null,
+    parent: fields.parent ?? null,
+    createdAt: now.toISOString(),
+    skillVersion: fields.skillVersion,
+    phase: "created",
+    attempts: 0,
+  };
+}
+
+/** The record in `runDir`, or `null` when it is missing or not a run record. */
+export function readRunRecord(runDir: string): RunRecord | null {
+  try {
+    const value: unknown = JSON.parse(readFileSync(join(runDir, RUN_FILE), "utf8"));
+    return isJsonObject(value) && value["schema"] === 1 && typeof value["phase"] === "string" ? (value as unknown as RunRecord) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Writes `record` to `runDir/run.json`, which must lie inside `root`. */
+export function writeRunRecord(root: string, runDir: string, record: RunRecord): void {
+  const path = join(runDir, RUN_FILE);
+  assertWritable(root, path);
+  writeJson(path, record);
+}
+
+/** Merges `patch` into the record in `runDir`, starting from `fallback` when there is none. */
+export function updateRunRecord(root: string, runDir: string, patch: Partial<RunRecord>, fallback: () => RunRecord): RunRecord {
+  const next = { ...(readRunRecord(runDir) ?? fallback()), ...patch };
+  writeRunRecord(root, runDir, next);
+  return next;
+}

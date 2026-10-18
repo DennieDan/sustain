@@ -6,6 +6,7 @@ import { checkCitations } from "../model/citations";
 import { assertWritable } from "../model/confine";
 import { collectGitFacts, repositoryFromGit } from "../model/git";
 import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftLocation } from "../model/runFolder";
+import { newRunRecord, readRunRecord, RUN_FILE, updateRunRecord, type RunRecord } from "../model/runRecord";
 import { checkSubmission, REMOVED_FIELD_MESSAGE } from "../model/submission";
 import { stringifyDocument, type Issue } from "../model/types";
 
@@ -28,6 +29,14 @@ function listErrors(errors: Issue[]): Report["errors"] {
   return listed;
 }
 
+/** The skill version, filled in by the build. */
+const SKILL_VERSION = process.env.SUSTAIN_VERSION ?? "unknown";
+
+/** Merges `patch` into the run's run.json, creating it for runs that predate run records (CST-04). */
+function record(location: DraftLocation, patch: Partial<RunRecord>): void {
+  updateRunRecord(location.root, dirname(location.draft), patch, () => newRunRecord({ focus: "", skillVersion: SKILL_VERSION }));
+}
+
 function usageError(message: string): number {
   process.stderr.write(`validate.mjs: ${message}\n`);
   return 2;
@@ -45,6 +54,12 @@ function main(args: string[]): number {
   } catch (error) {
     return usageError((error as Error).message);
   }
+  try {
+    const attempts = (readRunRecord(dirname(location.draft))?.attempts ?? 0) + 1;
+    record(location, { phase: "validating", attempts });
+  } catch (error) {
+    return usageError(`cannot write ${RUN_FILE}: ${(error as Error).message}`);
+  }
 
   let value: unknown;
   try {
@@ -56,6 +71,7 @@ function main(args: string[]): number {
       warnings: [],
       hint: HINT,
     };
+    record(location, { phase: "rejected" });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return 1;
   }
@@ -73,12 +89,14 @@ function main(args: string[]): number {
 
   if (errors.length > 0) {
     const report: Report = { status: "rejected", errors: listErrors(errors), warnings, hint: HINT };
+    record(location, { phase: "rejected" });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return 1;
   }
   try {
     assertWritable(location.root, join(dirname(location.draft), CANDIDATE_FILE));
     publishCandidate(location.draft, stringifyDocument(value));
+    record(location, { phase: "accepted", finishedAt: new Date().toISOString() });
   } catch (error) {
     return usageError(`cannot publish ${CANDIDATE_FILE}: ${(error as Error).message}`);
   }

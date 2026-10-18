@@ -129,7 +129,7 @@ Done when: Everything is reachable without the Command Palette; runs and questio
 - [ ] **SET-01 Install anywhere** `[unit]` `[e2e]` `[smoke]` — `[unit]` `[e2e]` done 2026-10-18: `sustain.skillScope` (default `user`) picks the base; skills use `${CLAUDE_SKILL_DIR}`; integrity checks the base copy and repository copies; a per-user session hook runs by absolute path. Tests: `skill.test.ts` › `SET-01 … never a repository path` (2) and the updated frontmatter test; `integrity.test.ts` › `SET-01 a per-user install …`; e2e install into a temporary HOME (every launch now gets its own HOME) and `SET-01 with sustain.skillScope set to project …`. The real `~/.claude/skills` and `~/.agents/skills` stay empty. ADR 0044 supersedes ADR 0006. `[smoke]`: each agent loading the per-user skill waits for the agent CLIs.
 - [ ] **SET-02 Setup check** `[unit]` `[dom]` `[e2e]`
 - [ ] **SET-03 One-click Generate** `[e2e]`
-- [ ] **CST-04 Run record** `[unit]` `[e2e]`
+- [ ] **CST-04 Run record** `[unit]` `[e2e]` — `[unit]` done 2026-10-18: `src/model/runRecord.ts`; `repo-facts.mjs` writes `run.json` (git facts now come first, so the new run folder is not a dirty path); `validate.mjs` counts attempts and records `rejected` or `accepted` with `finishedAt`; the build fills in `skillVersion`. Tests: `repoFacts.test.ts` › `CST-04 creates the run folder with run.json…`, `CST-04 git facts … exclude the new run folder`; `validate.test.ts` › `CST-04 run.json counts validator runs and records the outcome` and four updated FR-VAL tests. ADR 0045. `[e2e]` (the terminal-mode run card) comes with UI-01.
 
 ## D3 The living map
 

@@ -48,6 +48,7 @@ export async function buildScripts(outdir, names = Object.keys(SCRIPT_ENTRIES)) 
     platform: "node",
     format: "esm",
     target: "node18",
+    define: { "process.env.SUSTAIN_VERSION": JSON.stringify(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version) },
   });
 }
 

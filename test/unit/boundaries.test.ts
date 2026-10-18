@@ -21,6 +21,7 @@ const NODE_MODEL: Record<string, true> = {
   "src/model/confine.ts": true,
   "src/model/which.ts": true,
   "src/model/integrity.ts": true,
+  "src/model/runRecord.ts": true,
 };
 const NODE_ALLOWED: Record<string, true> = {
   "node:fs": true,

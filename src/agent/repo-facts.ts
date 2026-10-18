@@ -1,8 +1,12 @@
-// `node .agents/skills/sustain-architecture/scripts/repo-facts.mjs [--focus <text>]`, run with
-// cwd = repo root (FR-RF-01): creates the run folder and prints where the draft goes (ADR 0018).
-import { basename } from "node:path";
+// `node <skill>/scripts/repo-facts.mjs [--focus <text>]`, run with cwd = repo root (FR-RF-01):
+// creates the run folder with its run.json (CST-04) and prints where the draft goes (ADR 0018).
+import { basename, join } from "node:path";
 import { collectGitFacts } from "../model/git";
 import { ARCHIFY_DIR, createRunFolder, DRAFT_FILE, runTimestamp, slugify } from "../model/runFolder";
+import { newRunRecord, writeRunRecord } from "../model/runRecord";
+
+/** The skill version, filled in by the build. */
+const SKILL_VERSION = process.env.SUSTAIN_VERSION ?? "unknown";
 
 function main(args: string[]): number {
   let focus = "";
@@ -12,14 +16,16 @@ function main(args: string[]): number {
     return 2;
   }
   const root = process.cwd();
+  // Git facts come first, so the new run folder is not among the dirty paths.
+  const git = collectGitFacts(root);
   let run: string;
   try {
     run = createRunFolder(root, slugify(focus, basename(root)), runTimestamp(new Date()));
+    writeRunRecord(root, join(root, ARCHIFY_DIR, run), newRunRecord({ focus, skillVersion: SKILL_VERSION }));
   } catch (error) {
     process.stderr.write(`repo-facts.mjs: ${(error as Error).message}\n`);
     return 2;
   }
-  const git = collectGitFacts(root);
   const facts = {
     root,
     runFolder: `${ARCHIFY_DIR}/${run}`,
