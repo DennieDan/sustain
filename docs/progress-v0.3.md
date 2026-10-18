@@ -370,6 +370,26 @@ Done when: An estimate shows before every run.
 
 ## I2 Accuracy
 
+### I2 proposal (2026-10-18)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `src/model/evidence/imports.ts`, `java.ts`, `typescript.ts`, `python.ts`, `graph.ts` | ACC-02: imports per language (Java packages through source roots; TypeScript and JavaScript relative imports, `require`, re-exports, `tsconfig` `paths` and `baseUrl`; Python absolute and relative imports); the box graph through PRC-01's ownership; `UnsupportedEdge` (no path within two hops), `MissingEdge` (3 or more links, no arrow), `Isolated`, and arrows "not checked" | +420 |
+| `src/agent/validate.ts`, `src/model/evidence.ts`, both skills' step 7 | ACC-02: the validator adds the import findings to `evidence.json`; step 7 reviews them in its one revision | +40 |
+| `src/model/delta.ts`, `src/model/check.ts`, `src/model/deltaMarkdown.ts`, `src/model/config.ts`, `src/extension/review.ts`, `webview/viewer.ts` | PRC-06: new arrow candidates from import links the diff adds between boxes with no arrow; the third new-box rule for uncovered files that import each other more than any box's files; dashed ghost arrows; the comment lists them; `new-arrow` for `--fail-on` | +220 |
+| `skills/sustain-audit/`, `src/agent/audit-record.ts`, `src/model/audit.ts`, `src/model/schemas/audit.schema.json`, `esbuild.mjs`, `src/extension/audit.ts`, `package.json` | ACC-05: the audit skill, reading each box's cited ranges in a fresh subagent where supported; `audit-record.mjs` validates and writes `audit.json` (`supports`, `partial` or `contradicts` per box with a reason of at most 200 characters, evidence per arrow); an Audit Map command in the map's title bar | +300 |
+| `src/model/uncertainty.ts`, `src/extension/panel.ts`, `src/model/messages.ts`, `webview/viewer.ts`, `webview/styles.css`, `package.json` | ACC-03: dotted outlines with the reason for `DeclarationOnly`, `partial` and `contradicts` boxes; dashed grey `UnsupportedEdge` arrows labelled "no import evidence"; a legend; the Checks toggle in the map's title bar | +200 |
+| `src/model/feedback.ts`, `src/extension/feedback.ts`, `package.json` | ACC-06: the box menu's "This box is wrong…" saves a note to `feedback.json` and offers "Refresh this box" | +90 |
+| `eval/score.ts`, `eval/check-truth.ts`, `src/model/score.ts`, `eval/ground-truth/*.json`, `esbuild.mjs`, `package.json` | ACC-04: ground truth for the five corpus repositories from their architecture documents; `npm run eval` scores maps by containment (precision, recall, edges, grouping errors, citation support); `npm run eval:check-truth` checks the globs against the cached clones | +350, plus the ground truth |
+
+Tests the I2 ACs call for:
+- per-language import fixtures for Java, TypeScript and Python, and each finding;
+- the uncertainty rendering, the legend and the toggle `[dom]`;
+- scorer cases with known scores;
+- the audit recorder `[unit]` and the verdicts on the map `[dom]`;
+- "This box is wrong…" saving a note and offering the refresh `[e2e]`;
+- new arrow candidates and the third new-box rule in temporary git repositories.
+
 Done when: Evidence and audit verdicts show on the map; the scorer runs.
 
 - [ ] **ACC-02 Evidence checks** `[unit]`
