@@ -179,6 +179,18 @@
         "icon": "$(checklist)"
       },
       {
+        "command": "sustain.hideChecks",
+        "title": "Hide Checks",
+        "category": "Sustain",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "sustain.showChecks",
+        "title": "Show Checks",
+        "category": "Sustain",
+        "icon": "$(eye-closed)"
+      },
+      {
         "command": "sustain.reviewChanges",
         "title": "Review Changes",
         "category": "Sustain"
@@ -277,6 +289,16 @@
           "command": "sustain.auditMap",
           "when": "activeWebviewPanelId == 'sustain.architecture'",
           "group": "navigation@4"
+        },
+        {
+          "command": "sustain.hideChecks",
+          "when": "activeWebviewPanelId == 'sustain.architecture' && !sustain.checksHidden",
+          "group": "navigation@5"
+        },
+        {
+          "command": "sustain.showChecks",
+          "when": "activeWebviewPanelId == 'sustain.architecture' && sustain.checksHidden",
+          "group": "navigation@5"
         }
       ],
       "explorer/context": [

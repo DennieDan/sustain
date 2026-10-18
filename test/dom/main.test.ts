@@ -6,6 +6,7 @@ import { layoutDiagram } from "../../src/layout/layout";
 import type { Scene } from "../../src/layout/scene";
 import type { HostMessage, WebviewMessage } from "../../src/model/messages";
 import { fitView } from "../../webview/viewport";
+import { uncertainty } from "../../src/model/uncertainty";
 import { gridScene } from "./support/scene";
 
 vi.mock("../../src/layout/layout", () => ({ layoutDiagram: vi.fn() }));
@@ -281,5 +282,51 @@ describe("PRC-02 ghost boxes", () => {
     send({ type: "ghosts", ghosts: [] });
     await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
     expect(document.querySelectorAll(".node--ghost").length).toBe(0);
+  });
+});
+
+describe("ACC-03 ACC-05 uncertainty on the map", () => {
+  const DOC = {
+    meta: { title: "Shop" },
+    components: [
+      { id: "web", label: "Web", type: "frontend" },
+      { id: "api", label: "API", type: "backend" },
+      { id: "db", label: "DB", type: "database" },
+      { id: "jobs", label: "Jobs", type: "backend" },
+    ],
+    connections: [
+      { from: "web", to: "api", label: "calls" },
+      { from: "api", to: "db" },
+      { from: "api", to: "jobs", label: "starts" },
+    ],
+  };
+  const EVIDENCE = { schema: 1, findings: [{ code: "DeclarationOnly", pointer: "/components/2", component: "db", message: "x" }, { code: "UnsupportedEdge", pointer: "/connections/1", message: "x" }, { code: "UnsupportedEdge", pointer: "/connections/2", message: "x" }] };
+  const AUDIT = { schema: 1, createdAt: "2026-10-18T12:00:00Z", boxes: [{ component: "web", verdict: "supports", reason: "ok" }, { component: "api", verdict: "partial", reason: "Returns a constant." }, { component: "jobs", verdict: "contradicts", reason: "Sends mail." }], arrows: [] };
+  const labels = (): (string | null)[] => [...document.querySelectorAll(".edge-label")].map((label) => label.textContent);
+
+  test("doubtful boxes are dotted, unbacked arrows grey, dashed and labelled, and a legend says what both mean", async () => {
+    send({ type: "load", doc: DOC, file: "/r/shop.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(4));
+    const { boxes, edges } = uncertainty(EVIDENCE, AUDIT);
+    expect(boxes).toEqual({ db: "Its citations only declare something.", api: "The audit found it partial: Returns a constant.", jobs: "The audit found the code contradicts it: Sends mail." });
+    send({ type: "uncertainty", boxes, edges, shown: true });
+    await vi.waitFor(() => expect(labels()).toEqual(["calls", "no import evidence", "starts · no import evidence"]));
+    expect([...document.querySelectorAll(".node--doubtful")].map((node) => node.getAttribute("data-id"))).toEqual(["api", "db", "jobs"]);
+    expect([...document.querySelectorAll(".edge.edge--unsupported")].map((edge) => edge.getAttribute("data-index"))).toEqual(["1", "2"]);
+    expect(document.querySelector(".edge[data-index='1']")!.classList.contains("edge--dashed")).toBe(true);
+    const legend = document.querySelector<HTMLElement>(".checks-legend")!;
+    expect(legend.hidden).toBe(false);
+    expect([...legend.querySelectorAll(".checks-legend__row:not([hidden])")].map((row) => row.textContent)).toEqual(["Dotted box: its evidence is in doubt. Hover it for the reason.", "Grey dashed arrow: no import path backs it."]);
+  });
+
+  test("the Checks toggle hides them all, and the arrows get their own labels back", async () => {
+    send({ type: "load", doc: DOC, file: "/r/shop.json" });
+    const { boxes, edges } = uncertainty(EVIDENCE, AUDIT);
+    send({ type: "uncertainty", boxes, edges, shown: true });
+    await vi.waitFor(() => expect(document.querySelectorAll(".edge--unsupported").length).toBeGreaterThan(0));
+    send({ type: "uncertainty", boxes, edges, shown: false });
+    await vi.waitFor(() => expect(labels()).toEqual(["calls", "starts"]));
+    expect(document.querySelectorAll(".node--doubtful, .edge--unsupported").length).toBe(0);
+    expect(document.querySelector<HTMLElement>(".checks-legend")!.hidden).toBe(true);
   });
 });

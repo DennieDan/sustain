@@ -1,12 +1,15 @@
 // The architecture WebviewPanel (FR-VIEW-04, ADR 0011): one per window, showing one file.
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { basename, isAbsolute, relative, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { citingBoxes } from "../model/citing";
 import { freshnessHeader } from "../model/home";
 import type { ChangeOverlay, Ghost, GhostArrow, HostMessage, WebviewMessage } from "../model/messages";
+import { AUDIT_FILE } from "../model/audit";
+import { EVIDENCE_FILE } from "../model/evidence";
 import type { MapFreshness } from "../model/staleness";
+import { uncertainty } from "../model/uncertainty";
 import { parseDiagram, type ViewDiagram } from "../model/tolerant";
 import { changedBoxes, type FreshnessService } from "./freshness";
 import { webviewHtml } from "./html";
@@ -61,7 +64,24 @@ export class ArchitecturePanel {
   /** New box candidates drawn as ghost boxes (PRC-02), cleared with the overlay. */
   private ghosts: Ghost[] = [];
   private ghostArrows: GhostArrow[] = [];
+  /** Watches the shown map's evidence.json and audit.json (ACC-03). */
+  private sidecars: { dir: string; watcher: vscode.FileSystemWatcher } | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+
+  /** Whether the maps' Checks show doubtful boxes and unbacked arrows (ACC-03); one setting for the window. */
+  private static checksShown = true;
+
+  /** Shows or hides the Checks on the map, for the title bar's toggle. */
+  static setChecksShown(shown: boolean): void {
+    ArchitecturePanel.checksShown = shown;
+    void vscode.commands.executeCommand("setContext", "sustain.checksHidden", !shown);
+    ArchitecturePanel.instance?.sendUncertainty();
+  }
+
+  /** Whether the Checks are shown. */
+  static get checksVisible(): boolean {
+    return ArchitecturePanel.checksShown;
+  }
 
   private constructor(
     private readonly panel: vscode.WebviewPanel,
@@ -207,7 +227,32 @@ export class ArchitecturePanel {
     this.sendHighlight();
     this.sendFreshness();
     this.sendChanges();
+    this.sendUncertainty();
     if (this.ghosts.length + this.ghostArrows.length > 0) this.showGhosts(this.ghosts, this.ghostArrows);
+  }
+
+  /** Sends the shown map's doubtful boxes and unbacked arrows, and watches the files they come from (ACC-03). */
+  sendUncertainty(): void {
+    const dir = this.shown.kind === "diagram" && this.file !== "" ? dirname(this.file) : null;
+    if (this.sidecars?.dir !== dir) {
+      this.sidecars?.watcher.dispose();
+      this.sidecars = undefined;
+      if (dir !== null) {
+        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(dir), `{${EVIDENCE_FILE},${AUDIT_FILE}}`));
+        for (const event of [watcher.onDidCreate, watcher.onDidChange, watcher.onDidDelete]) event(() => this.sendUncertainty());
+        this.sidecars = { dir, watcher };
+      }
+    }
+    const read = (name: string): unknown => {
+      try {
+        return dir === null ? null : JSON.parse(readFileSync(join(dir, name), "utf8"));
+      } catch {
+        return null;
+      }
+    };
+    const { boxes, edges } = uncertainty(read(EVIDENCE_FILE), read(AUDIT_FILE));
+    const message: HostMessage = { type: "uncertainty", boxes, edges, shown: ArchitecturePanel.checksShown };
+    void this.panel.webview.postMessage(message);
   }
 
   /** Computes the shown map's freshness and sends its badges and header. */
@@ -317,6 +362,7 @@ export class ArchitecturePanel {
       ArchitecturePanel.instance = undefined;
       ArchitecturePanel.freshnessChanged.fire(0);
     }
+    this.sidecars?.watcher.dispose();
     for (const disposable of this.disposables.splice(0)) disposable.dispose();
   }
 }

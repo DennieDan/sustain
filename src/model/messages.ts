@@ -21,7 +21,9 @@ export type HostMessage =
   /** FRS-04: boxes a diff touched, or `null` to clear the overlay. */
   | { type: "changes"; overlay: ChangeOverlay | null }
   /** PRC-02: new box candidates drawn as dashed ghost boxes, and PRC-06's new arrows as dashed ghost arrows; never written. */
-  | { type: "ghosts"; ghosts: Ghost[]; arrows?: GhostArrow[] };
+  | { type: "ghosts"; ghosts: Ghost[]; arrows?: GhostArrow[] }
+  /** ACC-03: doubtful boxes and unbacked arrows, and whether the map's Checks are shown. */
+  | { type: "uncertainty"; boxes: Record<string, string>; edges: number[]; shown: boolean };
 
 /** A new box candidate on the map (PRC-02). */
 export interface Ghost {

@@ -99,6 +99,8 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.showChanges", () => showChangesCommand(extensionUri)),
     vscode.commands.registerCommand("sustain.refreshArchitecture", () => refreshArchitectureCommand(context, runs)),
     vscode.commands.registerCommand("sustain.auditMap", () => auditMapCommand(context, runs)),
+    vscode.commands.registerCommand("sustain.hideChecks", () => ArchitecturePanel.setChecksShown(false)),
+    vscode.commands.registerCommand("sustain.showChecks", () => ArchitecturePanel.setChecksShown(true)),
     vscode.commands.registerCommand("sustain.exportPage", () => exportPageCommand(extensionUri)),
     vscode.commands.registerCommand("sustain.reviewChanges", () => review.command(home.root())),
     vscode.commands.registerCommand("sustain.refreshBox", (box?: { componentId?: unknown }) => refreshBoxCommand(context, runs, box)),

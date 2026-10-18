@@ -26,12 +26,15 @@ function div(className: string, text: string): HTMLDivElement {
 /**
  * Hover tooltip for the `.node[data-index]` elements under `canvas`, drawn into `element`
  * (an empty, initially `hidden` HTML element). Content:
- * `div.tooltip__label`, optional `div.tooltip__sublabel`, `div.tooltip__type`, and when the
+ * `div.tooltip__label`, optional `div.tooltip__sublabel`, `div.tooltip__type`, an optional
+ * `div.tooltip__note` with why the box is doubtful (ACC-03), and when the
  * component has sources `ul.tooltip__sources` > `li` > `button.tooltip__source[data-index]` >
  * `span.tooltip__path` + optional `span.tooltip__source-label`.
  */
 export class TooltipController {
   private diagram: ViewDiagram | undefined;
+  /** Box id to a note shown under its type (ACC-03). */
+  private notes: Record<string, string> = {};
   /** The node element under the pointer. */
   private hovered: Element | undefined;
   private overTooltip = false;
@@ -63,6 +66,11 @@ export class TooltipController {
     this.diagram = diagram;
     this.hovered = undefined;
     this.hide();
+  }
+
+  /** Sets the notes shown for boxes, by id. */
+  setNotes(notes: Record<string, string>): void {
+    this.notes = notes;
   }
 
   /** Hides the tooltip now and cancels pending show and hide delays. */
@@ -126,6 +134,8 @@ export class TooltipController {
     const children: HTMLElement[] = [div("tooltip__label", component.label)];
     if (component.sublabel) children.push(div("tooltip__sublabel", component.sublabel));
     children.push(div("tooltip__type", component.type));
+    const note = this.notes[component.id];
+    if (note !== undefined) children.push(div("tooltip__note", note));
     if (component.sources.length > 0) {
       const list = document.createElement("ul");
       list.className = "tooltip__sources";

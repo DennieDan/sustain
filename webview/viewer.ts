@@ -4,6 +4,7 @@
 import { layoutDiagram } from "../src/layout/layout";
 import type { MeasureText } from "../src/layout/scene";
 import type { ChangeOverlay, Ghost, GhostArrow, HostMessage } from "../src/model/messages";
+import { NO_IMPORT_EVIDENCE } from "../src/model/uncertainty";
 import type { Freshness } from "../src/model/staleness";
 import { readDiagram, type ViewDiagram } from "../src/model/tolerant";
 import { onMessage, post } from "./bridge";
@@ -42,6 +43,18 @@ export function withGhosts(diagram: ViewDiagram, ghosts: readonly Ghost[], arrow
     sources: [],
   }));
   return { ...diagram, components: [...diagram.components, ...extra], connections: [...diagram.connections, ...newArrows] };
+}
+
+/** `diagram` with each arrow in `edges` dashed and labelled as having no import evidence (ACC-03). */
+export function withUncertainty(diagram: ViewDiagram, edges: readonly number[]): ViewDiagram {
+  if (edges.length === 0) return diagram;
+  const marked = new Set(edges);
+  return {
+    ...diagram,
+    connections: diagram.connections.map((connection, index) =>
+      marked.has(index) ? { ...connection, variant: "dashed" as const, label: connection.label ? `${connection.label} · ${NO_IMPORT_EVIDENCE}` : NO_IMPORT_EVIDENCE } : connection,
+    ),
+  };
 }
 
 /** Builds the viewer in `mount` (the page's body by default) and starts listening to the host. */
@@ -97,7 +110,20 @@ export function startViewer(mount: HTMLElement = document.body): void {
   tooltipElement.className = "tooltip";
   tooltipElement.setAttribute("role", "tooltip");
   tooltipElement.hidden = true;
-  app.append(svg, toolbar, highlightBar, freshnessBar, changesBar, emptyState, tooltipElement);
+  // ACC-03: what the dotted boxes and grey dashed arrows mean.
+  const legend = document.createElement("div");
+  legend.className = "checks-legend";
+  legend.hidden = true;
+  for (const [className, text] of [
+    ["checks-legend__box", "Dotted box: its evidence is in doubt. Hover it for the reason."],
+    ["checks-legend__edge", "Grey dashed arrow: no import path backs it."],
+  ]) {
+    const row = document.createElement("div");
+    row.className = `checks-legend__row ${className}`;
+    row.textContent = text!;
+    legend.append(row);
+  }
+  app.append(svg, toolbar, highlightBar, freshnessBar, changesBar, emptyState, tooltipElement, legend);
   mount.append(app);
 
   const viewport = new ViewportController(svg, content, toolbar, window);
@@ -131,6 +157,20 @@ export function startViewer(mount: HTMLElement = document.body): void {
   let highlight: { ids: string[]; file: string | null; follow: boolean } = { ids: [], file: null, follow: false };
 
   followButton.addEventListener("click", () => post({ type: "setFollow", on: !highlight.follow }));
+  /** ACC-03: doubtful boxes and unbacked arrows, and whether the Checks toggle shows them. */
+  let uncertain: { boxes: Record<string, string>; edges: number[]; shown: boolean } = { boxes: {}, edges: [], shown: true };
+
+  function applyUncertainty(): void {
+    const boxes = uncertain.shown ? uncertain.boxes : {};
+    const edges = new Set(uncertain.shown ? uncertain.edges : []);
+    for (const node of content.querySelectorAll(".node")) node.classList.toggle("node--doubtful", (node.getAttribute("data-id") ?? "") in boxes);
+    for (const edge of content.querySelectorAll(".edge, .edge-label")) edge.classList.toggle("edge--unsupported", edges.has(Number(edge.getAttribute("data-index"))));
+    tooltip.setNotes(boxes);
+    legend.hidden = Object.keys(boxes).length === 0 && edges.size === 0;
+    legend.querySelector(".checks-legend__box")!.toggleAttribute("hidden", Object.keys(boxes).length === 0);
+    legend.querySelector(".checks-legend__edge")!.toggleAttribute("hidden", edges.size === 0);
+  }
+
   /** Each box's state against the code, kept across reloads (FRS-03). */
   let freshness: Record<string, Freshness> = {};
 
@@ -244,11 +284,12 @@ export function startViewer(mount: HTMLElement = document.body): void {
     emptyState.hidden = true;
     app.classList.remove("app--empty");
     firstGhostArrow = result.diagram.connections.length;
-    const diagram = withGhosts(result.diagram, ghosts, ghostArrows);
+    const diagram = withGhosts(withUncertainty(result.diagram, uncertain.shown ? uncertain.edges : []), ghosts, ghostArrows);
     const scene = await layoutDiagram(diagram, { measure, viewport: viewport.size() });
     if (current !== generation) return;
     renderScene(content, diagram, scene, measure);
     applyGhosts();
+    applyUncertainty();
     applyHighlight();
     applyFreshness();
     applyChanges();
@@ -288,6 +329,15 @@ export function startViewer(mount: HTMLElement = document.body): void {
       ghosts = message.ghosts;
       ghostArrows = message.arrows ?? [];
       if (lastLoad === null) return;
+    }
+    if (message.type === "uncertainty") {
+      const relabel = JSON.stringify(uncertain.shown ? uncertain.edges : []) !== JSON.stringify(message.shown ? message.edges : []);
+      uncertain = { boxes: message.boxes, edges: message.edges, shown: message.shown };
+      // Arrow labels change the layout, so only a change to them draws the map again.
+      if (!relabel || lastLoad === null) {
+        applyUncertainty();
+        return;
+      }
     }
     const current = ++generation;
     if (message.type === "empty") {
