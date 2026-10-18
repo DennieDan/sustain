@@ -324,6 +324,25 @@ Done when: Released: extension published, Action tagged, cloud deployed.
 
 ## I1 Cost
 
+### I1 proposal (2026-10-18)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `src/model/repoSize.ts`, `src/model/git.ts` | CST-01: tracked files from `git ls-files -z`, or a walk that skips the spec's folders, deny-listed paths and binaries; lines per language, split into test and non-test; the tier. Up to 2,000 files are counted line by line; in larger repositories 2,000 files spread through the tree are counted and the rest estimated from their sizes, which keeps 20,000 files within 4 × the time of 2,000 | +220 |
+| `src/model/estimate.ts`, `src/model/coefficients.json`, `src/model/pricing.json` | CST-02: `estimate(size, agent, kind)` returns `{low, high, basis}` from non-test lines and file count, with provisional coefficients per agent and kind (full, refresh, ask); prices per model with `asOf` and the official source; dollars from a token mix | +160 |
+| `bench/fit.ts`, `src/model/fit.ts`, `package.json` | CST-02: `npm run bench:fit` fits the coefficients, the band and the token mix from `bench/results/*/result.json` by least squares and writes `coefficients.json` with `basis: "fitted"` | +120 |
+| `src/agent/repo-facts.ts`, `skills/sustain-architecture/SKILL.md`, `skills/sustain-refresh/SKILL.md` | CST-01, CST-03, CST-05: `repo-facts` prints `size`, `estimate` and `budget`; step 2 tells the user the estimate; the architecture skill names the read budget per tier (S 25, M 45, L 70) | +40 |
+| `src/extension/generate.ts`, `src/extension/estimates.ts`, `src/extension/home.ts`, `src/extension/ask.ts`, `package.json` | CST-03: the estimate under Generate, in the palette modal and the run card, and under Ask; `sustain.confirmAboveTokens` (default 300,000); above it the sidebar asks for a second click and the palette always shows the modal; sizes cached per folder | +150 |
+| `webview/home.ts`, `src/model/messages.ts`, `src/model/home.ts` | CST-03: the estimate line, the second click on Generate and Ask, the estimate on the run card | +80 |
+| `bench/corpus.json`, `bench/bench.ts`, `bench/src/*.ts`, `bench/fixtures/injection/`, `esbuild.mjs`, `package.json` | CST-06: `npm run bench` with `--dry-run`; clones into a cache outside the repository; removes agent configuration and `strip` globs; a fresh `CLAUDE_CONFIG_DIR` or `CODEX_HOME` with only the skill and no hooks; the bench API key; no shell. Records tokens, cost, wall time, validator runs, acceptance and reads, and keeps the candidate, sidecars and transcript in `bench/results/<run>/`. `npm run bench:plan` projects a series' cost and refuses above `--cap` | +450 |
+
+Tests the I1 ACs call for:
+- size fixtures for each listing, language and test split, and the tier bounds; 20,000 files within 4 × the time of 2,000;
+- estimates growing with size; `bench:fit` reproducing known coefficients from fixture results; the price arithmetic;
+- the estimate text; the second click above the threshold `[e2e]`;
+- `repo-facts` printing the tier, and the skill naming each budget;
+- the `--dry-run` argv and environment, the parsers on recorded fixtures, and `bench:plan` refusing above the cap.
+
 Done when: An estimate shows before every run.
 
 - [ ] **CST-01 Repository size** `[unit]`
