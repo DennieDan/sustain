@@ -13,7 +13,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | D5 Sustain Cloud v1 | Closed pending owner (deployment, see Waiting) | `574992c` |
 | D6 Ship | Closed pending owner (RCH-02, RCH-05 `[ci]` `[smoke]`, the first release) | `488db5f` |
 | I1 Cost | Closed pending owner (CST-06 `[smoke]`) | `777db40` |
-| I2 Accuracy | Not started | |
+| I2 Accuracy | Closed pending owner (ACC-04 `[smoke]`) | `949d927` |
 | I3 Architecture guardrails | Not started | |
 | I4 Skill retention | Not started | |
 | I5 Cloud for teams | Not started | |
@@ -36,6 +36,7 @@ Items only the owner can do, with exact steps.
 - RCH-05 `[smoke]`, the first release (hard stops: publishing, deploying). (1) Choose the licence, add `LICENSE` and the `license` field, so the package includes it and Open VSX can publish. (2) Add the secrets: `OVSX_PAT` for Open VSX, and `AZURE_CLIENT_ID` and `AZURE_TENANT_ID` for a Microsoft Entra ID app with Marketplace publish rights for the publisher `sustain`. (3) Push the tag `v<version>`, then install the extension from each store into a clean profile. (4) For the cloud, finish the D5 deployment steps, set the secret `SUSTAIN_DEPLOY_HOOK` and the variable `SUSTAIN_DEPLOY` to `true`, merge to `main`, and confirm the site serves and a `publish` lands.
 - DOC-01: record `docs/media/demo.gif` (generate a map, click a box, Show Changes) and add it under the README's first paragraph. Replace `<cloud address>` in the README once the domain is chosen.
 - CST-06 `[smoke]` (hard stop: paid agent calls). Approve the spend, then set `SUSTAIN_BENCH_ANTHROPIC_API_KEY` and `SUSTAIN_BENCH_OPENAI_API_KEY` to bench keys. Run `npm run bench:plan -- --agent claude --repo ab3 --kind full`, then `npm run bench -- --agent claude --repo ab3 --kind full`, and the same with `--agent codex`. Confirm each `bench/results/<run>/result.json` says `"accepted": true`. Once four runs exist per agent and kind, run `npm run bench:fit` and commit `src/model/coefficients.json`.
+- ACC-04 `[smoke]`: run `npm run eval:check-truth` once with network access. It clones the four public corpus repositories into `~/.cache/sustain-bench` (zulip is the largest) and checks every glob at its pinned commit. Confirm it prints `ok` for each.
 - UI-06 `[smoke]`: ask one question per agent from the sidebar about a mapped repository. Confirm the answer cites `path:line`, the links open the lines, and a second Claude Code question resumes the session.
 
 ## D1 Safe to ship
@@ -372,15 +373,15 @@ Done when: An estimate shows before every run.
 
 ### I2 proposal (2026-10-18)
 
-| Location | Change | Est. LoC |
-|---|---|---|
-| `src/model/evidence/imports.ts`, `java.ts`, `typescript.ts`, `python.ts`, `graph.ts` | ACC-02: imports per language (Java packages through source roots; TypeScript and JavaScript relative imports, `require`, re-exports, `tsconfig` `paths` and `baseUrl`; Python absolute and relative imports); the box graph through PRC-01's ownership; `UnsupportedEdge` (no path within two hops), `MissingEdge` (3 or more links, no arrow), `Isolated`, and arrows "not checked" | +420 |
-| `src/agent/validate.ts`, `src/model/evidence.ts`, both skills' step 7 | ACC-02: the validator adds the import findings to `evidence.json`; step 7 reviews them in its one revision | +40 |
-| `src/model/delta.ts`, `src/model/check.ts`, `src/model/deltaMarkdown.ts`, `src/model/config.ts`, `src/extension/review.ts`, `webview/viewer.ts` | PRC-06: new arrow candidates from import links the diff adds between boxes with no arrow; the third new-box rule for uncovered files that import each other more than any box's files; dashed ghost arrows; the comment lists them; `new-arrow` for `--fail-on` | +220 |
-| `skills/sustain-audit/`, `src/agent/audit-record.ts`, `src/model/audit.ts`, `src/model/schemas/audit.schema.json`, `esbuild.mjs`, `src/extension/audit.ts`, `package.json` | ACC-05: the audit skill, reading each box's cited ranges in a fresh subagent where supported; `audit-record.mjs` validates and writes `audit.json` (`supports`, `partial` or `contradicts` per box with a reason of at most 200 characters, evidence per arrow); an Audit Map command in the map's title bar | +300 |
-| `src/model/uncertainty.ts`, `src/extension/panel.ts`, `src/model/messages.ts`, `webview/viewer.ts`, `webview/styles.css`, `package.json` | ACC-03: dotted outlines with the reason for `DeclarationOnly`, `partial` and `contradicts` boxes; dashed grey `UnsupportedEdge` arrows labelled "no import evidence"; a legend; the Checks toggle in the map's title bar | +200 |
-| `src/model/feedback.ts`, `src/extension/feedback.ts`, `package.json` | ACC-06: the box menu's "This box is wrong…" saves a note to `feedback.json` and offers "Refresh this box" | +90 |
-| `eval/score.ts`, `eval/check-truth.ts`, `src/model/score.ts`, `eval/ground-truth/*.json`, `esbuild.mjs`, `package.json` | ACC-04: ground truth for the five corpus repositories from their architecture documents; `npm run eval` scores maps by containment (precision, recall, edges, grouping errors, citation support); `npm run eval:check-truth` checks the globs against the cached clones | +350, plus the ground truth |
+| Location | Change | Est. LoC | Built |
+|---|---|---|---|
+| `src/model/evidence/imports.ts`, `java.ts`, `typescript.ts`, `python.ts`, `graph.ts` | ACC-02: imports per language (Java packages through source roots; TypeScript and JavaScript relative imports, `require`, re-exports, `tsconfig` `paths` and `baseUrl`; Python absolute and relative imports); the box graph through PRC-01's ownership; `UnsupportedEdge` (no path within two hops), `MissingEdge` (3 or more links, no arrow), `Isolated`, and arrows "not checked" | +420 | +453 / -17 with the next row |
+| `src/agent/validate.ts`, `src/model/evidence.ts`, both skills' step 7 | ACC-02: the validator adds the import findings to `evidence.json`; step 7 reviews them in its one revision | +40 | in the row above |
+| `src/model/delta.ts`, `src/model/check.ts`, `src/model/deltaMarkdown.ts`, `src/model/config.ts`, `src/extension/review.ts`, `webview/viewer.ts` | PRC-06: new arrow candidates from import links the diff adds between boxes with no arrow; the third new-box rule for uncovered files that import each other more than any box's files; dashed ghost arrows; the comment lists them; `new-arrow` for `--fail-on` | +220 | +181 / -31 |
+| `skills/sustain-audit/`, `src/agent/audit-record.ts`, `src/model/audit.ts`, `src/model/schemas/audit.schema.json`, `esbuild.mjs`, `src/extension/audit.ts`, `package.json` | ACC-05: the audit skill, reading each box's cited ranges in a fresh subagent where supported; `audit-record.mjs` validates and writes `audit.json` (`supports`, `partial` or `contradicts` per box with a reason of at most 200 characters, evidence per arrow); an Audit Map command in the map's title bar | +300 | +337 / -7 |
+| `src/model/uncertainty.ts`, `src/extension/panel.ts`, `src/model/messages.ts`, `webview/viewer.ts`, `webview/styles.css`, `package.json` | ACC-03: dotted outlines with the reason for `DeclarationOnly`, `partial` and `contradicts` boxes; dashed grey `UnsupportedEdge` arrows labelled "no import evidence"; a legend; the Checks toggle in the map's title bar | +200 | +211 / -5 |
+| `src/model/feedback.ts`, `src/extension/feedback.ts`, `package.json` | ACC-06: the box menu's "This box is wrong…" saves a note to `feedback.json` and offers "Refresh this box" | +90 | +74 / -1 |
+| `eval/score.ts`, `eval/check-truth.ts`, `src/model/score.ts`, `eval/ground-truth/*.json`, `esbuild.mjs`, `package.json` | ACC-04: ground truth for the five corpus repositories from their architecture documents; `npm run eval` scores maps by containment (precision, recall, edges, grouping errors, citation support); `npm run eval:check-truth` checks the globs against the cached clones | +350, plus the ground truth | +285 / -9, plus 804 lines of ground truth |
 
 Tests the I2 ACs call for:
 - per-language import fixtures for Java, TypeScript and Python, and each finding;
@@ -390,14 +391,30 @@ Tests the I2 ACs call for:
 - "This box is wrong…" saving a note and offering the refresh `[e2e]`;
 - new arrow candidates and the third new-box rule in temporary git repositories.
 
+Where the I2 build differs from the proposal:
+- Java imports resolve through each file's package declaration and name, which finds the classes whatever the source roots are. Classes in the same package need no import, so a same-package class named in the text counts as a link.
+- Python modules are known by their dotted name from the repository root, from `src/`, and from the folder above the outermost package.
+- An arrow is backed by a directed import path either way, directly or through one box. Arrows whose label names a protocol, that join two languages, or that reach a box without checked code are `NotChecked`. Test files are left out of the import graph.
+- A fit of the third new-box rule needs the group's files to import each other more often than they import any one box's files. New arrow candidates come only from links the diff added; a link already at the merge base is not new.
+- The summary line names new arrow candidates only when there are some, so reports without them read as before. The pull request chart draws them as dotted edges labelled "new import".
+- The audit's issues reuse the validator's codes, plus `MissingEntry` for a box or arrow with no entry. A wrong arrow entry is reported once and does not also count as missing. Its evidence passes the map's citation rules. Claude Code's headless audit may use `Task` for subagents; Codex judges the boxes one at a time.
+- The audit runs from Audit Map in the map's title bar. Its estimate uses the refresh coefficients until the bench fits an audit line. The skill ships in the plugin and installs with the others.
+- Unbacked arrows are relabelled before layout, so showing or hiding the Checks draws the map again. Hide Checks and Show Checks toggle in the map's title bar.
+- ACC-05's verdicts on the map are tested with ACC-03's rendering.
+- The ground truth for this repository describes v0.1, the corpus's pinned commit. The external agent and `.archify/` have no code there and are left out. Agents read the other four architecture documents through read-only API calls and wrote the files. Two edges inferred for markbind, not drawn in its document, were removed.
+- Fixed along the way: CST-03's `estimate` in `run.json` was refused by the closed upload schema. The schema allows it, and the Action's bundle carries the change. The install e2e test now expects the audit skill.
+- The eval and check-truth commands share `eval/lib/truth.ts`. Each command bundle keeps one entry point, after an import of one command into the other ran both.
+
+Tests the I2 ACs call for are listed above. 48 deliberate breaks across I2 each failed their tests, including two e2e breaks for ACC-06 and the old upload schema refusing the estimate.
+
 Done when: Evidence and audit verdicts show on the map; the scorer runs.
 
-- [ ] **ACC-02 Evidence checks** `[unit]`
-- [ ] **ACC-03 Uncertainty on the map** `[dom]`
-- [ ] **ACC-04 Eval scorer and ground truth** `[unit]` `[smoke]`
-- [ ] **ACC-05 Audit** `[unit]` `[dom]`
-- [ ] **ACC-06 Flag a wrong box** `[e2e]`
-- [ ] **PRC-06 Import-aware delta** `[unit]`
+- [x] **ACC-02 Evidence checks** `[unit]` — 2026-10-18: `src/model/evidence/` (`java.ts`, `typescript.ts`, `python.ts`, `paths.ts`, `graph.ts`), the validator and both skills' step 7. Tests: `imports.test.ts` (5: Java, TypeScript and JavaScript, Python fixtures; the findings with each kind of not-checked arrow; arrows backed either way and through one box), `validate.test.ts` updated for the new findings. 49 ms for this repository's 169 source files.
+- [x] **ACC-03 Uncertainty on the map** `[dom]` — 2026-10-18: `src/model/uncertainty.ts`, the panel's `uncertainty` message, the viewer, the tooltip note, the legend, Hide Checks and Show Checks. Tests: `main.test.ts` › ACC-03 ACC-05 (2: dotted boxes, grey dashed relabelled arrows and the legend; the toggle hiding them), `tooltip.test.ts` › ACC-03.
+- [ ] **ACC-04 Eval scorer and ground truth** `[unit]` `[smoke]` — `[unit]` done 2026-10-18: `src/model/score.ts`, `eval/score.ts`, `eval/check-truth.ts`, `eval/lib/truth.ts`, five files in `eval/ground-truth/`. `score.test.ts` (2: a map scored as worked out by hand; a perfect and an empty map). Every glob was checked against the tree at its pinned commit, with no file in two components; `eval:check-truth` passed for this repository against a local clone. The other four wait for the owner (see Waiting).
+- [x] **ACC-05 Audit** `[unit]` `[dom]` — 2026-10-18: `skills/sustain-audit/`, `src/agent/audit-record.ts`, `src/model/audit.ts`, `schemas/audit.schema.json`, `src/extension/audit.ts`. Tests: `auditRecord.test.ts` (5: recorded and the draft removed; the shape; one entry per box and arrow; the evidence rules; usage), `launchArgs.test.ts` › ACC-05; the rendering in ACC-03's dom tests.
+- [x] **ACC-06 Flag a wrong box** `[e2e]` — 2026-10-18: `src/extension/feedback.ts`, the box menu. e2e `single.refresh.test.ts` › ACC-06 (the note saved with its box and date, the offer, the refresh limited to the box's files, a dismissed note saving nothing, a second note appended), on VS Code 1.126.0 and 1.141.0.
+- [x] **PRC-06 Import-aware delta** `[unit]` — 2026-10-18: `delta.ts`, `check.ts`, `deltaMarkdown.ts`, `config.ts` (`new-arrow`), the review's ghost arrows, the upload schema. Tests: `check.test.ts` › PRC-06 (2, on temporary git repositories: new arrow candidates with a link already at the base left out, the verdict and the markdown; the third new-box rule and its absence without the cycle).
 
 ## I3 Architecture guardrails
 
@@ -459,6 +476,7 @@ Done when: The plugin opens cited lines on AB3.
 - 2026-10-18 — D5 closed pending owner. Gates: `npm run check` exit 0 (1073 tests, 55 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud `[web]` 8 passed against the built app. Every new test was seen to fail once with its behaviour broken: 16 deliberate breaks across D5. Deployment is a hard stop and waits for the owner (see Waiting).
 - 2026-10-18 — D6 closed pending owner. Gates: `npm run check` exit 0 (1086 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 8 passed against the built app with the start hook. Every new test was seen to fail once with its behaviour broken: 8 deliberate breaks across D6. `[ci]`, `[smoke]` and the first release wait for the owner (see Waiting).
 - 2026-10-18 — I1 closed pending owner. Gates: `npm run check` exit 0 (1113 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after CST-03 (single 75, empty 3, multi 2 each); later I1 commits touch only the skills' fact scripts, the bench and docs. Cloud untouched since D6. 41 deliberate breaks across I1. One check run under a load average of 15 from another project's browsers timed out three unrelated tests; they passed alone and in the next full run. CST-06 `[smoke]` waits for the owner.
+- 2026-10-19 — I2 closed pending owner. Gates: `npm run check` exit 0 (1134 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after ACC-06 (single 76, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 7 passed and one failed on its 5 s wait for a signed-out page to draw while the machine was loaded. That spec passed alone in 1.3 s, and the suite now waits up to 15 s. 48 deliberate breaks across I2. ACC-04 `[smoke]` waits for the owner.
 - 2026-10-18 — `architecture.md` had not been updated per feature during D2 to D4, as spec §7 asks; it was brought up to date at D4's close (`29f183b`) and kept current since. The layout fixtures test got a 30 s timeout: it lays out 48 diagrams and passed 5 s only narrowly when the whole suite ran in parallel.
 
 - 2026-10-18 — D4 closed pending owner. Gates: `npm run check` exit 0 (1066 tests, 53 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each). Every new test was seen to fail once with its behaviour broken: 18 deliberate breaks across D4. PRC-04 waits for a committed map of this repository and a push (see Waiting).
