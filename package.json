@@ -193,6 +193,11 @@
         "category": "Sustain"
       },
       {
+        "command": "sustain.drillDown",
+        "title": "Map This Box in Detail",
+        "category": "Sustain"
+      },
+      {
         "command": "sustain.find",
         "title": "Find in Map",
         "category": "Sustain",
@@ -363,6 +368,10 @@
         {
           "command": "sustain.routeThrough",
           "when": "false"
+        },
+        {
+          "command": "sustain.drillDown",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -469,6 +478,11 @@
           "command": "sustain.checkUnderstanding",
           "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
           "group": "navigation@4"
+        },
+        {
+          "command": "sustain.drillDown",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
+          "group": "navigation@5"
         },
         {
           "command": "sustain.onlyAllowImportsFrom",

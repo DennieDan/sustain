@@ -179,6 +179,13 @@ export function startViewer(mount: HTMLElement = document.body): void {
     event.preventDefault();
     finder.open();
   });
+  // VWR-05: a drill-down map's way back to the map it came from.
+  const overview = document.createElement("button");
+  overview.type = "button";
+  overview.className = "toolbar__button overview";
+  overview.textContent = "Back to overview";
+  overview.hidden = true;
+  overview.addEventListener("click", () => post({ type: "backToOverview" }));
   // VWR-04: the hidden list of boxes and arrows for screen readers, and Enter or Space on a box.
   const screenReader = document.createElement("div");
   let shownDiagram: ViewDiagram | undefined;
@@ -190,7 +197,7 @@ export function startViewer(mount: HTMLElement = document.body): void {
     event.preventDefault();
     if (component.sources.length > 0) post({ type: "openSource", componentId: component.id, index: 0 });
   });
-  app.append(svg, toolbar, tour.start, finder.element, highlightBar, freshnessBar, changesBar, compareBar, emptyState, tooltipElement, legend, tour.card, screenReader);
+  app.append(svg, toolbar, tour.start, finder.element, highlightBar, freshnessBar, changesBar, compareBar, emptyState, tooltipElement, legend, tour.card, screenReader, overview);
   mount.append(app);
 
   const viewport = new ViewportController(svg, content, toolbar, window);
@@ -447,6 +454,11 @@ export function startViewer(mount: HTMLElement = document.body): void {
       tour.play();
       return;
     }
+    if (message.type === "overview") {
+      overview.hidden = message.parent === null;
+      overview.title = message.parent === null ? "" : `Open ${message.parent}`;
+      return;
+    }
     if (message.type === "find") {
       if (lastLoad !== null) finder.open();
       return;
@@ -512,6 +524,7 @@ export function startViewer(mount: HTMLElement = document.body): void {
       finder.setDiagram(null);
       shownDiagram = undefined;
       screenReader.replaceChildren();
+      overview.hidden = true;
       showEmpty(message.message, message.action);
       return;
     }

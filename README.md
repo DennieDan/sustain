@@ -82,7 +82,7 @@ Every command is also in the Command Palette under "Sustain".
 | Editor title, map | Refresh Architecture, Show Changes on Diagram, Export Page, Audit Map, Show Hotspots and Tour, with Compare With…, Write Architecture Notes for Agents and Create Tour in its menu |
 | Status bar | Sustain's state, the time of a running generation or the number of changed boxes. A click opens the sidebar. |
 | Explorer right-click | Map This Folder with Sustain, and Show in Architecture Map |
-| Box right-click | Open Code, Refresh This Box, This Box Is Wrong…, Check My Understanding, Only Allow Imports From… and Route Dependencies Through… |
+| Box right-click | Open Code, Refresh This Box, This Box Is Wrong…, Check My Understanding, Map This Box in Detail, Only Allow Imports From… and Route Dependencies Through… |
 | Arrow right-click | Forbid This Dependency |
 | Maps list | Open, Refresh, Export page, Create tour and Delete on each map |
 | Pull request | The Sustain check and its comment |
@@ -100,6 +100,7 @@ Every command is also in the Command Palette under "Sustain".
 - **Refresh Architecture** asks your agent to update only the boxes whose code changed.
 - **Export Page** writes the map as one HTML file that opens anywhere.
 - **Ask** in the sidebar answers questions about the map, with links to the lines it cites.
+- **Map This Box in Detail** on a box asks your agent for a map of that box alone. The new map offers **Back to overview**.
 - **Tour** in the map's title bar plays the map's tour. Each stop marks a box, opens its code beside the map, explains it and asks a question, and **Show answer** gives the answer. **Create tour** in the maps list asks your agent to write one.
 - **Audit Map** asks your agent to check each box against its cited code. Doubtful boxes are drawn dotted, and arrows with no import evidence grey and dashed. **Hide Checks** in the map's title bar hides them.
 - **This Box Is Wrong…** on a box saves your note beside the map and offers to refresh that box.

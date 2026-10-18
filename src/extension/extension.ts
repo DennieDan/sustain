@@ -14,6 +14,7 @@ import { compareMapsCommand } from "./compare";
 import { auditMapCommand } from "./audit";
 import { flagBoxCommand } from "./feedback";
 import { createTourCommand, playTourCommand } from "./tour";
+import { drillDownCommand } from "./drill";
 import { registerPreviews } from "./previewWrite";
 import { Review } from "./review";
 import { RulesService } from "./rules";
@@ -48,6 +49,8 @@ export interface TestHook {
   panelGhosts(): Ghost[] | undefined;
   /** The shown map's tour (SKL-02). */
   panelTour(): TourStop[] | null | undefined;
+  /** The run folder of the map the shown drill-down came from (VWR-05). */
+  panelOverview(): string | null | undefined;
   reviewReport(): CheckReport | null;
   /** Delivers `message` as if the webview had posted it; resolves when it has been handled. */
   postFromWebview(message: WebviewMessage): Promise<void>;
@@ -138,6 +141,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.checkUnderstanding", (box?: { componentId?: unknown }) => practice.command(home.root(), box)),
     vscode.commands.registerCommand("sustain.playTour", () => playTourCommand(context, runs)),
     vscode.commands.registerCommand("sustain.find", () => ArchitecturePanel.current?.find()),
+    vscode.commands.registerCommand("sustain.drillDown", (box?: { componentId?: unknown }) => drillDownCommand(context, runs, box)),
     vscode.commands.registerCommand("sustain.createTour", () => createTourCommand(context, runs)),
   );
   return {
@@ -148,6 +152,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     panelCompare: () => ArchitecturePanel.current?.comparison,
     panelGhosts: () => ArchitecturePanel.current?.ghostBoxes,
     panelTour: () => ArchitecturePanel.current?.tourStops,
+    panelOverview: () => ArchitecturePanel.current?.overviewParent,
     reviewReport: () => review.report,
     postFromWebview: async (message) => ArchitecturePanel.current?.handleMessage(message),
     sessionPanelState: () => ({ open: SessionPanel.current !== undefined }),

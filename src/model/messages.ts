@@ -39,7 +39,9 @@ export type HostMessage =
   /** SKL-02: play the tour from its first stop. */
   | { type: "playTour" }
   /** VWR-03: open the finder, for Find in the map's title bar. */
-  | { type: "find" };
+  | { type: "find" }
+  /** VWR-05: the run folder of the map a drill-down came from, when that map still exists, else `null`. */
+  | { type: "overview"; parent: string | null };
 
 /** A new box candidate on the map (PRC-02). */
 export interface Ghost {
@@ -77,7 +79,9 @@ export type WebviewMessage =
   | { type: "tourStop"; index: number }
   | { type: "openTourCode"; index: number }
   /** SKL-03: the tour was played to its last stop and finished. */
-  | { type: "tourFinished" };
+  | { type: "tourFinished" }
+  /** VWR-05: Back to overview. */
+  | { type: "backToOverview" };
 
 /** What the session webview renders — public `session.json` fields plus the leaderboard. */
 export interface SessionView {

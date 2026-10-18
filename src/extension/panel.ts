@@ -1,6 +1,6 @@
 // The architecture WebviewPanel (FR-VIEW-04, ADR 0011): one per window, showing one file.
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { citingBoxes } from "../model/citing";
@@ -10,6 +10,8 @@ import { AUDIT_FILE } from "../model/audit";
 import type { MapDiff } from "../model/diff";
 import { EVIDENCE_FILE } from "../model/evidence";
 import { readTour, TOUR_FILE, type TourStop } from "../model/tour";
+import { readRunRecord } from "../model/runRecord";
+import { ARCHIFY_DIR, CANDIDATE_FILE } from "../model/runFolder";
 import type { FinishedTour } from "../model/practiceLog";
 import type { MapFreshness } from "../model/staleness";
 import { uncertainty } from "../model/uncertainty";
@@ -292,6 +294,7 @@ export class ArchitecturePanel {
     this.sendChanges();
     this.sendUncertainty();
     this.sendTour();
+    this.sendOverview();
     this.sendViolations();
     this.sendHotspots();
     this.sendCompare();
@@ -324,6 +327,22 @@ export class ArchitecturePanel {
     };
     const { boxes, edges } = uncertainty(read(EVIDENCE_FILE), read(AUDIT_FILE));
     const message: HostMessage = { type: "uncertainty", boxes, edges, shown: ArchitecturePanel.checksShown };
+    void this.panel.webview.postMessage(message);
+  }
+
+  /** VWR-05: the map a drill-down came from, while it exists. */
+  private parent: string | null = null;
+
+  /** The run folder of the map the shown drill-down came from, for the tests. */
+  get overviewParent(): string | null {
+    return this.parent;
+  }
+
+  /** VWR-05: tells the map which overview it came from, when it is a drill-down of one. */
+  sendOverview(): void {
+    const parent = this.shown.kind === "diagram" && this.file !== "" ? (readRunRecord(dirname(this.file))?.parent ?? null) : null;
+    this.parent = parent !== null && existsSync(join(this.root, ARCHIFY_DIR, parent, CANDIDATE_FILE)) ? parent : null;
+    const message: HostMessage = { type: "overview", parent: this.parent };
     void this.panel.webview.postMessage(message);
   }
 
@@ -460,6 +479,9 @@ export class ArchitecturePanel {
       case "tourStop":
       case "openTourCode":
         await this.openTourStop(message.index);
+        return;
+      case "backToOverview":
+        if (this.parent !== null) ArchitecturePanel.show(this.extensionUri, this.root, join(this.root, ARCHIFY_DIR, this.parent, CANDIDATE_FILE));
         return;
       case "tourFinished":
         if (this.tour !== null && this.shown.kind === "diagram") ArchitecturePanel.toursFinished.fire({ root: this.root, title: this.shown.diagram.title ?? basename(dirname(this.file)), stops: this.tour.length, finishedAt: new Date().toISOString() });
