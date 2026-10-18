@@ -35,7 +35,7 @@ test("RCH-05 a v* tag runs the gates and releases the files, and a hyphenated ta
   const runs = [...release.matchAll(/- run: (.+)/g)].map((match) => match[1]);
   expect(runs).toEqual(["npm ci", "npm run check", "npm run package", "npm run build:release", "npm run action", "git diff --exit-code action/dist skills"]);
   expect(release).toContain("PRERELEASE: ${{ contains(github.ref_name, '-') }}");
-  for (const file of ["sustain-*.vsix", "sustain-skills.zip", "sustain-action.js", "SHA256SUMS"]) expect(release).toContain(file);
+  for (const file of ["sustain-*.vsix", "sustain-skills.zip", "sustain-action.js", "sustain.mjs", "SHA256SUMS"]) expect(release).toContain(file);
   const publishing = release.slice(release.indexOf("- name: GitHub release"));
   expect(publishing.match(/if: env\.PRERELEASE == 'false'/g)).toHaveLength(4);
   expect(publishing).toContain("if: env.PRERELEASE == 'false' && env.OVSX_PAT != '' && env.LICENSED == 'true'");

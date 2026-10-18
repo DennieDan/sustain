@@ -20,7 +20,7 @@ ADR-0014 limited Sustain to desktop VS Code installed from a `.vsix`. ADR-0028 p
 Chosen option: "A tag workflow that builds everything and publishes each store step only when its secret exists", because one tag then releases the same checked files everywhere, and a missing secret or licence skips a step without failing the release.
 
 * The package carries a PNG icon, `repository`, `homepage`, `bugs`, `keywords`, `categories` and `preview: true`. `npm run package` runs `scripts/package.mjs`, which passes `--skip-license` only while the repository has no `LICENSE` file.
-* `.github/workflows/release.yml` runs on `v*` tags. It runs the gates and builds the `.vsix`, the skill zip, the Action bundle and `SHA256SUMS`. It fails when the committed Action bundle or skill scripts differ from a fresh build.
+* `.github/workflows/release.yml` runs on `v*` tags. It runs the gates and builds the `.vsix`, the skill zip, the Action bundle, the CLI and `SHA256SUMS`. It fails when the committed Action bundle or skill scripts differ from a fresh build.
 * A tag with a hyphen is a dry run. Its files are kept as a workflow artifact, and nothing is released.
 * Other tags create a GitHub release. Open VSX publishes when `OVSX_PAT` exists and `package.json` declares a licence. The Marketplace publishes with `vsce publish --azure-credential` when the Entra ID secrets exist.
 * `.github/workflows/deploy-cloud.yml` deploys `cloud/` from `main` through the owner's deploy hook, once the repository variable `SUSTAIN_DEPLOY` is `true`. The server opens its database in Next's start hook, so migrations run before it serves requests.

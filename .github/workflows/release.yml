@@ -35,6 +35,7 @@ jobs:
           cp sustain-*.vsix release/files/
           (cd release/plugin && zip -qr ../files/sustain-skills.zip skills .claude-plugin)
           cp action/dist/index.js release/files/sustain-action.js
+          cp dist/cli/sustain.mjs release/files/sustain.mjs
           (cd release/files && sha256sum * > SHA256SUMS)
           echo "LICENSED=$(node -p 'require("./package.json").license ? "true" : "false"')" >> "$GITHUB_ENV"
       - name: Keep the dry run's files
