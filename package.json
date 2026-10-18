@@ -295,6 +295,7 @@
     "build": "node esbuild.mjs",
     "action": "node esbuild.mjs --action",
     "build:release": "node scripts/release.mjs",
+    "bench:fit": "node esbuild.mjs --bench && node out/bench/fit.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:docs": "node scripts/check-docs.mjs",

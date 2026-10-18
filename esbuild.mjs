@@ -3,6 +3,7 @@
 // `node esbuild.mjs --e2e`  → out/e2e/ (the @vscode/test-electron suite; never shipped)
 // `node esbuild.mjs --action` → action/dist/index.js (the GitHub Action, committed; PRC-04)
 // `node esbuild.mjs --cloud`  → cloud/public/viewer.js and viewer.css (the cloud's map viewer; CLD-03)
+// `node esbuild.mjs --bench`  → out/bench/ (the bench harness and its fit; never shipped, CST-02, CST-06)
 import * as esbuild from "esbuild";
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -286,9 +287,29 @@ export async function buildAction(outfile = join(root, "action/dist/index.js")) 
   });
 }
 
+/** The bench's commands, run from out/bench (CST-02, CST-06). */
+async function buildBench() {
+  const out = join(root, "out/bench");
+  rmSync(out, { recursive: true, force: true });
+  const entries = readdirSync(join(root, "bench"))
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => join(root, "bench", name));
+  await esbuild.build({
+    ...common,
+    metafile: false,
+    entryPoints: entries,
+    outdir: out,
+    platform: "node",
+    format: "esm",
+    target: "node20",
+    outExtension: { ".js": ".mjs" },
+  });
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.includes("--e2e")) await buildE2e();
   else if (process.argv.includes("--action")) await buildAction();
   else if (process.argv.includes("--cloud")) await buildCloudViewer();
+  else if (process.argv.includes("--bench")) await buildBench();
   else await buildDist();
 }
