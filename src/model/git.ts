@@ -119,3 +119,25 @@ export function repositoryFromGit(facts: GitFacts): Repository | null {
   if (host === "gitee.com") return { url: facts.origin, revision: facts.head, provider: "gitee" };
   return { url: facts.origin, revision: facts.head, link_mode: "local-only" };
 }
+
+/**
+ * Paths git followed through a rename since `revision`, old to new, from
+ * `git diff -M --name-status -z <revision>` (FRS-02). Empty when git or the revision is missing.
+ */
+export function renamesSince(root: string, revision: string, env: NodeJS.ProcessEnv = process.env): Map<string, string> {
+  const renames = new Map<string, string>();
+  const program = gitProgram(env);
+  if (program === undefined || !/^[0-9a-f]{7,64}$/i.test(revision)) return renames;
+  const output = run(program, root, [...GIT_PREFIX, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", "--name-status", "-z", revision, "--"]);
+  const fields = (output ?? "").split("\0");
+  for (let i = 0; i < fields.length; i++) {
+    const status = fields[i]!;
+    if (/^[RC]\d*$/.test(status)) {
+      if (status.startsWith("R")) renames.set(fields[i + 1]!, fields[i + 2]!);
+      i += 2;
+    } else if (/^[AMDTUX]$/.test(status)) {
+      i += 1;
+    }
+  }
+  return renames;
+}

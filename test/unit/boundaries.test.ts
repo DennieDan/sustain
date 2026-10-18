@@ -28,6 +28,7 @@ const NODE_MODEL: Record<string, true> = {
   "src/model/preflight.ts": true,
   "src/model/maps.ts": true,
   "src/model/fingerprints.ts": true,
+  "src/model/staleness.ts": true,
 };
 const NODE_ALLOWED: Record<string, true> = {
   "node:fs": true,
