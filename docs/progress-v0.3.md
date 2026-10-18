@@ -7,7 +7,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | Milestone | Status | Commit |
 |---|---|---|
 | D1 Safe to ship | Closed pending owner (ENG-01, ENG-04 `[ci]`) | `4bbac86` |
-| D2 The product in VS Code | In progress | |
+| D2 The product in VS Code | Closed pending owner (UI-02, UI-06, SET-01 `[smoke]`) | `1d8bcf4` |
 | D3 The living map | Not started | |
 | D4 Pull request checks | Not started | |
 | D5 Sustain Cloud v1 | Not started | |
@@ -27,6 +27,8 @@ Items only the owner can do, with exact steps.
 - Push `kerk` and enable GitHub Actions so `[ci]` items can run: ENG-01 (the workflow's four jobs) and ENG-04 (the stale-notices check). Then tick them with the run's link.
 - Install and sign in to `claude`, `codex` and `devin` for `[smoke]` checks; approve any paid agent calls first (spec §6).
 - SET-01 `[smoke]`: with the default per-user install, run `/sustain-architecture` in Claude Code and `$sustain-architecture` in Codex from a repository with no `.agents/` folder, and confirm each finds the skill and its scripts.
+- UI-02 `[smoke]`: with `sustain.runMode` on "In sidebar", press Generate once with Claude Code and once with Codex in a small repository. Confirm the card shows reads, writes and validation, tokens and the final cost, and that the map opens on acceptance. Save each run's stdout (`claude -p … --output-format stream-json --verbose > claude-generate.jsonl`, `codex exec --json … > codex-generate.jsonl`) over the hand-written files in `test/fixtures/streams/`, then run `npm test`. If Claude Code reports a denial for the skill's own scripts, the `--allowedTools` rules need the folder `${CLAUDE_SKILL_DIR}` really resolves to (see "Where the D2 build differs").
+- UI-06 `[smoke]`: ask one question per agent from the sidebar about a mapped repository. Confirm the answer cites `path:line`, the links open the lines, and a second Claude Code question resumes the session.
 
 ## D1 Safe to ship
 
@@ -86,21 +88,34 @@ Done when: Gates green; a tampered skill cannot launch; no pre-approved command 
 
 ### D2 proposal (2026-10-18)
 
-| Location | Change | Est. LoC |
-|---|---|---|
-| `package.json`, `media/sustain.svg` | Activity Bar container, the `sustain.home` view, menus (editor title, Explorer, box, view title), commands, settings | +120 |
-| `src/model/scope.ts`, `skills/*/SKILL.md`, `src/model/integrity.ts`, `src/extension/skillFiles.ts` | Per-user install by default (`sustain.skillScope`), `${CLAUDE_SKILL_DIR}` in skill bodies and rules, scope-aware integrity | +90 / -20 |
-| `src/model/runRecord.ts`, `src/agent/repo-facts.ts`, `src/agent/validate.ts` | `run.json` written at creation and updated by the validator | +70 |
-| `src/model/preflight.ts` | Setup checks: Node, agent CLIs with versions, skills intact, git repository | +90 |
-| `src/model/messages.ts` | Home state and sidebar messages | +80 |
-| `src/extension/home.ts`, `webview/sidebar.ts`, `webview/sidebar.css` | The sidebar: header, composer, run card, maps, setup, learning session, Ask | +500 |
-| `src/model/agentStream/*.ts` | Claude Code and Codex stream parsers to feed items and usage | +180 |
-| `src/extension/runner.ts` | Headless runs: argv per SAF-04, live card, cancel, denials, open on acceptance | +160 |
-| `src/extension/generate.ts` | One click from the sidebar, one modal from the palette, the last agent remembered | +60 / -30 |
-| `src/extension/showInMap.ts`, `panel.ts`, `webview/main.ts` | Show in Map, follow editor, highlighted boxes | +120 |
-| `src/extension/statusBar.ts` | The status bar item | +50 |
-| `src/extension/menus.ts` | Map this folder, Show in architecture map, Open code from a box | +50 |
-| `src/model/ask.ts`, `webview/answer.ts` | Ask prompt, safe answer renderer, `path:line` and box links | +150 |
+| Location | Change | Est. LoC | Built |
+|---|---|---|---|
+| `package.json`, `media/sustain.svg` | Activity Bar container, the `sustain.home` view, menus (editor title, Explorer, box, view title), commands, settings | +120 | +165 / -1, three icons |
+| `src/model/scope.ts`, `skills/*/SKILL.md`, `src/model/integrity.ts`, `src/extension/skillFiles.ts` | Per-user install by default (`sustain.skillScope`), `${CLAUDE_SKILL_DIR}` in skill bodies and rules, scope-aware integrity | +90 / -20 | +83 / -42 |
+| `src/model/runRecord.ts`, `src/agent/repo-facts.ts`, `src/agent/validate.ts` | `run.json` written at creation and updated by the validator | +70 | +131 / -4 |
+| `src/model/preflight.ts` | Setup checks: Node, agent CLIs with versions, skills intact, git repository | +90 | +98 |
+| `src/model/messages.ts` | Home state and sidebar messages | +80 | +137 / -3 |
+| `src/extension/home.ts`, `webview/sidebar.ts`, `webview/sidebar.css` | The sidebar: header, composer, run card, maps, setup, learning session, Ask | +500 | +1,087 |
+| `src/model/agentStream/*.ts` | Claude Code and Codex stream parsers to feed items and usage | +180 | +320 |
+| `src/extension/runner.ts` | Headless runs: argv per SAF-04, live card, cancel, denials, open on acceptance | +160 | +310 |
+| `src/extension/generate.ts` | One click from the sidebar, one modal from the palette, the last agent remembered | +60 / -30 | +165 / -43 |
+| `src/extension/showInMap.ts`, `panel.ts`, `webview/main.ts` | Show in Map, follow editor, highlighted boxes | +120 | +280 / -21 |
+| `src/extension/statusBar.ts` | The status bar item | +50 | +50 |
+| `src/extension/menus.ts` | Map this folder, Show in architecture map, Open code from a box | +50 | In `showInMap.ts` |
+| `src/model/ask.ts`, `webview/answer.ts` | Ask prompt, safe answer renderer, `path:line` and box links | +150 | +456 / -1 |
+
+Where the D2 build differs from the proposal:
+- The sidebar is twice its estimate. Its stylesheet alone is 413 lines, because every control is styled from theme variables. The maps list (`src/model/maps.ts`) and the shared wording (`src/model/home.ts`) got their own modules.
+- The runner row includes `src/extension/runs.ts` (191 lines), which keeps the window's one run, follows `run.json` in both modes, records agent, mode, tokens and cost, and opens the map.
+- Ask includes its host controller (`src/extension/ask.ts`, 197 lines): history, the Claude Code session for follow-ups, and the second citation check before a line opens.
+- `scope.ts` lives in `src/extension/`, because it reads a VS Code setting. `menus.ts` was not needed; its three commands sit in `showInMap.ts`.
+- UI-03's map-panel title buttons (Refresh, Show Changes, Export Page), UI-05's "Refresh this box" and the maps list's Refresh and Export page arrive with the features they run: FRS-06, FRS-04 and RCH-01 in D3 (see the log).
+- UI-04's idle icon is the `type-hierarchy-sub` codicon, not `$(sustain)`. A status bar item shows only codicons or a contributed icon font, and Sustain ships no font. "Sustain: 3 changed" is wired through `StatusItem.changed` and waits for FRS-04's counts.
+- Windows `.cmd` and `.bat` agent launchers run in a terminal even in sidebar mode, because only `cmd.exe` starts them and it would parse the focus. The note under Generate says so.
+- The palette's Generate asks for the focus first. One agent on PATH skips the agent pick. An install, a repair and the data note share one modal, which is a warning when it repairs a changed skill (SAF-01).
+- Claude Code's `--allowedTools` script rules name the folder Claude Code loads the skill from (`~/.claude/skills/sustain-architecture` by default, a link to `~/.agents/skills/…`). Whether `${CLAUDE_SKILL_DIR}` resolves to the link or its target is checked at the first `[smoke]` run. The skill's own `allowed-tools` apply too, and a mismatch shows as a denial with "Run in terminal instead".
+- Ask needs a map. Without one it says "Generate a map first."
+- Claude Code's final reply replaces the narration streamed before it in an Ask answer.
 
 Tests the D2 ACs call for:
 - contributions, and every command reachable from a menu, the sidebar or a title bar;
@@ -120,16 +135,16 @@ Tests the D2 ACs call for:
 
 Done when: Everything is reachable without the Command Palette; runs and questions stream in the sidebar.
 
-- [ ] **UI-01 Sustain sidebar** `[unit]` `[dom]` `[e2e]`
-- [ ] **UI-02 Runs streamed into the sidebar** `[unit]` `[e2e]` `[smoke]`
-- [ ] **UI-03 Editor title buttons** `[unit]` `[e2e]`
-- [ ] **UI-04 Status bar item** `[unit]` `[e2e]`
-- [ ] **UI-05 Explorer and box menus** `[unit]` `[dom]` `[e2e]`
-- [ ] **UI-06 Ask about the map** `[unit]` `[dom]` `[e2e]` `[smoke]`
+- [x] **UI-01 Sustain sidebar** `[unit]` `[dom]` `[e2e]` — 2026-10-18: Activity Bar container `sustain` with the `sustain.home` webview (`dist/sidebar.js`, same CSP as the map); Refresh and Check Setup in its title bar. Tests: `manifest.test.ts` › `UI-01 the Activity Bar container…`, `UI-01 every command is reachable from a menu, a title bar or the sidebar`, `UI-01 each sidebar action is a button the sidebar renders`, `UI-01 the sidebar title bar…`; `test/dom/sidebar.test.ts` › `UI-01 sidebar states` (9: empty, maps, running, setup failing, session active, the focus surviving a state, folder picker, agent and mode); `home.test.ts` (wording, maps list); e2e `UI-01 revealing the container shows the view for this folder`, `UI-01 SET-03 Generate from the sidebar takes one click…` and `UI-01 Delete asks first and removes the run folder`.
+- [ ] **UI-02 Runs streamed into the sidebar** `[unit]` `[e2e]` `[smoke]` — `[unit]` `[e2e]` done 2026-10-18: `src/model/agentStream/` parsers and `RunTracker`, `src/extension/runner.ts` (process group, Cancel, Windows shims to the terminal), `src/extension/runs.ts`. Tests: `agentStream.test.ts` (11, on the Claude Code and Codex fixtures), `launchArgs.test.ts` › `UI-02 …` argv cases, `runner.test.ts` (4: replay, Cancel kills the agent and its child, a missing binary, Windows shims); e2e `UI-02 a replayed stream shows feed, tokens and acceptance, records the run and opens the map`, `UI-02 Cancel kills the agent and the processes it started`, `UI-02 a denial offers terminal mode…`. ADR 0046. `[smoke]` waits for the agent CLIs.
+- [x] **UI-03 Editor title buttons** `[unit]` `[e2e]` — 2026-10-18, with the map-panel buttons moved to D3 (see the log): Show in Map on every file editor's title bar; it opens the map beside the editor without taking focus and marks the citing boxes; Follow editor; an empty map offers "Map this folder". Tests: `citing.test.ts` (2), `manifest.test.ts` › `UI-03 Show in Map sits in every file editor's title bar…`, `main.test.ts` › `UI-03 boxes citing the active file` (3); e2e `UI-03 Show in Map opens the map beside the editor…`, `UI-03 Follow editor moves the marks…`, `UI-03 a folder without a map…`.
+- [x] **UI-04 Status bar item** `[unit]` `[e2e]` — 2026-10-18: `src/extension/statusBar.ts`; idle, `Sustain: generating m:ss` and `Sustain: N changed`. Tests: `home.test.ts` › `UI-04 status bar`; e2e `UI-04 the status bar item's command opens the sidebar` and the status text asserted during and after `UI-02 a replayed stream…`.
+- [x] **UI-05 Explorer and box menus** `[unit]` `[dom]` `[e2e]` — 2026-10-18, with "Refresh this box" moved to FRS-06: "Map This Folder with Sustain" on folders, "Show in Architecture Map" on files, Open Code on a box's native context menu. Tests: `manifest.test.ts` › `UI-05 the Explorer maps folders and shows files; boxes open their code`; `render.test.ts` › `UI-05 box context menus` (2, one with a hostile id); e2e `UI-05 Map this folder launches Generate with the folder as the focus`, `UI-05 Open code on a box opens its first source`.
+- [ ] **UI-06 Ask about the map** `[unit]` `[dom]` `[e2e]` `[smoke]` — `[unit]` `[dom]` `[e2e]` done 2026-10-18: `src/model/ask.ts` (prompt, blocks, citations, box links), `src/extension/ask.ts` (read-only runs, Claude Code resume, history, the second check before opening), `webview/answer.ts`. Tests: `ask.test.ts` (10, including markup staying text and rejected citations turning back into text), `launchArgs.test.ts` › `UI-06 …`, `agentStream.test.ts` › `UI-06 answers` (2); `answer.test.ts` (3: elements, hostile markup, links) and `sidebar.test.ts` › `UI-06 Ask` (4); e2e `UI-06 a recorded answer renders with checked links, its citation opens the line, and a follow-up resumes the session` (a `.env` citation stays text and never opens). `[smoke]` waits for the agent CLIs.
 - [ ] **SET-01 Install anywhere** `[unit]` `[e2e]` `[smoke]` — `[unit]` `[e2e]` done 2026-10-18: `sustain.skillScope` (default `user`) picks the base; skills use `${CLAUDE_SKILL_DIR}`; integrity checks the base copy and repository copies; a per-user session hook runs by absolute path. Tests: `skill.test.ts` › `SET-01 … never a repository path` (2) and the updated frontmatter test; `integrity.test.ts` › `SET-01 a per-user install …`; e2e install into a temporary HOME (every launch now gets its own HOME) and `SET-01 with sustain.skillScope set to project …`. The real `~/.claude/skills` and `~/.agents/skills` stay empty. ADR 0044 supersedes ADR 0006. `[smoke]`: each agent loading the per-user skill waits for the agent CLIs.
-- [ ] **SET-02 Setup check** `[unit]` `[dom]` `[e2e]` — `[unit]` done 2026-10-18: `src/model/preflight.ts` checks Node ≥ 18, each agent CLI with its `--version` (asynchronous, 5 s limit, absolute PATH entries only), skills intact and the git repository, each failure with one fix. `test/unit/model/preflight.test.ts` (6; the two stub-CLI tests skip on Windows because the stubs are shell scripts). `[dom]` and `[e2e]` come with the sidebar (UI-01).
-- [ ] **SET-03 One-click Generate** `[e2e]`
-- [ ] **CST-04 Run record** `[unit]` `[e2e]` — `[unit]` done 2026-10-18: `src/model/runRecord.ts`; `repo-facts.mjs` writes `run.json` (git facts now come first, so the new run folder is not a dirty path); `validate.mjs` counts attempts and records `rejected` or `accepted` with `finishedAt`; the build fills in `skillVersion`. Tests: `repoFacts.test.ts` › `CST-04 creates the run folder with run.json…`, `CST-04 git facts … exclude the new run folder`; `validate.test.ts` › `CST-04 run.json counts validator runs and records the outcome` and four updated FR-VAL tests. ADR 0045. `[e2e]` (the terminal-mode run card) comes with UI-01.
+- [x] **SET-02 Setup check** `[unit]` `[dom]` `[e2e]` — `[dom]` and `[e2e]` done 2026-10-18 with the sidebar: `sidebar.test.ts` › `setup failing: the checklist opens, with one fix per failing check` and `setup while checking says so`; e2e `SET-02 the setup check finds the stubbed agent and offers one fix for each failing check` (a stub `claude` on PATH, no Codex, no git; the Codex fix copies its install command). `[unit]` done 2026-10-18: `src/model/preflight.ts` checks Node ≥ 18, each agent CLI with its `--version` (asynchronous, 5 s limit, absolute PATH entries only), skills intact and the git repository, each failure with one fix. `test/unit/model/preflight.test.ts` (6; the two stub-CLI tests skip on Windows because the stubs are shell scripts).
+- [x] **SET-03 One-click Generate** `[e2e]` — 2026-10-18: the sidebar states the install or repair and the data note under Generate and acts on them with the click; the palette shows them in one modal; the last agent is remembered per workspace. e2e `UI-01 SET-03 Generate from the sidebar takes one click…` (no prompt besides the click), `SET-03 a fresh install takes two interactions…`, `SET-03 dismissing the modal installs nothing and launches nothing`; the palette's FR-GEN-01 and SAF-01 tests were updated for the one-modal flow.
+- [x] **CST-04 Run record** `[unit]` `[e2e]` — `[e2e]` done 2026-10-18: e2e `CST-04 a terminal run's run.json transitions show in the card` (created, validating 1, rejected, validating 2, accepted; then `agent` and `mode` recorded) and `UI-02 a replayed stream…` (agent, mode, tokens and cost recorded); `sidebar.test.ts` › `CST-04 terminal-mode card`. `[unit]` done 2026-10-18: `src/model/runRecord.ts`; `repo-facts.mjs` writes `run.json` (git facts now come first, so the new run folder is not a dirty path); `validate.mjs` counts attempts and records `rejected` or `accepted` with `finishedAt`; the build fills in `skillVersion`. Tests: `repoFacts.test.ts` › `CST-04 creates the run folder with run.json…`, `CST-04 git facts … exclude the new run folder`; `validate.test.ts` › `CST-04 run.json counts validator runs and records the outcome` and four updated FR-VAL tests. ADR 0045.
 
 ## D3 The living map
 
@@ -251,6 +266,8 @@ Done when: The plugin opens cited lines on AB3.
 - [ ] **IDE-01 IntelliJ plugin** `[jvm]` `[smoke]`
 
 ## Log
+
+- 2026-10-18 — D2 closed pending owner. UI-03's map-panel title buttons (Refresh, Show Changes, Export Page), UI-05's "Refresh this box" and the maps list's Refresh and Export page move to the D3 features they run (FRS-06, FRS-04, RCH-01): a menu entry for a command that does nothing yet would break UI-01's reachability rule in spirit. UI-04 uses a codicon for the idle icon, because a status bar item cannot show an SVG. Gates: `npm run check` exit 0 (914 tests, 46 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 59, empty 3, multi 2 each). Ten deliberate breaks each failed their test: inline answer code set as HTML, Cancel signalling only the agent, rejected citations kept, folder citations ignored, the status text ignoring a run, the setup list never opening, box context dropped, the final answer ignored, the newest run not chosen, and a missing Explorer menu entry.
 
 - 2026-10-18 — FR-WAT-01 fix, found by the first e2e run on this machine. The candidate watcher's tests failed 2–3 of 4 on the base commit too: on Linux and WSL, a `candidate.json` written inside a just-created run folder can arrive without an event. The watcher now listens on `.archify/**`, rechecks a run folder's candidate on any event in it, and decides "new" against the candidates it already knows. All four watcher tests pass on both VS Code versions.
 
