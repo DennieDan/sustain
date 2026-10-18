@@ -9,7 +9,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | D1 Safe to ship | Closed pending owner (ENG-01, ENG-04 `[ci]`) | `4bbac86` |
 | D2 The product in VS Code | Closed pending owner (UI-02, UI-06, SET-01 `[smoke]`) | `1d8bcf4` |
 | D3 The living map | Closed pending owner (RCH-01 `[smoke]`) | `3850c3e` |
-| D4 Pull request checks | Not started | |
+| D4 Pull request checks | In progress | |
 | D5 Sustain Cloud v1 | Not started | |
 | D6 Ship | Not started | |
 | I1 Cost | Not started | |
@@ -199,6 +199,25 @@ Done when: Staleness, overlay and refresh work; the diagram page works offline.
 - [ ] **RCH-01 Diagram page** `[unit]` `[dom]` `[smoke]` — `[unit]` `[dom]` done 2026-10-18: `src/agent/render-html.ts`, `src/model/page.ts`, `src/model/openLinks.ts`, `webview/page.ts`; both skills run it last; Export Page in the map's title bar and the maps list. Tests: `openLinks.test.ts` (14: each target's link, Windows roots, targets without a root or revision, eight paths that get no link), `page.test.ts` (4), `renderHtml.test.ts` (6: meta.output, the root only locally, refused arguments); `test/dom/page.test.ts` (a hostile label yields exactly one executable script; the page script draws the map with the real layout and no network call, copies a clicked citation, and refuses a denied one); e2e `RCH-01 the map's Export Page writes meta.output with the map and the viewer`. ADR 0051. `[smoke]` waits for the owner.
 
 ## D4 Pull request checks
+
+### D4 proposal (2026-10-18)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `src/cli/sustain.ts`, `src/cli/commands.ts`, `esbuild.mjs` | RCH-03: `dist/cli/sustain.mjs` with `install`, `verify-skills`, `staleness`, `changes`, `export-page`, `preflight` and `check`; JSON or markdown; the validator's exit codes | +320 |
+| `src/model/config.ts` | PRC-01: `sustain.config.json`, its schema and reading | +90 |
+| `src/model/ownership.ts` | PRC-01: which box owns a file, by citation or by the deepest cited directory | +60 |
+| `src/model/delta.ts`, `src/model/deltaMarkdown.ts` | PRC-01: touched, stale, uncovered, new box candidates and gone boxes; the main map; `--fail-on`; markdown | +320 |
+| `src/extension/review.ts`, `webview/home.ts`, `webview/viewer.ts`, `src/model/messages.ts`, `package.json` | PRC-02: the Review changes section and command, ghost boxes, Show files, Add to map, Ignore with a diff preview | +300 |
+| `action/action.yml`, `action/src/*.ts`, `action/dist/index.js`, `esbuild.mjs`, `.github/workflows/ci.yml` | PRC-04: the Action: the check, one marked comment with a Mermaid flowchart, `fail-on`; the committed bundle checked for staleness in CI | +330 |
+
+`publish` (CLD-09) joins the CLI in D5.
+
+Tests the D4 ACs call for:
+- each CLI command against temporary repositories, as JSON and as markdown, with its exit code;
+- one temporary git repository per delta category; the config schema; a markdown snapshot; the exit codes;
+- ghost boxes on the map; on a temporary repository branch, the candidates listed, Add to map launching refresh with their paths, and Ignore writing the config;
+- the comment and its Mermaid flowchart with hostile labels, through an injected API client; a run against a recorded `pull_request` payload with a fake API.
 
 Done when: The Action comments on this repository's pull requests; Review shows candidates.
 
