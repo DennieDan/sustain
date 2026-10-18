@@ -39,7 +39,10 @@ suite("FR-INS-01 Install Agent Skills", () => {
     for (const file of ["SKILL.md", "agents/openai.yaml", "references/archify-format.md", "scripts/refresh-facts.mjs", "scripts/validate.mjs"]) {
       assert.ok(existsSync(join(home, ".agents/skills/sustain-refresh", file)), file);
     }
-    for (const name of ["sustain-architecture", "sustain-bugfix", "sustain-refresh"]) {
+    for (const file of ["SKILL.md", "agents/openai.yaml", "scripts/audit-record.mjs"]) {
+      assert.ok(existsSync(join(home, ".agents/skills/sustain-audit", file)), file);
+    }
+    for (const name of ["sustain-architecture", "sustain-audit", "sustain-bugfix", "sustain-refresh"]) {
       const link = join(home, ".claude/skills", name);
       assert.equal(lstatSync(link).isSymbolicLink(), true);
       assert.equal(readlinkSync(link), `../../.agents/skills/${name}`);
@@ -60,7 +63,7 @@ suite("FR-INS-01 Install Agent Skills", () => {
     ui.answers.warning.push("Overwrite");
     await vscode.commands.executeCommand("sustain.installSkills");
     assert.equal(ui.warnings.length, 1);
-    assert.equal(ui.warnings[0]!.message, "Overwrite the existing sustain-architecture, sustain-bugfix and sustain-refresh skills?");
+    assert.equal(ui.warnings[0]!.message, "Overwrite the existing sustain-architecture, sustain-audit, sustain-bugfix and sustain-refresh skills?");
     assert.deepEqual(ui.warnings[0]!.rest, [{ modal: true }, "Overwrite"]);
     assert.equal(existsSync(marker), false, "overwrite removes the old install first");
     assert.equal(lstatSync(join(home, ".claude/skills/sustain-architecture")).isSymbolicLink(), true);
