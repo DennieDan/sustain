@@ -29,7 +29,7 @@ Run, from the repository root:
 node ${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs --focus "<focus>"
 ```
 
-Omit `--focus "<focus>"` entirely when the focus is empty. The script prints one JSON object. Keep its `runFolder`, `draft` and `git` values; `git` lists uncommitted paths whose line numbers may still change. If it exits non-zero, stop and report its stderr.
+Omit `--focus "<focus>"` entirely when the focus is empty. The script prints one JSON object. Keep its `runFolder`, `draft`, `git` and `budget` values; `git` lists uncommitted paths whose line numbers may still change. If it exits non-zero, stop and report its stderr.
 
 ## 3. Read the format reference
 
@@ -37,7 +37,11 @@ Read `${CLAUDE_SKILL_DIR}/references/archify-format.md` completely. Use `${CLAUD
 
 ## 4. Explore the code
 
-Use your own read and search tools, in the order given under "How you work" in `archify-format.md`. Never open, search or cite these paths (any folder depth, any letter case):
+Use your own read and search tools, in the order given under "How you work" in `archify-format.md`.
+
+Keep to `budget` reads and searches in total. It is 25 for a repository of tier S, 45 for tier M and 70 for tier L, as `size.tier` says. Each file read and each search counts once. When the budget is spent, stop exploring and write the draft from what you have read.
+
+Never open, search or cite these paths (any folder depth, any letter case):
 
 - `.git/` and `.archify/`
 - `.env` and `.env.*` (except `.env.example` and `.env.sample`)

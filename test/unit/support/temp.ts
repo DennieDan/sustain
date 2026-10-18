@@ -66,6 +66,8 @@ export interface RepoFacts {
   git: { head: string; origin: string | null; dirtyCount: number; dirty: string[] } | null;
   /** CST-01. */
   size: RepoSize;
+  /** CST-05. */
+  budget: number;
 }
 
 /** session.mjs stdout: `status` plus command-specific fields (ADR 0037). */

@@ -14,7 +14,7 @@ describe("FR-RF-01 repo-facts CLI", () => {
     expect(run.status).toBe(0);
     expect(run.stderr).toBe("");
     const facts = run.json();
-    expect(Object.keys(facts)).toEqual(["root", "runFolder", "draft", "git", "size"]);
+    expect(Object.keys(facts)).toEqual(["root", "runFolder", "draft", "git", "size", "budget"]);
     expect(facts.root).toBe(root);
     const name = facts.runFolder.replace(/^\.archify\//, "");
     expect(name).toMatch(RUN_NAME);
@@ -38,6 +38,13 @@ describe("FR-RF-01 repo-facts CLI", () => {
     const root = gitRepo({ "src/app.ts": "a\nb\nc\n", "src/app.test.ts": "t\n" });
     const facts = runScript("repo-facts", [], { cwd: root }).json();
     expect(facts.size).toMatchObject({ listing: "git", files: 2, lines: { total: 4, test: 1, nonTest: 3 }, tier: "S" });
+  });
+
+  test("CST-05 prints the tier's read budget", () => {
+    const small = runScript("repo-facts", [], { cwd: gitRepo({ "src/app.ts": "a\n" }) }).json();
+    expect([small.size.tier, small.budget]).toEqual(["S", 25]);
+    const medium = runScript("repo-facts", [], { cwd: gitRepo({ "src/app.ts": "a\n".repeat(20_000) }) }).json();
+    expect([medium.size.tier, medium.budget]).toEqual(["M", 45]);
   });
 
   test("without --focus the slug comes from the repo folder name", () => {

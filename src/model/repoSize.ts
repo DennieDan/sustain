@@ -36,6 +36,8 @@ export const COUNT_LIMIT = 2000;
 export const MAX_FILE_BYTES = 1024 * 1024;
 /** Non-test lines at which a repository becomes M, and L. */
 export const TIER_BOUNDS = { M: 20_000, L: 150_000 } as const;
+/** Reads and searches the architecture skill keeps to, per tier (CST-05). */
+export const READ_BUDGET: Record<Tier, number> = { S: 25, M: 45, L: 70 };
 
 const LANGUAGES: Record<string, string> = {
   ts: "TypeScript", tsx: "TypeScript", mts: "TypeScript", cts: "TypeScript",

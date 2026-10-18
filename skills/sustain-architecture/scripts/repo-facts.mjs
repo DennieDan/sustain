@@ -154,6 +154,7 @@ var SKIPPED_DIRS = [".git", "node_modules", "vendor", "dist", "build", "target",
 var COUNT_LIMIT = 2e3;
 var MAX_FILE_BYTES = 1024 * 1024;
 var TIER_BOUNDS = { M: 2e4, L: 15e4 };
+var READ_BUDGET = { S: 25, M: 45, L: 70 };
 var LANGUAGES = {
   ts: "TypeScript",
   tsx: "TypeScript",
@@ -504,12 +505,14 @@ function main(args) {
 `);
     return 2;
   }
+  const size = repoSize(root);
   const facts = {
     root,
     runFolder: `${ARCHIFY_DIR}/${run2}`,
     draft: `${ARCHIFY_DIR}/${run2}/${DRAFT_FILE}`,
     git: git && { head: git.head, origin: git.origin, dirtyCount: git.dirtyCount, dirty: git.dirty },
-    size: repoSize(root)
+    size,
+    budget: READ_BUDGET[size.tier]
   };
   process.stdout.write(`${JSON.stringify(facts, null, 2)}
 `);

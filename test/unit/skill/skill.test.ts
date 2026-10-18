@@ -97,6 +97,15 @@ describe("FRS-05 refresh skill", () => {
   });
 });
 
+describe("CST-05 exploration budget", () => {
+  test("the architecture skill keeps to repo-facts' budget and names each tier's", () => {
+    const text = read("SKILL.md");
+    expect(text).toContain("Keep its `runFolder`, `draft`, `git` and `budget` values");
+    expect(text).toContain("Keep to `budget` reads and searches in total. It is 25 for a repository of tier S, 45 for tier M and 70 for tier L");
+    expect(text).toContain("When the budget is spent, stop exploring and write the draft");
+  });
+});
+
 describe("ACC-01 behaviour over names", () => {
   test("the format reference asks for behaviour ranges, observed labels and real groupings", () => {
     const reference = readFileSync(join(skillDir, "references/archify-format.md"), "utf8");
