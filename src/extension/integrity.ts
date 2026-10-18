@@ -4,6 +4,7 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import { assertWritable } from "../model/confine";
 import { checkSkill, diffSize, type AgentId, type SkillHashes } from "../model/integrity";
+import { onAction } from "./notify";
 import { configuredScope } from "./scope";
 import { skillBase, skillTargets, writeSkill } from "./skillFiles";
 
@@ -81,7 +82,10 @@ export async function ensureSkillIntact(extensionUri: vscode.Uri, root: string, 
   const copies = check.differingCopies.join(", ");
   if (agent === "claude") {
     const loaded = base === root ? check.effective : `~/${check.effective}`;
-    void vscode.window.showWarningMessage(`Other copies of ${name} differ from Sustain's: ${copies}. Claude Code loads the one in ${loaded}.`);
+    const differing = check.differingCopies;
+    onAction(vscode.window.showWarningMessage(`Other copies of ${name} differ from Sustain's: ${copies}. Claude Code loads the one in ${loaded}.`, "Remove Copies"), "Remove Copies", () => {
+      for (const copy of differing) removeCopy(root, copy);
+    });
     return true;
   }
   const choice = await vscode.window.showWarningMessage(

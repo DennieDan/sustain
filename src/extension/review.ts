@@ -14,7 +14,8 @@ import { parseDiagram } from "../model/tolerant";
 import type { ReviewView } from "../model/messages";
 import { ARCHIFY_DIR, CANDIDATE_FILE } from "../model/runFolder";
 import { chosenAgent, foundAgents } from "./generate";
-import { readMap } from "./compare";
+import { compareMapsCommand, readMap } from "./compare";
+import { onAction, openFolder } from "./notify";
 import { ArchitecturePanel } from "./panel";
 import { configFile, configText, confirmWrite } from "./previewWrite";
 import { refreshArchitectureCommand } from "./refresh";
@@ -129,7 +130,7 @@ export class Review implements vscode.Disposable {
     const panel = ArchitecturePanel.show(this.context.extensionUri, root, join(root, ARCHIFY_DIR, map, CANDIDATE_FILE), true);
     const shown = panel.components().length > 0 ? readMap(join(root, ARCHIFY_DIR, map, CANDIDATE_FILE)) : null;
     if (parsed === null || !parsed.ok || shown === null) {
-      void vscode.window.showErrorMessage(`Cannot read the base map ${base} at ${mergeBase.slice(0, 7)}.`);
+      onAction(vscode.window.showErrorMessage(`Cannot read the base map ${base} at ${mergeBase.slice(0, 7)}.`, "Compare With…"), "Compare With…", compareMapsCommand);
       return;
     }
     panel.showCompare({ against: `the base map at ${mergeBase.slice(0, 7)}`, diff: diffMaps(parsed.diagram, shown) });
@@ -188,9 +189,8 @@ export class Review implements vscode.Disposable {
       before: file.text,
       after: configText(withIgnored(file.config, dir)),
       title: `${CONFIG_FILE}: ignore ${dir}/`,
-      question: `Ignore ${dir}/ in ${CONFIG_FILE}?`,
-      detail: "Checks will leave its files out of the uncovered changes and new box candidates.",
-      verb: "Ignore",
+      confirm: async () =>
+        (await vscode.window.showWarningMessage(`Ignore ${dir}/ in ${CONFIG_FILE}?`, { modal: true, detail: "Checks will leave its files out of the uncovered changes and new box candidates." }, "Ignore")) === "Ignore",
     });
     if (written && this.lastScope) await this.check(root, this.lastScope.scope, this.lastScope.base, this.lastScope.head);
   }
@@ -198,7 +198,7 @@ export class Review implements vscode.Disposable {
   /** The palette command: the sidebar's folder, else the first workspace folder. */
   async command(root: string | null): Promise<void> {
     if (root === null) {
-      void vscode.window.showErrorMessage("Open a folder first.");
+      onAction(vscode.window.showErrorMessage("Open a folder first.", "Open Folder…"), "Open Folder…", openFolder);
       return;
     }
     if (mainMap(root) === null && !ArchitecturePanel.current) {

@@ -21,6 +21,7 @@ import { parseDiagram, type ViewDiagram } from "../model/tolerant";
 import { changedBoxes, type FreshnessService } from "./freshness";
 import { webviewHtml } from "./html";
 import { openSource, openSourceRef } from "./navigate";
+import { onAction } from "./notify";
 
 export const VIEW_TYPE = "sustain.architecture";
 
@@ -260,12 +261,12 @@ export class ArchitecturePanel {
     try {
       text = readFileSync(this.file, "utf8");
     } catch (error) {
-      this.fail(`Can't show \`${name}\`: ${(error as Error).message}`);
+      this.fail(name, (error as Error).message);
       return;
     }
     const result = parseDiagram(text);
     if (!result.ok) {
-      this.fail(`Can't show \`${name}\`: ${result.reason}`);
+      this.fail(name, result.reason);
       return;
     }
     this.panel.title = `Architecture: ${result.diagram.title ?? basename(this.file)}`;
@@ -280,10 +281,12 @@ export class ArchitecturePanel {
     this.send();
   }
 
-  private fail(message: string): void {
-    void vscode.window.showErrorMessage(message);
+  /** Says why the map `name` cannot be shown, and offers to open its file. */
+  private fail(name: string, reason: string): void {
+    const file = this.file;
+    onAction(vscode.window.showErrorMessage(`Can't show \`${name}\`: ${reason}`, "Open File"), "Open File", () => vscode.commands.executeCommand("vscode.open", vscode.Uri.file(file)));
     this.panel.title = `Architecture: ${basename(this.file)}`;
-    this.showEmpty(message);
+    this.showEmpty(`Can't show \`${name}\`: ${reason}`);
   }
 
   private send(): void {

@@ -61,10 +61,10 @@ export async function startLearningSessionCommand(extensionUri: vscode.Uri): Pro
   } catch (error) {
     const choice = await vscode.window.showWarningMessage(
       `The ${launcher.label} hooks could not be merged — hunt edits won't be blocked: ${(error as Error).message}`,
-      "Start anyway",
-      "Cancel",
+      { modal: true },
+      "Start Anyway",
     );
-    if (choice !== "Start anyway") return;
+    if (choice !== "Start Anyway") return;
   }
 
   const terminal = vscode.window.createTerminal({ name: `Sustain: ${mode.mode.label}`, cwd: root, shellPath: launcher.binary, shellArgs: sessionArgs(launcher.agent, task) });

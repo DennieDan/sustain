@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 import type { ViewComponent } from "../model/tolerant";
 import type { SourceRef } from "../model/types";
+import { onAction } from "./notify";
 import { resolveSource } from "./sourceTarget";
 
 /** How long the opened lines stay highlighted. */
@@ -22,17 +23,23 @@ export async function openSource(root: string, component: ViewComponent, index: 
   if (source) await openSourceRef(root, source, panelColumn);
 }
 
+/** A citation that no longer fits the code offers to refresh the map (SET-04). */
+function refreshMap(): Thenable<unknown> {
+  return vscode.commands.executeCommand("sustain.refreshArchitecture");
+}
+
 /** Opens `source` from `root` beside the panel's column, selecting and briefly highlighting the cited lines. */
 export async function openSourceRef(root: string, source: SourceRef, panelColumn: vscode.ViewColumn | undefined): Promise<void> {
   const target = resolveSource(root, source);
   if (target.kind === "error") {
-    void vscode.window.showErrorMessage(target.message);
+    if (target.problem === "invalid") onAction(vscode.window.showErrorMessage(`Invalid source path: \`${target.path}\``, "Refresh Map"), "Refresh Map", refreshMap);
+    else onAction(vscode.window.showErrorMessage(`Stale reference: \`${target.path}\` no longer exists`, "Refresh Map"), "Refresh Map", refreshMap);
     return;
   }
   const viewColumn = panelColumn === vscode.ViewColumn.One ? vscode.ViewColumn.Two : vscode.ViewColumn.One;
   const document = await vscode.workspace.openTextDocument(vscode.Uri.file(target.file));
   const editor = await vscode.window.showTextDocument(document, { viewColumn, preserveFocus: false });
-  if (target.warning) void vscode.window.showErrorMessage(target.warning);
+  if (target.stale) onAction(vscode.window.showErrorMessage(`Stale reference: \`${source.path}\` has ${target.stale.lineCount} lines; the diagram cites ${target.stale.cited}`, "Refresh Map"), "Refresh Map", refreshMap);
   if (!target.lines || document.lineCount === 0) {
     // VS Code restores a document's last selection; "no selection" means the top of the file.
     const top = new vscode.Position(0, 0);

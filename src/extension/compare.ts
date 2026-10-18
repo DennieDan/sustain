@@ -6,6 +6,7 @@ import * as vscode from "vscode";
 import { diffMaps } from "../model/diff";
 import { listCandidates } from "../model/discovery";
 import { parseDiagram, type ViewDiagram } from "../model/tolerant";
+import { onAction } from "./notify";
 import { ArchitecturePanel } from "./panel";
 
 /** The map in `file`, or `null`. */
@@ -40,5 +41,5 @@ export async function compareMapsCommand(): Promise<void> {
     others.map((candidate) => ({ label: candidate.runFolder, file: candidate.file })),
     { placeHolder: "Compare the shown map with which map?" },
   );
-  if (picked !== undefined && !compareWith(picked.file)) void vscode.window.showErrorMessage(`Cannot read ${picked.label} to compare with it.`);
+  if (picked !== undefined && !compareWith(picked.file)) onAction(vscode.window.showErrorMessage(`Cannot read ${picked.label} to compare with it.`, "Compare With…"), "Compare With…", compareMapsCommand);
 }

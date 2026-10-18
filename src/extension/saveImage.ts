@@ -3,6 +3,7 @@
 import { dirname, extname, join } from "node:path";
 import * as vscode from "vscode";
 import type { ImageFormat } from "../model/messages";
+import { onAction } from "./notify";
 import { ArchitecturePanel } from "./panel";
 
 const PNG_PREFIX = "data:image/png;base64,";
@@ -29,16 +30,14 @@ export async function saveImageCommand(): Promise<void> {
   const format: ImageFormat = extname(target.fsPath).toLowerCase() === ".png" ? "png" : "svg";
   const data = await panel.image(format);
   const bytes = data === null ? null : imageBytes(format, data);
-  let problem = bytes === null ? "The map did not draw itself as an image." : null;
-  if (bytes !== null) {
-    try {
-      await vscode.workspace.fs.writeFile(target, bytes);
-    } catch (error) {
-      problem = `Could not write ${vscode.workspace.asRelativePath(target)}: ${(error as Error).message}`;
-    }
+  if (bytes === null) {
+    onAction(vscode.window.showErrorMessage("The map did not draw itself as an image.", "Try Again"), "Try Again", saveImageCommand);
+    return;
   }
-  if (problem !== null) {
-    if ((await vscode.window.showErrorMessage(problem, "Try Again")) === "Try Again") await saveImageCommand();
+  try {
+    await vscode.workspace.fs.writeFile(target, bytes);
+  } catch (error) {
+    onAction(vscode.window.showErrorMessage(`Could not write ${vscode.workspace.asRelativePath(target)}: ${(error as Error).message}`, "Try Again"), "Try Again", saveImageCommand);
     return;
   }
   const choice = await vscode.window.showInformationMessage(`Saved the map image: ${vscode.workspace.asRelativePath(target)}`, "Open");

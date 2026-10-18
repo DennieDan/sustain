@@ -232,7 +232,7 @@ export class Practice implements vscode.Disposable {
     const folder = boxId !== undefined && panel !== undefined ? panel.root : root;
     const blocked = this.blocked(folder);
     if (blocked !== null || folder === null) {
-      void vscode.window.showInformationMessage(blocked ?? "Open a folder first.");
+      void vscode.window.showInformationMessage(`Check My Understanding cannot start. ${blocked ?? "Open a folder first."}`);
       return;
     }
     let scope: PracticeScope = "box";

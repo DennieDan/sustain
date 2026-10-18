@@ -20,9 +20,8 @@ export async function addRules(service: RulesService, root: string, rules: reado
     before: file.text,
     after: configText(withRules(file.config, rules)),
     title: `${CONFIG_FILE}: ${what}`,
-    question: `Add ${rules.length === 1 ? "this rule" : `${rules.length} rules`} to ${CONFIG_FILE}?`,
-    detail: rules.map((rule) => `${rule.id}: ${rule.reason}`).join("\n"),
-    verb: "Add",
+    confirm: async () =>
+      (await vscode.window.showWarningMessage(`Add ${rules.length === 1 ? "this rule" : `${rules.length} rules`} to ${CONFIG_FILE}?`, { modal: true, detail: rules.map((rule) => `${rule.id}: ${rule.reason}`).join("\n") }, "Add")) === "Add",
   });
   if (written) service.check(root);
   return written;
@@ -34,7 +33,8 @@ function rulesPanel(): { panel: ArchitecturePanel; boxes: { id: string; label: s
   if (panel === undefined || panel.file === "") return null;
   const { map } = rulesMap(panel.root);
   if (map !== basename(dirname(panel.file))) {
-    void vscode.window.showInformationMessage(map === null ? "Rules use the main map's boxes. Generate a map with an empty focus first." : `Rules use the boxes of ${map}. Open that map to write rules from it.`);
+    if (map === null) void vscode.window.showInformationMessage("Rules use the main map's boxes. Generate a map with an empty focus first.");
+    else void vscode.window.showInformationMessage(`Rules use the boxes of ${map}. Open that map to write rules from it.`);
     return null;
   }
   return { panel, boxes: panel.components() };

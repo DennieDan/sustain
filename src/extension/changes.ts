@@ -5,6 +5,7 @@ import { markChanges, parseDiff, rangeOf, type FileChange } from "../model/chang
 import { listCandidates } from "../model/discovery";
 import { diffFor, type ChangeScope } from "../model/git";
 import { pickRepoRoot } from "./folders";
+import { onAction } from "./notify";
 import { ArchitecturePanel } from "./panel";
 
 const SCOPES: (vscode.QuickPickItem & { scope: ChangeScope["kind"] })[] = [
@@ -43,7 +44,7 @@ export async function showChangesCommand(extensionUri: vscode.Uri): Promise<void
 
   const diff = diffFor(panel.root, scope);
   if (!diff.ok) {
-    void vscode.window.showErrorMessage(diff.reason);
+    onAction(vscode.window.showErrorMessage(`Show Changes could not read the changes. ${diff.reason}`, "Try Again"), "Try Again", () => showChangesCommand(extensionUri));
     return;
   }
   const changes: FileChange[] = [...parseDiff(diff.text), ...diff.untracked.map((path): FileChange => ({ path, oldPath: path, status: "added", hunks: [] }))];

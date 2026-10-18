@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { assertWritable } from "../model/confine";
+import { onAction } from "./notify";
 import { ArchitecturePanel } from "./panel";
 import { refreshBoxCommand } from "./refresh";
 import type { Runs } from "./runs";
@@ -49,7 +50,8 @@ export async function flagBoxCommand(context: vscode.ExtensionContext, runs: Run
   try {
     addFeedback(panel.root, dirname(panel.file), { component: component.id, note: note.trim(), createdAt: new Date().toISOString() });
   } catch (error) {
-    void vscode.window.showErrorMessage(`Could not save the note: ${(error as Error).message}`);
+    // Copy Note keeps the typed note for another try.
+    onAction(vscode.window.showErrorMessage(`Could not save the note: ${(error as Error).message}`, "Copy Note"), "Copy Note", () => vscode.env.clipboard.writeText(note.trim()));
     return;
   }
   const choice = await vscode.window.showInformationMessage(`Saved your note on ${component.label} in ${FEEDBACK_FILE}.`, "Refresh this box");

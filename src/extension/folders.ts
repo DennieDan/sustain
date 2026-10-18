@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { onAction, openFolder } from "./notify";
 
 /**
  * The repo root a command works on (FR-WS-01): the only workspace folder, or the one the
@@ -8,7 +9,7 @@ import * as vscode from "vscode";
 export async function pickRepoRoot(): Promise<vscode.WorkspaceFolder | undefined> {
   const folders = vscode.workspace.workspaceFolders ?? [];
   if (folders.length === 0) {
-    void vscode.window.showErrorMessage("Open a folder first.");
+    onAction(vscode.window.showErrorMessage("Open a folder first.", "Open Folder…"), "Open Folder…", openFolder);
     return undefined;
   }
   if (folders.length === 1) return folders[0];

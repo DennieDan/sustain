@@ -9,7 +9,8 @@ import type { RunEstimate } from "../model/estimate";
 import type { ComposerCli, RunCard, RunMode } from "../model/messages";
 import { CANDIDATE_FILE } from "../model/runFolder";
 import type { LaunchTask } from "./generate";
-import { newRunRecord, newRunSince, runFolderNames, updateRunRecord } from "../model/runRecord";
+import { onAction } from "./notify";
+import { newRunRecord, newRunSince, RUN_FILE, runFolderNames, updateRunRecord } from "../model/runRecord";
 import { ArchitecturePanel } from "./panel";
 import { startHeadless, type HeadlessRun } from "./runner";
 
@@ -175,7 +176,9 @@ export class Runs implements vscode.Disposable {
     try {
       updateRunRecord(request.root, dir, { agent: card.agent, mode: card.mode, ...tokens, ...cost, ...estimate }, () => newRunRecord({ focus: card.focus, skillVersion: "unknown" }));
     } catch (error) {
-      void vscode.window.showWarningMessage(`Could not record the run in run.json: ${(error as Error).message}`);
+      onAction(vscode.window.showWarningMessage(`Could not record the run in run.json: ${(error as Error).message}`, "Open run.json"), "Open run.json", () =>
+        vscode.commands.executeCommand("vscode.open", vscode.Uri.file(join(dir, RUN_FILE))),
+      );
     }
   }
 

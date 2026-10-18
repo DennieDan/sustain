@@ -5,6 +5,7 @@
 import { basename } from "node:path";
 import * as vscode from "vscode";
 import { removeHooksWhenIdle } from "./hooksFiles";
+import { onAction } from "./notify";
 import { SessionPanel } from "./sessionPanel";
 import { ChangeBatch } from "./watchLogic";
 
@@ -48,7 +49,8 @@ export class SessionWatcher implements vscode.Disposable {
       try {
         removeHooksWhenIdle(folder.uri.fsPath);
       } catch (error) {
-        void vscode.window.showWarningMessage(`The learning session ended, but its Devin hooks could not be removed: ${(error as Error).message}`);
+        const root = folder.uri.fsPath;
+        onAction(vscode.window.showWarningMessage(`The learning session ended, but its Devin hooks could not be removed: ${(error as Error).message}`, "Try Again"), "Try Again", () => removeHooksWhenIdle(root));
       }
     }
     this.changed.fire();

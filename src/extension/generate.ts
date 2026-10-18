@@ -12,6 +12,7 @@ import { estimateKind, launchEstimate } from "./estimates";
 import { pickRepoRoot } from "./folders";
 import { ensureGitExclude } from "./hooksFiles";
 import { ensureSkillIntact, skillNote, skillStatus } from "./integrity";
+import { onAction } from "./notify";
 import { canRunHeadless } from "./runner";
 import type { Runs } from "./runs";
 import { configuredScope } from "./scope";
@@ -122,7 +123,9 @@ export async function launchTask(context: vscode.ExtensionContext, runs: Runs, r
   try {
     ensureGitExclude(root);
   } catch (error) {
-    void vscode.window.showWarningMessage(`Draft and page files may show up in git status: ${(error as Error).message}`);
+    onAction(vscode.window.showWarningMessage(`Draft and page files may show up in git status: ${(error as Error).message}`, "Open Exclude File"), "Open Exclude File", () =>
+      vscode.commands.executeCommand("vscode.open", vscode.Uri.file(join(root, ".git", "info", "exclude"))),
+    );
   }
   const request = { root, focus: task.title, agent: { cli: agent.cli, label: agent.label }, task, estimate: agent.cli === "devin" ? null : launchEstimate(root, agent.cli, estimateKind(task.skill)) };
   if (mode === "sidebar" && agent.cli !== "devin" && canRunHeadless(binary)) {
@@ -170,9 +173,12 @@ export async function confirmAndLaunch(context: vscode.ExtensionContext, runs: R
   const notes = launchNotes(context, root, agent.cli, mode, found.find((entry) => entry.cli === agent.cli)?.headless ?? true, task.skill);
   // The estimate alone asks only above the threshold (CST-03); every other note always asks (SET-03).
   if (notes.some((note) => note.kind !== "estimate" || note.confirm === true)) {
-    const ask = notes.some((note) => note.kind === "repair") ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
     const verb = task.skill === "sustain-refresh" ? "Refresh" : task.skill === "sustain-audit" ? "Audit" : task.skill === "sustain-tour" ? "Create Tour" : "Generate";
-    const choice = await ask(`${verb} with ${agent.label}?`, { modal: true, detail: notes.map((note) => note.text).join("\n\n") }, verb);
+    const detail = notes.map((note) => note.text).join("\n\n");
+    // A repair is a warning; every other note asks as information.
+    const choice = notes.some((note) => note.kind === "repair")
+      ? await vscode.window.showWarningMessage(`${verb} with ${agent.label}?`, { modal: true, detail }, verb)
+      : await vscode.window.showInformationMessage(`${verb} with ${agent.label}?`, { modal: true, detail }, verb);
     if (choice !== verb) return;
   }
   await launchTask(context, runs, root, agent, task, mode);

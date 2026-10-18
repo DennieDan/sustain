@@ -4,6 +4,7 @@ import { relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { listCandidates } from "../model/discovery";
 import { confirmAndLaunch, generateTask } from "./generate";
+import { onAction, openFolder } from "./notify";
 import { ArchitecturePanel } from "./panel";
 import type { Runs } from "./runs";
 
@@ -16,7 +17,7 @@ export async function showInMapCommand(extensionUri: vscode.Uri, uri?: vscode.Ur
   const target = uri ?? vscode.window.activeTextEditor?.document.uri;
   const folder = target?.scheme === "file" ? vscode.workspace.getWorkspaceFolder(target) : undefined;
   if (!target || !folder) {
-    void vscode.window.showErrorMessage("Show in Map works on a file inside an open folder.");
+    onAction(vscode.window.showErrorMessage("Show in Map works on a file inside an open folder.", "Open Folder…"), "Open Folder…", openFolder);
     return;
   }
   const root = folder.uri.fsPath;
@@ -34,7 +35,7 @@ export async function showInMapCommand(extensionUri: vscode.Uri, uri?: vscode.Ur
 export async function mapFolderCommand(context: vscode.ExtensionContext, runs: Runs, uri?: vscode.Uri): Promise<void> {
   const folder = uri ? vscode.workspace.getWorkspaceFolder(uri) : vscode.workspace.workspaceFolders?.[0];
   if (!uri || !folder) {
-    void vscode.window.showErrorMessage("Map this folder works on a folder inside an open workspace folder.");
+    onAction(vscode.window.showErrorMessage("Map this folder works on a folder inside an open workspace folder.", "Open Folder…"), "Open Folder…", openFolder);
     return;
   }
   const root = folder.uri.fsPath;

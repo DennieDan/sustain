@@ -8,6 +8,7 @@ import { repoRootFor } from "../model/discovery";
 import { pageOutput, renderPage } from "../model/page";
 import { readDiagram } from "../model/tolerant";
 import { isJsonObject, type Repository } from "../model/types";
+import { onAction } from "./notify";
 import { ArchitecturePanel } from "./panel";
 
 /** Writes the page for `candidate` and returns its path. */
@@ -38,7 +39,7 @@ export async function exportPageCommand(extensionUri: vscode.Uri, file?: string)
   try {
     out = exportPage(extensionUri, root, candidate);
   } catch (error) {
-    void vscode.window.showErrorMessage(`Could not write the diagram page: ${(error as Error).message}`);
+    onAction(vscode.window.showErrorMessage(`Could not write the diagram page: ${(error as Error).message}`, "Try Again"), "Try Again", () => exportPageCommand(extensionUri, file));
     return;
   }
   const choice = await vscode.window.showInformationMessage(`Wrote the diagram page: ${vscode.workspace.asRelativePath(out)}`, "Open in Browser");

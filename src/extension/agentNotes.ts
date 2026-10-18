@@ -48,9 +48,8 @@ export async function writeAgentNotesCommand(): Promise<void> {
       before,
       after,
       title: `${name}: architecture notes`,
-      question: `Write the architecture notes into ${name}?`,
-      detail: "Sustain changes only the block between its markers. Your own text stays as it is.",
-      verb: "Write",
+      confirm: async () =>
+        (await vscode.window.showWarningMessage(`Write the architecture notes into ${name}?`, { modal: true, detail: "Sustain changes only the block between its markers. Your own text stays as it is." }, "Write")) === "Write",
     });
     if (!written) return;
   }

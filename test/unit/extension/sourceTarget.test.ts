@@ -43,24 +43,24 @@ describe("FR-NAV-02 open", () => {
 });
 
 describe("FR-NAV-03 stale references", () => {
-  test.each(["/etc/hosts", "../repo/src/a.ts", "src\\a.ts", "src//a.ts", "C:/x.ts", "leak.txt"])("%s is an invalid source path", (path) => {
-    expect(resolveSource(repo().root, { path })).toEqual({ kind: "error", message: `Invalid source path: \`${path}\`` });
+  test.each(["/etc/hosts", "../repo/src/a.ts", "src\\a.ts", "src//a.ts", "C:/x.ts", "leak.txt"])("SET-04 %s is an invalid source path", (path) => {
+    expect(resolveSource(repo().root, { path })).toEqual({ kind: "error", problem: "invalid", path });
   });
 
-  test.each(["src/gone.ts", "src", "src/a.ts/child"])("%s no longer exists", (path) => {
-    expect(resolveSource(repo().root, { path, line: 1 })).toEqual({ kind: "error", message: `Stale reference: \`${path}\` no longer exists` });
+  test.each(["src/gone.ts", "src", "src/a.ts/child"])("SET-04 %s no longer exists", (path) => {
+    expect(resolveSource(repo().root, { path, line: 1 })).toEqual({ kind: "error", problem: "missing", path });
   });
 
   test.each([
     [{ line: 6 }, "6"],
     [{ line: 4, end_line: 9 }, "4–9"],
     [{ line: 7, end_line: 9 }, "7–9"],
-  ])("lines %o beyond the file open it without a selection and report the counts", (lines, cited) => {
+  ])("SET-04 lines %o beyond the file open it without a selection and report the counts", (lines, cited) => {
     const { root } = repo();
     expect(resolveSource(root, { path: "src/a.ts", ...lines })).toEqual({
       kind: "open",
       file: join(root, "src/a.ts"),
-      warning: `Stale reference: \`src/a.ts\` has 5 lines; the diagram cites ${cited}`,
+      stale: { lineCount: 5, cited },
     });
   });
 });
