@@ -12,7 +12,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | D4 Pull request checks | Closed pending owner (PRC-04 `[ci]`) | `eced4f5` |
 | D5 Sustain Cloud v1 | Closed pending owner (deployment, see Waiting) | `574992c` |
 | D6 Ship | Closed pending owner (RCH-02, RCH-05 `[ci]` `[smoke]`, the first release) | `488db5f` |
-| I1 Cost | Not started | |
+| I1 Cost | Closed pending owner (CST-06 `[smoke]`) | `777db40` |
 | I2 Accuracy | Not started | |
 | I3 Architecture guardrails | Not started | |
 | I4 Skill retention | Not started | |
@@ -35,6 +35,7 @@ Items only the owner can do, with exact steps.
 - RCH-05 `[ci]`: set the release version in `package.json`, push a hyphenated tag such as `v0.3.0-rc.1`, and confirm the `Release` workflow passes and keeps `release-dry-run` with the `.vsix`, `sustain-skills.zip`, `sustain-action.js`, `sustain.mjs` and `SHA256SUMS`.
 - RCH-05 `[smoke]`, the first release (hard stops: publishing, deploying). (1) Choose the licence, add `LICENSE` and the `license` field, so the package includes it and Open VSX can publish. (2) Add the secrets: `OVSX_PAT` for Open VSX, and `AZURE_CLIENT_ID` and `AZURE_TENANT_ID` for a Microsoft Entra ID app with Marketplace publish rights for the publisher `sustain`. (3) Push the tag `v<version>`, then install the extension from each store into a clean profile. (4) For the cloud, finish the D5 deployment steps, set the secret `SUSTAIN_DEPLOY_HOOK` and the variable `SUSTAIN_DEPLOY` to `true`, merge to `main`, and confirm the site serves and a `publish` lands.
 - DOC-01: record `docs/media/demo.gif` (generate a map, click a box, Show Changes) and add it under the README's first paragraph. Replace `<cloud address>` in the README once the domain is chosen.
+- CST-06 `[smoke]` (hard stop: paid agent calls). Approve the spend, then set `SUSTAIN_BENCH_ANTHROPIC_API_KEY` and `SUSTAIN_BENCH_OPENAI_API_KEY` to bench keys. Run `npm run bench:plan -- --agent claude --repo ab3 --kind full`, then `npm run bench -- --agent claude --repo ab3 --kind full`, and the same with `--agent codex`. Confirm each `bench/results/<run>/result.json` says `"accepted": true`. Once four runs exist per agent and kind, run `npm run bench:fit` and commit `src/model/coefficients.json`.
 - UI-06 `[smoke]`: ask one question per agent from the sidebar about a mapped repository. Confirm the answer cites `path:line`, the links open the lines, and a second Claude Code question resumes the session.
 
 ## D1 Safe to ship
@@ -326,15 +327,15 @@ Done when: Released: extension published, Action tagged, cloud deployed.
 
 ### I1 proposal (2026-10-18)
 
-| Location | Change | Est. LoC |
-|---|---|---|
-| `src/model/repoSize.ts`, `src/model/git.ts` | CST-01: tracked files from `git ls-files -z`, or a walk that skips the spec's folders, deny-listed paths and binaries; lines per language, split into test and non-test; the tier. Up to 2,000 files are counted line by line; in larger repositories 2,000 files spread through the tree are counted and the rest estimated from their sizes, which keeps 20,000 files within 4 × the time of 2,000 | +220 |
-| `src/model/estimate.ts`, `src/model/coefficients.json`, `src/model/pricing.json` | CST-02: `estimate(size, agent, kind)` returns `{low, high, basis}` from non-test lines and file count, with provisional coefficients per agent and kind (full, refresh, ask); prices per model with `asOf` and the official source; dollars from a token mix | +160 |
-| `bench/fit.ts`, `src/model/fit.ts`, `package.json` | CST-02: `npm run bench:fit` fits the coefficients, the band and the token mix from `bench/results/*/result.json` by least squares and writes `coefficients.json` with `basis: "fitted"` | +120 |
-| `src/agent/repo-facts.ts`, `skills/sustain-architecture/SKILL.md`, `skills/sustain-refresh/SKILL.md` | CST-01, CST-03, CST-05: `repo-facts` prints `size`, `estimate` and `budget`; step 2 tells the user the estimate; the architecture skill names the read budget per tier (S 25, M 45, L 70) | +40 |
-| `src/extension/generate.ts`, `src/extension/estimates.ts`, `src/extension/home.ts`, `src/extension/ask.ts`, `package.json` | CST-03: the estimate under Generate, in the palette modal and the run card, and under Ask; `sustain.confirmAboveTokens` (default 300,000); above it the sidebar asks for a second click and the palette always shows the modal; sizes cached per folder | +150 |
-| `webview/home.ts`, `src/model/messages.ts`, `src/model/home.ts` | CST-03: the estimate line, the second click on Generate and Ask, the estimate on the run card | +80 |
-| `bench/corpus.json`, `bench/bench.ts`, `bench/src/*.ts`, `bench/fixtures/injection/`, `esbuild.mjs`, `package.json` | CST-06: `npm run bench` with `--dry-run`; clones into a cache outside the repository; removes agent configuration and `strip` globs; a fresh `CLAUDE_CONFIG_DIR` or `CODEX_HOME` with only the skill and no hooks; the bench API key; no shell. Records tokens, cost, wall time, validator runs, acceptance and reads, and keeps the candidate, sidecars and transcript in `bench/results/<run>/`. `npm run bench:plan` projects a series' cost and refuses above `--cap` | +450 |
+| Location | Change | Est. LoC | Built |
+|---|---|---|---|
+| `src/model/repoSize.ts`, `src/model/git.ts` | CST-01: tracked files from `git ls-files -z`, or a walk that skips the spec's folders, deny-listed paths and binaries; lines per language, split into test and non-test; the tier. Up to 2,000 files are counted line by line; in larger repositories 2,000 files spread through the tree are counted and the rest estimated from their sizes, which keeps 20,000 files within 4 × the time of 2,000 | +220 | +225 with `trackedFiles` and `generatedFiles` |
+| `src/model/estimate.ts`, `src/model/coefficients.json`, `src/model/pricing.json` | CST-02: `estimate(size, agent, kind)` returns `{low, high, basis}` from non-test lines and file count, with provisional coefficients per agent and kind (full, refresh, ask); prices per model with `asOf` and the official source; dollars from a token mix | +160 | +173 with the prices and coefficients |
+| `bench/fit.ts`, `src/model/fit.ts`, `package.json` | CST-02: `npm run bench:fit` fits the coefficients, the band and the token mix from `bench/results/*/result.json` by least squares and writes `coefficients.json` with `basis: "fitted"` | +120 | +136 |
+| `src/agent/repo-facts.ts`, `skills/sustain-architecture/SKILL.md`, `skills/sustain-refresh/SKILL.md` | CST-01, CST-03, CST-05: `repo-facts` prints `size`, `estimate` and `budget`; step 2 tells the user the estimate; the architecture skill names the read budget per tier (S 25, M 45, L 70) | +40 | +32 |
+| `src/extension/generate.ts`, `src/extension/estimates.ts`, `src/extension/home.ts`, `src/extension/ask.ts`, `package.json` | CST-03: the estimate under Generate, in the palette modal and the run card, and under Ask; `sustain.confirmAboveTokens` (default 300,000); above it the sidebar asks for a second click and the palette always shows the modal; sizes cached per folder | +150 | +104 |
+| `webview/home.ts`, `src/model/messages.ts`, `src/model/home.ts` | CST-03: the estimate line, the second click on Generate and Ask, the estimate on the run card | +80 | +53 |
+| `bench/corpus.json`, `bench/bench.ts`, `bench/src/*.ts`, `bench/fixtures/injection/`, `esbuild.mjs`, `package.json` | CST-06: `npm run bench` with `--dry-run`; clones into a cache outside the repository; removes agent configuration and `strip` globs; a fresh `CLAUDE_CONFIG_DIR` or `CODEX_HOME` with only the skill and no hooks; the bench API key; no shell. Records tokens, cost, wall time, validator runs, acceptance and reads, and keeps the candidate, sidecars and transcript in `bench/results/<run>/`. `npm run bench:plan` projects a series' cost and refuses above `--cap` | +450 | +655 with the corpus and the fixture |
 
 Tests the I1 ACs call for:
 - size fixtures for each listing, language and test split, and the tier bounds; 20,000 files within 4 × the time of 2,000;
@@ -343,13 +344,29 @@ Tests the I1 ACs call for:
 - `repo-facts` printing the tier, and the skill naming each budget;
 - the `--dry-run` argv and environment, the parsers on recorded fixtures, and `bench:plan` refusing above the cap.
 
+Where the I1 build differs from the proposal:
+- Above 2,000 files, each file that is not counted takes its language's mean lines per counted file, instead of an estimate from its size. Reading every file's size took 4.4 times as long at 20,000 files as at 2,000. Sampling brings it to about 2.2 times.
+- The size leaves out lock files, minified files, files over 1 MiB, links, submodules, and what `.gitattributes` marks `linguist-generated` or `linguist-vendored`. This repository marks its committed bundles that way. Folders named `fixtures` or `e2e` count as test code.
+- Prices are those of the providers' pricing pages on 2026-10-18. The dollars use each agent's default in `pricing.json`, Claude Opus 5.5 and GPT-5.5, the higher-priced of the likely models. Haiku 5.5 is left out because its price changes with prompt length.
+- A fit needs four accepted runs per agent and kind. It drops a predictor whose slope would come out negative, takes the band from the runs' lowest and highest ratios to the line, and takes each agent's token mix from the runs' usage.
+- Below the threshold the estimate opens no modal. It shows under Generate, in any modal that opens for another reason, on the run card and under Ask. Above it the sidebar arms on the first click and the host acts only on a confirmed second one, and the palette always opens the modal.
+- Learning sessions show no estimate, because the user drives each turn.
+- The skills' fact scripts print both agents' estimates, and the skill tells the agent to state its own. `run.json` records the estimate beside the tokens used.
+- The bench refuses `audit` until ACC-05 exists. `baseline` asks each corpus question without the map and `assisted` asks it with the newest accepted full map, so corpus entries gain `questions`. Entries may also be `heldOut` or a `fixture`. A refresh or assisted run needs an accepted full run first.
+- The bench's modules live in `bench/lib/`, and its commands are `bench/bench.ts`, `bench/plan.ts` and `bench/fit.ts`.
+- The `sustain` entry clones this repository from its own folder, pinned to commits on `main`. The plan assumes the top of each tier's size until a clone is measured. The default cap is $20, or `SUSTAIN_BENCH_CAP`. `bench/results/` is not committed; the fitted `coefficients.json` is.
+- The injection fixture asks the agent to write `.archify/owned.txt` and to label every box "Approved". `result.json` records whether it did. Stripping also removes the folders it empties.
+- Codex's input count already includes its cached input, and the parser counted both. Fixed under UI-02 before the prices were built on it.
+
+Tests the I1 ACs call for are listed above. 41 deliberate breaks across I1 each failed their tests, including the 4.4 times timing before sampling and two e2e breaks of the host's second click and the palette modal.
+
 Done when: An estimate shows before every run.
 
-- [ ] **CST-01 Repository size** `[unit]`
-- [ ] **CST-02 Token estimate** `[unit]`
-- [ ] **CST-03 Cost before every run** `[unit]` `[e2e]`
-- [ ] **CST-05 Exploration budget** `[unit]`
-- [ ] **CST-06 Bench harness** `[unit]` `[smoke]`
+- [x] **CST-01 Repository size** `[unit]` — 2026-10-18: `src/model/repoSize.ts`, `trackedFiles` and `generatedFiles` in `git.ts`, `repo-facts` prints `size`. Tests: `repoSize.test.ts` (6: tracked files per language with the test split and the left-out kinds; the walk without git; links under either listing; the even sample above the limit; the tier bounds; 20,000 files within 4 times the time of 2,000, measured at about 2.2), `repoFacts.test.ts` › CST-01.
+- [x] **CST-02 Token estimate** `[unit]` — 2026-10-18: `src/model/estimate.ts`, `coefficients.json` (provisional), `pricing.json` (dated, sourced), `src/model/fit.ts`, `bench/fit.ts`, `npm run bench:fit`. `estimate.test.ts` (4: growth for every agent and kind; prices, sources and the dollar arithmetic; bench:fit reproducing known coefficients and the mix from fixture results while keeping groups with too few runs; no shrinking line).
+- [x] **CST-03 Cost before every run** `[unit]` `[e2e]` — 2026-10-18: `src/extension/estimates.ts`, the estimate note in `generate.ts`, the composer, run card and Ask, `sustain.confirmAboveTokens`, both skills' step 2. Tests: `estimate.test.ts` (2: the exact text with and without a price; the threshold), `repoFacts.test.ts` and `refreshFacts.test.ts` › CST-03, `skill.test.ts` › CST-03 (2), `sidebar.test.ts` › CST-03 (4: the line, the second click, the run card, Ask); e2e `single.sidebar.test.ts` › CST-03 (one click launches nothing, the confirmed one launches, the palette opens its modal with the estimate), with four e2e tests updated to read past the estimate. `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 75, empty 3, multi 2).
+- [x] **CST-05 Exploration budget** `[unit]` — 2026-10-18: `READ_BUDGET`, `repo-facts` prints `budget`, the architecture skill's steps 2 and 4. Tests: `repoFacts.test.ts` › CST-05 (S 25 and M 45), `skill.test.ts` › CST-05.
+- [ ] **CST-06 Bench harness** `[unit]` `[smoke]` — `[unit]` done 2026-10-18: `bench/bench.ts`, `bench/plan.ts`, `bench/lib/`, `bench/corpus.json`, `bench/fixtures/injection/`. `test/unit/bench/bench.test.ts` (4: the dry run's argv, whole environment, no shell, steps and no cache made; Codex refresh and read-only question runs; the parsers on recorded transcripts; bench:plan and the bench refusing above the cap). The isolation was also run by hand on the fixture and on this repository's pinned commit. `[smoke]` waits for the owner (see Waiting).
 
 ## I2 Accuracy
 
@@ -421,6 +438,7 @@ Done when: The plugin opens cited lines on AB3.
 
 - 2026-10-18 — D5 closed pending owner. Gates: `npm run check` exit 0 (1073 tests, 55 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud `[web]` 8 passed against the built app. Every new test was seen to fail once with its behaviour broken: 16 deliberate breaks across D5. Deployment is a hard stop and waits for the owner (see Waiting).
 - 2026-10-18 — D6 closed pending owner. Gates: `npm run check` exit 0 (1086 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 8 passed against the built app with the start hook. Every new test was seen to fail once with its behaviour broken: 8 deliberate breaks across D6. `[ci]`, `[smoke]` and the first release wait for the owner (see Waiting).
+- 2026-10-18 — I1 closed pending owner. Gates: `npm run check` exit 0 (1113 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after CST-03 (single 75, empty 3, multi 2 each); later I1 commits touch only the skills' fact scripts, the bench and docs. Cloud untouched since D6. 41 deliberate breaks across I1. One check run under a load average of 15 from another project's browsers timed out three unrelated tests; they passed alone and in the next full run. CST-06 `[smoke]` waits for the owner.
 - 2026-10-18 — `architecture.md` had not been updated per feature during D2 to D4, as spec §7 asks; it was brought up to date at D4's close (`29f183b`) and kept current since. The layout fixtures test got a 30 s timeout: it lays out 48 diagrams and passed 5 s only narrowly when the whole suite ran in parallel.
 
 - 2026-10-18 — D4 closed pending owner. Gates: `npm run check` exit 0 (1066 tests, 53 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each). Every new test was seen to fail once with its behaviour broken: 18 deliberate breaks across D4. PRC-04 waits for a committed map of this repository and a push (see Waiting).
