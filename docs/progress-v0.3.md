@@ -65,7 +65,7 @@ Done when: Gates green; a tampered skill cannot launch; no pre-approved command 
 
 - [ ] **ENG-01 Toolchain and CI** `[unit]` `[ci]` — `[unit]` done 2026-10-18: `test/unit/ci.test.ts` (2 tests, seen to fail with macOS removed from the matrix). `SUSTAIN_SCRIPT_NODE=/usr/bin/node` (v18.19.1) → `vitest run --project unit test/unit/agent`: 148 passed. `[ci]` waits for the first push.
 - [x] **ENG-02 Meaningful layout test** `[unit]` — 2026-10-18: `test/unit/layout/perf.test.ts` (2 tests) with `perfBudget.ts`. Outside vitest the 60/120 median was 729 ms and the 12-component median 99 ms (ratio 7.4); the old test failed on vitest's 5 s default timeout, not on the 1 s budget. The fake-clock test fails when the budget check is disabled.
-- [ ] **ENG-04 Third-party notices** `[unit]` `[ci]`
+- [ ] **ENG-04 Third-party notices** `[unit]` `[ci]` — `[unit]` done 2026-10-18: `test/unit/notices.test.ts` (2 tests; the nested-package case fails with `indexOf` in place of `lastIndexOf`). `npm run build` writes `out/meta/bundles.json`; `npm run notices` added ajv, elkjs (EPL-2.0 OR GPL-3.0-or-later), fast-deep-equal, fast-uri and json-schema-traverse with their licence texts. `npm run check` now ends with `check:notices`. `[ci]` waits for the first push.
 - [ ] **SAF-01 Skill integrity check** `[unit]` `[e2e]`
 - [ ] **SAF-02 Safe pre-approvals** `[unit]`
 - [ ] **SAF-03 Repository content is data** `[unit]` `[dom]`

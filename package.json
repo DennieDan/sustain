@@ -50,7 +50,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:docs": "node scripts/check-docs.mjs",
-    "check": "npm run typecheck && npm run test && npm run check:docs && npm run build",
+    "notices": "node scripts/notices.mjs --write",
+    "check:notices": "node scripts/notices.mjs --check",
+    "check": "npm run typecheck && npm run test && npm run check:docs && npm run build && npm run check:notices",
     "test:e2e": "npm run build && node esbuild.mjs --e2e && node out/e2e/runTest.js",
     "vscode:prepublish": "node esbuild.mjs",
     "package": "vsce package --no-dependencies --skip-license --allow-missing-repository"

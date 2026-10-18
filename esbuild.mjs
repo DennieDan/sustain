@@ -2,7 +2,7 @@
 // `node esbuild.mjs`        → dist/
 // `node esbuild.mjs --e2e`  → out/e2e/ (the @vscode/test-electron suite; never shipped)
 import * as esbuild from "esbuild";
-import { cpSync, readdirSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,6 +15,7 @@ const common = {
   logLevel: "warning",
   sourcemap: false,
   legalComments: "inline",
+  metafile: true,
 };
 
 /** The script entry points, emitted as `<name>.mjs`. @type {Record<string, string>} */
@@ -32,7 +33,7 @@ const SCRIPT_ENTRIES = {
  *   which stages every script side by side in out/test-scripts/)
  */
 export async function buildScripts(outdir, names = Object.keys(SCRIPT_ENTRIES)) {
-  await esbuild.build({
+  return esbuild.build({
     ...common,
     entryPoints: Object.fromEntries(
       names.map((name) => {
@@ -49,15 +50,28 @@ export async function buildScripts(outdir, names = Object.keys(SCRIPT_ENTRIES)) 
   });
 }
 
+/**
+ * Records every npm file the shipped bundles include in `out/meta/bundles.json`, the input of
+ * `scripts/notices.mjs` (ENG-04).
+ * @param {import("esbuild").Metafile[]} metafiles
+ */
+function writeBundleInputs(metafiles) {
+  const inputs = new Set(metafiles.flatMap((meta) => Object.keys(meta.inputs)).filter((path) => path.includes("node_modules/")));
+  mkdirSync(join(root, "out/meta"), { recursive: true });
+  writeFileSync(join(root, "out/meta/bundles.json"), `${JSON.stringify({ inputs: [...inputs].sort() }, null, 2)}\n`);
+}
+
 async function buildDist() {
   rmSync(dist, { recursive: true, force: true });
+  /** @type {import("esbuild").BuildResult[]} */
+  const results = [];
 
   // Static skill files (SKILL.md, agents/, references/) ship as-is.
   cpSync(join(root, "skills"), join(dist, "skills"), { recursive: true });
-  await buildScripts(join(dist, "skills/sustain-architecture/scripts"), ["repo-facts", "validate"]);
-  await buildScripts(join(dist, "skills/sustain-bugfix/scripts"), ["session", "session-hook"]);
+  results.push(await buildScripts(join(dist, "skills/sustain-architecture/scripts"), ["repo-facts", "validate"]));
+  results.push(await buildScripts(join(dist, "skills/sustain-bugfix/scripts"), ["session", "session-hook"]));
 
-  await esbuild.build({
+  results.push(await esbuild.build({
     ...common,
     entryPoints: [join(root, "src/extension/extension.ts")],
     outfile: join(dist, "extension.js"),
@@ -65,11 +79,11 @@ async function buildDist() {
     format: "cjs",
     target: "node20",
     external: ["vscode"],
-  });
+  }));
 
   // The webviews: one IIFE each (the diagram one includes elkjs) loaded by nonce under a
   // strict CSP (NFR-SEC-01).
-  await esbuild.build({
+  results.push(await esbuild.build({
     ...common,
     entryPoints: [join(root, "webview/main.ts")],
     outfile: join(dist, "webview.js"),
@@ -77,8 +91,8 @@ async function buildDist() {
     format: "iife",
     target: "es2022",
     minify: true,
-  });
-  await esbuild.build({
+  }));
+  results.push(await esbuild.build({
     ...common,
     entryPoints: [join(root, "webview/session.ts")],
     outfile: join(dist, "session-webview.js"),
@@ -86,9 +100,10 @@ async function buildDist() {
     format: "iife",
     target: "es2022",
     minify: true,
-  });
+  }));
   cpSync(join(root, "webview/styles.css"), join(dist, "webview.css"));
   cpSync(join(root, "webview/session.css"), join(dist, "session-webview.css"));
+  writeBundleInputs(results.flatMap((result) => (result.metafile ? [result.metafile] : [])));
 }
 
 async function buildE2e() {
