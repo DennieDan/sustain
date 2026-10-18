@@ -35,6 +35,7 @@ function state(fields: Partial<HomeState> = {}): HomeState {
     setup: OK_CHECKS,
     session: null,
     ask: { blocked: null, turns: [] },
+    review: null,
     serverNow: NOW.toISOString(),
     ...fields,
   };
@@ -259,5 +260,34 @@ describe("UI-06 Ask", () => {
   test("a failed answer shows its error", () => {
     home.render(state({ ask: { blocked: null, turns: [{ ...turn, status: "failed", blocks: [], error: "Not logged in" }] } }));
     expect(text(".turn__error")).toEqual(["Not logged in"]);
+  });
+});
+
+describe("PRC-02 Review changes", () => {
+  const review = {
+    scope: "This branch",
+    error: null,
+    counts: { touched: 2, stale: 1, gone: 0, uncovered: 4, candidates: 1 },
+    candidates: [{ dir: "src/payments", label: "payments", lines: 240, files: ["src/payments/a.ts", "src/payments/b.ts", "src/payments/c.ts"] }],
+  };
+
+  test("the section shows the counts and each candidate's actions", () => {
+    home.render(state({ maps: [map({})], review }));
+    expect(text(".review__counts")).toEqual(["This branch: 2 touched · 1 stale · 0 gone · 4 not on the map · 1 new box candidate"]);
+    expect(text(".candidate__dir")).toEqual(["src/payments/"]);
+    for (const label of ["Review changes…", "Show files", "Add to map", "Ignore"]) click(label);
+    expect(posted).toEqual([
+      { type: "review" },
+      { type: "showFiles", dir: "src/payments" },
+      { type: "addToMap", dir: "src/payments" },
+      { type: "ignoreCandidate", dir: "src/payments" },
+    ]);
+  });
+
+  test("an error is shown, and a folder without maps has no section", () => {
+    home.render(state({ maps: [map({})], review: { scope: "", error: "No common commit", counts: null, candidates: [] } }));
+    expect(text(".review__error")).toEqual(["No common commit"]);
+    home.render(state({ maps: [] }));
+    expect(container.querySelector(".review")).toBeNull();
   });
 });

@@ -20,6 +20,7 @@ import { skillStatus } from "./integrity";
 import { ArchitecturePanel } from "./panel";
 import { exportPageCommand } from "./exportPage";
 import { refreshArchitectureCommand } from "./refresh";
+import type { Review } from "./review";
 import type { Runs } from "./runs";
 import { SessionPanel } from "./sessionPanel";
 import { readSessionSnapshot } from "./sessionFiles";
@@ -38,9 +39,10 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
     private readonly runs: Runs,
     private readonly ask: Ask,
     private readonly freshness: FreshnessService,
+    private readonly review: Review,
     changes: vscode.Event<unknown>[],
   ) {
-    for (const change of [runs.onDidChange, ask.onDidChange, ...changes]) this.disposables.push(change(() => this.send()));
+    for (const change of [runs.onDidChange, ask.onDidChange, review.onDidChange, ...changes]) this.disposables.push(change(() => this.send()));
     this.disposables.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => this.send()),
       vscode.workspace.onDidChangeConfiguration((event) => {
@@ -109,6 +111,7 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
       setup: root === this.setupRoot ? this.setup : null,
       session: root === null ? null : sessionSummary(root),
       ask: this.ask.view(root),
+      review: this.review.view(root),
       serverNow: new Date().toISOString(),
     };
   }
@@ -194,6 +197,18 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         return;
       case "deleteMap":
         if (root !== null && this.isCandidate(root, message.file)) await this.deleteMap(root, message.file);
+        return;
+      case "review":
+        if (root !== null) await this.review.run(root);
+        return;
+      case "showFiles":
+        await this.review.showFiles(message.dir);
+        return;
+      case "addToMap":
+        await this.review.addToMap(message.dir);
+        return;
+      case "ignoreCandidate":
+        await this.review.ignore(message.dir);
         return;
       case "exportMap":
         if (root !== null && this.isCandidate(root, message.file)) await exportPageCommand(this.context.extensionUri, message.file);

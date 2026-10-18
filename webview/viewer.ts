@@ -3,9 +3,9 @@
 // webview, the diagram page and the cloud site share it.
 import { layoutDiagram } from "../src/layout/layout";
 import type { MeasureText } from "../src/layout/scene";
-import type { ChangeOverlay, HostMessage } from "../src/model/messages";
+import type { ChangeOverlay, Ghost, HostMessage } from "../src/model/messages";
 import type { Freshness } from "../src/model/staleness";
-import { readDiagram } from "../src/model/tolerant";
+import { readDiagram, type ViewDiagram } from "../src/model/tolerant";
 import { onMessage, post } from "./bridge";
 import { NodeClicks } from "./click";
 import { renderScene } from "./render";
@@ -22,6 +22,22 @@ const TOOLBAR: [action: string, text: string, title: string][] = [
   ["zoom-in", "+", "Zoom in (+)"],
   ["reset", "100\u00a0%", "Zoom to 100 % (0)"],
 ];
+
+/** Ghost ids hold a colon, which no map id may, so a ghost never shares an id with a box. */
+const GHOST_PREFIX = "ghost:";
+
+/** `diagram` with each new box candidate added as an unconnected, uncited box (PRC-02). */
+export function withGhosts(diagram: ViewDiagram, ghosts: readonly Ghost[]): ViewDiagram {
+  if (ghosts.length === 0) return diagram;
+  const extra = ghosts.map((ghost, index) => ({
+    id: `${GHOST_PREFIX}${index}`,
+    type: "external" as const,
+    label: ghost.label,
+    sublabel: `${ghost.files} new file${ghost.files === 1 ? "" : "s"}`,
+    sources: [],
+  }));
+  return { ...diagram, components: [...diagram.components, ...extra] };
+}
 
 /** Builds the viewer in `document.body` and starts listening to the host. */
 export function startViewer(): void {
@@ -88,6 +104,18 @@ export function startViewer(): void {
 
   /** File of the diagram on screen; a reload of the same file keeps the viewport (FR-VIEW-06). */
   let shownFile: string | undefined;
+  /** The last loaded document, so ghosts can be drawn into it again. */
+  let lastLoad: { doc: unknown; file: string } | null = null;
+  let ghosts: Ghost[] = [];
+
+  /** Ghost boxes are dashed and have no box menu. */
+  function applyGhosts(): void {
+    for (const node of content.querySelectorAll(".node")) {
+      if (!(node.getAttribute("data-id") ?? "").startsWith(GHOST_PREFIX)) continue;
+      node.classList.add("node--ghost");
+      node.setAttribute("data-vscode-context", JSON.stringify({ webviewSection: "ghost", preventDefaultContextMenuItems: true }));
+    }
+  }
   /** The boxes marked as citing the active file, kept across reloads (UI-03). */
   let highlight: { ids: string[]; file: string | null; follow: boolean } = { ids: [], file: null, follow: false };
 
@@ -204,13 +232,15 @@ export function startViewer(): void {
     // The canvas must be displayed for its size to be the panel size.
     emptyState.hidden = true;
     app.classList.remove("app--empty");
-    const scene = await layoutDiagram(result.diagram, { measure, viewport: viewport.size() });
+    const diagram = withGhosts(result.diagram, ghosts);
+    const scene = await layoutDiagram(diagram, { measure, viewport: viewport.size() });
     if (current !== generation) return;
-    renderScene(content, result.diagram, scene, measure);
+    renderScene(content, diagram, scene, measure);
+    applyGhosts();
     applyHighlight();
     applyFreshness();
     applyChanges();
-    tooltip.setDiagram(result.diagram);
+    tooltip.setDiagram(diagram);
     viewport.bounds = scene.bounds;
     if (file !== shownFile) viewport.fit();
     shownFile = file;
@@ -242,13 +272,20 @@ export function startViewer(): void {
       applyFreshness();
       return;
     }
+    if (message.type === "ghosts") {
+      ghosts = message.ghosts;
+      if (lastLoad === null) return;
+    }
     const current = ++generation;
     if (message.type === "empty") {
+      lastLoad = null;
       showEmpty(message.message, message.action);
       return;
     }
-    load(message.doc, message.file, current).catch((error: unknown) => {
-      if (current === generation) showEmpty(`Can't show \`${message.file}\`: ${error instanceof Error ? error.message : String(error)}`);
+    if (message.type === "load") lastLoad = { doc: message.doc, file: message.file };
+    const { doc, file } = lastLoad!;
+    load(doc, file, current).catch((error: unknown) => {
+      if (current === generation) showEmpty(`Can't show \`${file}\`: ${error instanceof Error ? error.message : String(error)}`);
     });
   });
 

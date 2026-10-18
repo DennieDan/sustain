@@ -212,6 +212,19 @@ body {
   stroke-dasharray: 3 3;
 }
 
+/* New box candidates (PRC-02): dashed, see-through and view-only */
+
+.node--ghost .node__box {
+  fill: none;
+  stroke: var(--sustain-muted);
+  stroke-dasharray: 6 4;
+}
+
+.node--ghost .node__label,
+.node--ghost .node__sublabel {
+  fill: var(--sustain-muted);
+}
+
 /* Empty state */
 
 .empty-state__action {

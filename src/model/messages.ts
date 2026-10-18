@@ -19,7 +19,15 @@ export type HostMessage =
   /** FRS-03: each box's state against the code, and the header when boxes changed. */
   | { type: "freshness"; boxes: Record<string, Freshness>; header: string | null }
   /** FRS-04: boxes a diff touched, or `null` to clear the overlay. */
-  | { type: "changes"; overlay: ChangeOverlay | null };
+  | { type: "changes"; overlay: ChangeOverlay | null }
+  /** PRC-02: new box candidates drawn as dashed ghost boxes; never written. */
+  | { type: "ghosts"; ghosts: Ghost[] };
+
+/** A new box candidate on the map (PRC-02). */
+export interface Ghost {
+  label: string;
+  files: number;
+}
 
 /** What Show Changes found for the shown map (FRS-04). */
 export interface ChangeOverlay {
@@ -145,6 +153,15 @@ export interface AskView {
   turns: AskTurn[];
 }
 
+/** The sidebar's Review changes section (PRC-02). */
+export interface ReviewView {
+  scope: string;
+  /** Why the review could not run. */
+  error: string | null;
+  counts: { touched: number; stale: number; gone: number; uncovered: number; candidates: number } | null;
+  candidates: { dir: string; label: string; lines: number; files: string[] }[];
+}
+
 /** Everything the sidebar renders, sent whole on every change. */
 export interface HomeState {
   /** Workspace folders; the picker shows when there are several. */
@@ -165,6 +182,7 @@ export interface HomeState {
   setup: Check[] | null;
   session: SessionSummary | null;
   ask: AskView;
+  review: ReviewView | null;
   /** Host time at send, for the run card's elapsed time. */
   serverNow: string;
 }
@@ -185,6 +203,10 @@ export type HomeWebviewMessage =
   | { type: "deleteMap"; file: string }
   | { type: "refreshMap"; file: string }
   | { type: "exportMap"; file: string }
+  | { type: "review" }
+  | { type: "showFiles"; dir: string }
+  | { type: "addToMap"; dir: string }
+  | { type: "ignoreCandidate"; dir: string }
   | { type: "fix"; check: CheckId }
   | { type: "checkSetup" }
   | { type: "openSession" }

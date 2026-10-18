@@ -72,7 +72,7 @@
       },
       {
         "command": "sustain.openArchitectureFile",
-        "title": "Open Architecture File\u2026",
+        "title": "Open Architecture File…",
         "category": "Sustain"
       },
       {
@@ -144,6 +144,11 @@
         "title": "Export Page",
         "category": "Sustain",
         "icon": "$(globe)"
+      },
+      {
+        "command": "sustain.reviewChanges",
+        "title": "Review Changes",
+        "category": "Sustain"
       }
     ],
     "viewsContainers": {

@@ -271,6 +271,34 @@ select.header__folder,
   gap: 10px;
 }
 
+.review__counts,
+.review__error {
+  margin: 6px 0;
+}
+
+.review__counts {
+  color: var(--vscode-descriptionForeground);
+}
+
+.review__error {
+  color: var(--vscode-errorForeground);
+}
+
+.review__candidates {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.candidate {
+  padding: 4px 0;
+}
+
+.candidate__dir {
+  font-family: var(--vscode-editor-font-family);
+  font-weight: 600;
+}
+
 .check {
   display: flex;
   flex-wrap: wrap;

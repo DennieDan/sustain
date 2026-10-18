@@ -5,7 +5,7 @@ import { basename, isAbsolute, relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { citingBoxes } from "../model/citing";
 import { freshnessHeader } from "../model/home";
-import type { ChangeOverlay, HostMessage, WebviewMessage } from "../model/messages";
+import type { ChangeOverlay, Ghost, HostMessage, WebviewMessage } from "../model/messages";
 import type { MapFreshness } from "../model/staleness";
 import { parseDiagram, type ViewDiagram } from "../model/tolerant";
 import { changedBoxes, type FreshnessService } from "./freshness";
@@ -58,6 +58,8 @@ export class ArchitecturePanel {
   private freshness: MapFreshness | null = null;
   /** The boxes a diff touched (FRS-04), until cleared or another file is shown. */
   private changes: ChangeOverlay | null = null;
+  /** New box candidates drawn as ghost boxes (PRC-02), cleared with the overlay. */
+  private ghosts: Ghost[] = [];
   private readonly disposables: vscode.Disposable[] = [];
 
   private constructor(
@@ -153,7 +155,10 @@ export class ArchitecturePanel {
 
   /** Switches the open panel to `file` (resolved against `root`) without revealing it. */
   showFile(root: string, file: string): void {
-    if (file !== this.file) this.changes = null;
+    if (file !== this.file) {
+      this.changes = null;
+      this.ghosts = [];
+    }
     this.root = root;
     this.file = file;
     this.reload();
@@ -201,6 +206,7 @@ export class ArchitecturePanel {
     this.sendHighlight();
     this.sendFreshness();
     this.sendChanges();
+    if (this.ghosts.length > 0) this.showGhosts(this.ghosts);
   }
 
   /** Computes the shown map's freshness and sends its badges and header. */
@@ -225,10 +231,22 @@ export class ArchitecturePanel {
     return this.shown.kind === "diagram" ? this.shown.diagram.components : [];
   }
 
-  /** Marks the boxes a diff touched, or clears the marks for `null` (FRS-04). */
+  /** Marks the boxes a diff touched, or clears the marks and ghosts for `null` (FRS-04). */
   showChanges(overlay: ChangeOverlay | null): void {
     this.changes = overlay;
+    if (overlay === null) this.showGhosts([]);
     this.sendChanges();
+  }
+
+  /** Draws new box candidates as ghost boxes (PRC-02). */
+  showGhosts(ghosts: Ghost[]): void {
+    this.ghosts = ghosts;
+    const message: HostMessage = { type: "ghosts", ghosts };
+    void this.panel.webview.postMessage(message);
+  }
+
+  get ghostBoxes(): Ghost[] {
+    return this.ghosts;
   }
 
   get changeOverlay(): ChangeOverlay | null {

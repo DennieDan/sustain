@@ -2,7 +2,7 @@
 // session. Built from the HomeState the host sends; every string goes in as text. The composer's
 // text box persists across states, so typing survives updates.
 import { mapStatus, relativeAge, runFigures, tokenCount } from "../src/model/home";
-import type { AskTurn, AskView, HomeState, HomeWebviewMessage, MapItem, RunCard } from "../src/model/messages";
+import type { AskTurn, AskView, HomeState, HomeWebviewMessage, MapItem, ReviewView, RunCard } from "../src/model/messages";
 import type { Check } from "../src/model/preflight";
 import { renderAnswer } from "./answer";
 
@@ -69,6 +69,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   });
   const runSlot = el("div", "run-slot");
   const maps = el("div", "maps-slot");
+  const reviewSlot = el("div", "review-slot");
   const setup = el("details", "section setup");
   const session = el("div", "session-slot");
   // UI-06: the Ask chat sits at the bottom; its text box persists like the composer's.
@@ -92,7 +93,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   question.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !askButton.disabled) askButton.click();
   });
-  container.append(header, composer, runSlot, maps, setup, session, askSection);
+  container.append(header, composer, runSlot, maps, reviewSlot, setup, session, askSection);
 
   let current: HomeState | null = null;
   let figures: HTMLElement | null = null;
@@ -217,6 +218,40 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     maps.append(list);
   }
 
+  /** PRC-02: the Review changes section, with each new box candidate's actions. */
+  function renderReview(state: HomeState): void {
+    reviewSlot.replaceChildren();
+    if (state.root === null || state.maps.length === 0) return;
+    const block = section("Review changes", "review");
+    block.append(button("Review changes…", "button", () => post({ type: "review" })));
+    const review: ReviewView | null = state.review;
+    if (review?.error) block.append(el("p", "review__error", review.error));
+    if (review?.counts) {
+      const { touched, stale, gone, uncovered, candidates } = review.counts;
+      block.append(
+        el("p", "review__counts", `${review.scope}: ${touched} touched · ${stale} stale · ${gone} gone · ${uncovered} not on the map · ${candidates} new box candidate${candidates === 1 ? "" : "s"}`),
+      );
+      const list = el("ul", "review__candidates");
+      for (const candidate of review.candidates) {
+        const entry = el("li", "candidate");
+        const actions = el("div", "map__actions");
+        actions.append(
+          button("Show files", "link", () => post({ type: "showFiles", dir: candidate.dir })),
+          button("Add to map", "link", () => post({ type: "addToMap", dir: candidate.dir })),
+          button("Ignore", "link", () => post({ type: "ignoreCandidate", dir: candidate.dir })),
+        );
+        entry.append(
+          el("div", "candidate__dir", `${candidate.dir}/`),
+          el("div", "map__meta", `${candidate.files.length} file${candidate.files.length === 1 ? "" : "s"} · ${candidate.lines} lines · suggested box: ${candidate.label}`),
+          actions,
+        );
+        list.append(entry);
+      }
+      block.append(list);
+    }
+    reviewSlot.append(block);
+  }
+
   function renderSetup(checks: Check[] | null): void {
     const failing = checks?.some((check) => !check.ok) ?? false;
     const summary = el("summary", "section__title", checks === null ? "Setup · checking…" : failing ? "Setup · needs attention" : "Setup · ready");
@@ -283,6 +318,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
       renderComposer(state);
       renderRun(state.run);
       renderMaps(state.maps);
+      renderReview(state);
       renderSetup(state.setup);
       renderSession(state);
       renderAsk(state.ask);

@@ -263,3 +263,23 @@ test("FRS-06 the freshness header's Refresh posts refresh", async () => {
   expect(posted).toEqual([{ type: "refresh" }]);
   send({ type: "freshness", boxes: {}, header: null });
 });
+
+describe("PRC-02 ghost boxes", () => {
+  test("new box candidates are drawn as dashed boxes without a box menu, kept across reloads and cleared", async () => {
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    send({ type: "ghosts", ghosts: [{ label: "payments", files: 3 }] });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node--ghost").length).toBe(1));
+    const ghost = document.querySelector(".node--ghost")!;
+    expect(ghost.getAttribute("data-id")).toBe("ghost:0");
+    expect([...ghost.querySelectorAll("text")].map((text) => text.textContent)).toEqual(["payments", "3 new files"]);
+    expect(JSON.parse(ghost.getAttribute("data-vscode-context")!)).toEqual({ webviewSection: "ghost", preventDefaultContextMenuItems: true });
+    expect(document.querySelectorAll(".node").length).toBe(3);
+
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node--ghost").length).toBe(1));
+    send({ type: "ghosts", ghosts: [] });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    expect(document.querySelectorAll(".node--ghost").length).toBe(0);
+  });
+});

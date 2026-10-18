@@ -155,14 +155,17 @@ export type ChangeScope = { kind: "uncommitted" } | { kind: "branch" } | { kind:
 export const DIFF_FLAGS = ["diff", "--no-color", "--no-ext-diff", "--no-textconv", "--unified=0", "-M", "--src-prefix=a/", "--dst-prefix=b/"] as const;
 
 
-/** Where "this branch" starts: the merge-base of HEAD with origin/HEAD, else main, else master. */
-function branchBase(program: string, root: string): string | null {
-  for (const ref of ["origin/HEAD", "main", "master"]) {
-    if (run(program, root, [...GIT_PREFIX, "rev-parse", "--verify", "--quiet", `${ref}^{commit}`]) === null) continue;
-    const base = run(program, root, [...GIT_PREFIX, "merge-base", "HEAD", ref])?.trim();
-    if (base) return base;
-  }
-  return null;
+/** The branch "this branch" is compared with: origin/HEAD, else main, else master, or `null`. */
+export function defaultBranch(root: string, env: NodeJS.ProcessEnv = process.env): string | null {
+  const program = gitProgram(env);
+  if (program === undefined) return null;
+  return ["origin/HEAD", "main", "master"].find((ref) => run(program, root, [...GIT_PREFIX, "rev-parse", "--verify", "--quiet", `${ref}^{commit}`]) !== null) ?? null;
+}
+
+/** Where "this branch" starts: the merge-base of HEAD with the default branch. */
+function branchBase(program: string, root: string, env: NodeJS.ProcessEnv): string | null {
+  const ref = defaultBranch(root, env);
+  return ref === null ? null : run(program, root, [...GIT_PREFIX, "merge-base", "HEAD", ref])?.trim() || null;
 }
 
 export type ChangeDiff = { ok: true; text: string; untracked: string[] } | { ok: false; reason: string };
@@ -178,7 +181,7 @@ export function diffFor(root: string, scope: ChangeScope, env: NodeJS.ProcessEnv
   let revisions: string[];
   if (scope.kind === "uncommitted") revisions = ["HEAD"];
   else if (scope.kind === "branch") {
-    const base = branchBase(program, root);
+    const base = branchBase(program, root, env);
     if (base === null) return { ok: false, reason: "No origin/HEAD, main or master to compare this branch with." };
     revisions = [base];
   } else {

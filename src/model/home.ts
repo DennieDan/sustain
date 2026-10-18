@@ -73,6 +73,7 @@ export const SIDEBAR_ACTIONS: Readonly<Record<string, string>> = {
   openMap: "sustain.openArchitecture",
   refreshMap: "sustain.refreshArchitecture",
   exportMap: "sustain.exportPage",
+  review: "sustain.reviewChanges",
   startLearning: "sustain.startLearning",
   checkSetup: "sustain.checkSetup",
   cancelRun: "sustain.cancelRun",
