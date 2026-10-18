@@ -16,6 +16,7 @@ import { flagBoxCommand } from "./feedback";
 import { createTourCommand, playTourCommand } from "./tour";
 import { drillDownCommand } from "./drill";
 import { copyPromptForCommand } from "./copyPrompt";
+import { removeSustainCommand } from "./removeSustain";
 import { registerPreviews } from "./previewWrite";
 import { Review } from "./review";
 import { RulesService } from "./rules";
@@ -144,6 +145,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.find", () => ArchitecturePanel.current?.find()),
     vscode.commands.registerCommand("sustain.drillDown", (box?: { componentId?: unknown }) => drillDownCommand(context, runs, box)),
     vscode.commands.registerCommand("sustain.copyPromptFor", () => copyPromptForCommand(extensionUri)),
+    vscode.commands.registerCommand("sustain.removeSustain", () => removeSustainCommand()),
     vscode.commands.registerCommand("sustain.createTour", () => createTourCommand(context, runs)),
   );
   return {

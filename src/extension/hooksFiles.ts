@@ -236,3 +236,16 @@ export function ensureGitExclude(root: string): boolean {
   writeFileSync(path, `${prefix}${missing.join("\n")}\n`);
   return true;
 }
+
+/** SAF-08: removes {@link EXCLUDE_LINES} from `.git/info/exclude`, keeping every other line; returns whether the file changed. */
+export function removeGitExclude(root: string): boolean {
+  const path = join(root, ".git", "info", "exclude");
+  if (!existsSync(path)) return false;
+  const text = readFileSync(path, "utf8");
+  const kept = text.split("\n").filter((line) => !EXCLUDE_LINES.includes(line.trim()));
+  const next = kept.join("\n");
+  if (next === text) return false;
+  assertWritable(root, path);
+  writeFileSync(path, next);
+  return true;
+}

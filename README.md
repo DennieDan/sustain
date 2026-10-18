@@ -153,6 +153,8 @@ Sustain makes no AI calls of its own. Your agent does the work, on your account.
 
 ## How to remove it
 
+**Remove Sustain from This Folder**, in the sidebar's title-bar menu and the Command Palette, removes what Sustain added to a folder: the skills installed in the repository, its hook entries, its lines in `.git/info/exclude`, and its block in `AGENTS.md` and `CLAUDE.md`. It then asks before deleting `.archify/`, `.sustain/` and `sustain.config.json`, and offers to remove the skills from your home folder. To do it by hand:
+
 1. Uninstall Sustain from the Extensions view.
 2. Delete `sustain-architecture`, `sustain-refresh`, `sustain-audit`, `sustain-tour` and `sustain-bugfix` from `~/.agents/skills/` and `~/.claude/skills/`.
 3. In each repository you mapped, delete `.archify/` and `.sustain/` if you no longer want them, and the three Sustain lines from `.git/info/exclude`.

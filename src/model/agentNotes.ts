@@ -65,6 +65,17 @@ export function mergeNotes(text: string, block: string): string {
   return `${text.replace(/\n*$/, "")}\n\n${block}\n`;
 }
 
+/** SAF-08: `text` without its block and the blank lines that set it apart; text outside the markers stays as it is. */
+export function removeNotes(text: string): string {
+  const start = text.indexOf(NOTES_START);
+  const end = start < 0 ? -1 : text.indexOf(NOTES_END, start);
+  if (start < 0 || end < 0) return text;
+  const before = text.slice(0, start).replace(/\n*$/, "");
+  const after = text.slice(end + NOTES_END.length).replace(/^\n*/, "");
+  if (before === "") return after;
+  return after === "" ? `${before}\n` : `${before}\n\n${after}`;
+}
+
 /** Whether a CLAUDE.md needs the block itself: it does not import AGENTS.md. */
 export function claudeNeedsNotes(text: string): boolean {
   return !/^\s*@(\.\/)?AGENTS\.md\s*$/m.test(text);
