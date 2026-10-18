@@ -151,3 +151,21 @@ describe("robustness", () => {
     expect(edit.status).toBe(0);
   });
 });
+
+describe("LRN-01 Claude Code and Codex", () => {
+  test.each(["Edit", "Write", "NotebookEdit", "Agent"])("blocks Claude Code's %s while hunting, finding the repository from CLAUDE_PROJECT_DIR, with the reason on stderr", (tool) => {
+    const root = hunting();
+    const run = runHook(preTool(tool), { cwd: tempDir(), env: { DEVIN_PROJECT_DIR: "", CLAUDE_PROJECT_DIR: root } });
+    expect(run.status).toBe(2);
+    expect(run.stderr).toContain("hunting");
+  });
+
+  test("blocks Codex's apply_patch while hunting, finding the repository from the event's cwd", () => {
+    const root = hunting();
+    put(root, "src/deep/x.ts", "");
+    const run = runHook({ ...preTool("apply_patch"), cwd: join(root, "src/deep") }, { cwd: join(root, "src/deep"), env: { DEVIN_PROJECT_DIR: "", CLAUDE_PROJECT_DIR: "" } });
+    expect(run.status).toBe(2);
+    const read = runHook({ ...preTool("Read"), cwd: root }, { cwd: root, env: { DEVIN_PROJECT_DIR: "", CLAUDE_PROJECT_DIR: "" } });
+    expect(read.status).toBe(0);
+  });
+});

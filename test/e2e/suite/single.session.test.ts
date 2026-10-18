@@ -97,6 +97,32 @@ suite("Learning session launcher", () => {
     await hook.postFromSessionWebview({ type: "ready" }); // host re-sends the view; must not throw
   });
 
+  test("LRN-01 a session in Claude Code merges its hooks into the local settings, launches claude with the skill, and the hooks go with the lock", async () => {
+    const claude = join(root, "bin", "claude");
+    writeFileSync(claude, "#!/bin/sh\n");
+    chmodSync(claude, 0o755);
+    await vscode.commands.executeCommand("sustain.installSkills");
+    ui.answers.quickPick.push("Bug hunt", "Claude Code");
+    ui.answers.inputBox.push("add a helper");
+    await vscode.commands.executeCommand("sustain.startLearning");
+
+    const settings = JSON.parse(readFileSync(join(root, ".claude/settings.local.json"), "utf8")) as { hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] } };
+    assert.equal(settings.hooks.PreToolUse[0]!.matcher, "Edit|Write|NotebookEdit|Agent");
+    assert.match(settings.hooks.PreToolUse[0]!.hooks[0]!.command, /\.agents\/skills\/sustain-bugfix\/scripts\/session-hook\.mjs"$/);
+    assert.equal(existsSync(join(root, HOOKS)), false, "Devin gets no entry in a Claude Code session");
+    assert.equal(terminals.length, 1);
+    const options = terminals[0] as vscode.TerminalOptions;
+    assert.equal(String(options.shellPath), claude);
+    assert.deepEqual(options.shellArgs, ["/sustain-bugfix add a helper"]);
+
+    mkdirSync(join(root, ".sustain"), { recursive: true });
+    writeFileSync(join(root, ".sustain/active"), "bugfix-demo-20261019-120000\n");
+    await pause(800);
+    assert.ok(existsSync(join(root, ".claude/settings.local.json")), "hooks kept while the lock exists");
+    rmSync(join(root, ".sustain/active"));
+    await until(() => !existsSync(join(root, ".claude/settings.local.json")), "the Claude Code hooks removed after the lock went");
+  });
+
   test("SAF-06 the session's hook entries go when its lock goes", async () => {
     mkdirSync(join(root, ".sustain"), { recursive: true });
     writeFileSync(join(root, ".sustain/active"), "bugfix-demo-20261018-120000\n");

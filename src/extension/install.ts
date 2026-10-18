@@ -3,18 +3,18 @@
 // SET-01). Hooks and git excludes belong to the session launch (SAF-06).
 import * as vscode from "vscode";
 import { pickRepoRoot } from "./folders";
-import { ensureGitExclude, mergeHooks, sessionHookCommand } from "./hooksFiles";
+import { ensureGitExclude, mergeSessionHooks, type SessionAgent } from "./hooksFiles";
 import { configuredScope } from "./scope";
 import { SKILL_NAMES, skillBase, skillInstalled, skillTargets, writeSkill } from "./skillFiles";
 
 /**
- * The session-side assets, merged when a learning session launches: the managed hooks block
- * and Sustain's git excludes. A corrupt hooks file throws, and the caller reports it rather
- * than overwriting.
+ * The session-side assets, merged when a learning session launches in `agent`: that agent's
+ * managed hooks block and Sustain's git excludes (LRN-01). A corrupt hooks file throws, and the
+ * caller reports it rather than overwriting.
  */
-export function ensureSessionAssets(root: string): void {
+export function ensureSessionAssets(root: string, agent: SessionAgent = "devin"): void {
   const base = skillBase(configuredScope(), root);
-  mergeHooks(root, sessionHookCommand(base === root ? undefined : base));
+  mergeSessionHooks(root, agent, base === root ? undefined : base);
   ensureGitExclude(root);
 }
 

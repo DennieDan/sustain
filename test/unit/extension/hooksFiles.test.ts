@@ -4,7 +4,7 @@
 import { existsSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { ensureGitExclude, EXCLUDE_LINES, mergeHooks, removeHooks, removeHooksWhenIdle, SUSTAIN_HOOK_MARKER, sustainHooks } from "../../../src/extension/hooksFiles";
+import { ensureGitExclude, EXCLUDE_LINES, mergeAgentHooks, mergeHooks, mergeSessionHooks, removeHooks, removeHooksWhenIdle, SUSTAIN_HOOK_MARKER, sustainHooks } from "../../../src/extension/hooksFiles";
 import { put, tempDir } from "../support/temp";
 
 const HOOKS = ".devin/hooks.v1.json";
@@ -180,5 +180,51 @@ describe("sustainHooks", () => {
     const hooks = sustainHooks();
     expect(Object.keys(hooks).sort()).toEqual(["PostCompaction", "PreToolUse", "SessionStart", "UserPromptSubmit"]);
     expect(JSON.stringify(hooks)).toContain("session-hook.mjs");
+  });
+});
+
+describe("LRN-01 Claude Code and Codex hooks", () => {
+  const CLAUDE = ".claude/settings.local.json";
+  const CODEX = ".codex/hooks.json";
+  const read = (root: string, file: string): Record<string, any> => JSON.parse(readFileSync(join(root, file), "utf8"));
+  const command = (root: string): string => `node "${join(root, ".agents/skills/sustain-bugfix/scripts/session-hook.mjs")}"`;
+
+  test("a Claude Code session merges PreToolUse for Edit, Write, NotebookEdit and Agent into its local settings, keeping the user's, once", () => {
+    const root = tempDir();
+    put(root, CLAUDE, `${JSON.stringify({ permissions: { allow: ["Bash(npm test)"] }, hooks: { PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "./check.sh" }] }] } })}\n`);
+    mergeSessionHooks(root, "claude");
+    const settings = read(root, CLAUDE);
+    expect(settings["permissions"]).toEqual({ allow: ["Bash(npm test)"] });
+    expect(settings["hooks"]["PreToolUse"]).toEqual([
+      { matcher: "Bash", hooks: [{ type: "command", command: "./check.sh" }] },
+      { matcher: "Edit|Write|NotebookEdit|Agent", hooks: [{ type: "command", command: command(root), timeout: 5 }] },
+    ]);
+    const before = readFileSync(join(root, CLAUDE), "utf8");
+    mergeSessionHooks(root, "claude");
+    expect(readFileSync(join(root, CLAUDE), "utf8")).toBe(before);
+    expect(existsSync(join(root, HOOKS))).toBe(false);
+  });
+
+  test("a Codex session writes .codex/hooks.json matching apply_patch and leaves one Sustain entry in all three files", () => {
+    const root = tempDir();
+    mergeSessionHooks(root, "devin");
+    mergeSessionHooks(root, "claude", "/home/u");
+    mergeSessionHooks(root, "codex", "/home/u");
+    expect(read(root, CODEX)).toEqual({ hooks: { PreToolUse: [{ matcher: "apply_patch", hooks: [{ type: "command", command: 'node "/home/u/.agents/skills/sustain-bugfix/scripts/session-hook.mjs"', timeout: 5 }] }] } });
+    expect(existsSync(join(root, CLAUDE))).toBe(false);
+    expect(existsSync(join(root, HOOKS))).toBe(false);
+    mergeSessionHooks(root, "devin");
+    expect(existsSync(join(root, CODEX))).toBe(false);
+    expect(sustainHookCommands(root)).toHaveLength(4);
+  });
+
+  test("when the session ends, Sustain's entries go from every file, and a file left empty is deleted", () => {
+    const root = tempDir();
+    put(root, CODEX, `${JSON.stringify({ description: "team hooks", hooks: { Stop: [{ hooks: [{ type: "command", command: "./notify.sh" }] }] } })}\n`);
+    mergeSessionHooks(root, "codex");
+    mergeAgentHooks(root, "claude", command(root));
+    expect(removeHooksWhenIdle(root)).toBe("none");
+    expect(read(root, CODEX)).toEqual({ description: "team hooks", hooks: { Stop: [{ hooks: [{ type: "command", command: "./notify.sh" }] }] } });
+    expect(existsSync(join(root, CLAUDE))).toBe(false);
   });
 });

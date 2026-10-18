@@ -1,7 +1,10 @@
 // `node .agents/skills/sustain-bugfix/scripts/session-hook.mjs`, wired from
-// `.devin/hooks.v1.json` (ADR 0032): the mechanical part of the bug-hunt contract.
-// Devin pipes one hook event as JSON on stdin (`hook_event_name`, `tool_name`,
-// `tool_input`, `session_id`, `prompt_id`) and sets DEVIN_PROJECT_DIR to the repo root.
+// `.devin/hooks.v1.json` (ADR 0032), and from `.claude/settings.local.json` or
+// `.codex/hooks.json` (spec v0.3 LRN-01): the mechanical part of the bug-hunt contract.
+// The agent pipes one hook event as JSON on stdin (`hook_event_name`, `tool_name`,
+// `tool_input`, `cwd`). Devin sets DEVIN_PROJECT_DIR and Claude Code CLAUDE_PROJECT_DIR to
+// the repo root; without either, the repository is the nearest folder above the event's
+// `cwd` that holds `.sustain/active`.
 //
 // - PreToolUse: while `session.json` says `hunting`, exits 2 (with a `decision: block`
 //   object on stdout) for the file-editing and subagent tools, so "the user fixed it
@@ -10,12 +13,26 @@
 //   live session state, re-grounding the agent each turn and after compaction.
 // - No `.sustain/active`, no parseable event, or unreadable session state: inert (exit
 //   0). A hook must never break a repo that has no learning session running.
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { activeRun, loadSession, SUSTAIN_DIR, type SessionState } from "../model/session";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { ACTIVE_FILE, activeRun, loadSession, SUSTAIN_DIR, type SessionState } from "../model/session";
 
-/** Tools that mutate code or delegate work — blocked only while `phase === "hunting"`. */
-const BLOCKED_TOOLS: ReadonlySet<string> = new Set(["edit", "write", "apply_patch", "notebook_edit", "run_subagent"]);
+/**
+ * Tools that mutate code or delegate work, blocked only while `phase === "hunting"`: Devin's,
+ * Claude Code's (`Edit`, `Write`, `NotebookEdit`, `Agent`) and Codex's `apply_patch`.
+ */
+const BLOCKED_TOOLS: ReadonlySet<string> = new Set(["edit", "write", "apply_patch", "notebook_edit", "run_subagent", "Edit", "Write", "NotebookEdit", "Agent"]);
+
+/** The repository the event is about: the agent's project variable, else the nearest folder with a lock above `cwd`. */
+function projectRoot(payload: Record<string, unknown>): string {
+  const named = process.env["DEVIN_PROJECT_DIR"] || process.env["CLAUDE_PROJECT_DIR"];
+  if (named) return named;
+  const start = typeof payload["cwd"] === "string" && payload["cwd"] !== "" ? payload["cwd"] : process.cwd();
+  for (let dir = start; ; dir = dirname(dir)) {
+    if (existsSync(join(dir, SUSTAIN_DIR, ACTIVE_FILE))) return dir;
+    if (dirname(dir) === dir) return start;
+  }
+}
 
 const SESSION_MJS = ".agents/skills/sustain-bugfix/scripts/session.mjs";
 
@@ -59,7 +76,7 @@ function main(): number {
     return 0;
   }
 
-  const root = typeof process.env["DEVIN_PROJECT_DIR"] === "string" ? process.env["DEVIN_PROJECT_DIR"] : process.cwd();
+  const root = projectRoot(payload);
   const run = activeRun(root);
   if (run === null) return 0;
   let session: SessionState;

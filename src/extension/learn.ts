@@ -1,26 +1,25 @@
-// `Sustain: Start Learning Session` (ADRs 0029–0036): folder + mode + task, ensures the
-// skill and hooks are in place, then launches `devin -- "/sustain-bugfix <task>"` in a
-// terminal — the same shellPath/shellArgs shape as `generateArchitectureCommand` (ADR 0020).
+// `Sustain: Start Learning Session` (ADRs 0029–0036): folder + mode + task + agent, ensures the
+// skill and that agent's hooks are in place, then launches Claude Code, Codex or Devin with
+// `/sustain-bugfix <task>` (`$sustain-bugfix` in Codex) in a terminal — the same
+// shellPath/shellArgs shape as `generateArchitectureCommand` (ADR 0020, spec v0.3 LRN-01).
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
-import { devinPromptArgs, findDevinCli } from "./devin";
 import { pickRepoRoot } from "./folders";
 import { ensureSessionAssets, installSkill } from "./install";
 import { ensureSkillIntact } from "./integrity";
 import { SessionPanel } from "./sessionPanel";
 import { configuredScope } from "./scope";
+import { sessionAgents, sessionArgs, sessionPrompt } from "./sessionAgents";
 import { agentsSkillDir, skillBase } from "./skillFiles";
 
 interface LearningMode {
   label: string;
   detail: string;
-  /** Skill invocation prefix inside the agent session. */
-  invoke: string;
 }
 
 const MODES: readonly LearningMode[] = [
-  { label: "Bug hunt", detail: "The agent implements your task in steps and plants one hidden bug per step — find and fix them", invoke: "/sustain-bugfix" },
+  { label: "Bug hunt", detail: "The agent implements your task in steps and plants one hidden bug per step — find and fix them" },
 ];
 
 export async function startLearningSessionCommand(extensionUri: vscode.Uri): Promise<void> {
@@ -44,27 +43,32 @@ export async function startLearningSessionCommand(extensionUri: vscode.Uri): Pro
     validateInput: (value) => (value.trim() === "" ? "A task is required — the agent implements it step by step" : undefined),
   });
   if (task === undefined) return;
-  if (!(await ensureSkillIntact(extensionUri, root, "devin", "sustain-bugfix"))) return;
+
+  // LRN-01: the session runs in Claude Code, Codex or Devin.
+  const found = sessionAgents(process.env);
+  if (found.length === 0) {
+    const action = await vscode.window.showWarningMessage("No Claude Code, Codex or Devin was found on PATH or where Devin installs.", "Copy prompt");
+    if (action === "Copy prompt") await vscode.env.clipboard.writeText(sessionPrompt("claude", task));
+    return;
+  }
+  const launcher =
+    found.length === 1 ? found[0]! : (await vscode.window.showQuickPick(found.map((entry) => ({ label: entry.label, launcher: entry })), { placeHolder: "Which agent runs the session?" }))?.launcher;
+  if (launcher === undefined) return;
+  if (!(await ensureSkillIntact(extensionUri, root, launcher.agent, "sustain-bugfix"))) return;
 
   try {
-    ensureSessionAssets(root);
+    ensureSessionAssets(root, launcher.agent);
   } catch (error) {
     const choice = await vscode.window.showWarningMessage(
-      `The Devin hooks could not be merged — hunt edits won't be blocked: ${(error as Error).message}`,
+      `The ${launcher.label} hooks could not be merged — hunt edits won't be blocked: ${(error as Error).message}`,
       "Start anyway",
       "Cancel",
     );
     if (choice !== "Start anyway") return;
   }
 
-  const prompt = `${mode.mode.invoke} ${task.trim()}`;
-  const devin = findDevinCli(process.env);
-  if (devin === undefined) {
-    const action = await vscode.window.showWarningMessage("`devin` was not found on PATH or the known install locations.", "Copy prompt");
-    if (action === "Copy prompt") await vscode.env.clipboard.writeText(prompt);
-    return;
-  }
-  const terminal = vscode.window.createTerminal({ name: `Sustain: ${mode.mode.label}`, cwd: root, shellPath: devin, shellArgs: devinPromptArgs(prompt) });
+  const terminal = vscode.window.createTerminal({ name: `Sustain: ${mode.mode.label}`, cwd: root, shellPath: launcher.binary, shellArgs: sessionArgs(launcher.agent, task) });
   terminal.show();
   SessionPanel.show(extensionUri, root);
+  if (launcher.agent === "codex") void vscode.window.showInformationMessage("Codex runs Sustain's hook only once you trust it. Type /hooks in Codex to review and trust it.");
 }

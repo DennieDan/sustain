@@ -144,7 +144,7 @@ Sustain makes no AI calls of its own. Your agent does the work, on your account.
 - Skills go to `~/.agents/skills/`, which Codex and Devin read, with links in `~/.claude/skills/` for Claude Code. With `sustain.skillScope` set to `project`, they go to `.agents/skills/` and `.claude/skills/` in the repository.
 - Maps go to `.archify/` in the repository.
 - `.git/info/exclude` gains `.sustain/`, `.archify/**/draft.json` and `.archify/**/*.html`. Git reads this file and never commits it.
-- Learning sessions keep their state in `.sustain/`. Their hook entries in `.devin/hooks.v1.json` exist only while a session runs.
+- Learning sessions keep their state in `.sustain/`. Their hook entry exists only while a session runs, in `.claude/settings.local.json` for Claude Code, `.codex/hooks.json` for Codex or `.devin/hooks.v1.json` for Devin. Codex runs it once you trust it with `/hooks`.
 - Agents run with an exact list of tools. Claude Code may read, search, run the skill's scripts and edit inside `.archify/`. Codex runs in its workspace sandbox. No permission prompt is skipped.
 - The extension makes no network requests. Only `sustain publish` and the Action's `upload: true` send anything, and they send maps and check results.
 

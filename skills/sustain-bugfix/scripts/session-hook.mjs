@@ -1,6 +1,6 @@
 // src/agent/session-hook.ts
-import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join2 } from "node:path";
+import { existsSync as existsSync2, readFileSync as readFileSync2 } from "node:fs";
+import { dirname as dirname2, join as join2 } from "node:path";
 
 // src/model/session.ts
 import {
@@ -89,7 +89,16 @@ function activeRun(root) {
 }
 
 // src/agent/session-hook.ts
-var BLOCKED_TOOLS = /* @__PURE__ */ new Set(["edit", "write", "apply_patch", "notebook_edit", "run_subagent"]);
+var BLOCKED_TOOLS = /* @__PURE__ */ new Set(["edit", "write", "apply_patch", "notebook_edit", "run_subagent", "Edit", "Write", "NotebookEdit", "Agent"]);
+function projectRoot(payload) {
+  const named = process.env["DEVIN_PROJECT_DIR"] || process.env["CLAUDE_PROJECT_DIR"];
+  if (named) return named;
+  const start = typeof payload["cwd"] === "string" && payload["cwd"] !== "" ? payload["cwd"] : process.cwd();
+  for (let dir = start; ; dir = dirname2(dir)) {
+    if (existsSync2(join2(dir, SUSTAIN_DIR, ACTIVE_FILE))) return dir;
+    if (dirname2(dir) === dir) return start;
+  }
+}
 var SESSION_MJS = ".agents/skills/sustain-bugfix/scripts/session.mjs";
 function contextLine(run, session) {
   const step = session.steps[session.stepIndex];
@@ -123,7 +132,7 @@ function main() {
   } catch {
     return 0;
   }
-  const root = typeof process.env["DEVIN_PROJECT_DIR"] === "string" ? process.env["DEVIN_PROJECT_DIR"] : process.cwd();
+  const root = projectRoot(payload);
   const run = activeRun(root);
   if (run === null) return 0;
   let session;
