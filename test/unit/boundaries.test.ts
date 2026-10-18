@@ -20,6 +20,10 @@ const BROWSER_SAFE_MODEL: Record<string, true> = {
   "src/model/citationPath.ts": true,
   "src/model/deny.ts": true,
   "src/model/openLinks.ts": true,
+  "src/model/config.ts": true,
+  "src/model/ownership.ts": true,
+  "src/model/delta.ts": true,
+  "src/model/deltaMarkdown.ts": true,
 };
 const NODE_MODEL: Record<string, true> = {
   "src/model/citations.ts": true,
@@ -36,6 +40,7 @@ const NODE_MODEL: Record<string, true> = {
   "src/model/fingerprints.ts": true,
   "src/model/staleness.ts": true,
   "src/model/page.ts": true,
+  "src/model/check.ts": true,
 };
 const NODE_ALLOWED: Record<string, true> = {
   "node:fs": true,

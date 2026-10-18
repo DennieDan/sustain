@@ -38,10 +38,10 @@ const DIFF = [
 describe("FRS-04 diff parsing", () => {
   test("files, renames, deletions, additions and old-side hunks", () => {
     expect(parseDiff(DIFF)).toEqual([
-      { path: "src/a.ts", oldPath: "src/a.ts", status: "modified", hunks: [{ oldStart: 4, oldLines: 1 }, { oldStart: 10, oldLines: 0 }] },
+      { path: "src/a.ts", oldPath: "src/a.ts", status: "modified", hunks: [{ oldStart: 4, oldLines: 1 }, { oldStart: 10, oldLines: 0 }], added: 3 },
       { path: "new name.ts", oldPath: "old name.ts", status: "renamed", hunks: [] },
-      { path: "gone.ts", oldPath: "gone.ts", status: "deleted", hunks: [{ oldStart: 1, oldLines: 3 }] },
-      { path: "café.ts", oldPath: "café.ts", status: "added", hunks: [{ oldStart: 0, oldLines: 0 }] },
+      { path: "gone.ts", oldPath: "gone.ts", status: "deleted", hunks: [{ oldStart: 1, oldLines: 3 }], added: 0 },
+      { path: "café.ts", oldPath: "café.ts", status: "added", hunks: [{ oldStart: 0, oldLines: 0 }], added: 1 },
     ]);
   });
 
@@ -83,7 +83,7 @@ describe("FRS-04 scopes in a git repository", () => {
     writeFileSync(join(root, "new.ts"), "n\n");
 
     const uncommitted = diffFor(root, { kind: "uncommitted" });
-    expect(uncommitted.ok && parseDiff(uncommitted.text)).toEqual([{ path: "src/a.ts", oldPath: "src/a.ts", status: "modified", hunks: [{ oldStart: 3, oldLines: 1 }] }]);
+    expect(uncommitted.ok && parseDiff(uncommitted.text)).toEqual([{ path: "src/a.ts", oldPath: "src/a.ts", status: "modified", hunks: [{ oldStart: 3, oldLines: 1 }], added: 1 }]);
     expect(uncommitted.ok && uncommitted.untracked).toEqual(["new.ts"]);
 
     const range = diffFor(root, { kind: "range", from: first, to: "HEAD" });

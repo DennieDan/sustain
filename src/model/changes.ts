@@ -26,6 +26,8 @@ export interface FileChange {
   status: "added" | "deleted" | "modified" | "renamed";
   /** Empty for a binary change, a pure rename, or an untracked file. */
   hunks: Hunk[];
+  /** Lines added, from the hunk headers; an untracked file's line count when known. */
+  added?: number;
 }
 
 /** Undoes git's C-style quoting of a path with unusual characters. */
@@ -107,8 +109,11 @@ export function parseDiff(text: string): FileChange[] {
       if (next !== null) current.path = next;
       else current.path = current.oldPath;
     } else if (line.startsWith("@@ ")) {
-      const hunk = /^@@ -(\d+)(?:,(\d+))? \+\d+(?:,\d+)? @@/.exec(line);
-      if (hunk) current.hunks.push({ oldStart: Number(hunk[1]), oldLines: hunk[2] === undefined ? 1 : Number(hunk[2]) });
+      const hunk = /^@@ -(\d+)(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
+      if (hunk) {
+        current.hunks.push({ oldStart: Number(hunk[1]), oldLines: hunk[2] === undefined ? 1 : Number(hunk[2]) });
+        current.added = (current.added ?? 0) + (hunk[3] === undefined ? 1 : Number(hunk[3]));
+      }
     }
   }
   return files;

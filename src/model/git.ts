@@ -37,8 +37,8 @@ export function gitProgram(env: NodeJS.ProcessEnv = process.env): string | undef
   return findOnPath("git", env);
 }
 
-/** stdout of a successful run; `null` when git cannot start (not on PATH) or exits non-zero. */
-function run(program: string, root: string, argv: readonly string[]): string | null {
+/** stdout bytes of a successful run; `null` when git cannot start (not on PATH) or exits non-zero. */
+function runRaw(program: string, root: string, argv: readonly string[]): Buffer | null {
   const result = spawnSync(program, argv, {
     cwd: root,
     env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
@@ -46,7 +46,12 @@ function run(program: string, root: string, argv: readonly string[]): string | n
     maxBuffer: 64 * 1024 * 1024,
   });
   if (result.error || result.status !== 0) return null;
-  return result.stdout.toString("utf8");
+  return result.stdout;
+}
+
+/** stdout of a successful run as text, or `null`. */
+function run(program: string, root: string, argv: readonly string[]): string | null {
+  return runRaw(program, root, argv)?.toString("utf8") ?? null;
 }
 
 /**
@@ -125,11 +130,11 @@ export function repositoryFromGit(facts: GitFacts): Repository | null {
  * Paths git followed through a rename since `revision`, old to new, from
  * `git diff -M --name-status -z <revision>` (FRS-02). Empty when git or the revision is missing.
  */
-export function renamesSince(root: string, revision: string, env: NodeJS.ProcessEnv = process.env): Map<string, string> {
+export function renamesSince(root: string, revision: string, env: NodeJS.ProcessEnv = process.env, to?: string): Map<string, string> {
   const renames = new Map<string, string>();
   const program = gitProgram(env);
-  if (program === undefined || !/^[0-9a-f]{7,64}$/i.test(revision)) return renames;
-  const output = run(program, root, [...GIT_PREFIX, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", "--name-status", "-z", revision, "--"]);
+  if (program === undefined || !/^[0-9a-f]{7,64}$/i.test(revision) || (to !== undefined && !REVISION_PATTERN.test(to))) return renames;
+  const output = run(program, root, [...GIT_PREFIX, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", "--name-status", "-z", revision, ...(to === undefined ? [] : [to]), "--"]);
   const fields = (output ?? "").split("\0");
   for (let i = 0; i < fields.length; i++) {
     const status = fields[i]!;
@@ -229,4 +234,41 @@ export function foldersAt(root: string, revision: string, env: NodeJS.ProcessEnv
   if (program === undefined || !REVISION_PATTERN.test(revision)) return null;
   const output = run(program, root, [...GIT_PREFIX, "ls-tree", "-d", "--name-only", "-z", revision]);
   return output === null ? null : new Set(output.split("\0").filter((name) => name !== ""));
+}
+
+/** The commit `a` and `b` share, or `null`. */
+export function mergeBase(root: string, a: string, b: string, env: NodeJS.ProcessEnv = process.env): string | null {
+  const program = gitProgram(env);
+  if (program === undefined || !REVISION_PATTERN.test(a) || !REVISION_PATTERN.test(b)) return null;
+  return run(program, root, [...GIT_PREFIX, "merge-base", a, b])?.trim() || null;
+}
+
+/** The unified diff from `from` to `to`, or to the working tree without `to` (PRC-01). */
+export function diffBetween(root: string, from: string, to: string | null, env: NodeJS.ProcessEnv = process.env): string | null {
+  const program = gitProgram(env);
+  if (program === undefined || ![from, ...(to === null ? [] : [to])].every((revision) => REVISION_PATTERN.test(revision))) return null;
+  return run(program, root, [...GIT_PREFIX, ...DIFF_FLAGS, from, ...(to === null ? [] : [to]), "--"]);
+}
+
+/** A file's bytes at `revision`, or `null` when it is not there. */
+export function fileAt(root: string, revision: string, path: string, env: NodeJS.ProcessEnv = process.env): Buffer | null {
+  const program = gitProgram(env);
+  if (program === undefined || !REVISION_PATTERN.test(revision) || path.startsWith("-") || path.includes(":")) return null;
+  return runRaw(program, root, [...GIT_PREFIX, "cat-file", "blob", `${revision}:${path}`]);
+}
+
+/** Whether `path`, a file or folder, exists at `revision`. The repository root always does. */
+export function existsAt(root: string, revision: string, path: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  if (path === "") return true;
+  const program = gitProgram(env);
+  if (program === undefined || !REVISION_PATTERN.test(revision) || path.startsWith("-") || path.includes(":")) return false;
+  return run(program, root, [...GIT_PREFIX, "cat-file", "-e", `${revision}:${path}`]) !== null;
+}
+
+/** Every file under `dir` at `revision`, repository-relative. */
+export function filesAt(root: string, revision: string, dir: string, env: NodeJS.ProcessEnv = process.env): string[] {
+  const program = gitProgram(env);
+  if (program === undefined || !REVISION_PATTERN.test(revision)) return [];
+  const output = run(program, root, [...GIT_PREFIX, "ls-tree", "-r", "-z", "--name-only", revision, "--", dir === "" ? "." : dir]);
+  return (output ?? "").split("\0").filter((path) => path !== "");
 }
