@@ -74,8 +74,10 @@ Write the step's code yourself, in the step's named files. Keep it small and rea
 Choose a kind and a line inside the code you just wrote, guided by `references/bug-taxonomy.md` (read it once at session start; vary kinds across steps, prefer subtle spots):
 
 ```sh
-node ${CLAUDE_SKILL_DIR}/scripts/session.mjs inject --file <f> --line <n> --kind <off-by-one|flipped-comparison|missing-await>
+node ${CLAUDE_SKILL_DIR}/scripts/session.mjs inject --file <f> --line <n> --kind <kind>
 ```
+
+The kinds depend on the file's language: `off-by-one`, `flipped-comparison` or `missing-await` in JavaScript and TypeScript, and `off-by-one`, `flipped-comparison`, `and-or-swap` or `reference-equality` in Java.
 
 If inject reports "no `<kind>` target", pick a different line or kind — never force it by hand-editing a bug in; only engine-seeded bugs are scored.
 

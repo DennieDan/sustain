@@ -18,6 +18,7 @@ import {
   HINT_COST,
   HINT_LEVELS,
   isSessionStale,
+  languageOf,
   loadManifest,
   loadSession,
   MUTATION_KINDS,
@@ -47,7 +48,7 @@ const USAGE =
   "usage: node session.mjs <command>\n" +
   "  init --mode bugfix [--name <text>]     start a session, take the .sustain/active lock\n" +
   "  plan --steps '<json>'                  record the plan: [{\"title\":…,\"files\":[…]}] or [\"…\"]\n" +
-  "  inject --file <f> --line <n> --kind <k>  seed one bug (kinds: off-by-one, flipped-comparison, missing-await)\n" +
+  "  inject --file <f> --line <n> --kind <k>  seed one bug (kinds: off-by-one, flipped-comparison, missing-await for JS/TS; off-by-one, flipped-comparison, and-or-swap, reference-equality for Java)\n" +
   "  status                                 the authoritative session snapshot\n" +
   "  report --file <f>                      confirm <f> holds an unfixed seeded bug\n" +
   "  hint --level <1|2|3> [--bug <id>|--file <f>]  ledger a hint deduction\n" +
@@ -58,7 +59,6 @@ const USAGE =
   "  restore [--bug <id>]                   write pristine hunks back, keep the session\n" +
   "  abandon                                restore seeded hunks, end the session, free the lock";
 
-const JS_TS = /\.(mjs|cjs|mts|cts|js|jsx|ts|tsx)$/;
 /** `.mjs`/`.cjs` are the only files `node --check` parses unambiguously (ADR 0037). */
 const NODE_CHECKABLE = /\.(mjs|cjs)$/;
 
@@ -334,8 +334,8 @@ function cmdInject(args: string[]): number {
   } catch (error) {
     return report(1, { status: "error", message: (error as Error).message });
   }
-  if (!JS_TS.test(target.rel)) {
-    return report(1, { status: "error", message: `${target.rel}: mutations are JS/TS-only in v1` });
+  if (languageOf(target.rel) === null) {
+    return report(1, { status: "error", message: `${target.rel}: bugs are seeded in JavaScript, TypeScript and Java files only` });
   }
 
   const pristineText = readFileSync(target.abs, "utf8");

@@ -236,11 +236,18 @@ var SESSION_PHASES = ["clarify", "implementing", "hunting", "paused", "done"];
 var LIVE_PHASES = ["clarify", "implementing", "hunting"];
 var SESSION_MODES = ["bugfix"];
 var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
-var MUTATION_KINDS = ["off-by-one", "flipped-comparison", "missing-await"];
+var MUTATION_KINDS = ["off-by-one", "flipped-comparison", "missing-await", "and-or-swap", "reference-equality"];
+function languageOf(path) {
+  if (/\.(mjs|cjs|mts|cts|js|jsx|ts|tsx)$/.test(path)) return "js";
+  if (/\.java$/.test(path)) return "java";
+  return null;
+}
 var KIND_TIER = {
   "off-by-one": "T1",
   "flipped-comparison": "T1",
-  "missing-await": "T2"
+  "missing-await": "T2",
+  "and-or-swap": "T1",
+  "reference-equality": "T2"
 };
 var TIER_POINTS = { T1: 10, T2: 20, T3: 30 };
 var HINT_LEVELS = [1, 2, 3];
@@ -428,25 +435,72 @@ function codeMask(line) {
   }
   return mask;
 }
+function maskGenerics(line, mask) {
+  for (let start = 0; start < line.length; start += 1) {
+    if (line[start] !== "<" || !mask[start]) continue;
+    const first = /\S/.exec(line.slice(start + 1));
+    if (first === null || !/[A-Z?>]/.test(first[0])) continue;
+    let depth = 0;
+    let end = -1;
+    for (let at = start; at < line.length; at += 1) {
+      const char = line[at];
+      if (char === "<") depth += 1;
+      else if (char === ">") depth -= 1;
+      else if (!/[\w\s,.?[\]&]/.test(char) || char === "&" && line[at + 1] === "&") break;
+      if (depth === 0) {
+        end = at;
+        break;
+      }
+    }
+    if (end === -1) continue;
+    for (let at = start; at <= end; at += 1) mask[at] = false;
+    start = end;
+  }
+}
+var RECEIVER = String.raw`(?<![\w$.)\]])(!?)((?!super\b)[A-Za-z_$][\w$]*(?:\([^()]*\))?(?:\.[A-Za-z_$][\w$]*(?:\([^()]*\))?)*)`;
+var OFF_BY_ONE = [
+  { find: /(?<![<>=!])<(?![<=])/g, to: "<=" },
+  { find: /(?<![<>=!])<=/g, to: "<" },
+  { find: /(?<![-=<>])>(?![=>])/g, to: ">=" },
+  { find: /(?<![<>=!])>=/g, to: ">" }
+];
+var FLIPPED_COMPARISON = [
+  { find: /===/g, to: "!==" },
+  { find: /!==/g, to: "===" },
+  { find: /(?<![<>=!])<=/g, to: ">=" },
+  { find: /(?<![<>=!])>=/g, to: "<=" },
+  { find: /(?<![<>=!])<(?![<=])/g, to: ">" },
+  { find: /(?<![-=<>])>(?![=>])/g, to: "<" },
+  { find: /(?<![=!])==(?![=])/g, to: "!=" },
+  { find: /!=(?![=])/g, to: "==" }
+];
 var RULES = {
-  "off-by-one": [
-    { find: /(?<![<>=!])<(?![<=])/g, to: "<=" },
-    { find: /(?<![<>=!])<=/g, to: "<" },
-    { find: /(?<![-=<>])>(?![=>])/g, to: ">=" },
-    { find: /(?<![<>=!])>=/g, to: ">" }
-  ],
-  "flipped-comparison": [
-    { find: /===/g, to: "!==" },
-    { find: /!==/g, to: "===" },
-    { find: /(?<![<>=!])<=/g, to: ">=" },
-    { find: /(?<![<>=!])>=/g, to: "<=" },
-    { find: /(?<![<>=!])<(?![<=])/g, to: ">" },
-    { find: /(?<![-=<>])>(?![=>])/g, to: "<" },
-    { find: /(?<![=!])==(?![=])/g, to: "!=" },
-    { find: /!=(?![=])/g, to: "==" }
-  ],
-  "missing-await": [{ find: /(?<![.\w$])await\b\s*/g, to: "" }]
+  js: {
+    "off-by-one": OFF_BY_ONE,
+    "flipped-comparison": FLIPPED_COMPARISON,
+    "missing-await": [{ find: /(?<![.\w$])await\b\s*/g, to: "" }]
+  },
+  java: {
+    "off-by-one": OFF_BY_ONE,
+    "flipped-comparison": FLIPPED_COMPARISON,
+    "and-or-swap": [
+      { find: /&&/g, to: "||" },
+      { find: /\|\|/g, to: "&&" }
+    ],
+    // `a.equals(b)` becomes `a == b`, and `!a.equals(b)` becomes `a != b`. An argument with a comma
+    // at the top, such as `Objects.equals(a, b)`, or with nested calls deeper than one level, is left alone.
+    "reference-equality": [
+      {
+        find: new RegExp(`${RECEIVER}\\.equals\\(((?:[^(),]|\\([^()]*\\))+)\\)`, "g"),
+        to: (match) => `${match[2]} ${match[1] === "!" ? "!=" : "=="} ${match[3].trim()}`
+      }
+    ]
+  }
 };
+var LANGUAGE_NAMES = { js: "JavaScript and TypeScript", java: "Java" };
+function kindsFor(language) {
+  return Object.keys(RULES[language]);
+}
 function firstCodeMatch(line, mask, rule) {
   for (const match of line.matchAll(rule.find)) {
     const start = match.index;
@@ -458,31 +512,35 @@ function firstCodeMatch(line, mask, rule) {
         break;
       }
     }
-    if (inCode) return { start, end };
+    if (inCode) return match;
   }
   return null;
 }
-function mutateLine(line, kind) {
+function mutateLine(line, kind, language = "js") {
   const mask = codeMask(line);
-  for (const rule of RULES[kind]) {
+  if (language === "java") maskGenerics(line, mask);
+  for (const rule of RULES[language][kind] ?? []) {
     const hit = firstCodeMatch(line, mask, rule);
-    if (hit !== null) return line.slice(0, hit.start) + rule.to + line.slice(hit.end);
+    if (hit !== null) return line.slice(0, hit.index) + (typeof rule.to === "string" ? rule.to : rule.to(hit)) + line.slice(hit.index + hit[0].length);
   }
   return null;
 }
-function mutateText(text, line, kind) {
+function mutateText(text, line, kind, language = "js") {
+  if (RULES[language][kind] === void 0) throw new Error(`"${kind}" does not apply to ${LANGUAGE_NAMES[language]}; its kinds are ${kindsFor(language).join(", ")}`);
   const lines = text.split("\n");
   if (!Number.isInteger(line) || line < 1 || line > lines.length) {
     throw new Error(`line ${line} is outside the file (${lines.length} lines)`);
   }
   const pristineHunk = lines[line - 1];
-  const buggyHunk = mutateLine(pristineHunk, kind);
+  const buggyHunk = mutateLine(pristineHunk, kind, language);
   if (buggyHunk === null || buggyHunk === pristineHunk) throw new Error(`line ${line} has no "${kind}" target`);
   lines[line - 1] = buggyHunk;
   return { region: { startLine: line, endLine: line }, pristineHunk, buggyHunk, text: lines.join("\n") };
 }
 function mutateFile(path, line, kind) {
-  const result = mutateText(readFileSync2(path, "utf8"), line, kind);
+  const language = languageOf(path);
+  if (language === null) throw new Error(`${path}: bugs are seeded in JavaScript, TypeScript and Java files only`);
+  const result = mutateText(readFileSync2(path, "utf8"), line, kind, language);
   writeFileSync(path, result.text);
   return result;
 }
@@ -512,7 +570,7 @@ function restoreHunk(text, bug) {
 var USAGE = `usage: node session.mjs <command>
   init --mode bugfix [--name <text>]     start a session, take the .sustain/active lock
   plan --steps '<json>'                  record the plan: [{"title":\u2026,"files":[\u2026]}] or ["\u2026"]
-  inject --file <f> --line <n> --kind <k>  seed one bug (kinds: off-by-one, flipped-comparison, missing-await)
+  inject --file <f> --line <n> --kind <k>  seed one bug (kinds: off-by-one, flipped-comparison, missing-await for JS/TS; off-by-one, flipped-comparison, and-or-swap, reference-equality for Java)
   status                                 the authoritative session snapshot
   report --file <f>                      confirm <f> holds an unfixed seeded bug
   hint --level <1|2|3> [--bug <id>|--file <f>]  ledger a hint deduction
@@ -522,7 +580,6 @@ var USAGE = `usage: node session.mjs <command>
   resume                                 return to the phase pause parked
   restore [--bug <id>]                   write pristine hunks back, keep the session
   abandon                                restore seeded hunks, end the session, free the lock`;
-var JS_TS = /\.(mjs|cjs|mts|cts|js|jsx|ts|tsx)$/;
 var NODE_CHECKABLE = /\.(mjs|cjs)$/;
 var root = process.cwd();
 function report(code, out) {
@@ -743,8 +800,8 @@ function cmdInject(args) {
   } catch (error) {
     return report(1, { status: "error", message: error.message });
   }
-  if (!JS_TS.test(target.rel)) {
-    return report(1, { status: "error", message: `${target.rel}: mutations are JS/TS-only in v1` });
+  if (languageOf(target.rel) === null) {
+    return report(1, { status: "error", message: `${target.rel}: bugs are seeded in JavaScript, TypeScript and Java files only` });
   }
   const pristineText = readFileSync3(target.abs, "utf8");
   let mutation;

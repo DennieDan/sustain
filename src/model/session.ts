@@ -38,9 +38,19 @@ export const SESSION_MODES: readonly SessionMode[] = ["bugfix"];
 /** A non-done session idle past this is stale: `status` flags it, `init` releases it (ADR 0033). */
 export const STALE_IDLE_MS = 24 * 60 * 60 * 1000;
 
-/** The bug kinds the mutation engine knows (ADR 0031); each tiers into the score table. */
-export type MutationKind = "off-by-one" | "flipped-comparison" | "missing-await";
-export const MUTATION_KINDS: readonly MutationKind[] = ["off-by-one", "flipped-comparison", "missing-await"];
+/** The bug kinds the mutation engine knows (ADR 0031, spec v0.3 LRN-02); each tiers into the score table. */
+export type MutationKind = "off-by-one" | "flipped-comparison" | "missing-await" | "and-or-swap" | "reference-equality";
+export const MUTATION_KINDS: readonly MutationKind[] = ["off-by-one", "flipped-comparison", "missing-await", "and-or-swap", "reference-equality"];
+
+/** The languages bugs are seeded in, each with its own rule tables (LRN-02). */
+export type SourceLanguage = "js" | "java";
+
+/** The language whose tables apply to `path`, or `null` when bugs cannot be seeded there. */
+export function languageOf(path: string): SourceLanguage | null {
+  if (/\.(mjs|cjs|mts|cts|js|jsx|ts|tsx)$/.test(path)) return "js";
+  if (/\.java$/.test(path)) return "java";
+  return null;
+}
 
 /** Difficulty tiers from the bug taxonomy (ADR 0035): T1 line-local, T2 control-flow/async. */
 export type DifficultyTier = "T1" | "T2" | "T3";
@@ -48,6 +58,8 @@ export const KIND_TIER: Record<MutationKind, DifficultyTier> = {
   "off-by-one": "T1",
   "flipped-comparison": "T1",
   "missing-await": "T2",
+  "and-or-swap": "T1",
+  "reference-equality": "T2",
 };
 export const TIER_POINTS: Record<DifficultyTier, number> = { T1: 10, T2: 20, T3: 30 };
 
