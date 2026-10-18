@@ -1,0 +1,23 @@
+# Sustain Cloud on one machine (CLD-10): docker compose -f cloud/docker-compose.yml up --build
+# Every setting comes from the environment; copy the variables below into a .env file beside this
+# one. Billing stays off without the Stripe keys, which gives every account every feature.
+services:
+  cloud:
+    build:
+      context: ..
+      dockerfile: cloud/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET to a long random string}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:?set GITHUB_CLIENT_ID from your GitHub OAuth app}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:?set GITHUB_CLIENT_SECRET from your GitHub OAuth app}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_TEAM_PRICE: ${STRIPE_TEAM_PRICE:-}
+    volumes:
+      - sustain-data:/data
+    restart: unless-stopped
+volumes:
+  sustain-data:

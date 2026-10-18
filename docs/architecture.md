@@ -390,6 +390,8 @@ Owners make share links in a repository's settings (CLD-06): `POST /api/v1/repos
 
 Plans (CLD-07, `cloud/plans.ts`, [ADR 0063](adr/0063-plans-are-enforced-on-the-server-and-billed-through-stripes-api.md)) belong to the account that owns the repositories. Free keeps maps of one private repository and 30 days of history; Team and Enterprise keep everything and add pull request pages, the dashboard and share links. The upload API and the share-link API answer 402 over a limit. `POST /api/v1/billing/checkout {account}` and `POST /api/v1/billing/portal {account}` answer `{url}` of a Stripe page, for an owner of one of the account's repositories. `POST /api/stripe/webhook` sets the plan from `checkout.session.completed` and `customer.subscription.updated` or `.deleted`, only with a valid `Stripe-Signature`. The environment holds `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_TEAM_PRICE`, and optionally `SUSTAIN_TEAM_PRICE_TEXT` and `STRIPE_API_URL`. Without the first three, billing is off and every account is Enterprise.
 
+Self-hosting (CLD-10): `docker build -f cloud/Dockerfile .` from the repository's root makes an image that serves the app on port 3000 with its database in the `/data` volume, and `cloud/docker-compose.yml` runs it with its settings from the environment. `GET /api/health` answers `{status: "ok"}` once the database answers, else 503, and CI's `cloud-image` job builds the image and waits for it.
+
 ### Upload API (CLD-02)
 
 | Request | Body | Answers |
