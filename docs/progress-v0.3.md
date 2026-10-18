@@ -14,7 +14,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | D6 Ship | Closed pending owner (RCH-02, RCH-05 `[ci]` `[smoke]`, the first release) | `488db5f` |
 | I1 Cost | Closed pending owner (CST-06 `[smoke]`) | `777db40` |
 | I2 Accuracy | Closed pending owner (ACC-04 `[smoke]`) | `949d927` |
-| I3 Architecture guardrails | Not started | |
+| I3 Architecture guardrails | Closed pending owner (PRC-05 `[smoke]`) | `e97077f` |
 | I4 Skill retention | Not started | |
 | I5 Cloud for teams | Not started | |
 | I6 Polish and reach | Not started | |
@@ -421,19 +421,19 @@ Done when: Evidence and audit verdicts show on the map; the scorer runs.
 
 ### I3 proposal (2026-10-19)
 
-| Location | Change | Est. LoC |
-|---|---|---|
-| `src/model/evidence/*.ts` | ARC-01: every resolved import keeps the line of its first import statement | +40 |
-| `src/model/rules.ts`, `src/model/config.ts` | ARC-01: `rules` as `{id, kind, from, to?, via?, reason}` with box ids or `path:` globs; `forbid`, `only-via` and `isolated` checked against the imports; each violation names the rule, the importing file and line, and the imported file | +200 |
-| `src/extension/rules.ts`, `package.json` | ARC-01: diagnostics at each importing line in the Problems panel, severity from `sustain.rules.severity`, recomputed when a source file or the config is saved; red arrows labelled with the rule on the map | +150 |
-| `src/model/delta.ts`, `src/model/check.ts`, `src/model/deltaMarkdown.ts`, upload schema | ARC-01: PRC-01's `violation` category for violations the diff adds, and `--fail-on violation` | +80 |
-| `src/extension/rules.ts`, `webview/viewer.ts`, `webview/home.ts`, `package.json` | ARC-02: "Forbid this dependency" on an arrow; "Only allow imports from…" and "Route dependencies through…" on a box; the sidebar's Rules section with reasons and violation counts; "Suggest rules" for box pairs with no import link; a diff preview before every config write | +260 |
-| `src/model/hotspots.ts`, `src/extension/hotspots.ts`, `webview/viewer.ts`, `webview/home.ts` | ARC-03: commits, lines changed and distinct authors per box over `sustain.hotspots.days` (90); the map's Hotspots toggle colours boxes; the tooltip shows lines and author count; the sidebar lists the five most changed boxes | +220 |
-| `src/model/agentNotes.ts`, `src/extension/agentNotes.ts`, `package.json` | ARC-04: `Sustain: Write Architecture Notes for Agents` merges a managed block into `AGENTS.md`, and into `CLAUDE.md` when it exists without an `@AGENTS.md` import, after a diff preview | +160 |
-| `src/model/diff.ts`, `src/extension/compare.ts`, `webview/viewer.ts` | FRS-07, pulled forward from I6 for PRC-03: boxes and arrows added, removed and relabelled between two maps; "Compare with…" outlines added boxes and ghosts removed ones | +200 |
-| `src/extension/review.ts`, `webview/home.ts` | PRC-03: Review offers "Compare with base map" when the branch has a newer accepted map, and "Update map for this branch" runs the refresh with `--paths` set to every candidate and stale box | +90 |
-| `src/model/health.ts`, `src/extension/home.ts`, `webview/home.ts` | ARC-05: the sidebar's Health section with freshness, uncovered changed lines since the map, open violations and the top hotspot, each opening its view | +120 |
-| `action/src/refresh.ts`, `action/action.yml`, `action/src/main.ts` | PRC-05: `refresh: claude` or `refresh: codex`; with candidates or stale boxes, the refresh runs headless with CST-06's isolation and the new run folder is committed to the pull request branch; the comment adds the map's changes and the tokens; never on forks | +250 |
+| Location | Change | Est. LoC | Built |
+|---|---|---|---|
+| `src/model/evidence/*.ts` | ARC-01: every resolved import keeps the line of its first import statement | +40 | +454 / -44 across this row and the next three |
+| `src/model/rules.ts`, `src/model/config.ts` | ARC-01: `rules` as `{id, kind, from, to?, via?, reason}` with box ids or `path:` globs; `forbid`, `only-via` and `isolated` checked against the imports; each violation names the rule, the importing file and line, and the imported file | +200 | in the row above |
+| `src/extension/rules.ts`, `package.json` | ARC-01: diagnostics at each importing line in the Problems panel, severity from `sustain.rules.severity`, recomputed when a source file or the config is saved; red arrows labelled with the rule on the map | +150 | in the row above |
+| `src/model/delta.ts`, `src/model/check.ts`, `src/model/deltaMarkdown.ts`, upload schema | ARC-01: PRC-01's `violation` category for violations the diff adds, and `--fail-on violation` | +80 | in the row above |
+| `src/extension/rules.ts`, `webview/viewer.ts`, `webview/home.ts`, `package.json` | ARC-02: "Forbid this dependency" on an arrow; "Only allow imports from…" and "Route dependencies through…" on a box; the sidebar's Rules section with reasons and violation counts; "Suggest rules" for box pairs with no import link; a diff preview before every config write | +260 | +404 / -56 with the shared diff preview |
+| `src/model/hotspots.ts`, `src/extension/hotspots.ts`, `webview/viewer.ts`, `webview/home.ts` | ARC-03: commits, lines changed and distinct authors per box over `sustain.hotspots.days` (90); the map's Hotspots toggle colours boxes; the tooltip shows lines and author count; the sidebar lists the five most changed boxes | +220 | +251 / -10 |
+| `src/model/agentNotes.ts`, `src/extension/agentNotes.ts`, `package.json` | ARC-04: `Sustain: Write Architecture Notes for Agents` merges a managed block into `AGENTS.md`, and into `CLAUDE.md` when it exists without an `@AGENTS.md` import, after a diff preview | +160 | +141 |
+| `src/model/diff.ts`, `src/extension/compare.ts`, `webview/viewer.ts` | FRS-07, pulled forward from I6 for PRC-03: boxes and arrows added, removed and relabelled between two maps; "Compare with…" outlines added boxes and ghosts removed ones | +200 | +342 / -8 with the cloud's map page |
+| `src/extension/review.ts`, `webview/home.ts` | PRC-03: Review offers "Compare with base map" when the branch has a newer accepted map, and "Update map for this branch" runs the refresh with `--paths` set to every candidate and stale box | +90 | +103 / -2 |
+| `src/model/health.ts`, `src/extension/home.ts`, `webview/home.ts` | ARC-05: the sidebar's Health section with freshness, uncovered changed lines since the map, open violations and the top hotspot, each opening its view | +120 | +149 / -2 |
+| `action/src/refresh.ts`, `action/action.yml`, `action/src/main.ts` | PRC-05: `refresh: claude` or `refresh: codex`; with candidates or stale boxes, the refresh runs headless with CST-06's isolation and the new run folder is committed to the pull request branch; the comment adds the map's changes and the tokens; never on forks | +250 | +166 / -27 with the agent home and summary moved to the model |
 
 Tests the I3 ACs call for:
 - each rule kind in each language; a violating import's diagnostic appearing and disappearing when fixed `[e2e]`;
@@ -444,6 +444,21 @@ Tests the I3 ACs call for:
 - Compare with base map and Update map for this branch `[e2e]`;
 - the Health section `[unit]` `[dom]`;
 - the refresh's decision, argv and fork refusal `[unit]`.
+
+Where the I3 build differs from the proposal:
+- Each import keeps the line of its first import statement. The rule check reads tracked and untracked source files and leaves tests out. Every rule needs `from`; a rule written from the map for `only-via` uses `path:**`.
+- The pull request check reports only the violations its diff added. The extension checks again 300 ms after a source file, the config or a map is saved. The map's red arrows join the boxes that own the two files and carry the rule ids.
+- Every config write, Review's Ignore included, shows its diff through one shared `confirmWrite`. Rules are written from the map only when it is the map the rules use. Suggest Rules leaves out boxes without code and pairs an existing `forbid` covers.
+- Hotspots read git's log with `--since-as-filter`, because `--since` stops at the first older commit and an out-of-order date hid the rest. Older git falls back to `--since`. The log is reused for a minute, levels round up by share of the busiest box, and the toggle starts off. The tooltip takes notes from several sources.
+- Archify boxes have no description, so the agents' notes give each box's sublabel and type as its role. The command sits in the palette and the map's title-bar menu, and says so when the notes are up to date.
+- FRS-07 was built here because branch maps compare with the base map. A box whose id changed matches when the two share at least half their cited files. Removed arrows are drawn when both ends are on the map. Cloud map pages offer it with `?compare=<id>`.
+- The base map is the newest accepted map with an empty focus at the merge-base. Update map for this branch covers each candidate's folder and each stale or gone box's cited files.
+- Health sits under the run card, and is measured at most every 5 s. Uncovered lines leave tests out. Its lines open the map, Show Changes, the Problems panel, or the map with hotspots shown.
+- The map update needs the agent's CLI on the runner, because the Action installs nothing, and the pull request's head checked out, because it commits there. It isolates the agent's home and environment but leaves the checkout's files as they are. ADR 0058 supersedes 0053. The agent home and the stream summary moved from the bench into the model to be shared.
+- On the map, the compare bar sits at the top, and the Checks legend moves under the toolbar while the changes bar shows.
+- Fixed along the way: the CST-01 timing test compares back-to-back pairs, after other test files running alongside skewed one side. Tests whose assertions v0.3 features changed now name those features; that commit's message says thirteen, and sixteen were renamed. ARC-01 to ARC-04 were ticked after their commits.
+
+52 deliberate breaks across I3 each failed their tests, including eight e2e breaks for ARC-01, ARC-02, ARC-04 and PRC-03.
 
 Done when: Rule violations show on the map, in Problems and in PR checks.
 
@@ -505,6 +520,7 @@ Done when: The plugin opens cited lines on AB3.
 - 2026-10-18 — D6 closed pending owner. Gates: `npm run check` exit 0 (1086 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 8 passed against the built app with the start hook. Every new test was seen to fail once with its behaviour broken: 8 deliberate breaks across D6. `[ci]`, `[smoke]` and the first release wait for the owner (see Waiting).
 - 2026-10-18 — I1 closed pending owner. Gates: `npm run check` exit 0 (1113 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after CST-03 (single 75, empty 3, multi 2 each); later I1 commits touch only the skills' fact scripts, the bench and docs. Cloud untouched since D6. 41 deliberate breaks across I1. One check run under a load average of 15 from another project's browsers timed out three unrelated tests; they passed alone and in the next full run. CST-06 `[smoke]` waits for the owner.
 - 2026-10-19 — I2 closed pending owner. Gates: `npm run check` exit 0 (1134 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after ACC-06 (single 76, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 7 passed and one failed on its 5 s wait for a signed-out page to draw while the machine was loaded. That spec passed alone in 1.3 s, and the suite now waits up to 15 s. 48 deliberate breaks across I2. ACC-04 `[smoke]` waits for the owner.
+- 2026-10-19 — I3 closed pending owner. Gates: `npm run check` exit 0 (1167 tests, 58 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after PRC-05 (single 81, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 8 passed. The web run took 4.7 minutes, because after the machine restarted a connection to an unused local port waited for its timeout instead of being refused. 52 deliberate breaks across I3. PRC-05 `[smoke]` waits for the owner.
 - 2026-10-18 — `architecture.md` had not been updated per feature during D2 to D4, as spec §7 asks; it was brought up to date at D4's close (`29f183b`) and kept current since. The layout fixtures test got a 30 s timeout: it lays out 48 diagrams and passed 5 s only narrowly when the whole suite ran in parallel.
 
 - 2026-10-18 — D4 closed pending owner. Gates: `npm run check` exit 0 (1066 tests, 53 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each). Every new test was seen to fail once with its behaviour broken: 18 deliberate breaks across D4. PRC-04 waits for a committed map of this repository and a push (see Waiting).
