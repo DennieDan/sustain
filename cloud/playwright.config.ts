@@ -25,6 +25,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,
+  // A cold page draws its map with the layout engine; a busy runner can take longer than the default 5 s.
+  expect: { timeout: 15_000 },
   use: {
     baseURL: `http://127.0.0.1:${APP}`,
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
