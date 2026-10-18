@@ -9,7 +9,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | D1 Safe to ship | Closed pending owner (ENG-01, ENG-04 `[ci]`) | `4bbac86` |
 | D2 The product in VS Code | Closed pending owner (UI-02, UI-06, SET-01 `[smoke]`) | `1d8bcf4` |
 | D3 The living map | Closed pending owner (RCH-01 `[smoke]`) | `3850c3e` |
-| D4 Pull request checks | In progress | |
+| D4 Pull request checks | Closed pending owner (PRC-04 `[ci]`) | `eced4f5` |
 | D5 Sustain Cloud v1 | Not started | |
 | D6 Ship | Not started | |
 | I1 Cost | Not started | |
@@ -28,6 +28,7 @@ Items only the owner can do, with exact steps.
 - Install and sign in to `claude`, `codex` and `devin` for `[smoke]` checks; approve any paid agent calls first (spec §6).
 - SET-01 `[smoke]`: with the default per-user install, run `/sustain-architecture` in Claude Code and `$sustain-architecture` in Codex from a repository with no `.agents/` folder, and confirm each finds the skill and its scripts.
 - UI-02 `[smoke]`: with `sustain.runMode` on "In sidebar", press Generate once with Claude Code and once with Codex in a small repository. Confirm the card shows reads, writes and validation, tokens and the final cost, and that the map opens on acceptance. Save each run's stdout (`claude -p … --output-format stream-json --verbose > claude-generate.jsonl`, `codex exec --json … > codex-generate.jsonl`) over the hand-written files in `test/fixtures/streams/`, then run `npm test`. If Claude Code reports a denial for the skill's own scripts, the `--allowedTools` rules need the folder `${CLAUDE_SKILL_DIR}` really resolves to (see "Where the D2 build differs").
+- PRC-04 `[ci]`: this repository ignores `.archify/`, so the Action has no map to check here. Generate a map with an empty focus, force-add its run folder (`git add -f .archify/<run>/candidate.json .archify/<run>/run.json .archify/<run>/fingerprints.json`), push `kerk` and open a pull request. Confirm the `sustain-check` job comments once and updates that comment on the next push, and that `action-dist` passes.
 - RCH-01 `[smoke]`: open a page written by `render-html.mjs` from disk on Windows, macOS and Linux. With each target in "Open in", click a box and note which open: VS Code, Cursor, JetBrains (needs JetBrains Toolbox), GitHub (needs a github.com origin) and Copy.
 - UI-06 `[smoke]`: ask one question per agent from the sidebar about a mapped repository. Confirm the answer cites `path:line`, the links open the lines, and a second Claude Code question resumes the session.
 
@@ -202,16 +203,26 @@ Done when: Staleness, overlay and refresh work; the diagram page works offline.
 
 ### D4 proposal (2026-10-18)
 
-| Location | Change | Est. LoC |
-|---|---|---|
-| `src/cli/sustain.ts`, `src/cli/commands.ts`, `esbuild.mjs` | RCH-03: `dist/cli/sustain.mjs` with `install`, `verify-skills`, `staleness`, `changes`, `export-page`, `preflight` and `check`; JSON or markdown; the validator's exit codes | +320 |
-| `src/model/config.ts` | PRC-01: `sustain.config.json`, its schema and reading | +90 |
-| `src/model/ownership.ts` | PRC-01: which box owns a file, by citation or by the deepest cited directory | +60 |
-| `src/model/delta.ts`, `src/model/deltaMarkdown.ts` | PRC-01: touched, stale, uncovered, new box candidates and gone boxes; the main map; `--fail-on`; markdown | +320 |
-| `src/extension/review.ts`, `webview/home.ts`, `webview/viewer.ts`, `src/model/messages.ts`, `package.json` | PRC-02: the Review changes section and command, ghost boxes, Show files, Add to map, Ignore with a diff preview | +300 |
-| `action/action.yml`, `action/src/*.ts`, `action/dist/index.js`, `esbuild.mjs`, `.github/workflows/ci.yml` | PRC-04: the Action: the check, one marked comment with a Mermaid flowchart, `fail-on`; the committed bundle checked for staleness in CI | +330 |
+| Location | Change | Est. LoC | Built |
+|---|---|---|---|
+| `src/cli/sustain.ts`, `src/cli/commands.ts`, `esbuild.mjs` | RCH-03: `dist/cli/sustain.mjs` with `install`, `verify-skills`, `staleness`, `changes`, `export-page`, `preflight` and `check`; JSON or markdown; the validator's exit codes | +320 | +303 / -13 |
+| `src/model/config.ts` | PRC-01: `sustain.config.json`, its schema and reading | +90 | +54 |
+| `src/model/ownership.ts` | PRC-01: which box owns a file, by citation or by the deepest cited directory | +60 | +57 |
+| `src/model/delta.ts`, `src/model/deltaMarkdown.ts` | PRC-01: touched, stale, uncovered, new box candidates and gone boxes; the main map; `--fail-on`; markdown | +320 | +434 / -8, with `src/model/check.ts` (136) and git helpers (48) |
+| `src/extension/review.ts`, `webview/home.ts`, `webview/viewer.ts`, `src/model/messages.ts`, `package.json` | PRC-02: the Review changes section and command, ghost boxes, Show files, Add to map, Ignore with a diff preview | +300 | +407 / -26 |
+| `action/action.yml`, `action/src/*.ts`, `action/dist/index.js`, `esbuild.mjs`, `.github/workflows/ci.yml` | PRC-04: the Action: the check, one marked comment with a Mermaid flowchart, `fail-on`; the committed bundle checked for staleness in CI | +330 | +205 / -3, plus the 40 KB bundle |
 
 `publish` (CLD-09) joins the CLI in D5.
+
+Where the D4 build differs from the proposal:
+- PRC-01's gathering sits in `src/model/check.ts`: the config, the map, the diff from the merge-base of `--base` and the head, and the code at the head through `git cat-file`. The comparison always starts at the merge-base, as a pull request's diff does.
+- "Stale boxes" are boxes whose worst citation is edited or missing, minus gone boxes, which have their own list. `--fail-on stale` fails on either.
+- A file at the repository root never forms a candidate; each uncovered file joins the highest folder above it with nothing cited below, and that group's deepest common folder is the candidate.
+- "Source files" are recognised by extension, and test files by the usual folder and name patterns; both lists are in `src/model/delta.ts`.
+- The markdown lists stop at 30 items in the pull request comment, with a count of the rest, to stay under GitHub's comment size limit.
+- RCH-03's `--root` names the repository. `install` and `verify-skills` take `--scope user|project`, and `verify-skills` takes `--agent`. The test setup builds the skills, their hashes and the CLI into `out/test-dist`, so the CLI tests run the real bundle.
+- PRC-04's `upload` input exists and logs that nothing was uploaded until CLD-09. A `github-token` input defaults to the workflow's token.
+- PRC-02's scope "this branch" compares the working tree with the default branch's merge-base, so uncommitted work counts too. Ignore writes `<folder>/**`.
 
 Tests the D4 ACs call for:
 - each CLI command against temporary repositories, as JSON and as markdown, with its exit code;
@@ -221,10 +232,10 @@ Tests the D4 ACs call for:
 
 Done when: The Action comments on this repository's pull requests; Review shows candidates.
 
-- [ ] **RCH-03 Core CLI** `[unit]`
-- [ ] **PRC-01 Delta report** `[unit]`
-- [ ] **PRC-02 Review changes in the editor** `[dom]` `[e2e]`
-- [ ] **PRC-04 GitHub Action** `[unit]` `[ci]`
+- [x] **RCH-03 Core CLI** `[unit]` — 2026-10-18: `src/cli/sustain.ts`, `src/cli/commands.ts`, built to `dist/cli/sustain.mjs` beside the skills and their hashes. `test/unit/cli.test.ts` (14): install into a project and a home, verify-skills intact, changed and missing, staleness, changes per scope, export-page with `--share`, preflight, check pass and fail with markdown, six usage errors (exit 2), a repository without a map. ADR 0052.
+- [x] **PRC-01 Delta report** `[unit]` — 2026-10-18: `src/model/check.ts`, `delta.ts`, `deltaMarkdown.ts`, `ownership.ts`, `config.ts`. `test/unit/model/check.test.ts` (15): one temporary git repository each for touched, stale, uncovered (with ignore and non-source files), candidates (a new folder with 3 files, a nested subfolder, test lines left out, an unowned folder gaining 210 lines), gone, the working tree, and `--fail-on`; the main map, `--map` and the config's map; refusals; ownership; the config schema; source and test names; a markdown snapshot (`__snapshots__/delta.md`); escaping; the Mermaid chart. Exit codes in `cli.test.ts`.
+- [x] **PRC-02 Review changes in the editor** `[dom]` `[e2e]` — 2026-10-18: `src/extension/review.ts`, the sidebar section, ghost boxes in `webview/viewer.ts`. Tests: `main.test.ts` › `PRC-02 ghost boxes`; `sidebar.test.ts` › `PRC-02 Review changes` (2); e2e `PRC-02 the branch's new folder is listed and drawn as a ghost box`, `PRC-02 Add to map launches a refresh limited to the candidate's folder`, `PRC-02 Ignore shows the change, writes the config and drops the candidate`.
+- [ ] **PRC-04 GitHub Action** `[unit]` `[ci]` — `[unit]` done 2026-10-18: `action/` with its committed bundle; `test/unit/action.test.ts` (5: a comment posted then updated on a recorded `pull_request` payload with a fake API; fail-on; hostile labels in the comment and chart; comment off and bad events; the committed bundle equals a fresh build), `noNetwork.test.ts` › `PRC-04 in the Action only the GitHub client uses the network…`, `ci.test.ts` › the `action-dist` and `sustain-check` jobs. ADR 0053. `[ci]` waits for the owner (see Waiting).
 
 ## D5 Sustain Cloud v1
 
@@ -323,6 +334,8 @@ Done when: The plugin opens cited lines on AB3.
 - [ ] **IDE-01 IntelliJ plugin** `[jvm]` `[smoke]`
 
 ## Log
+
+- 2026-10-18 — D4 closed pending owner. Gates: `npm run check` exit 0 (1066 tests, 53 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each). Every new test was seen to fail once with its behaviour broken: 18 deliberate breaks across D4. PRC-04 waits for a committed map of this repository and a push (see Waiting).
 
 - 2026-10-18 — D3 closed pending owner. The candidate watcher also lists each folder's candidates every 2 s: under a load average of 12 from another project's browser tests, two watcher e2e tests timed out on WSL because file events arrived late or not at all. SAF-07's `[e2e]` half now runs in the FRS-04 suite, as planned. Gates: `npm run check` exit 0 (1027 tests, 51 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 71, empty 3, multi 2 each). Every new test was seen to fail once with its behaviour broken: 31 deliberate breaks across D3.
 
