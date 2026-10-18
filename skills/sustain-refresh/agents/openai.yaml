@@ -1,0 +1,5 @@
+interface:
+  display_name: "Sustain Refresh"
+  short_description: "Bring a Sustain architecture diagram up to date"
+policy:
+  allow_implicit_invocation: false

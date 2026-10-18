@@ -31,7 +31,8 @@ export async function installSkill(extensionUri: vscode.Uri, root: string): Prom
   const base = skillBase(configuredScope(), root);
   const installed = SKILL_NAMES.filter((name) => skillInstalled(skillTargets(base, name)));
   if (installed.length > 0) {
-    const choice = await vscode.window.showWarningMessage(`Overwrite the existing ${installed.join(" and ")} skill${installed.length > 1 ? "s" : ""}?`, { modal: true }, "Overwrite");
+    const names = installed.length > 1 ? `${installed.slice(0, -1).join(", ")} and ${installed.at(-1)!}` : installed[0]!;
+    const choice = await vscode.window.showWarningMessage(`Overwrite the existing ${names} skill${installed.length > 1 ? "s" : ""}?`, { modal: true }, "Overwrite");
     if (choice !== "Overwrite") return "cancelled";
   }
   const kinds = new Set<"symlink" | "copy">();

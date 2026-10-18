@@ -90,11 +90,12 @@ const SCRIPT_NODE = process.env["SUSTAIN_SCRIPT_NODE"] ?? process.execPath;
 export function runScript(script: "validate", args: string[], options: RunOptions): ScriptRun<ValidateReport>;
 export function runScript(script: "repo-facts", args: string[], options: RunOptions): ScriptRun<RepoFacts>;
 export function runScript(script: "session", args: string[], options: RunOptions): ScriptRun<SessionReport>;
+export function runScript(script: "refresh-facts", args: string[], options: RunOptions): ScriptRun<Record<string, unknown>>;
 export function runScript(
-  script: "validate" | "repo-facts" | "session",
+  script: "validate" | "repo-facts" | "session" | "refresh-facts",
   args: string[],
   options: RunOptions,
-): ScriptRun<ValidateReport | RepoFacts | SessionReport> {
+): ScriptRun<ValidateReport | RepoFacts | SessionReport | Record<string, unknown>> {
   const result = spawnSync(SCRIPT_NODE, [join(SCRIPTS_DIR, `${script}.mjs`), ...args], {
     cwd: options.cwd,
     encoding: "utf8",
@@ -105,7 +106,7 @@ export function runScript(
     stdout: result.stdout,
     stderr: result.stderr,
     // Names the documented output contract; the tests assert every field they read.
-    json: () => JSON.parse(result.stdout) as ValidateReport | RepoFacts | SessionReport,
+    json: () => JSON.parse(result.stdout) as ValidateReport | RepoFacts | SessionReport | Record<string, unknown>,
   };
 }
 

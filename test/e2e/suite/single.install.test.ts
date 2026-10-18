@@ -1,4 +1,4 @@
-// FR-INS-01 in a single-folder workspace: both skills, and since spec v0.3 SAF-06 no hooks
+// FR-INS-01 in a single-folder workspace: every skill, and since spec v0.3 SAF-06 no hooks
 // and no .gitignore line at install time.
 import * as assert from "node:assert/strict";
 import { existsSync, lstatSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
@@ -28,7 +28,7 @@ suite("FR-INS-01 Install Agent Skills", () => {
     rmSync(join(root, ".gitignore"), { force: true });
   });
 
-  test("SAF-06 a fresh install copies both skills, links .claude and leaves .devin and .gitignore alone", async () => {
+  test("SAF-06 FRS-05 a fresh install copies every skill, links .claude and leaves .devin and .gitignore alone", async () => {
     await vscode.commands.executeCommand("sustain.installSkills");
     for (const file of ["SKILL.md", "agents/openai.yaml", "references/archify-format.md", "references/example.json", "scripts/validate.mjs", "scripts/repo-facts.mjs"]) {
       assert.ok(existsSync(join(home, ".agents/skills/sustain-architecture", file)), file);
@@ -36,7 +36,10 @@ suite("FR-INS-01 Install Agent Skills", () => {
     for (const file of ["SKILL.md", "agents/openai.yaml", "references/bug-taxonomy.md", "scripts/session.mjs", "scripts/session-hook.mjs"]) {
       assert.ok(existsSync(join(home, ".agents/skills/sustain-bugfix", file)), file);
     }
-    for (const name of ["sustain-architecture", "sustain-bugfix"]) {
+    for (const file of ["SKILL.md", "agents/openai.yaml", "references/archify-format.md", "scripts/refresh-facts.mjs", "scripts/validate.mjs"]) {
+      assert.ok(existsSync(join(home, ".agents/skills/sustain-refresh", file)), file);
+    }
+    for (const name of ["sustain-architecture", "sustain-bugfix", "sustain-refresh"]) {
       const link = join(home, ".claude/skills", name);
       assert.equal(lstatSync(link).isSymbolicLink(), true);
       assert.equal(readlinkSync(link), `../../.agents/skills/${name}`);
@@ -57,7 +60,7 @@ suite("FR-INS-01 Install Agent Skills", () => {
     ui.answers.warning.push("Overwrite");
     await vscode.commands.executeCommand("sustain.installSkills");
     assert.equal(ui.warnings.length, 1);
-    assert.equal(ui.warnings[0]!.message, "Overwrite the existing sustain-architecture and sustain-bugfix skills?");
+    assert.equal(ui.warnings[0]!.message, "Overwrite the existing sustain-architecture, sustain-bugfix and sustain-refresh skills?");
     assert.deepEqual(ui.warnings[0]!.rest, [{ modal: true }, "Overwrite"]);
     assert.equal(existsSync(marker), false, "overwrite removes the old install first");
     assert.equal(lstatSync(join(home, ".claude/skills/sustain-architecture")).isSymbolicLink(), true);

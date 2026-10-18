@@ -22,6 +22,7 @@ const common = {
 /** The script entry points, emitted as `<name>.mjs`. @type {Record<string, string>} */
 const SCRIPT_ENTRIES = {
   "repo-facts": "src/agent/repo-facts.ts",
+  "refresh-facts": "src/agent/refresh-facts.ts",
   validate: "src/agent/validate.ts",
   session: "src/agent/session.ts",
   "session-hook": "src/agent/session-hook.ts",
@@ -101,6 +102,9 @@ async function buildDist() {
   cpSync(join(root, "skills"), join(dist, "skills"), { recursive: true });
   results.push(await buildScripts(join(dist, "skills/sustain-architecture/scripts"), ["repo-facts", "validate"]));
   results.push(await buildScripts(join(dist, "skills/sustain-bugfix/scripts"), ["session", "session-hook"]));
+  // The refresh skill reads the same format reference as the architecture skill (FRS-05).
+  cpSync(join(root, "skills/sustain-architecture/references"), join(dist, "skills/sustain-refresh/references"), { recursive: true });
+  results.push(await buildScripts(join(dist, "skills/sustain-refresh/scripts"), ["refresh-facts", "validate"]));
   writeSkillHashes();
 
   results.push(await esbuild.build({

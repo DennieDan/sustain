@@ -66,10 +66,32 @@ describe("FR-SKL-03 format reference", () => {
 });
 
 describe("SET-01 install anywhere", () => {
-  test.each(["sustain-architecture", "sustain-bugfix"])("%s finds its scripts through its own folder, never a repository path", (name) => {
+  test.each(["sustain-architecture", "sustain-bugfix", "sustain-refresh"])("%s finds its scripts through its own folder, never a repository path", (name) => {
     const text = readFileSync(join(repoRoot, "skills", name, "SKILL.md"), "utf8");
     expect(text).not.toContain(".agents/skills/");
     expect(text).not.toContain(".claude/skills/");
     expect(text).toContain("${CLAUDE_SKILL_DIR}/scripts/");
+  });
+});
+
+describe("FRS-05 refresh skill", () => {
+  const refreshDir = join(repoRoot, "skills/sustain-refresh");
+
+  test("SKILL.md declares the manual-only skill with its two scripts", () => {
+    expect(parseFrontMatter(readFileSync(join(refreshDir, "SKILL.md"), "utf8"))?.fields).toEqual({
+      name: "sustain-refresh",
+      description: "Bring an existing Sustain architecture diagram up to date with the code. Invoke manually with --from <run folder> and optional --paths <glob>.",
+      "disable-model-invocation": "true",
+      "allowed-tools": "Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/refresh-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *)",
+    });
+    expect(parseNestedYaml(readFileSync(join(refreshDir, "agents/openai.yaml"), "utf8"))).toEqual({
+      interface: { display_name: "Sustain Refresh", short_description: "Bring a Sustain architecture diagram up to date" },
+      policy: { allow_implicit_invocation: false },
+    });
+  });
+
+  test("it re-examines only what changed and keeps unchanged ids", () => {
+    const text = readFileSync(join(refreshDir, "SKILL.md"), "utf8");
+    for (const phrase of ["`boxes`", "`moved`", "`uncovered`", "`newFolders`", "With `paths`, change nothing outside that scope.", "including its `id`"]) expect(text).toContain(phrase);
   });
 });

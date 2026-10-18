@@ -66,6 +66,22 @@ export function applyAppOwnedFields(value: unknown, app: AppOwned): string[] {
   return removed;
 }
 
+/**
+ * `value` without the fields the validator owns, so it can start a new draft (FRS-05). The
+ * validator sets them again on acceptance.
+ */
+export function stripAppOwned(value: unknown): unknown {
+  const copy: unknown = structuredClone(value);
+  if (!isJsonObject(copy)) return copy;
+  const removed: string[] = [];
+  dropKeys(copy, ["layout"], "", removed);
+  if (isJsonObject(copy["meta"])) dropKeys(copy["meta"], [...META_DROPS, "locale", "quality_profile", "output", "repository"], "/meta", removed);
+  dropInArray(copy, "components", COMPONENT_DROPS, removed);
+  dropInArray(copy, "connections", CONNECTION_DROPS, removed);
+  dropInArray(copy, "boundaries", BOUNDARY_DROPS, removed);
+  return copy;
+}
+
 export interface SubmissionResult {
   /** Pointers of fields removed in step 1 (reported as warnings). */
   removed: string[];

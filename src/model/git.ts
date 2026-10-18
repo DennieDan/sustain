@@ -182,6 +182,51 @@ export function diffFor(root: string, scope: ChangeScope, env: NodeJS.ProcessEnv
   }
   const text = run(program, root, [...GIT_PREFIX, ...DIFF_FLAGS, ...revisions, "--"]);
   if (text === null) return { ok: false, reason: `git diff ${revisions.join(" ")} failed.` };
-  const untracked = scope.kind === "range" ? [] : (run(program, root, [...GIT_PREFIX, "ls-files", "--others", "--exclude-standard", "-z"]) ?? "").split("\0").filter((path) => path !== "");
+  const untracked = scope.kind === "range" ? [] : untrackedFiles(root, env);
   return { ok: true, text, untracked };
+}
+
+/** One changed file's line counts; `null` counts for a binary file. */
+export interface ChangeStat {
+  path: string;
+  added: number | null;
+  deleted: number | null;
+}
+
+/** Files changed since `revision`, working tree included, from `git diff --numstat -M -z` (FRS-05). */
+export function numstatSince(root: string, revision: string, env: NodeJS.ProcessEnv = process.env): ChangeStat[] | null {
+  const program = gitProgram(env);
+  if (program === undefined || !REVISION_PATTERN.test(revision)) return null;
+  const output = run(program, root, [...GIT_PREFIX, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "--numstat", "-M", "-z", revision, "--"]);
+  if (output === null) return null;
+  const stats: ChangeStat[] = [];
+  const fields = output.split("\0");
+  for (let i = 0; i < fields.length; i++) {
+    const record = /^(-|\d+)\t(-|\d+)\t(.*)$/.exec(fields[i]!);
+    if (!record) continue;
+    const count = (value: string): number | null => (value === "-" ? null : Number(value));
+    // A rename has an empty path field followed by the old and new paths.
+    let path = record[3]!;
+    if (path === "") {
+      path = fields[i + 2] ?? "";
+      i += 2;
+    }
+    stats.push({ path, added: count(record[1]!), deleted: count(record[2]!) });
+  }
+  return stats;
+}
+
+/** Untracked files that are not ignored, repository-relative. */
+export function untrackedFiles(root: string, env: NodeJS.ProcessEnv = process.env): string[] {
+  const program = gitProgram(env);
+  if (program === undefined) return [];
+  return (run(program, root, [...GIT_PREFIX, "ls-files", "--others", "--exclude-standard", "-z"]) ?? "").split("\0").filter((path) => path !== "");
+}
+
+/** The top-level folders that existed at `revision`, or `null` when git cannot tell. */
+export function foldersAt(root: string, revision: string, env: NodeJS.ProcessEnv = process.env): Set<string> | null {
+  const program = gitProgram(env);
+  if (program === undefined || !REVISION_PATTERN.test(revision)) return null;
+  const output = run(program, root, [...GIT_PREFIX, "ls-tree", "-d", "--name-only", "-z", revision]);
+  return output === null ? null : new Set(output.split("\0").filter((name) => name !== ""));
 }

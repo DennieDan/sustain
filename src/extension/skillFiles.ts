@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { assertWritable } from "../model/confine";
 
 /** The skills `Sustain: Install Agent Skills` ships: architecture + the learning session. */
-export const SKILL_NAMES: readonly string[] = ["sustain-architecture", "sustain-bugfix"];
+export const SKILL_NAMES: readonly string[] = ["sustain-architecture", "sustain-bugfix", "sustain-refresh"];
 
 /** Repo-relative `.agents/skills/<name>`, `/`-separated (also used in messages). */
 export function agentsSkillDir(name: string): string {

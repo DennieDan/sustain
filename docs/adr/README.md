@@ -7,7 +7,7 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0001](0001-record-architecture-decisions-with-madr.md) | Record architecture decisions with MADR | accepted | 2026-10-10 |
 | [0002](0002-external-coding-agent-generates-diagrams.md) | External coding agent generates diagrams through a skill | accepted | 2026-10-10 |
 | [0003](0003-target-claude-code-and-codex.md) | Target Claude Code and Codex | accepted | 2026-10-10 |
-| [0004](0004-one-skill-with-bundled-scripts.md) | One skill with bundled repo-facts and validate scripts | accepted | 2026-10-10 |
+| [0004](0004-one-skill-with-bundled-scripts.md) | One skill with bundled repo-facts and validate scripts | superseded by [ADR-0049](0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md) | 2026-10-10 |
 | [0005](0005-manual-invocation-and-claude-pre-approvals.md) | Manual skill invocation and Claude tool pre-approvals | accepted | 2026-10-10 |
 | [0006](0006-install-skill-into-agents-with-claude-symlink.md) | Install the skill into .agents/skills with a .claude symlink | superseded by [ADR-0044](0044-skills-install-per-user-by-default.md) | 2026-10-10 |
 | [0007](0007-validator-as-dependency-free-node-bundles.md) | Validator and repo facts as dependency-free Node bundles | accepted | 2026-10-10 |
@@ -52,3 +52,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0046](0046-generate-streams-headless-runs-into-the-sidebar.md) | Generate streams headless runs into the sidebar | accepted | 2026-10-18 |
 | [0047](0047-the-viewer-reaches-its-host-through-a-bridge.md) | The viewer reaches its host through a bridge and colours itself from tokens | accepted | 2026-10-18 |
 | [0048](0048-maps-show-staleness-from-fingerprints.md) | Maps show staleness from fingerprints on load and on change | accepted | 2026-10-18 |
+| [0049](0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md) | A refresh skill updates a map from its fingerprints | accepted | 2026-10-18 |

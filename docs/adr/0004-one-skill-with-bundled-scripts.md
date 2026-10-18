@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0049](0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md)
 date: 2026-10-10
 decision-makers: owner
 ---
