@@ -17,7 +17,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | I3 Architecture guardrails | Closed pending owner (PRC-05 `[smoke]`) | `e97077f` |
 | I4 Skill retention | Closed pending owner (LRN-01 `[smoke]`) | `5b7a19c` |
 | I5 Cloud for teams | Waiting for the owner (CLD-12 hard stop, CLD-10 `[ci]`, CLD-07 Stripe products) | `f732167` |
-| I6 Polish and reach | Not started | |
+| I6 Polish and reach | In progress | |
 | I7 IntelliJ plugin | Not started | |
 
 ## Waiting
@@ -559,6 +559,29 @@ Done when: Dashboard, billing and self-hosting work.
 - [x] **CLD-13 Export and audit** `[unit]` `[web]` — 2026-10-19: `cloud/src/lib/exportData.ts`, `cloud/src/lib/retention.ts`, `auditLog` in `store.ts`, migration `0004_upload_audit` (each upload's token and size), the export route, the settings' Your data and Uploads sections, and the daily job in `instrumentation.ts`. Tests: `export.test.ts` (3: the audit log's signers and sizes; the export without any secret; retention by plan, keeping the newest default-branch map), `cld13-export.spec.ts` (the audit log in settings, and the JSON download).
 
 ## I6 Polish and reach
+
+### I6 proposal (2026-10-19)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `src/layout/worker.ts`, `src/layout/layout.ts`, `webview/layoutWorkers.ts`, `esbuild.mjs`, `src/extension/html.ts`, `src/model/page.ts` | VWR-02: ELK runs in two Web Workers started from Blob URLs, one per direction, in parallel; the worker's code is built separately and embedded as a string; the webview's and the page's CSP gain `worker-src blob:`; Node and tests run the same function in the thread | +160 |
+| `webview/finder.ts`, `webview/viewer.ts` | VWR-03: Find with `/` or Ctrl/⌘+F filters boxes by label, sublabel or cited path; Enter centres and zooms on a match, and the arrow keys cycle | +150 |
+| `webview/render.ts`, `webview/viewer.ts`, `webview/a11y.ts` | VWR-04: boxes take focus with Tab and open their code with Enter, with a focus ring, accessible names and a hidden list for screen readers | +120 |
+| `src/agent/repo-facts.ts`, `skills/sustain-architecture/SKILL.md`, `src/extension/drill.ts`, `webview/viewer.ts`, `package.json` | VWR-05: "Map this box in detail" in the box menu runs Generate focused on the box with `--parent <run>`; `repo-facts.mjs --parent` records a drill run; a drill-down map offers "Back to overview" | +150 |
+| `webview/imageExport.ts`, `src/extension/panel.ts`, `package.json` | VWR-06: Save Image in the map's title bar writes the map as SVG or PNG through a save dialog | +140 |
+| `src/extension/agents.ts`, `src/extension/generate.ts`, `webview/home.ts`, `skills/*/SKILL.md` | RCH-04: Devin in the composer, in terminal mode; `triggers: [user]` in every skill; "Copy prompt for…" GitHub Copilot agent mode, Cursor's agent, Gemini CLI, OpenCode and Devin Desktop | +140 |
+| `docs/messages.md`, `src/extension/*.ts`, `test/unit/messages.test.ts` | SET-04: every user-visible message in `docs/messages.md` with its ID, text and action; each error and warning offers exactly one action; a source scan keeps the two in step | +220 |
+| `src/model/usageLog.ts`, `src/extension/usageLog.ts`, `package.json` | SET-05: `sustain.usageLog` (off by default) keeps daily counts of fixed event names; Export Usage Log through a save dialog and Clear Usage Log | +150 |
+| `src/extension/removeSustain.ts`, `package.json` | SAF-08: `Sustain: Remove Sustain from This Folder`, also in the sidebar's title bar: repository skills, hook entries, exclude lines and the `AGENTS.md` block go; `.archify/`, `.sustain/` and `sustain.config.json` go after asking; the per-user skills are offered | +160 |
+| `scripts/check-docs.mjs` | ENG-03: every ID this spec defines is on exactly one checklist line of progress, and every requirement-shaped ID in progress is defined here or in `spec.md` | +80 |
+| `docs/adr/` | ADRs for layout in workers (superseding ADR 0010) and more agents (superseding ADR 0003) | 2 ADRs |
+
+Tests the I6 ACs call for:
+- VWR-02: worker and in-thread layouts identical `[unit]`; the 60/120 median under 1 s on CI `[ci]`.
+- VWR-03: the finder `[dom]`. VWR-04: focus, Enter and the screen-reader list `[dom]`. VWR-06: the SVG and PNG export `[dom]`.
+- VWR-05: Map this box in detail and Back to overview `[e2e]`.
+- RCH-04: the prompt formats `[unit]`; one Devin run `[smoke]`.
+- SET-04: the source scan `[unit]`. SET-05: the log `[unit]` and its commands `[e2e]`. SAF-08: the removal `[e2e]`. ENG-03: the traceability check `[unit]`.
 
 Done when: Gates green.
 
