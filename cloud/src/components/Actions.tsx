@@ -1,6 +1,7 @@
 "use client";
-// Owner actions on the settings pages (CLD-03, CLD-11): each asks first when it deletes, calls the
-// API from this site, and reloads the page.
+// Owner actions on the settings pages (CLD-03, CLD-06, CLD-11): each asks first when it deletes, calls
+// the API from this site, and reloads the page.
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 async function call(method: string, url: string, body?: unknown): Promise<Response> {
@@ -65,6 +66,37 @@ export function NewToken({ url }: { url: string }) {
       {shown ? (
         <p>
           Copy it now; it will not be shown again: <code className="new-token">{shown}</code>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** CLD-06: makes a share link that lasts the chosen days, and shows it once. */
+export function NewShareLink({ url, days }: { url: string; days: readonly number[] }) {
+  const [shown, setShown] = useState<string | null>(null);
+  const router = useRouter();
+  return (
+    <div>
+      {days.map((count) => (
+        <button
+          key={count}
+          type="button"
+          className="button"
+          onClick={async () => {
+            const response = await call("POST", url, { days: count });
+            if (!response.ok) return;
+            setShown(`${window.location.origin}${((await response.json()) as { url: string }).url}`);
+            // The list of links is drawn on the server; refreshing it keeps the link shown here.
+            router.refresh();
+          }}
+        >
+          Share for {count} {count === 1 ? "day" : "days"}
+        </button>
+      ))}
+      {shown ? (
+        <p>
+          Copy the link now. It will not be shown again: <code className="new-share">{shown}</code>
         </p>
       ) : null}
     </div>

@@ -8,6 +8,13 @@ export function newToken(): string {
   return `${TOKEN_PREFIX}${randomBytes(32).toString("base64url")}`;
 }
 
+/** CLD-06: share links are tokens too, hashed the same way. */
+export const SHARE_PREFIX = "shr_";
+
+export function newShareToken(): string {
+  return `${SHARE_PREFIX}${randomBytes(24).toString("base64url")}`;
+}
+
 export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }

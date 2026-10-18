@@ -538,7 +538,7 @@ Tests the I5 ACs call for:
 Done when: Dashboard, billing and self-hosting work.
 
 - [x] **CLD-05 Team dashboard** `[web]` `[unit]` — 2026-10-19: `cloud/src/lib/dashboard.ts` and the `/<owner>` page. Tests: `dashboard.test.ts` (2: a repository's row from its map and checks; no person in the dashboard, nor a field for one in the closed upload schema), `cld05-dashboard.spec.ts` (an organization's row with its figures, hotspot and pull request link).
-- [ ] **CLD-06 Share links** `[web]`
+- [x] **CLD-06 Share links** `[web]` — 2026-10-19: the `share_links` table (migration `0002_share_links`), `cloud/src/lib/shares.ts`, the shares API, `/s/<token>` and the settings section. Tests: `cld06-share.spec.ts` (a 7-day link opens a private map to a signed-out visitor, and answers 404 once revoked), `shares.test.ts` (expiry, revocation and only the hash stored, which `[web]` cannot reach because the server's clock is real).
 - [ ] **CLD-07 Plans and billing** `[unit]` `[web]`
 - [ ] **CLD-10 Self-hosting** `[ci]`
 - [ ] **CLD-12 Share from the extension** `[unit]` `[e2e]` — waits for the owner's go (hard stop: network access in shipped extension code; see Waiting).

@@ -1,9 +1,10 @@
-// A repository's settings, for its owners: upload tokens, public maps, and deleting maps or all
-// of its data (CLD-02, CLD-03, CLD-11).
+// A repository's settings, for its owners: upload tokens, public maps, share links, and deleting maps
+// or all of its data (CLD-02, CLD-03, CLD-06, CLD-11).
 import { notFound, redirect } from "next/navigation";
-import { DeleteButton, NewToken, PublicToggle } from "../../../../components/Actions";
+import { DeleteButton, NewShareLink, NewToken, PublicToggle } from "../../../../components/Actions";
 import { checkAccess } from "../../../../lib/access";
 import { services } from "../../../../lib/services";
+import { listShares, SHARE_DAYS } from "../../../../lib/shares";
 import { listTokens, mapHistory } from "../../../../lib/store";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export default async function RepositorySettings({ params }: { params: Promise<{
   const api = `/api/v1/repos/${owner}/${name}`;
   const maps = await mapHistory(db, access.repo.id);
   const tokens = await listTokens(db, access.repo.id);
+  const shares = await listShares(db, access.repo.id, now());
   return (
     <main className="page">
       <h1>
@@ -41,6 +43,17 @@ export default async function RepositorySettings({ params }: { params: Promise<{
       <h2>Visibility</h2>
       <PublicToggle url={`${api}/public`} value={access.repo.publicMaps} allowed={!access.repo.private} />
       {access.repo.private ? <p className="muted">A private repository&apos;s maps stay private.</p> : null}
+      <h2>Share links</h2>
+      <p className="muted">A share link shows the main map read-only to anyone who has it, without signing in, until it expires or you revoke it.</p>
+      <ul className="shares">
+        {shares.map((share) => (
+          <li key={share.id}>
+            Link {share.id} <span className="muted">expires {share.expiresAt.toISOString().slice(0, 16).replace("T", " ")}</span>{" "}
+            <DeleteButton url={`${api}/shares/${share.id}`} label="Revoke" confirmText="Revoke this link now?" />
+          </li>
+        ))}
+      </ul>
+      <NewShareLink url={`${api}/shares`} days={SHARE_DAYS} />
       <h2>Maps</h2>
       <ul className="maps">
         {maps.map((map) => (

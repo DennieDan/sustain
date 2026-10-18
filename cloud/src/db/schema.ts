@@ -1,4 +1,4 @@
-// Sustain Cloud's tables (CLD-01, CLD-02, CLD-11). Maps and checks are stored as validated JSON;
+// Sustain Cloud's tables (CLD-01, CLD-02, CLD-06, CLD-11). Maps and checks are stored as validated JSON;
 // nothing here ever holds code. Deleting a user or repository removes everything under it.
 import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
 
@@ -77,4 +77,15 @@ export const tokens = pgTable("tokens", {
   createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+});
+
+/** CLD-06: read-only links to a repository's map. Only the link's SHA-256 is stored. */
+export const shareLinks = pgTable("share_links", {
+  id: serial("id").primaryKey(),
+  repoId: integer("repo_id").notNull().references(() => repositories.id, { onDelete: "cascade" }),
+  hash: text("hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -62,4 +62,18 @@ CREATE TABLE tokens (
 );
 `,
   },
+  {
+    id: "0002_share_links",
+    sql: `
+CREATE TABLE share_links (
+  id serial PRIMARY KEY,
+  repo_id integer NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+  hash text NOT NULL UNIQUE,
+  expires_at timestamptz NOT NULL,
+  revoked_at timestamptz,
+  created_by integer REFERENCES users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+`,
+  },
 ];

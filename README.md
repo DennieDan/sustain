@@ -67,7 +67,7 @@ Setting `fail-on: stale,new-box` in the Action's `with:` block fails the check o
 2. On the default branch, run `node sustain.mjs publish --url <cloud address>` with the token in `SUSTAIN_TOKEN`. `sustain.mjs` comes with each [release](https://github.com/xplus2g4/sustain/releases).
 3. In the Action's `with:` block, set `upload: true` and `cloud-url: <cloud address>`, and add `id-token: write` to the permissions. Each pull request then gets its own page.
 
-The map appears at `/<owner>/<repo>` and each pull request at `/<owner>/<repo>/pull/<n>`. `/<owner>` is the team's dashboard: each repository's map age, stale boxes, uncovered files, rule violations, most changed boxes, trend and recent pull requests, with no figure about any one person. Only maps and check results are uploaded, never code.
+The map appears at `/<owner>/<repo>` and each pull request at `/<owner>/<repo>/pull/<n>`. In a repository's settings, owners make read-only share links to its map that expire after 1, 7 or 30 days and can be revoked. `/<owner>` is the team's dashboard: each repository's map age, stale boxes, uncovered files, rule violations, most changed boxes, trend and recent pull requests, with no figure about any one person. Only maps and check results are uploaded, never code.
 
 ## Where to find it
 
