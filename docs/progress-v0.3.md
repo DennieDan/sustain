@@ -15,7 +15,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | I1 Cost | Closed pending owner (CST-06 `[smoke]`) | `777db40` |
 | I2 Accuracy | Closed pending owner (ACC-04 `[smoke]`) | `949d927` |
 | I3 Architecture guardrails | Closed pending owner (PRC-05 `[smoke]`) | `e97077f` |
-| I4 Skill retention | Not started | |
+| I4 Skill retention | In progress | |
 | I5 Cloud for teams | Not started | |
 | I6 Polish and reach | Not started | |
 | I7 IntelliJ plugin | Not started | |
@@ -472,6 +472,28 @@ Done when: Rule violations show on the map, in Problems and in PR checks.
 - [x] **FRS-07 Compare maps** `[unit]` `[dom]` (pulled forward from I6 for PRC-03) — 2026-10-19: `src/model/diff.ts`, `src/extension/compare.ts`, the viewer's compare overlay and bar, the cloud map page's `?compare=<id>`. Tests: `diff.test.ts` (2: boxes matched by id or by shared files with arrows following them, and a map against itself), `main.test.ts` › FRS-07 (added outlined, removed see-through with no menu, the bar and Clear, clearing).
 
 ## I4 Skill retention
+
+### I4 proposal (2026-10-19)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `src/model/practice.ts` | SKL-01: the prompt that asks for three questions about a scope, and the prompt that grades one answer; the checks on the agent's JSON, three questions each with `question`, `key` and a `path:line` citation, and a grade of `correct`, `partial` or `wrong` with one sentence and a citation | +180 |
+| `src/extension/practice.ts`, `package.json` | SKL-01: `Sustain: Check My Understanding` and the box menu's "Check my understanding"; the scopes this branch's changes, uncommitted changes and a box; UI-06's read-only agent for the questions and for each grade; the keys kept in the extension host; results in workspace state | +260 |
+| `src/model/messages.ts`, `webview/home.ts`, `webview/sidebar.css` | SKL-01: the sidebar's Practice section with the three scopes, the questions with an answer box each, and each grade with its sentence and code link | +170 |
+| `src/model/tour.ts`, `src/model/schemas/tour.schema.json`, `src/agent/tour-record.ts`, `skills/sustain-tour/` | SKL-02: `tour.json` with 4–12 ordered stops, each checked against the map's boxes and the code; `tour-record.mjs`; the `sustain-tour` skill | +260 |
+| `src/extension/tour.ts`, `webview/viewer.ts`, `webview/tour.ts`, `package.json` | SKL-02: the map's title-bar Tour and the maps list's Create tour; the player highlights the stop's box, opens its code beside, explains, asks and reveals the answer, with Back, Next and End | +250 |
+| `src/model/upload.ts`, upload schema, `src/cli/commands.ts`, `cloud/src/lib/mapPage.ts`, `webview/page.ts` | SKL-02: `publish` uploads the tour as a sidecar, and the cloud's map page plays it with each stop's code opening on GitHub | +80 |
+| `src/model/practiceLog.ts`, `src/extension/practice.ts`, `webview/home.ts` | SKL-03: the Practice section lists bug-hunt sessions from `.sustain/`, and explain-back scores and finished tours from workspace state, newest first with dates | +120 |
+| `src/extension/learn.ts`, `src/extension/hooksFiles.ts`, `src/agent/session-hook.ts` | LRN-01: Start Learning offers Claude Code, Codex and Devin. A launch merges its agent's hooks, into `.claude/settings.local.json` (matcher `Edit\|Write\|NotebookEdit\|Agent`), `.codex/hooks.json` (matcher `apply_patch`) or `.devin/hooks.v1.json`, and removes Sustain's entries from the other two, so the Devin CLI meets one entry. Removal at the session's end covers all three. The hook blocks the Claude Code and Codex tool names and finds the repository from its event's `cwd` | +200 |
+| `src/agent/modes/bugfix/mutations.ts`, `src/model/session.ts`, `src/agent/session.ts`, `skills/sustain-bugfix/references/bug-taxonomy.md` | LRN-02: Java rule tables for off-by-one and flipped comparison, with generic type arguments left alone, plus `and-or-swap` (T1) and `reference-equality` (T2); `inject` takes `.java` files and the kinds of their language | +150 |
+| `docs/adr/` | ADRs for the explain-back keys staying in the extension host, `tour.json` and tours in the cloud, hunt enforcement on Claude Code and Codex, and bug kinds per language | 4 ADRs |
+
+Tests the I4 ACs call for:
+- SKL-01: the prompts and the question and grade checks `[unit]`; no answer key in the sidebar's DOM `[dom]`; a stub agent's questions and grade shown in the sidebar `[e2e]`.
+- SKL-02: the recorder `[unit]`; the player `[dom]`; Tour on a recorded tour opening the first stop's code beside the map `[e2e]`.
+- SKL-03: the log's entries from sessions, explain-backs and tours `[unit]`; the Practice section `[dom]`.
+- LRN-01: the hooks merge and removal for Claude Code and Codex, and the hook's verdicts on their tool names `[unit]`; Start Learning with a stub Claude Code merging its hooks, and a released lock removing them `[e2e]`; one real session per agent `[smoke]`.
+- LRN-02: each Java kind on AB3-style fixtures, with generics, strings and comments left alone `[unit]`.
 
 Done when: Explain-back, tours and sessions on every agent work.
 
