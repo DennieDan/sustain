@@ -267,6 +267,9 @@
       ]
     }
   },
+  "workspaces": [
+    "cloud"
+  ],
   "scripts": {
     "build": "node esbuild.mjs",
     "action": "node esbuild.mjs --action",

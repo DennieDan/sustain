@@ -10,3 +10,8 @@ out/
 .claude/
 .devin/
 !action/dist/
+.next/
+*.tsbuildinfo
+cloud/.data/
+cloud/test-results/
+cloud/playwright-report/
