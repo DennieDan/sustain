@@ -93,6 +93,7 @@ Every command is also in the Command Palette under "Sustain".
 - Click a box to open the code it cites, with the cited lines selected.
 - Hover a box to see its description and every source it cites.
 - **Find in Map** in the title bar, `/` or Ctrl/⌘+F finds boxes by label, sublabel or cited path. Enter centres on a match, and the arrow keys move between matches.
+- Tab moves through the boxes, and Enter or Space opens a box's code. Each box's accessible name says what it is and which code it opens, and screen readers also get a list of every box and arrow.
 - Drag or scroll to pan. Zoom with Ctrl or ⌘ and scroll, a pinch, the toolbar or the keys `+`, `-`, `0` and `f`.
 - A badge marks each box whose code was edited or removed since the map was made. Moved code still opens at the right lines.
 - **Show Changes on Diagram** marks the boxes touched by your uncommitted changes, your branch or a commit range, and lists the changes no box covers.

@@ -30,7 +30,7 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-test("SAF-03 hostile labels, tags, paths and source labels render as plain text", () => {
+test("SAF-03 VWR-04 hostile labels, tags, paths and source labels render as plain text", () => {
   vi.useFakeTimers();
   const svg = document.createElementNS(SVG_NS, "svg");
   const content = document.createElementNS(SVG_NS, "g");
@@ -47,7 +47,9 @@ test("SAF-03 hostile labels, tags, paths and source labels render as plain text"
   expect(tooltipElement.hidden).toBe(false);
 
   expect(document.querySelectorAll("img, script, a, iframe")).toHaveLength(0);
-  expect(document.body.innerHTML).not.toContain("<img");
+  // A box's accessible name holds the label as attribute text, which serializes `<` as it is.
+  expect(svg.querySelector('.node[data-id="evil"]')!.getAttribute("aria-label")).toContain(HOSTILE);
+  expect(document.body.innerHTML.replace(/ aria-label="[^"]*"/g, "")).not.toContain("<img");
   expect(svg.textContent).toContain(HOSTILE);
   expect(tooltipElement.textContent).toContain(HOSTILE);
   expect(tooltipElement.textContent).toContain(LINK);

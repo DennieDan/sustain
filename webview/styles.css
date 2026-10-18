@@ -705,3 +705,27 @@ body {
 .node--found-current .node__box {
   stroke-width: 4px;
 }
+
+/* Keyboard and screen readers (VWR-04): a focus ring on the box in focus, and text only screen readers read */
+
+.node:focus {
+  outline: none;
+}
+
+.node:focus-visible .node__box {
+  stroke: var(--sustain-accent);
+  stroke-width: 3px;
+  stroke-dasharray: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

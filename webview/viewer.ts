@@ -11,6 +11,7 @@ import { readDiagram, type ViewDiagram } from "../src/model/tolerant";
 import { onMessage, post } from "./bridge";
 import { NodeClicks } from "./click";
 import { renderScene } from "./render";
+import { screenReaderList } from "./a11y";
 import { Finder } from "./finder";
 import { TooltipController } from "./tooltip";
 import { workerRunner } from "./layoutWorkers";
@@ -178,7 +179,18 @@ export function startViewer(mount: HTMLElement = document.body): void {
     event.preventDefault();
     finder.open();
   });
-  app.append(svg, toolbar, tour.start, finder.element, highlightBar, freshnessBar, changesBar, compareBar, emptyState, tooltipElement, legend, tour.card);
+  // VWR-04: the hidden list of boxes and arrows for screen readers, and Enter or Space on a box.
+  const screenReader = document.createElement("div");
+  let shownDiagram: ViewDiagram | undefined;
+  content.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const id = event.target instanceof Element ? event.target.closest(".node")?.getAttribute("data-id") : null;
+    const component = shownDiagram?.components.find((entry) => entry.id === id);
+    if (!component) return;
+    event.preventDefault();
+    if (component.sources.length > 0) post({ type: "openSource", componentId: component.id, index: 0 });
+  });
+  app.append(svg, toolbar, tour.start, finder.element, highlightBar, freshnessBar, changesBar, compareBar, emptyState, tooltipElement, legend, tour.card, screenReader);
   mount.append(app);
 
   const viewport = new ViewportController(svg, content, toolbar, window);
@@ -417,6 +429,8 @@ export function startViewer(mount: HTMLElement = document.body): void {
     applyChanges();
     tour.reapply();
     shownScene = scene;
+    shownDiagram = result.diagram;
+    screenReader.replaceChildren(screenReaderList(result.diagram, post));
     finder.setDiagram(result.diagram);
     tooltip.setDiagram(diagram);
     viewport.bounds = scene.bounds;
@@ -496,6 +510,8 @@ export function startViewer(mount: HTMLElement = document.body): void {
       tour.setTour(null);
       finder.close();
       finder.setDiagram(null);
+      shownDiagram = undefined;
+      screenReader.replaceChildren();
       showEmpty(message.message, message.action);
       return;
     }

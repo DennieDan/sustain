@@ -572,3 +572,45 @@ describe("VWR-03 finder", () => {
     key(input(), { key: "Escape" });
   });
 });
+
+describe("VWR-04 keyboard and screen readers", () => {
+  const DOC = {
+    meta: { title: "Keys" },
+    components: [
+      { id: "web", label: "Web", sublabel: "React app", type: "frontend", sources: [{ path: "web/src/main.ts", line: 4, end_line: 9 }] },
+      { id: "api", label: "API", type: "backend" },
+    ],
+    connections: [{ from: "web", to: "api", label: "calls" }],
+  };
+
+  test("each box takes focus, names what it is and the code it opens, and Enter or Space opens it", async () => {
+    send({ type: "load", doc: DOC, file: "/r/keys.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    const nodes = [...document.querySelectorAll<SVGGElement>(".node")];
+    expect(nodes.map((node) => [node.getAttribute("tabindex"), node.getAttribute("role"), node.getAttribute("aria-label")])).toEqual([
+      ["0", "button", "Web, React app. Opens web/src/main.ts:4-9"],
+      ["0", "button", "API"],
+    ]);
+    posted.length = 0;
+    nodes[0]!.focus();
+    nodes[0]!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    nodes[0]!.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    nodes[1]!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(posted).toEqual([
+      { type: "openSource", componentId: "web", index: 0 },
+      { type: "openSource", componentId: "web", index: 0 },
+    ]);
+  });
+
+  test("a hidden list names every box and arrow, and its buttons open the code", async () => {
+    send({ type: "load", doc: DOC, file: "/r/keys.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    const list = document.querySelector<HTMLElement>(".sr-map")!;
+    expect(list.classList.contains("sr-only")).toBe(true);
+    expect([...list.querySelectorAll("h2")].map((node) => node.textContent)).toEqual(["2 boxes", "1 arrow"]);
+    expect([...list.querySelectorAll("li")].map((node) => node.textContent)).toEqual(["Web, React app. Opens web/src/main.ts:4-9", "API", "Web to API, calls"]);
+    posted.length = 0;
+    list.querySelector("button")!.click();
+    expect(posted).toEqual([{ type: "openSource", componentId: "web", index: 0 }]);
+  });
+});
