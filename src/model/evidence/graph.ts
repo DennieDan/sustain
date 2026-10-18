@@ -23,8 +23,11 @@ export function importLanguage(path: string): ImportLanguage | null {
   return null;
 }
 
-/** Each source file in a checked language, with the repository files it imports. */
-export function importLinks(files: readonly string[], read: (path: string) => string | null): Map<string, string[]> {
+/**
+ * A resolver for the repository `files`: given a file's path and text, the repository files it
+ * imports. Its indexes (Java packages, Python modules, tsconfig paths) come from `files` through `read`.
+ */
+export function importResolver(files: readonly string[], read: (path: string) => string | null): (file: string, text: string) => string[] {
   const byLanguage = (language: ImportLanguage): string[] => files.filter((file) => importLanguage(file) === language);
   const all = new Set(files);
   const java = javaIndex(byLanguage("java"), read);
@@ -45,13 +48,22 @@ export function importLinks(files: readonly string[], read: (path: string) => st
     configs.set(dir, found);
     return found;
   };
+  return (file, text) => {
+    const language = importLanguage(file);
+    if (language === "java") return javaImports(file, text, java);
+    if (language === "python") return pythonImports(file, text, python);
+    return language === "typescript" ? typescriptImports(file, text, all, configFor) : [];
+  };
+}
+
+/** Each source file in a checked language, with the repository files it imports. */
+export function importLinks(files: readonly string[], read: (path: string) => string | null): Map<string, string[]> {
+  const resolve = importResolver(files, read);
   const links = new Map<string, string[]>();
   for (const file of files) {
-    const language = importLanguage(file);
-    if (language === null) continue;
+    if (importLanguage(file) === null) continue;
     const text = read(file);
-    if (text === null) continue;
-    links.set(file, language === "java" ? javaImports(file, text, java) : language === "python" ? pythonImports(file, text, python) : typescriptImports(file, text, all, configFor));
+    if (text !== null) links.set(file, resolve(file, text));
   }
   return links;
 }

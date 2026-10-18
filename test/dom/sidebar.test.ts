@@ -311,7 +311,7 @@ describe("PRC-02 Review changes", () => {
   const review = {
     scope: "This branch",
     error: null,
-    counts: { touched: 2, stale: 1, gone: 0, uncovered: 4, candidates: 1 },
+    counts: { touched: 2, stale: 1, gone: 0, uncovered: 4, candidates: 1, arrows: 0 },
     candidates: [{ dir: "src/payments", label: "payments", lines: 240, files: ["src/payments/a.ts", "src/payments/b.ts", "src/payments/c.ts"] }],
   };
 

@@ -7881,7 +7881,7 @@ function importLanguage(path) {
   if (/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(path) && !path.endsWith(".d.ts")) return "typescript";
   return null;
 }
-function importLinks(files, read) {
+function importResolver(files, read) {
   const byLanguage = (language) => files.filter((file) => importLanguage(file) === language);
   const all = new Set(files);
   const java = javaIndex(byLanguage("java"), read);
@@ -7902,13 +7902,20 @@ function importLinks(files, read) {
     configs.set(dir, found);
     return found;
   };
+  return (file, text) => {
+    const language = importLanguage(file);
+    if (language === "java") return javaImports(file, text, java);
+    if (language === "python") return pythonImports(file, text, python);
+    return language === "typescript" ? typescriptImports(file, text, all, configFor) : [];
+  };
+}
+function importLinks(files, read) {
+  const resolve2 = importResolver(files, read);
   const links = /* @__PURE__ */ new Map();
   for (const file of files) {
-    const language = importLanguage(file);
-    if (language === null) continue;
+    if (importLanguage(file) === null) continue;
     const text = read(file);
-    if (text === null) continue;
-    links.set(file, language === "java" ? javaImports(file, text, java) : language === "python" ? pythonImports(file, text, python) : typescriptImports(file, text, all, configFor));
+    if (text !== null) links.set(file, resolve2(file, text));
   }
   return links;
 }

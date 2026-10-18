@@ -253,9 +253,10 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     const review: ReviewView | null = state.review;
     if (review?.error) block.append(el("p", "review__error", review.error));
     if (review?.counts) {
-      const { touched, stale, gone, uncovered, candidates } = review.counts;
+      const { touched, stale, gone, uncovered, candidates, arrows } = review.counts;
+      const newArrows = arrows > 0 ? ` · ${arrows} new arrow${arrows === 1 ? "" : "s"}` : "";
       block.append(
-        el("p", "review__counts", `${review.scope}: ${touched} touched · ${stale} stale · ${gone} gone · ${uncovered} not on the map · ${candidates} new box candidate${candidates === 1 ? "" : "s"}`),
+        el("p", "review__counts", `${review.scope}: ${touched} touched · ${stale} stale · ${gone} gone · ${uncovered} not on the map · ${candidates} new box candidate${candidates === 1 ? "" : "s"}${newArrows}`),
       );
       const list = el("ul", "review__candidates");
       for (const candidate of review.candidates) {

@@ -3,7 +3,7 @@
 // webview, the diagram page and the cloud site share it.
 import { layoutDiagram } from "../src/layout/layout";
 import type { MeasureText } from "../src/layout/scene";
-import type { ChangeOverlay, Ghost, HostMessage } from "../src/model/messages";
+import type { ChangeOverlay, Ghost, GhostArrow, HostMessage } from "../src/model/messages";
 import type { Freshness } from "../src/model/staleness";
 import { readDiagram, type ViewDiagram } from "../src/model/tolerant";
 import { onMessage, post } from "./bridge";
@@ -26,9 +26,14 @@ const TOOLBAR: [action: string, text: string, title: string][] = [
 /** Ghost ids hold a colon, which no map id may, so a ghost never shares an id with a box. */
 const GHOST_PREFIX = "ghost:";
 
-/** `diagram` with each new box candidate added as an unconnected, uncited box (PRC-02). */
-export function withGhosts(diagram: ViewDiagram, ghosts: readonly Ghost[]): ViewDiagram {
-  if (ghosts.length === 0) return diagram;
+/**
+ * `diagram` with each new box candidate added as an unconnected, uncited box (PRC-02), and each new
+ * arrow candidate between two of its boxes as a dashed arrow after its own arrows (PRC-06).
+ */
+export function withGhosts(diagram: ViewDiagram, ghosts: readonly Ghost[], arrows: readonly GhostArrow[] = []): ViewDiagram {
+  const ids = new Set(diagram.components.map((component) => component.id));
+  const newArrows = arrows.filter((arrow) => ids.has(arrow.from) && ids.has(arrow.to)).map((arrow) => ({ from: arrow.from, to: arrow.to, label: "new import", variant: "dashed" as const }));
+  if (ghosts.length === 0 && newArrows.length === 0) return diagram;
   const extra = ghosts.map((ghost, index) => ({
     id: `${GHOST_PREFIX}${index}`,
     type: "external" as const,
@@ -36,7 +41,7 @@ export function withGhosts(diagram: ViewDiagram, ghosts: readonly Ghost[]): View
     sublabel: `${ghost.files} new file${ghost.files === 1 ? "" : "s"}`,
     sources: [],
   }));
-  return { ...diagram, components: [...diagram.components, ...extra] };
+  return { ...diagram, components: [...diagram.components, ...extra], connections: [...diagram.connections, ...newArrows] };
 }
 
 /** Builds the viewer in `mount` (the page's body by default) and starts listening to the host. */
@@ -107,6 +112,9 @@ export function startViewer(mount: HTMLElement = document.body): void {
   /** The last loaded document, so ghosts can be drawn into it again. */
   let lastLoad: { doc: unknown; file: string } | null = null;
   let ghosts: Ghost[] = [];
+  let ghostArrows: GhostArrow[] = [];
+  /** Connections from this index on are ghost arrows. */
+  let firstGhostArrow = Number.POSITIVE_INFINITY;
 
   /** Ghost boxes are dashed and have no box menu. */
   function applyGhosts(): void {
@@ -114,6 +122,9 @@ export function startViewer(mount: HTMLElement = document.body): void {
       if (!(node.getAttribute("data-id") ?? "").startsWith(GHOST_PREFIX)) continue;
       node.classList.add("node--ghost");
       node.setAttribute("data-vscode-context", JSON.stringify({ webviewSection: "ghost", preventDefaultContextMenuItems: true }));
+    }
+    for (const edge of content.querySelectorAll(".edge, .edge-label")) {
+      edge.classList.toggle("edge--ghost", Number(edge.getAttribute("data-index")) >= firstGhostArrow);
     }
   }
   /** The boxes marked as citing the active file, kept across reloads (UI-03). */
@@ -232,7 +243,8 @@ export function startViewer(mount: HTMLElement = document.body): void {
     // The canvas must be displayed for its size to be the panel size.
     emptyState.hidden = true;
     app.classList.remove("app--empty");
-    const diagram = withGhosts(result.diagram, ghosts);
+    firstGhostArrow = result.diagram.connections.length;
+    const diagram = withGhosts(result.diagram, ghosts, ghostArrows);
     const scene = await layoutDiagram(diagram, { measure, viewport: viewport.size() });
     if (current !== generation) return;
     renderScene(content, diagram, scene, measure);
@@ -274,6 +286,7 @@ export function startViewer(mount: HTMLElement = document.body): void {
     }
     if (message.type === "ghosts") {
       ghosts = message.ghosts;
+      ghostArrows = message.arrows ?? [];
       if (lastLoad === null) return;
     }
     const current = ++generation;

@@ -1,7 +1,7 @@
 // PRC-01 and PRC-04: the delta report as markdown, for `--format markdown` and the pull request
 // comment, and its Mermaid flowchart. Labels come from the map, so every one is escaped.
 // Browser-safe.
-import type { Candidate, DeltaReport } from "./delta";
+import type { Candidate, DeltaReport, NewArrow } from "./delta";
 
 /** The marker that identifies Sustain's pull request comment. */
 export const COMMENT_MARKER = "<!-- sustain-check -->";
@@ -36,7 +36,15 @@ export function deltaSummary(report: DeltaReport): string {
     plural(report.stale.length, "stale box", "stale boxes"),
     plural(report.gone.length, "gone box", "gone boxes"),
     `${plural(report.uncovered.length, "file")} not on the map`,
+    // PRC-06: named only when there are some, so reports without them read as before.
+    ...(report.arrows.length > 0 ? [plural(report.arrows.length, "new arrow candidate")] : []),
   ].join(" · ");
+}
+
+function arrowLine(arrow: NewArrow): string {
+  const [first] = arrow.links;
+  const more = arrow.links.length > 1 ? `, and ${plural(arrow.links.length - 1, "more import")}` : "";
+  return `- ${escapeMarkdown(arrow.from.label)} to ${escapeMarkdown(arrow.to.label)}: ${path(first!.from)} now imports ${path(first!.to)}${more}. The map has no arrow between them.`;
 }
 
 function candidateLine(candidate: Candidate): string {
@@ -63,6 +71,7 @@ export function deltaMarkdown(report: DeltaReport, meta: MarkdownMeta, maxItems 
     ...report.touched.weak.map((box) => `- ${escapeMarkdown(box.label)}: other lines in its files changed`),
   ]);
   section("New box candidates", report.candidates.map(candidateLine));
+  section("New arrow candidates", report.arrows.map(arrowLine));
   section(
     "Stale boxes",
     report.stale.map((box) => `- ${escapeMarkdown(box.label)}: ${box.state === "missing" ? "a cited file is gone" : "its cited code changed since the map"}`),
@@ -79,7 +88,8 @@ function mermaidLabel(text: string): string {
 }
 
 /**
- * The touched boxes and their neighbours as a Mermaid flowchart, with candidates as dashed nodes.
+ * The touched boxes and their neighbours as a Mermaid flowchart, with candidates as dashed nodes and
+ * new arrow candidates as dotted edges (PRC-06).
  * Node ids are generated, so no map id reaches the chart.
  */
 export function deltaMermaid(
@@ -87,8 +97,8 @@ export function deltaMermaid(
   diagram: { components: readonly { id: string; label: string }[]; connections: readonly { from: string; to: string }[] },
 ): string | null {
   const touched = new Set([...report.touched.strong, ...report.touched.weak].map((box) => box.id));
-  if (touched.size === 0 && report.candidates.length === 0) return null;
-  const shown = new Set(touched);
+  if (touched.size === 0 && report.candidates.length === 0 && report.arrows.length === 0) return null;
+  const shown = new Set([...touched, ...report.arrows.flatMap((arrow) => [arrow.from.id, arrow.to.id])]);
   for (const connection of diagram.connections) {
     if (touched.has(connection.from)) shown.add(connection.to);
     if (touched.has(connection.to)) shown.add(connection.from);
@@ -106,6 +116,11 @@ export function deltaMermaid(
     const from = ids.get(connection.from);
     const to = ids.get(connection.to);
     if (from && to) lines.push(`  ${from} --> ${to}`);
+  }
+  for (const arrow of report.arrows) {
+    const from = ids.get(arrow.from.id);
+    const to = ids.get(arrow.to.id);
+    if (from && to) lines.push(`  ${from} -.->|new import| ${to}`);
   }
   report.candidates.forEach((candidate, index) => lines.push(`  c${index}["${mermaidLabel(`${candidate.label} (new)`)}"]:::candidate`));
   lines.push("  classDef strong stroke-width:3px", "  classDef weak stroke-dasharray:3 3", "  classDef candidate stroke-dasharray:6 4,fill:none", "```");

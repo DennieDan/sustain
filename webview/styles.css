@@ -225,6 +225,17 @@ body {
   fill: var(--sustain-muted);
 }
 
+/* New arrow candidates (PRC-06): dashed and muted, after the map's own arrows */
+
+.edge--ghost .edge__line {
+  stroke: var(--sustain-muted);
+}
+
+.edge--ghost .edge__head,
+.edge-label.edge--ghost {
+  fill: var(--sustain-muted);
+}
+
 /* Empty state */
 
 .empty-state__action {

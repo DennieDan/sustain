@@ -5,7 +5,7 @@ import { basename, isAbsolute, relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { citingBoxes } from "../model/citing";
 import { freshnessHeader } from "../model/home";
-import type { ChangeOverlay, Ghost, HostMessage, WebviewMessage } from "../model/messages";
+import type { ChangeOverlay, Ghost, GhostArrow, HostMessage, WebviewMessage } from "../model/messages";
 import type { MapFreshness } from "../model/staleness";
 import { parseDiagram, type ViewDiagram } from "../model/tolerant";
 import { changedBoxes, type FreshnessService } from "./freshness";
@@ -60,6 +60,7 @@ export class ArchitecturePanel {
   private changes: ChangeOverlay | null = null;
   /** New box candidates drawn as ghost boxes (PRC-02), cleared with the overlay. */
   private ghosts: Ghost[] = [];
+  private ghostArrows: GhostArrow[] = [];
   private readonly disposables: vscode.Disposable[] = [];
 
   private constructor(
@@ -206,7 +207,7 @@ export class ArchitecturePanel {
     this.sendHighlight();
     this.sendFreshness();
     this.sendChanges();
-    if (this.ghosts.length > 0) this.showGhosts(this.ghosts);
+    if (this.ghosts.length + this.ghostArrows.length > 0) this.showGhosts(this.ghosts, this.ghostArrows);
   }
 
   /** Computes the shown map's freshness and sends its badges and header. */
@@ -239,9 +240,10 @@ export class ArchitecturePanel {
   }
 
   /** Draws new box candidates as ghost boxes (PRC-02). */
-  showGhosts(ghosts: Ghost[]): void {
+  showGhosts(ghosts: Ghost[], arrows: GhostArrow[] = []): void {
     this.ghosts = ghosts;
-    const message: HostMessage = { type: "ghosts", ghosts };
+    this.ghostArrows = arrows;
+    const message: HostMessage = { type: "ghosts", ghosts, arrows };
     void this.panel.webview.postMessage(message);
   }
 

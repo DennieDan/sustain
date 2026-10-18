@@ -4,8 +4,8 @@ import { isJsonObject } from "./types";
 
 export const CONFIG_FILE = "sustain.config.json";
 
-/** What `--fail-on` and `check.failOn` accept. PRC-06 and ARC-01 add more. */
-export const FAIL_ON = ["stale", "new-box"] as const;
+/** What `--fail-on` and `check.failOn` accept. ARC-01 adds more. */
+export const FAIL_ON = ["stale", "new-box", "new-arrow"] as const;
 export type FailOn = (typeof FAIL_ON)[number];
 
 export interface SustainConfig {

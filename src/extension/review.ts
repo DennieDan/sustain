@@ -56,6 +56,7 @@ export class Review implements vscode.Disposable {
         gone: report.gone.length,
         uncovered: report.uncovered.length,
         candidates: report.candidates.length,
+        arrows: report.arrows.length,
       },
       candidates: report.candidates.map((candidate) => ({ dir: candidate.dir, label: candidate.label, lines: candidate.lines, files: candidate.files.map((file) => file.path) })),
     };
@@ -107,7 +108,10 @@ export class Review implements vscode.Disposable {
     const map = ArchitecturePanel.show(this.context.extensionUri, root, file, true);
     const report = outcome.report;
     map.showChanges({ scope, strong: report.touched.strong.map((box) => box.id), weak: report.touched.weak.map((box) => box.id), uncovered: report.uncovered });
-    map.showGhosts(report.candidates.map((candidate) => ({ label: candidate.label, files: candidate.files.length })));
+    map.showGhosts(
+      report.candidates.map((candidate) => ({ label: candidate.label, files: candidate.files.length })),
+      report.arrows.map((arrow) => ({ from: arrow.from.id, to: arrow.to.id })),
+    );
     this.changed.fire();
   }
 

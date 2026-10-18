@@ -1,13 +1,16 @@
 // PRC-01: `sustain.mjs check`, which compares a diff with the map at zero tokens. This gathers
-// the map, the config, the diff from the merge-base and the code at the head; delta.ts decides.
+// the map, the config, the diff from the merge-base, the code at the head and the changed files'
+// imports on both sides (PRC-06); delta.ts decides.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseDiff, REVISION_PATTERN, type FileChange } from "./changes";
 import { CONFIG_FILE, readConfig, type FailOn, type SustainConfig } from "./config";
 import { deltaReport, isSourceFile, verdict, type DeltaReport } from "./delta";
 import { listCandidates } from "./discovery";
+import { importLanguage, importResolver } from "./evidence/graph";
 import { diffBetween, existsAt, fileAt, filesAt, mergeBase, renamesSince, untrackedFiles } from "./git";
 import { globToRegExp } from "./refresh";
+import { listFiles } from "./repoSize";
 import { ARCHIFY_DIR, CANDIDATE_FILE } from "./runFolder";
 import { readRunRecord } from "./runRecord";
 import { fileReader, mapFreshness, readFingerprints } from "./staleness";
@@ -122,6 +125,19 @@ export function runCheck(options: CheckOptions): CheckOutcome {
 
   const prints = readFingerprints(runDir);
   const read = head === undefined ? fileReader(root) : (path: string) => fileAt(root, head, path);
+  const text = (path: string): string | null => read(path)?.toString("utf8") ?? null;
+  // PRC-06: each changed source file's imports at the merge base and at the head, both resolved
+  // against the head's files.
+  const headFiles = head === undefined ? [...new Set([...listFiles(root).files, ...changes.map((change) => change.path)])] : filesAt(root, head, "");
+  const resolve = importResolver(headFiles, text);
+  const imports = { base: new Map<string, string[]>(), head: new Map<string, string[]>() };
+  for (const change of changes) {
+    if (change.status === "deleted" || importLanguage(change.path) === null) continue;
+    const now = text(change.path);
+    if (now !== null) imports.head.set(change.path, resolve(change.path, now));
+    const before = change.status === "added" ? null : (fileAt(root, shared, change.oldPath)?.toString("utf8") ?? null);
+    if (before !== null) imports.base.set(change.path, resolve(change.oldPath, before));
+  }
   const renames = prints?.revision ? renamesSince(root, prints.revision, process.env, head) : new Map<string, string>();
   const delta = deltaReport({
     components: diagram.components,
@@ -130,6 +146,8 @@ export function runCheck(options: CheckOptions): CheckOutcome {
     ignore: (config.config.ignore ?? []).map(globToRegExp),
     existedAtBase: (dir) => existsAt(root, shared, dir),
     sourceFilesIn: (dir) => (head === undefined ? filesOnDisk(root, dir) : filesAt(root, head, dir)).filter(isSourceFile).length,
+    connections: diagram.connections,
+    imports,
   });
   const outcome = verdict(delta, options.failOn ?? config.config.check?.failOn ?? []);
   return { ok: true, diagram, report: { map: run, base, head: head ?? null, mergeBase: shared, ...delta, ...outcome } };

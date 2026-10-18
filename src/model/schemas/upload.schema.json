@@ -206,6 +206,29 @@
           }
         },
         "gone": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/box" } },
+        "arrows": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to", "links"],
+            "properties": {
+              "from": { "$ref": "#/$defs/box" },
+              "to": { "$ref": "#/$defs/box" },
+              "links": {
+                "type": "array",
+                "maxItems": 200,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["from", "to"],
+                  "properties": { "from": { "$ref": "#/$defs/path" }, "to": { "$ref": "#/$defs/path" } }
+                }
+              }
+            }
+          }
+        },
         "result": { "enum": ["pass", "fail"] },
         "reasons": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/shortText" } }
       }

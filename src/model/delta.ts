@@ -1,6 +1,7 @@
 // PRC-01: what a change does to the map, at zero tokens. Boxes the diff touches, boxes whose code
 // changed or went, changed source files no box owns, and directories that may deserve a box of
-// their own. Browser-safe; check.ts gathers the inputs from git.
+// their own. PRC-06 adds arrows the diff's new imports call for, and directories whose new files
+// import each other more than any box. Browser-safe; check.ts gathers the inputs from git.
 import { markChanges, type FileChange } from "./changes";
 import type { FailOn } from "./config";
 import { dirOf, Ownership } from "./ownership";
@@ -42,12 +43,21 @@ export interface Candidate {
   label: string;
 }
 
+/** PRC-06: an arrow the map lacks, for import links the diff added between two boxes. */
+export interface NewArrow {
+  from: BoxRef;
+  to: BoxRef;
+  /** The added import links, file to file. */
+  links: { from: string; to: string }[];
+}
+
 export interface DeltaReport {
   touched: { strong: BoxRef[]; weak: BoxRef[] };
   stale: (BoxRef & { state: Freshness })[];
   uncovered: string[];
   candidates: Candidate[];
   gone: BoxRef[];
+  arrows: NewArrow[];
 }
 
 export interface DeltaInputs {
@@ -62,6 +72,10 @@ export interface DeltaInputs {
   existedAtBase: (dir: string) => boolean;
   /** Source files under `dir` at the head. */
   sourceFilesIn: (dir: string) => number;
+  /** The map's arrows. */
+  connections?: readonly { from: string; to: string }[];
+  /** The repository files each changed file imports, at the merge base and at the head (PRC-06). */
+  imports?: { base: ReadonlyMap<string, readonly string[]>; head: ReadonlyMap<string, readonly string[]> };
 }
 
 /** The deepest directory holding all of `paths`. */
@@ -105,7 +119,18 @@ export function deltaReport(inputs: DeltaInputs): DeltaReport {
     const lines = members.filter((change) => !isTestFile(change.path)).reduce((sum, change) => sum + (change.added ?? 0), 0);
     const fresh = !inputs.existedAtBase(dir) && (inputs.sourceFilesIn(dir) >= CANDIDATE_FILES || lines >= CANDIDATE_LINES);
     const grown = !ownership.ownsBelow(dir) && lines >= CANDIDATE_LINES;
-    if (dir !== "" && (fresh || grown)) {
+    // PRC-06: files that import each other more than they import any one box's files.
+    const inGroup = new Set(members.map((change) => change.path));
+    let internal = 0;
+    const toBoxes = new Map<string, number>();
+    for (const member of members) {
+      for (const target of inputs.imports?.head.get(member.path) ?? []) {
+        if (inGroup.has(target)) internal++;
+        else for (const owner of ownership.owners(target)) toBoxes.set(owner, (toBoxes.get(owner) ?? 0) + 1);
+      }
+    }
+    const cohesive = internal > 0 && internal > Math.max(0, ...toBoxes.values());
+    if (dir !== "" && (fresh || grown || cohesive)) {
       candidates.push({
         dir,
         files: members.map((change) => ({ path: change.path, added: change.added ?? 0 })).sort((a, b) => a.path.localeCompare(b.path)),
@@ -115,12 +140,31 @@ export function deltaReport(inputs: DeltaInputs): DeltaReport {
     }
   }
 
+  const connected = (a: string, b: string): boolean => (inputs.connections ?? []).some((arrow) => (arrow.from === a && arrow.to === b) || (arrow.from === b && arrow.to === a));
+  const arrows = new Map<string, NewArrow>();
+  for (const [file, targets] of inputs.imports?.head ?? new Map<string, readonly string[]>()) {
+    const before = new Set(inputs.imports?.base.get(file) ?? []);
+    for (const target of targets) {
+      if (before.has(target)) continue;
+      for (const from of ownership.owners(file)) {
+        for (const to of ownership.owners(target)) {
+          if (from === to || connected(from, to)) continue;
+          const key = `${from}\0${to}`;
+          const arrow = arrows.get(key) ?? { from: ref(from), to: ref(to), links: [] };
+          arrow.links.push({ from: file, to: target });
+          arrows.set(key, arrow);
+        }
+      }
+    }
+  }
+
   return {
     touched: { strong: marks.strong.map(ref), weak: marks.weak.map(ref) },
     stale,
     uncovered: uncoveredChanges.map((change) => change.path).sort(),
     candidates: candidates.sort((a, b) => a.dir.localeCompare(b.dir)),
     gone: gone.map(ref),
+    arrows: [...arrows.values()].sort((a, b) => a.from.id.localeCompare(b.from.id) || a.to.id.localeCompare(b.to.id)),
   };
 }
 
@@ -129,5 +173,6 @@ export function verdict(report: DeltaReport, failOn: readonly FailOn[]): { resul
   const reasons: string[] = [];
   if (failOn.includes("stale") && report.stale.length + report.gone.length > 0) reasons.push(`${report.stale.length + report.gone.length} stale or gone box(es)`);
   if (failOn.includes("new-box") && report.candidates.length > 0) reasons.push(`${report.candidates.length} new box candidate(s)`);
+  if (failOn.includes("new-arrow") && report.arrows.length > 0) reasons.push(`${report.arrows.length} new arrow candidate(s)`);
   return { result: reasons.length === 0 ? "pass" : "fail", reasons };
 }

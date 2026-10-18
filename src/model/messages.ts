@@ -20,13 +20,19 @@ export type HostMessage =
   | { type: "freshness"; boxes: Record<string, Freshness>; header: string | null }
   /** FRS-04: boxes a diff touched, or `null` to clear the overlay. */
   | { type: "changes"; overlay: ChangeOverlay | null }
-  /** PRC-02: new box candidates drawn as dashed ghost boxes; never written. */
-  | { type: "ghosts"; ghosts: Ghost[] };
+  /** PRC-02: new box candidates drawn as dashed ghost boxes, and PRC-06's new arrows as dashed ghost arrows; never written. */
+  | { type: "ghosts"; ghosts: Ghost[]; arrows?: GhostArrow[] };
 
 /** A new box candidate on the map (PRC-02). */
 export interface Ghost {
   label: string;
   files: number;
+}
+
+/** A new arrow candidate between two boxes of the map, by id (PRC-06). */
+export interface GhostArrow {
+  from: string;
+  to: string;
 }
 
 /** What Show Changes found for the shown map (FRS-04). */
@@ -163,7 +169,7 @@ export interface ReviewView {
   scope: string;
   /** Why the review could not run. */
   error: string | null;
-  counts: { touched: number; stale: number; gone: number; uncovered: number; candidates: number } | null;
+  counts: { touched: number; stale: number; gone: number; uncovered: number; candidates: number; arrows: number } | null;
   candidates: { dir: string; label: string; lines: number; files: string[] }[];
 }
 

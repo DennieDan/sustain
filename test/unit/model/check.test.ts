@@ -1,6 +1,6 @@
 // PRC-01: the delta report on temporary git repositories, one per category, with the config,
 // ownership, the main map and the markdown.
-import { rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { mainMap, runCheck } from "../../../src/model/check";
@@ -44,7 +44,7 @@ function commit(root: string, message: string): void {
   git(root, "commit", "-qm", message);
 }
 
-function check(root: string, options: { head?: string; failOn?: ("stale" | "new-box")[] } = { head: "HEAD" }) {
+function check(root: string, options: { head?: string; failOn?: ("stale" | "new-box" | "new-arrow")[] } = { head: "HEAD" }) {
   const outcome = runCheck({ root, base: "main", ...options });
   if (!outcome.ok) throw new Error(outcome.reason);
   return outcome.report;
@@ -162,7 +162,7 @@ describe("PRC-01 the map, ownership and config", () => {
     expect(readConfig({ map: "architecture-a-20261018-120000", ignore: ["docs/**"], check: { failOn: ["stale", "new-box"] }, rules: [] })).toMatchObject({ ok: true });
     expect(readConfig({ map: "../x", ignore: "docs", check: { failOn: ["everything"], other: 1 }, rules: {}, extra: true })).toEqual({
       ok: false,
-      errors: ['unknown key "extra"', '"map" must name a run folder in .archify/', '"ignore" must be a list of globs', '"rules" must be a list', 'unknown key "check.other"', '"check.failOn" may list only stale, new-box'],
+      errors: ['unknown key "extra"', '"map" must name a run folder in .archify/', '"ignore" must be a list of globs', '"rules" must be a list', 'unknown key "check.other"', '"check.failOn" may list only stale, new-box, new-arrow'],
     });
     expect(withIgnored({ ignore: ["a/**"] }, "src/payments")).toEqual({ ignore: ["a/**", "src/payments/**"] });
     expect(withIgnored({ ignore: ["src/payments/**"] }, "src/payments")).toEqual({ ignore: ["src/payments/**"] });
@@ -201,6 +201,7 @@ describe("PRC-01 markdown", () => {
       uncovered: [],
       gone: [],
       candidates: [{ dir: "src/pay", files: [], lines: 0, label: 'pay"]; click n0 "javascript:x' }],
+      arrows: [],
     };
     const chart = deltaMermaid(report, {
       components: [
@@ -228,5 +229,50 @@ describe("PRC-01 markdown", () => {
       ].join("\n"),
     );
     expect(deltaMermaid({ ...report, touched: { strong: [], weak: [] }, candidates: [] }, { components: [], connections: [] })).toBeNull();
+  });
+});
+
+describe("PRC-06 import-aware delta", () => {
+  test("import links the diff adds between boxes with no arrow either way become new arrow candidates", () => {
+    const { root, run } = mappedRepo();
+    put(root, "src/ui/app.ts", "export const app = 1;\n");
+    commit(root, "ui");
+    git(root, "checkout", "-q", "main");
+    git(root, "merge", "-q", "feature");
+    // A ui box on main, with an arrow to the API.
+    const candidate = join(root, ".archify", run, "candidate.json");
+    const map = JSON.parse(readFileSync(candidate, "utf8"));
+    map.components.push({ id: "ui", type: "frontend", label: "UI", sources: [{ path: "src/ui/app.ts", line: 1 }] });
+    map.connections.push({ from: "ui", to: "api", label: "calls" });
+    writeFileSync(candidate, JSON.stringify(map));
+    // The store already imports the UI on main, with no arrow between them.
+    put(root, "src/store/db.ts", 'import { app } from "../ui/app";\nexport const db = {};\n');
+    commit(root, "ui box");
+    git(root, "checkout", "-q", "feature");
+    git(root, "merge", "-q", "main");
+
+    put(root, "src/store/db.ts", 'import { app } from "../ui/app";\nimport { routes } from "../api/routes";\nexport const db = {};\n');
+    put(root, "src/ui/app.ts", 'import { db } from "../store/db";\nimport { handle } from "../api/handler.js";\nexport const app = 1;\n');
+    put(root, "lib/util.ts", 'import { db } from "../src/store/db";\nexport {};\n');
+    commit(root, "imports");
+    const report = check(root, { head: "HEAD", failOn: ["new-arrow"] });
+    expect(report.arrows).toEqual([{ from: { id: "ui", label: "UI" }, to: { id: "store", label: "Store" }, links: [{ from: "src/ui/app.ts", to: "src/store/db.ts" }] }]);
+    expect([report.result, report.reasons]).toEqual(["fail", ["1 new arrow candidate(s)"]]);
+    const markdown = deltaMarkdown(report, { map: run, mergeBase: report.mergeBase, result: report.result, reasons: report.reasons });
+    expect(markdown).toContain("**New arrow candidates**\n\n- UI to Store: `src/ui/app.ts` now imports `src/store/db.ts`. The map has no arrow between them.");
+    expect(markdown).toContain("· 1 new arrow candidate**");
+    expect(check(root, { failOn: ["new-arrow"] }).arrows).toHaveLength(1);
+  });
+
+  test("uncovered new files that import each other more than any one box's files are a new box candidate", () => {
+    const { root } = mappedRepo();
+    put(root, "src/billing/invoice.ts", 'import { tax } from "./tax";\nimport { db } from "../store/db";\nexport const invoice = tax;\n');
+    put(root, "src/billing/tax.ts", 'import { invoice } from "./invoice";\nexport const tax = 1;\n');
+    commit(root, "billing");
+    expect(check(root).candidates.map((candidate) => candidate.dir)).toEqual(["src/billing"]);
+
+    put(root, "src/billing/tax.ts", "export const tax = 1;\n");
+    commit(root, "no cycle");
+    expect(check(root).candidates).toEqual([]);
   });
 });
