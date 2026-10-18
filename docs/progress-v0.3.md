@@ -8,7 +8,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 |---|---|---|
 | D1 Safe to ship | Closed pending owner (ENG-01, ENG-04 `[ci]`) | `4bbac86` |
 | D2 The product in VS Code | Closed pending owner (UI-02, UI-06, SET-01 `[smoke]`) | `1d8bcf4` |
-| D3 The living map | In progress | |
+| D3 The living map | Closed pending owner (RCH-01 `[smoke]`) | `3850c3e` |
 | D4 Pull request checks | Not started | |
 | D5 Sustain Cloud v1 | Not started | |
 | D6 Ship | Not started | |
@@ -28,6 +28,7 @@ Items only the owner can do, with exact steps.
 - Install and sign in to `claude`, `codex` and `devin` for `[smoke]` checks; approve any paid agent calls first (spec §6).
 - SET-01 `[smoke]`: with the default per-user install, run `/sustain-architecture` in Claude Code and `$sustain-architecture` in Codex from a repository with no `.agents/` folder, and confirm each finds the skill and its scripts.
 - UI-02 `[smoke]`: with `sustain.runMode` on "In sidebar", press Generate once with Claude Code and once with Codex in a small repository. Confirm the card shows reads, writes and validation, tokens and the final cost, and that the map opens on acceptance. Save each run's stdout (`claude -p … --output-format stream-json --verbose > claude-generate.jsonl`, `codex exec --json … > codex-generate.jsonl`) over the hand-written files in `test/fixtures/streams/`, then run `npm test`. If Claude Code reports a denial for the skill's own scripts, the `--allowedTools` rules need the folder `${CLAUDE_SKILL_DIR}` really resolves to (see "Where the D2 build differs").
+- RCH-01 `[smoke]`: open a page written by `render-html.mjs` from disk on Windows, macOS and Linux. With each target in "Open in", click a box and note which open: VS Code, Cursor, JetBrains (needs JetBrains Toolbox), GitHub (needs a github.com origin) and Copy.
 - UI-06 `[smoke]`: ask one question per agent from the sidebar about a mapped repository. Confirm the answer cites `path:line`, the links open the lines, and a second Claude Code question resumes the session.
 
 ## D1 Safe to ship
@@ -82,7 +83,7 @@ Done when: Gates green; a tampered skill cannot launch; no pre-approved command 
 - [x] **SAF-04 Safe launch arguments** `[unit]` — 2026-10-18: `findOnPath` skips relative PATH entries; `agentLaunchArgs` gives the terminal the prompt alone. `test/unit/extension/launchArgs.test.ts` (10): Claude Code, Codex and Devin argv for hostile focuses carry no permission flag; a relative `bin` entry holding `claude` is skipped (fails with the old empty-entry check).
 - [x] **SAF-05 Write confinement** `[unit]` — 2026-10-18: `src/model/confine.ts`, called by `writeSkill` (now takes the root), `mergeHooks`, `removeHooks`, `ensureSustainGitignore`, `validate.mjs` before publishing, `session.mjs` before the lock, `inject` and `restore`, and `appendEvent` (no link). Tests: `test/unit/model/confine.test.ts` (10: `.git`, `.devin`, `.claude`, `.agents/skills`, `.archify/<run>`, `.sustain/<run>` linked outside; `sustain.config.json` linked to an outside file; an inside link; a broken link), plus `skillFiles`, `hooksFiles` and `validate` cases that write nothing outside (the validate case fails with the check removed). Full vitest: 824 passed.
 - [x] **SAF-06 Hook lifecycle** `[unit]` `[e2e]` — 2026-10-18: install no longer merges hooks or edits `.gitignore`. `ensureGitExclude` writes `.git/info/exclude` at Generate and session launch. `removeHooksWhenIdle` runs when the `SessionWatcher` sees the lock go and at activation. Tests: `hooksFiles.test.ts` › `SAF-06 ensureGitExclude` (3) and `SAF-06 removeHooksWhenIdle`; e2e `SAF-06 a fresh install … leaves .devin and .gitignore alone` and `SAF-06 the session's hook entries go when its lock goes`. ADR 0042 supersedes ADR 0036.
-- [x] **SAF-07 Git and workspace hardening** `[unit]` `[e2e]` — done 2026-10-18, with the `[e2e]` half moved to FRS-04 (see the log): `package.json` declares `untrustedWorkspaces.supported: false` (`test/unit/manifest.test.ts`). Git runs by absolute path from `gitProgram()` (`src/model/which.ts`) with `-c core.fsmonitor=false`. `git.test.ts` › `SAF-07 a repository's core.fsmonitor program never runs` fails when the flag is removed; `SAF-07 a git found only on a relative PATH entry is never run`. The `[e2e]` half moves to FRS-04, since Show Changes arrives in D3.
+- [x] **SAF-07 Git and workspace hardening** `[unit]` `[e2e]` — done 2026-10-18, with the `[e2e]` half moved to FRS-04 (see the log): `package.json` declares `untrustedWorkspaces.supported: false` (`test/unit/manifest.test.ts`). Git runs by absolute path from `gitProgram()` (`src/model/which.ts`) with `-c core.fsmonitor=false`. `git.test.ts` › `SAF-07 a repository's core.fsmonitor program never runs` fails when the flag is removed; `SAF-07 a git found only on a relative PATH entry is never run`. The `[e2e]` half moved to FRS-04 and passes there since 2026-10-18: `SAF-07 a repository's core.fsmonitor program never runs`.
 
 ## D2 The product in VS Code
 
@@ -152,15 +153,27 @@ Done when: Everything is reachable without the Command Palette; runs and questio
 
 | Location | Change | Est. LoC |
 |---|---|---|
-| `webview/bridge.ts`, `webview/hosts/vscode.ts`, `webview/hosts/standalone.ts`, `webview/viewer.ts`, `webview/main.ts`, `webview/styles.css` | VWR-01: the viewer talks to its host only through the bridge; colours come from `--sustain-*` tokens each host sets | +170 / -70 |
-| `src/model/fingerprints.ts`, `src/agent/validate.ts` | FRS-01: `fingerprints.json` on acceptance, blob ids computed as git does, normalized range hashes | +110 |
-| `src/model/staleness.ts`, `src/model/git.ts` | FRS-02: fresh, moved, edited, missing, unknown per citation and per box; renames from `git diff -M --name-status` | +180 |
-| `src/extension/freshness.ts`, `panel.ts`, `webview/viewer.ts`, `src/model/messages.ts`, `statusBar.ts`, `src/model/maps.ts`, `webview/home.ts` | FRS-03: staleness on load and when a cited file changes, badges, the header, moved lines opening, counts in the maps list and status bar | +240 |
-| `src/model/changes.ts`, `src/extension/changes.ts`, `webview/viewer.ts` | FRS-04: three scopes, hunk parsing, strong and weak marks, uncovered files, Clear | +280 |
-| `skills/sustain-refresh/`, `src/agent/refresh-facts.ts`, `esbuild.mjs`, skill lists | FRS-05: the refresh skill and `refresh-facts.mjs` | +280 |
-| `src/extension/refresh.ts`, `src/extension/agents.ts`, `package.json`, `webview/home.ts`, `webview/viewer.ts` | FRS-06: Refresh in the map's title bar, the freshness header, the maps list and the box menu; the map-panel buttons D2 deferred | +180 / -20 |
-| `src/model/evidence.ts`, `src/agent/validate.ts`, `skills/sustain-architecture/` | ACC-01: the `evidence` report key, `evidence.json`, the skill text and the revise-once flow | +150 |
-| `src/agent/render-html.ts`, `src/model/openLinks.ts`, `webview/page.ts`, `esbuild.mjs` | RCH-01: the one-file diagram page with its open targets | +380 |
+| `webview/bridge.ts`, `webview/hosts/vscode.ts`, `webview/hosts/standalone.ts`, `webview/viewer.ts`, `webview/main.ts`, `webview/styles.css` | VWR-01: the viewer talks to its host only through the bridge; colours come from `--sustain-*` tokens each host sets | +170 / -70 | +396 / -216 |
+| `src/model/fingerprints.ts`, `src/agent/validate.ts` | FRS-01: `fingerprints.json` on acceptance, blob ids computed as git does, normalized range hashes | +110 | +87 / -1 |
+| `src/model/staleness.ts`, `src/model/git.ts` | FRS-02: fresh, moved, edited, missing, unknown per citation and per box; renames from `git diff -M --name-status` | +180 | +137 |
+| `src/extension/freshness.ts`, `panel.ts`, `webview/viewer.ts`, `src/model/messages.ts`, `statusBar.ts`, `src/model/maps.ts`, `webview/home.ts` | FRS-03: staleness on load and when a cited file changes, badges, the header, moved lines opening, counts in the maps list and status bar | +240 | +282 / -14 |
+| `src/model/changes.ts`, `src/extension/changes.ts`, `webview/viewer.ts` | FRS-04: three scopes, hunk parsing, strong and weak marks, uncovered files, Clear | +280 | +423 / -6 |
+| `skills/sustain-refresh/`, `src/agent/refresh-facts.ts`, `esbuild.mjs`, skill lists | FRS-05: the refresh skill and `refresh-facts.mjs` | +280 | +334 / -3 |
+| `src/extension/refresh.ts`, `src/extension/agents.ts`, `package.json`, `webview/home.ts`, `webview/viewer.ts` | FRS-06: Refresh in the map's title bar, the freshness header, the maps list and the box menu; the map-panel buttons D2 deferred | +180 / -20 | +184 / -31 |
+| `src/model/evidence.ts`, `src/agent/validate.ts`, `skills/sustain-architecture/` | ACC-01: the `evidence` report key, `evidence.json`, the skill text and the revise-once flow | +150 | +109 / -6 |
+| `src/agent/render-html.ts`, `src/model/openLinks.ts`, `webview/page.ts`, `esbuild.mjs` | RCH-01: the one-file diagram page with its open targets | +380 | +466 / -24 |
+
+Where the D3 build differs from the proposal:
+- VWR-01 is larger because about 160 lines of `webview/main.ts` moved into `webview/viewer.ts`; the new code is the bridge and the two hosts' token tables.
+- FRS-01's fingerprints carry `loose`, the range hash with leading whitespace trimmed too, beside `range`. FRS-02 needs it to find a re-indented block as moved, which the spec asks for. Blob ids are computed as git does for SHA-1 repositories.
+- FRS-03 watches every workspace folder from activation and also listens to editor saves. A watcher created when a map loads missed the first edit in the e2e suite.
+- FRS-04's diff and change model grew with quoted paths, renames, deletions and the untracked-file handling, and `src/model/changes.ts` also holds the commit-range parser.
+- FRS-04 compares hunks on the old side, where citations point. A whole-file citation of a changed file is marked strong and a pure rename weak.
+- FRS-05 adds `stripAppOwned` to `src/model/submission.ts`, three git helpers to `src/model/git.ts` and `src/model/refresh.ts` for the report and the `--paths` globs.
+- FRS-06 changed launching to take a task that names its skill, arguments and card title, so Generate and Refresh share one path. The palette modal says "Refresh with …?" for a refresh.
+- ACC-01's heuristic treats typed members such as `id: string;` as declarations and any call outside a function's own signature as behaviour. `run.json` still counts a revision as an attempt; only the skill leaves it out of the three repairs.
+- RCH-01 moved `citationPathOk` to the browser-safe `src/model/citationPath.ts`, re-exported from `citations.ts`. The page assembly is `src/model/page.ts`, shared by `render-html.mjs` and Export Page. The Copy target copies `path:line`; the spec's `idea --line` form is left out because the JetBrains target already opens the file. `render-html.mjs` carries the 1.5 MB page bundle, so each skill folder grows by that much.
+- The candidate watcher also lists each folder every 2 s (see the log).
 
 Tests the D3 ACs call for:
 - every fixture renders the same DOM under the VS Code and standalone hosts, ignoring style values;
@@ -175,15 +188,15 @@ Tests the D3 ACs call for:
 
 Done when: Staleness, overlay and refresh work; the diagram page works offline.
 
-- [ ] **VWR-01 Host bridge** `[dom]`
-- [ ] **FRS-01 Fingerprints** `[unit]`
-- [ ] **FRS-02 Staleness** `[unit]`
-- [ ] **FRS-03 Freshness on the map** `[dom]` `[e2e]`
-- [ ] **FRS-04 Change overlay** `[unit]` `[e2e]`
-- [ ] **FRS-05 Refresh skill** `[unit]`
-- [ ] **FRS-06 Refresh from the UI** `[e2e]`
-- [ ] **ACC-01 Behaviour over names** `[unit]`
-- [ ] **RCH-01 Diagram page** `[unit]` `[dom]` `[smoke]`
+- [x] **VWR-01 Host bridge** `[dom]` — 2026-10-18: `webview/bridge.ts`, `webview/hosts/vscode.ts`, `webview/hosts/standalone.ts`, `webview/viewer.ts`; `webview/styles.css` uses only `--sustain-*` tokens. Tests: `test/dom/hosts.test.ts` (26: every fixture renders the same DOM under both hosts; each host defines every token the stylesheet uses; the dark palette follows the system), and the existing map DOM tests unchanged. ADR 0047 supersedes ADR 0024.
+- [x] **FRS-01 Fingerprints** `[unit]` — 2026-10-18: `src/model/fingerprints.ts`; `validate.mjs` writes `fingerprints.json` on acceptance. Tests: `fingerprints.test.ts` › `FRS-01 blob equals git hash-object --no-filters…` (CRLF, empty, UTF-8 and binary files with a `.gitattributes` that would convert endings) and `…range hash ignores \r and trailing whitespace…`; `validate.test.ts` › `FRS-01 an accepted run gets fingerprints with the revision; a rejected run gets none`.
+- [x] **FRS-02 Staleness** `[unit]` — 2026-10-18: `src/model/staleness.ts`, `renamesSince` in `src/model/git.ts`. `staleness.test.ts` (10): fresh; CRLF and trailing whitespace; lines added above (moved, with new lines); an indentation change (moved); a duplicated block resolving to the nearest copy, not the first; edited and missing; worst citation per box; unknown without fingerprints; a rename through `git diff -M --name-status`; a rename outside git (missing).
+- [x] **FRS-03 Freshness on the map** `[dom]` `[e2e]` — 2026-10-18: `src/extension/freshness.ts`; badges, the header, moved lines, the maps list, the sidebar header and the status bar. Tests: `main.test.ts` › `FRS-03 freshness on the map` (2); `home.test.ts` › `FRS-03 freshness wording` (2); e2e `FRS-03 editing a cited block badges its box within 3 s and the counts follow` and `FRS-03 a moved block opens at its new lines`. ADR 0048 supersedes ADR 0012.
+- [x] **FRS-04 Change overlay** `[unit]` `[e2e]` — 2026-10-18: `src/model/changes.ts` (shared with PRC-01), `diffFor` in `src/model/git.ts`, `src/extension/changes.ts`, the title-bar button. Tests: `changes.test.ts` (6: parsing with renames, deletions, additions and quoted paths; strong, weak and uncovered marks; scopes in a git repository; commit ranges); `main.test.ts` › `FRS-04 change overlay`; e2e `FRS-04 uncommitted changes mark…`, `FRS-04 a commit range compares two commits`, and `SAF-07 a repository's core.fsmonitor program never runs`.
+- [x] **FRS-05 Refresh skill** `[unit]` — 2026-10-18: `skills/sustain-refresh/`, `src/agent/refresh-facts.ts`, `src/model/refresh.ts`. Tests: `refreshFacts.test.ts` (8: a temporary repository's edited box, changed and uncovered files and new folder, the run folder's name, `run.json` and the draft passing the validator again; `--paths`; a map without fingerprints; five refused argument lists), `refresh.test.ts` › globs, `skill.test.ts` › `FRS-05 refresh skill` (2), the pre-approval and install tests extended to the third skill. ADR 0049 supersedes ADR 0004.
+- [x] **FRS-06 Refresh from the UI** `[e2e]` — 2026-10-18: `src/extension/refresh.ts`; Refresh in the map's title bar, the freshness header, the maps list and the box menu; `Sustain: Refresh Architecture`. e2e `FRS-06 the map's title-bar Refresh…`, `…the freshness header's Refresh…`, `…the maps list refreshes its map`, `…Refresh this box limits the refresh to the files the box cites`, `FRS-06 SAF-01 a missing refresh skill is installed after one modal`, `FRS-06 without a map Refresh is Generate`.
+- [x] **ACC-01 Behaviour over names** `[unit]` — 2026-10-18: `src/model/evidence.ts`; the validator's `evidence` key and `evidence.json`; the format reference and both skills. Tests: `evidence.test.ts` (14), `validate.test.ts` › `ACC-01 an accepted report lists declaration-only boxes…` and `ACC-01 a revised draft in an accepted run folder replaces the candidate and its sidecars`, `skill.test.ts` › `ACC-01 behaviour over names` (3). ADR 0050 extends ADR 0017.
+- [ ] **RCH-01 Diagram page** `[unit]` `[dom]` `[smoke]` — `[unit]` `[dom]` done 2026-10-18: `src/agent/render-html.ts`, `src/model/page.ts`, `src/model/openLinks.ts`, `webview/page.ts`; both skills run it last; Export Page in the map's title bar and the maps list. Tests: `openLinks.test.ts` (14: each target's link, Windows roots, targets without a root or revision, eight paths that get no link), `page.test.ts` (4), `renderHtml.test.ts` (6: meta.output, the root only locally, refused arguments); `test/dom/page.test.ts` (a hostile label yields exactly one executable script; the page script draws the map with the real layout and no network call, copies a clicked citation, and refuses a denied one); e2e `RCH-01 the map's Export Page writes meta.output with the map and the viewer`. ADR 0051. `[smoke]` waits for the owner.
 
 ## D4 Pull request checks
 
@@ -291,6 +304,8 @@ Done when: The plugin opens cited lines on AB3.
 - [ ] **IDE-01 IntelliJ plugin** `[jvm]` `[smoke]`
 
 ## Log
+
+- 2026-10-18 — D3 closed pending owner. The candidate watcher also lists each folder's candidates every 2 s: under a load average of 12 from another project's browser tests, two watcher e2e tests timed out on WSL because file events arrived late or not at all. SAF-07's `[e2e]` half now runs in the FRS-04 suite, as planned. Gates: `npm run check` exit 0 (1027 tests, 51 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 71, empty 3, multi 2 each). Every new test was seen to fail once with its behaviour broken: 31 deliberate breaks across D3.
 
 - 2026-10-18 — D2 closed pending owner. UI-03's map-panel title buttons (Refresh, Show Changes, Export Page), UI-05's "Refresh this box" and the maps list's Refresh and Export page move to the D3 features they run (FRS-06, FRS-04, RCH-01): a menu entry for a command that does nothing yet would break UI-01's reachability rule in spirit. UI-04 uses a codicon for the idle icon, because a status bar item cannot show an SVG. Gates: `npm run check` exit 0 (914 tests, 46 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 59, empty 3, multi 2 each). Ten deliberate breaks each failed their test: inline answer code set as HTML, Cancel signalling only the agent, rejected citations kept, folder citations ignored, the status text ignoring a run, the setup list never opening, box context dropped, the final answer ignored, the newest run not chosen, and a missing Explorer menu entry.
 
