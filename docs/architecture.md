@@ -341,6 +341,18 @@ The session panel speaks a parallel protocol (`SessionView` carries only public 
 
 The validator's accepted report gains `evidence: [finding]` (ADR 0050). `refresh-facts.mjs` prints `{root, runFolder, draft, base: {runFolder, revision, createdAt, fingerprints}, paths, boxes, stale, changes: [{path, added, deleted, covered}], uncovered, newFolders}`. `sustain.mjs check` prints `{map, base, head, mergeBase, touched: {strong, weak}, stale, uncovered, candidates: [{dir, files: [{path, added}], lines, label}], gone, result, reasons}`.
 
+## Sustain Cloud
+
+`cloud/` is an npm workspace: Next.js (App Router), React, next-auth with GitHub, Drizzle ORM over PGlite in tests and local runs. Tables: `users`, `organizations`, `memberships`, `repositories` (owner, name, default branch, private, `public_maps`), `access` (user, repository, role, `checked_at`), `uploads` (repository, kind, commit, branch, pull, the validated payload, how it was signed) and `tokens` (SHA-256 only). Deleting a user or a repository deletes everything under it. `cloud/src/lib/services.ts` holds the database, GitHub's keys and the clock, which tests replace.
+
+### Upload API (CLD-02)
+
+| Request | Body | Answers |
+|---|---|---|
+| `POST /api/v1/uploads`, `Authorization: Bearer <Actions OIDC token or sus_ upload token>` | `{repo: "owner/name", commit, branch, kind: "map", map, sidecars?: {run?, fingerprints?, evidence?}, meta}` or `{…, kind: "check", check, map?, meta: {pull?, …}}`, at most 1 MiB, passing `checkUpload` ([ADR 0054](adr/0054-the-cloud-accepts-maps-never-code.md)) | `201 {status: "accepted", id, url}`; `400` not JSON; `401` unsigned; `403` a token or OIDC claim for another repository; `413` too large; `422 {errors: [Issue]}` failing the schema or the secret scan; `429` over 60 uploads an hour |
+
+`meta` may hold `run`, `focus`, `agent`, `tokens`, `costUsd`, `skillVersion`, `pull` and `defaultBranch`. The main map is the latest map uploaded from the repository's default branch.
+
 ## On-disk layout
 
 | Path | Contents |
