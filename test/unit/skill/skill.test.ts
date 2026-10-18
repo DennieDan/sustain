@@ -29,12 +29,13 @@ function parseNestedYaml(text: string): Record<string, Record<string, string | b
 }
 
 describe("FR-SKL-01 skill frontmatter", () => {
-  test("SAF-02 SET-01 SKILL.md declares the manual-only skill with its pre-approved tools", () => {
+  test("SAF-02 SET-01 RCH-04 SKILL.md declares the manual-only skill with its pre-approved tools", () => {
     const parsed = parseFrontMatter(read("SKILL.md"));
     expect(parsed?.fields).toEqual({
       name: "sustain-architecture",
       description:
         "Generate an Archify architecture diagram of this repository for the Sustain VS Code viewer. Invoke manually with an optional focus.",
+      triggers: "[user]",
       "disable-model-invocation": "true",
       "allowed-tools":
         "Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/render-html.mjs *)",
@@ -77,10 +78,11 @@ describe("SET-01 install anywhere", () => {
 describe("FRS-05 refresh skill", () => {
   const refreshDir = join(repoRoot, "skills/sustain-refresh");
 
-  test("SKILL.md declares the manual-only skill with its two scripts", () => {
+  test("RCH-04 SKILL.md declares the manual-only skill with its two scripts", () => {
     expect(parseFrontMatter(readFileSync(join(refreshDir, "SKILL.md"), "utf8"))?.fields).toEqual({
       name: "sustain-refresh",
       description: "Bring an existing Sustain architecture diagram up to date with the code. Invoke manually with --from <run folder> and optional --paths <glob>.",
+      triggers: "[user]",
       "disable-model-invocation": "true",
       "allowed-tools":
         "Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/refresh-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/render-html.mjs *)",
@@ -130,4 +132,8 @@ describe("ACC-01 behaviour over names", () => {
     expect(text).toContain("This revision does not count against the 3 repairs");
     expect(text).toMatch(/it happens once/);
   });
+});
+
+test.each(["sustain-architecture", "sustain-audit", "sustain-bugfix", "sustain-refresh", "sustain-tour"])("RCH-04 %s is started by the user, with triggers: [user]", (name) => {
+  expect(parseFrontMatter(readFileSync(join(repoRoot, "skills", name, "SKILL.md"), "utf8"))?.fields["triggers"]).toBe("[user]");
 });

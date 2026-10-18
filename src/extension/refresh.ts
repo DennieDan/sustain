@@ -4,6 +4,7 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import * as vscode from "vscode";
+import type { ComposerCli } from "../model/messages";
 import { repoRootFor } from "../model/discovery";
 import { refreshArgs } from "../model/refresh";
 import { parseDiagram } from "../model/tolerant";
@@ -29,7 +30,7 @@ export function refreshTask(candidate: string, paths: readonly string[] = []): L
  * Refreshes `file`, or the map the panel shows. `preferred` is the sidebar's chosen agent. With
  * no map at all it runs Generate instead.
  */
-export async function refreshArchitectureCommand(context: vscode.ExtensionContext, runs: Runs, file?: string, paths: readonly string[] = [], preferred?: "claude" | "codex"): Promise<void> {
+export async function refreshArchitectureCommand(context: vscode.ExtensionContext, runs: Runs, file?: string, paths: readonly string[] = [], preferred?: ComposerCli): Promise<void> {
   const panel = ArchitecturePanel.current;
   const candidate = file ?? (panel !== undefined && panel.file !== "" ? panel.file : undefined);
   if (candidate === undefined) {

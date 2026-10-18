@@ -109,6 +109,11 @@
         "category": "Sustain"
       },
       {
+        "command": "sustain.copyPromptFor",
+        "title": "Copy Prompt for…",
+        "category": "Sustain"
+      },
+      {
         "command": "sustain.openArchitecture",
         "title": "Open Architecture",
         "category": "Sustain"

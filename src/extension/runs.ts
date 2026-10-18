@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 import type { StreamParser } from "../model/agentStream/feed";
 import type { RunState } from "../model/agentStream/tracker";
 import type { RunEstimate } from "../model/estimate";
-import type { RunCard, RunMode } from "../model/messages";
+import type { ComposerCli, RunCard, RunMode } from "../model/messages";
 import { CANDIDATE_FILE } from "../model/runFolder";
 import type { LaunchTask } from "./generate";
 import { newRunRecord, newRunSince, runFolderNames, updateRunRecord } from "../model/runRecord";
@@ -21,7 +21,7 @@ export interface RunRequest {
   root: string;
   /** What the card shows: the focus, or what a refresh covers. */
   focus: string;
-  agent: { cli: "claude" | "codex"; label: string };
+  agent: { cli: ComposerCli; label: string };
   task: LaunchTask;
   /** The estimate stated before the run (CST-03), or `null` when the folder could not be measured. */
   estimate: RunEstimate | null;

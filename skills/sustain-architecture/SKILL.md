@@ -1,6 +1,7 @@
 ---
 name: sustain-architecture
 description: Generate an Archify architecture diagram of this repository for the Sustain VS Code viewer. Invoke manually with an optional focus.
+triggers: [user]
 disable-model-invocation: true
 allowed-tools: Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/validate.mjs *) Bash(node ${CLAUDE_SKILL_DIR}/scripts/render-html.mjs *)
 ---

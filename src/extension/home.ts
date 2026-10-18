@@ -26,6 +26,7 @@ import { skillStatus } from "./integrity";
 import { ArchitecturePanel } from "./panel";
 import { exportPageCommand } from "./exportPage";
 import { createTourCommand } from "./tour";
+import { copyPromptCommand } from "./copyPrompt";
 import { refreshArchitectureCommand } from "./refresh";
 import type { Review } from "./review";
 import type { Runs } from "./runs";
@@ -236,6 +237,7 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         void this.checkSetup();
         return;
       case "setAgent":
+        if (!foundAgents().some((agent) => agent.cli === message.agent)) return;
         await rememberAgent(this.context, message.agent);
         this.send();
         return;
@@ -249,7 +251,7 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         const agent = AGENTS.find((entry) => entry.cli === cli);
         if (!agent) return;
         // Above the threshold the sidebar sends a second, confirmed click (CST-03).
-        if (launchEstimate(root, agent.cli, "full")?.confirm === true && message.confirmed !== true) return;
+        if (agent.cli !== "devin" && launchEstimate(root, agent.cli, "full")?.confirm === true && message.confirmed !== true) return;
         this.runs.dismiss();
         await launchGenerate(this.context, this.runs, root, agent, message.focus, configuredRunMode());
         this.send();
@@ -341,6 +343,9 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         return;
       case "practiceClear":
         if (root !== null) await this.practice.clear(root);
+        return;
+      case "copyPromptFor":
+        if (root !== null) await copyPromptCommand(this.context.extensionUri, root, message.focus);
         return;
       case "createTour":
         if (root !== null && this.isCandidate(root, message.file)) await createTourCommand(this.context, this.runs, message.file);

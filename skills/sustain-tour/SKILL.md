@@ -1,6 +1,7 @@
 ---
 name: sustain-tour
 description: Write a guided tour of an accepted Sustain architecture diagram. Each stop opens a box's code, explains it and asks the reader a question. Invoke manually with the run folder.
+triggers: [user]
 disable-model-invocation: true
 allowed-tools: Read Grep Glob Bash(node ${CLAUDE_SKILL_DIR}/scripts/tour-record.mjs *)
 ---

@@ -1,7 +1,7 @@
 // SAF-04: agents launch with the prompt alone and only from absolute PATH entries.
 import { chmodSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { agentLaunchArgs, agentPrompt, AGENTS, findOnPath, headlessArgs, SKILL_SCRIPTS, skillPrompt } from "../../../src/extension/agents";
+import { agentLaunchArgs, agentPrompt, AGENTS, copiedPrompt, findOnPath, headlessArgs, PROMPT_TARGETS, SKILL_SCRIPTS, skillPrompt } from "../../../src/extension/agents";
 import { devinPromptArgs } from "../../../src/extension/devin";
 import { put, tempDir } from "../support/temp";
 
@@ -116,6 +116,24 @@ describe("SAF-04 launch arguments", () => {
       expect(findOnPath("claude", { PATH: `bin:.:${elsewhere}` }, "linux")).toBe(real);
     } finally {
       process.chdir(cwd);
+    }
+  });
+});
+
+describe("RCH-04 more agents", () => {
+  test("Devin runs Generate with the slash prompt after --", () => {
+    const devin = AGENTS.find((agent) => agent.cli === "devin")!;
+    expect(devinPromptArgs(agentPrompt(devin, " payment flow "))).toEqual(["--", "/sustain-architecture payment flow"]);
+  });
+
+  test("a copied prompt is @name for Devin Desktop, and elsewhere asks to follow the skill's SKILL.md", () => {
+    const dir = "/h/.agents/skills/sustain-architecture";
+    expect(PROMPT_TARGETS.map((target) => target.label)).toEqual(["GitHub Copilot agent mode", "Cursor's agent", "Gemini CLI", "OpenCode", "Devin Desktop"]);
+    expect(copiedPrompt("devin-desktop", "sustain-architecture", " payment flow ", dir)).toBe("@sustain-architecture payment flow");
+    expect(copiedPrompt("devin-desktop", "sustain-architecture", "", dir)).toBe("@sustain-architecture");
+    for (const target of ["copilot", "cursor", "gemini", "opencode"] as const) {
+      expect(copiedPrompt(target, "sustain-architecture", "payment flow", dir)).toBe(`Follow the sustain-architecture skill in ${dir}/SKILL.md, and run its scripts from that folder. Its arguments are: payment flow`);
+      expect(copiedPrompt(target, "sustain-architecture", " ", dir)).toBe(`Follow the sustain-architecture skill in ${dir}/SKILL.md, and run its scripts from that folder.`);
     }
   });
 });

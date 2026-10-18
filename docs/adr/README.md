@@ -6,7 +6,7 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 |---|---|---|---|
 | [0001](0001-record-architecture-decisions-with-madr.md) | Record architecture decisions with MADR | accepted | 2026-10-10 |
 | [0002](0002-external-coding-agent-generates-diagrams.md) | External coding agent generates diagrams through a skill | accepted | 2026-10-10 |
-| [0003](0003-target-claude-code-and-codex.md) | Target Claude Code and Codex | accepted | 2026-10-10 |
+| [0003](0003-target-claude-code-and-codex.md) | Target Claude Code and Codex | superseded by [ADR-0065](0065-devin-joins-the-composer-and-other-agents-get-copied-prompts.md) | 2026-10-10 |
 | [0004](0004-one-skill-with-bundled-scripts.md) | One skill with bundled repo-facts and validate scripts | superseded by [ADR-0049](0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md) | 2026-10-10 |
 | [0005](0005-manual-invocation-and-claude-pre-approvals.md) | Manual skill invocation and Claude tool pre-approvals | accepted | 2026-10-10 |
 | [0006](0006-install-skill-into-agents-with-claude-symlink.md) | Install the skill into .agents/skills with a .claude symlink | superseded by [ADR-0044](0044-skills-install-per-user-by-default.md) | 2026-10-10 |
@@ -68,3 +68,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0062](0062-bug-kinds-per-language.md) | Bug kinds per language | accepted | 2026-10-19 |
 | [0063](0063-plans-are-enforced-on-the-server-and-billed-through-stripes-api.md) | Plans are enforced on the server and billed through Stripe's API | accepted | 2026-10-19 |
 | [0064](0064-layout-runs-in-web-workers-from-blob-urls.md) | Layout runs in Web Workers from Blob URLs | accepted | 2026-10-19 |
+| [0065](0065-devin-joins-the-composer-and-other-agents-get-copied-prompts.md) | Devin joins the composer, and other agents get copied prompts | accepted | 2026-10-19 |

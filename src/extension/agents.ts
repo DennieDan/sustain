@@ -1,12 +1,13 @@
 // Agent launch details for `Sustain: Generate Architecture` (FR-GEN-01). No `vscode` import,
 // so the prompt format is unit-tested in Node. The PATH lookup lives in `src/model/which.ts`.
+import type { ComposerCli } from "../model/messages";
 export { findOnPath } from "../model/which";
 
 export interface Agent {
   /** QuickPick label and terminal name suffix. */
-  label: "Claude Code" | "Codex";
-  /** Executable looked up on PATH. */
-  cli: "claude" | "codex";
+  label: "Claude Code" | "Codex" | "Devin";
+  /** Executable looked up on PATH, or where Devin installs. */
+  cli: ComposerCli;
   /** Skill invocation prefix. */
   invoke: "/sustain-architecture" | "$sustain-architecture";
 }
@@ -14,6 +15,8 @@ export interface Agent {
 export const AGENTS: readonly Agent[] = [
   { label: "Claude Code", cli: "claude", invoke: "/sustain-architecture" },
   { label: "Codex", cli: "codex", invoke: "$sustain-architecture" },
+  // RCH-04: Devin runs in a terminal only.
+  { label: "Devin", cli: "devin", invoke: "/sustain-architecture" },
 ];
 
 /** The terminal's argument vector: the prompt alone, never a permission flag (SAF-04). */
@@ -71,9 +74,31 @@ export function agentPrompt(agent: Agent, focus: string): string {
   return skillPrompt(agent.cli, "sustain-architecture", focus);
 }
 
-/** `/<skill> <args>` for Claude Code or `$<skill> <args>` for Codex; no trailing space without arguments. */
-export function skillPrompt(cli: "claude" | "codex", skill: SkillName, args: string): string {
-  const invoke = `${cli === "claude" ? "/" : "$"}${skill}`;
+/** `/<skill> <args>` for Claude Code and Devin, or `$<skill> <args>` for Codex; no trailing space without arguments. */
+export function skillPrompt(cli: ComposerCli, skill: SkillName, args: string): string {
+  const invoke = `${cli === "codex" ? "$" : "/"}${skill}`;
   const trimmed = args.trim();
   return trimmed === "" ? invoke : `${invoke} ${trimmed}`;
+}
+
+/** RCH-04: agents Sustain does not launch, whose prompt it copies instead. */
+export const PROMPT_TARGETS = [
+  { id: "copilot", label: "GitHub Copilot agent mode" },
+  { id: "cursor", label: "Cursor's agent" },
+  { id: "gemini", label: "Gemini CLI" },
+  { id: "opencode", label: "OpenCode" },
+  { id: "devin-desktop", label: "Devin Desktop" },
+] as const;
+
+export type PromptTarget = (typeof PROMPT_TARGETS)[number]["id"];
+
+/**
+ * The prompt to paste into `target` to run `skill` with `args`: `@<skill> <args>` for Devin Desktop,
+ * which mentions skills by name, and elsewhere a request to follow the skill's SKILL.md in `skillDir`.
+ */
+export function copiedPrompt(target: PromptTarget, skill: SkillName, args: string, skillDir: string): string {
+  const trimmed = args.trim();
+  if (target === "devin-desktop") return trimmed === "" ? `@${skill}` : `@${skill} ${trimmed}`;
+  const follow = `Follow the ${skill} skill in ${skillDir}/SKILL.md, and run its scripts from that folder.`;
+  return trimmed === "" ? follow : `${follow} Its arguments are: ${trimmed}`;
 }

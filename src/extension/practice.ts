@@ -17,7 +17,7 @@ import { practiceLog, type FinishedTour } from "../model/practiceLog";
 import { parseDiagram, type ViewComponent } from "../model/tolerant";
 import { findOnPath, headlessArgs } from "./agents";
 import { launchEstimate } from "./estimates";
-import { chosenAgent, foundAgents } from "./generate";
+import { chosenAgent, chosenHeadless, foundAgents } from "./generate";
 import { ArchitecturePanel } from "./panel";
 import { startHeadless, type HeadlessRun } from "./runner";
 import { readSessionSnapshot } from "./sessionFiles";
@@ -68,7 +68,7 @@ export class Practice implements vscode.Disposable {
   }
 
   private agent(): "claude" | "codex" | null {
-    return chosenAgent(this.context, foundAgents());
+    return chosenHeadless(this.context, foundAgents());
   }
 
   private blocked(root: string | null): string | null {
@@ -76,6 +76,7 @@ export class Practice implements vscode.Disposable {
     const agents = foundAgents();
     const cli = chosenAgent(this.context, agents);
     if (cli === null) return "Explain-back needs Claude Code or Codex on PATH.";
+    if (cli === "devin") return "Explain-back needs Claude Code or Codex. Devin runs only in a terminal.";
     if (agents.find((agent) => agent.cli === cli)?.headless === false) return "Explain-back needs an agent that can run in the sidebar. This one's Windows launcher cannot.";
     return null;
   }

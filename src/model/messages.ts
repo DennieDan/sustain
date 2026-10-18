@@ -156,9 +156,12 @@ export interface MapItem {
   changed: number | null;
 }
 
+/** The agents the composer can launch (RCH-04 adds Devin, which runs in a terminal). */
+export type ComposerCli = "claude" | "codex" | "devin";
+
 /** An agent the composer offers: found on PATH, with whether it can stream into the sidebar. */
 export interface ComposerAgent {
-  cli: "claude" | "codex";
+  cli: ComposerCli;
   label: string;
   headless: boolean;
 }
@@ -255,7 +258,7 @@ export interface HomeState {
   composer: {
     agents: ComposerAgent[];
     /** The remembered agent, or the first one found. */
-    agent: "claude" | "codex" | null;
+    agent: ComposerCli | null;
     runMode: RunMode;
     /** What the next Generate click will also do (SET-03): the estimate (CST-03), installs, repairs, the data note. */
     notes: string[];
@@ -287,7 +290,7 @@ export type HomeHostMessage = { type: "state"; state: HomeState };
 export type HomeWebviewMessage =
   | { type: "ready" }
   | { type: "pickFolder"; root: string }
-  | { type: "setAgent"; agent: "claude" | "codex" }
+  | { type: "setAgent"; agent: ComposerCli }
   | { type: "setRunMode"; runMode: RunMode }
   | { type: "generate"; focus: string; confirmed?: boolean }
   | { type: "cancelRun" }
@@ -317,4 +320,6 @@ export type HomeWebviewMessage =
   | { type: "practiceAnswer"; index: number; answer: string }
   | { type: "practiceCancel" }
   | { type: "practiceClear" }
-  | { type: "createTour"; file: string };
+  | { type: "createTour"; file: string }
+  /** RCH-04: copy the Generate prompt for an agent Sustain does not launch. */
+  | { type: "copyPromptFor"; focus: string };

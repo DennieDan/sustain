@@ -81,6 +81,7 @@ export const SIDEBAR_ACTIONS: Readonly<Record<string, string>> = {
   suggestRules: "sustain.suggestRules",
   practiceStart: "sustain.checkUnderstanding",
   createTour: "sustain.createTour",
+  copyPromptFor: "sustain.copyPromptFor",
 };
 
 /** The map's freshness header (FRS-03), or `null` when no box changed. */

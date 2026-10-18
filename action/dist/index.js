@@ -9688,7 +9688,7 @@ function headlessArgs(cli, prompt, options) {
   return ["-p", prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk", ...resume, "--allowedTools", ...tools];
 }
 function skillPrompt(cli, skill, args) {
-  const invoke = `${cli === "claude" ? "/" : "$"}${skill}`;
+  const invoke = `${cli === "codex" ? "$" : "/"}${skill}`;
   const trimmed = args.trim();
   return trimmed === "" ? invoke : `${invoke} ${trimmed}`;
 }

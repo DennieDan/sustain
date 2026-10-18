@@ -1,6 +1,7 @@
 ---
 name: sustain-audit
 description: Check each box of an accepted Sustain architecture diagram against the code it cites, and record a verdict per box and the evidence for each arrow. Invoke manually with the run folder.
+triggers: [user]
 disable-model-invocation: true
 allowed-tools: Read Grep Glob Task Bash(node ${CLAUDE_SKILL_DIR}/scripts/audit-record.mjs *)
 ---

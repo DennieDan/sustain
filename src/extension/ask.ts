@@ -16,7 +16,7 @@ import type { AskView } from "../model/messages";
 import { parseDiagram } from "../model/tolerant";
 import { findOnPath, headlessArgs } from "./agents";
 import { launchEstimate } from "./estimates";
-import { chosenAgent, foundAgents } from "./generate";
+import { chosenAgent, chosenHeadless, foundAgents } from "./generate";
 import { openSourceRef } from "./navigate";
 import { ArchitecturePanel } from "./panel";
 import { startHeadless, type HeadlessRun } from "./runner";
@@ -75,13 +75,14 @@ export class Ask implements vscode.Disposable {
     const agents = foundAgents();
     const cli = chosenAgent(this.context, agents);
     if (cli === null) return "Ask needs Claude Code or Codex on PATH.";
+    if (cli === "devin") return "Ask needs Claude Code or Codex. Devin runs only in a terminal.";
     if (agents.find((agent) => agent.cli === cli)?.headless === false) return "Ask needs an agent that can run in the sidebar. This one's Windows launcher cannot.";
     return null;
   }
 
   /** What one question costs with the chosen agent (CST-03). */
   private estimate(root: string): RunEstimate | null {
-    const cli = chosenAgent(this.context, foundAgents());
+    const cli = chosenHeadless(this.context, foundAgents());
     return cli === null ? null : launchEstimate(root, cli, "ask");
   }
 
@@ -141,7 +142,7 @@ export class Ask implements vscode.Disposable {
     if (this.run !== undefined || question.trim() === "" || this.blocked(root) !== null) return;
     if (this.estimate(root)?.confirm === true && !confirmed) return;
     const map = this.mapFor(root)!;
-    const cli = chosenAgent(this.context, foundAgents())!;
+    const cli = chosenHeadless(this.context, foundAgents())!;
     const binary = findOnPath(cli, process.env);
     if (binary === undefined) return;
     const follow = cli === "claude" && this.conversation !== null && this.conversation.root === root && this.conversation.map === map ? this.conversation : null;

@@ -2,7 +2,7 @@
 
 Sustain draws your repository's architecture as a map that opens the code behind every box and tells you when the code has moved on.
 
-A coding agent you already use writes the map. Sustain supports Claude Code and Codex, and gives them a skill to follow. Each box cites the lines it describes, and a click opens them. Sustain compares every box with the code it cites. It shows which boxes have changed without spending a token.
+A coding agent you already use writes the map. Sustain runs Claude Code, Codex and Devin, and gives them a skill to follow. For GitHub Copilot, Cursor, Gemini CLI, OpenCode and Devin Desktop, **Copy prompt for…** under Generate copies a prompt to paste. Each box cites the lines it describes, and a click opens them. Sustain compares every box with the code it cites. It shows which boxes have changed without spending a token.
 
 Maps use the [Archify](https://github.com/tt-a1i/archify) JSON format (`schema_version: 1`). Sustain is not affiliated with Archify.
 

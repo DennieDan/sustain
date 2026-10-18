@@ -86,7 +86,9 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     post({ type: "generate", focus: focus.value, ...(confirm ? { confirmed: true } : {}) });
   });
   const notes = el("div", "composer__notes");
-  composer.append(focus, controls, generate, notes);
+  // RCH-04: the same prompt, for an agent Sustain does not launch.
+  const copyPrompt = button("Copy prompt for…", "link composer__copy", () => post({ type: "copyPromptFor", focus: focus.value }));
+  composer.append(focus, controls, generate, copyPrompt, notes);
   focus.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !generate.disabled) generate.click();
   });
@@ -178,7 +180,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
         option.selected = entry.cli === state.composer.agent;
         agent.append(option);
       }
-      agent.addEventListener("change", () => post({ type: "setAgent", agent: agent.value === "codex" ? "codex" : "claude" }));
+      agent.addEventListener("change", () => post({ type: "setAgent", agent: agent.value === "codex" || agent.value === "devin" ? agent.value : "claude" }));
       controls.append(agent);
     }
     const mode = el("div", "toggle");
