@@ -1,7 +1,8 @@
 // CST-04: run.json records a run's kind, scope and progress beside its candidate.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { assertWritable } from "./confine";
+import { ARCHIFY_DIR } from "./runFolder";
 import { writeJson } from "./session";
 import { isJsonObject } from "./types";
 
@@ -35,7 +36,7 @@ export interface RunRecord {
   finishedAt?: string;
   /** Added by the extension when it launched the run. */
   agent?: string;
-  mode?: "panel" | "terminal";
+  mode?: "sidebar" | "terminal";
   tokens?: RunTokens;
   costUsd?: number;
 }
@@ -78,4 +79,25 @@ export function updateRunRecord(root: string, runDir: string, patch: Partial<Run
   const next = { ...(readRunRecord(runDir) ?? fallback()), ...patch };
   writeRunRecord(root, runDir, next);
   return next;
+}
+
+/** The folder names in `root/.archify`, taken before a run so the one it creates can be found. */
+export function runFolderNames(root: string): Set<string> {
+  try {
+    return new Set(readdirSync(join(root, ARCHIFY_DIR)));
+  } catch {
+    return new Set();
+  }
+}
+
+/** The run folder created since `before` whose record started last, or `null` when there is none yet. */
+export function newRunSince(root: string, before: ReadonlySet<string>): { runFolder: string; dir: string; record: RunRecord } | null {
+  let found: { runFolder: string; dir: string; record: RunRecord } | null = null;
+  for (const runFolder of runFolderNames(root)) {
+    if (before.has(runFolder)) continue;
+    const dir = join(root, ARCHIFY_DIR, runFolder);
+    const record = readRunRecord(dir);
+    if (record !== null && (found === null || record.createdAt > found.record.createdAt)) found = { runFolder, dir, record };
+  }
+  return found;
 }

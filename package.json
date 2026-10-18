@@ -28,13 +28,29 @@
       "properties": {
         "sustain.skillScope": {
           "type": "string",
-          "enum": ["user", "project"],
+          "enum": [
+            "user",
+            "project"
+          ],
           "enumDescriptions": [
             "Install the skills in your home folder (~/.claude/skills, ~/.agents/skills). Nothing is added to the repository.",
             "Install the skills in the repository (.claude/skills, .agents/skills)."
           ],
           "default": "user",
           "description": "Where Sustain installs its agent skills."
+        },
+        "sustain.runMode": {
+          "type": "string",
+          "enum": [
+            "sidebar",
+            "terminal"
+          ],
+          "enumDescriptions": [
+            "Run the agent headless and stream its progress into the Sustain sidebar.",
+            "Run the agent in a terminal, as you would yourself."
+          ],
+          "default": "sidebar",
+          "description": "Where Generate runs the agent."
         }
       }
     },
@@ -63,8 +79,79 @@
         "command": "sustain.startLearning",
         "title": "Start Learning Session",
         "category": "Sustain"
+      },
+      {
+        "command": "sustain.checkSetup",
+        "title": "Check Setup",
+        "category": "Sustain",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "sustain.refreshHome",
+        "title": "Refresh",
+        "category": "Sustain",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sustain.cancelRun",
+        "title": "Cancel Run",
+        "category": "Sustain",
+        "icon": "$(debug-stop)"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sustain",
+          "title": "Sustain",
+          "icon": "media/sustain.svg"
+        }
+      ]
+    },
+    "views": {
+      "sustain": [
+        {
+          "type": "webview",
+          "id": "sustain.home",
+          "name": "Sustain"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "sustain.refreshHome",
+          "when": "view == sustain.home",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sustain.checkSetup",
+          "when": "view == sustain.home",
+          "group": "navigation@2"
+        },
+        {
+          "command": "sustain.cancelRun",
+          "when": "view == sustain.home && sustain.running",
+          "group": "navigation@0"
+        },
+        {
+          "command": "sustain.openArchitectureFile",
+          "when": "view == sustain.home",
+          "group": "more@1"
+        },
+        {
+          "command": "sustain.installSkills",
+          "when": "view == sustain.home",
+          "group": "more@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "sustain.cancelRun",
+          "when": "sustain.running"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "node esbuild.mjs",

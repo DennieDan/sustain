@@ -12,6 +12,7 @@ export class CandidateWatcher implements vscode.Disposable {
   private readonly watchers = new Map<string, vscode.FileSystemWatcher>();
   /** Candidates seen so far, per workspace folder root. */
   private readonly known = new Map<string, Set<string>>();
+  private readonly changed = new vscode.EventEmitter<void>();
   private readonly batch = new ChangeBatch((changes) => {
     for (const file of changes.keys()) {
       const root = dirname(dirname(dirname(file)));
@@ -19,10 +20,21 @@ export class CandidateWatcher implements vscode.Disposable {
       this.known.set(root, known);
       void this.apply(file, noteCandidate(known, file, existsSync(file)));
     }
+    this.changed.fire();
   });
   private readonly folderListener: vscode.Disposable;
 
-  constructor(private readonly extensionUri: vscode.Uri) {
+  /** Fires after candidates were added, changed or removed, for the sidebar's maps list. */
+  readonly onDidChange = this.changed.event;
+
+  /**
+   * @param quiet Whether new candidates in a folder go unannounced, because the sidebar run that
+   * makes them opens the map itself (UI-02).
+   */
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly quiet: (root: string) => boolean = () => false,
+  ) {
     this.watch(vscode.workspace.workspaceFolders ?? []);
     this.folderListener = vscode.workspace.onDidChangeWorkspaceFolders(({ added, removed }) => {
       for (const folder of removed) {
@@ -70,6 +82,7 @@ export class CandidateWatcher implements vscode.Disposable {
         panel?.showFile(action.root, action.file);
         return;
       case "notify": {
+        if (this.quiet(action.root)) return;
         const choice = await vscode.window.showInformationMessage(`New architecture diagram: \`${basename(dirname(action.file))}\``, "Open");
         if (choice === "Open") ArchitecturePanel.show(this.extensionUri, action.root, action.file);
         return;
@@ -81,6 +94,7 @@ export class CandidateWatcher implements vscode.Disposable {
 
   dispose(): void {
     this.batch.dispose();
+    this.changed.dispose();
     this.folderListener.dispose();
     for (const watcher of this.watchers.values()) watcher.dispose();
     this.watchers.clear();

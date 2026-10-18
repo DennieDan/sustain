@@ -11,6 +11,7 @@ const BROWSER_SAFE_MODEL: Record<string, true> = {
   "src/model/types.ts": true,
   "src/model/tolerant.ts": true,
   "src/model/checks.ts": true,
+  "src/model/home.ts": true,
 };
 const NODE_MODEL: Record<string, true> = {
   "src/model/citations.ts": true,
@@ -23,6 +24,7 @@ const NODE_MODEL: Record<string, true> = {
   "src/model/integrity.ts": true,
   "src/model/runRecord.ts": true,
   "src/model/preflight.ts": true,
+  "src/model/maps.ts": true,
 };
 const NODE_ALLOWED: Record<string, true> = {
   "node:fs": true,

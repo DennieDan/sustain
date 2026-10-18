@@ -133,8 +133,18 @@ async function buildDist() {
     target: "es2022",
     minify: true,
   }));
+  results.push(await esbuild.build({
+    ...common,
+    entryPoints: [join(root, "webview/sidebar.ts")],
+    outfile: join(dist, "sidebar.js"),
+    platform: "browser",
+    format: "iife",
+    target: "es2022",
+    minify: true,
+  }));
   cpSync(join(root, "webview/styles.css"), join(dist, "webview.css"));
   cpSync(join(root, "webview/session.css"), join(dist, "session-webview.css"));
+  cpSync(join(root, "webview/sidebar.css"), join(dist, "sidebar.css"));
   writeBundleInputs(results.flatMap((result) => (result.metafile ? [result.metafile] : [])));
 }
 

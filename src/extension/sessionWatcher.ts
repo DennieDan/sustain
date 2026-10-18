@@ -11,7 +11,11 @@ import { ChangeBatch } from "./watchLogic";
 export class SessionWatcher implements vscode.Disposable {
   private readonly watchers = new Map<string, vscode.FileSystemWatcher[]>();
   private readonly batch = new ChangeBatch((changes) => this.flush(changes));
+  private readonly changed = new vscode.EventEmitter<void>();
   private readonly folderListener: vscode.Disposable;
+
+  /** Fires after a session changed, for the sidebar's session section. */
+  readonly onDidChange = this.changed.event;
 
   constructor() {
     this.watch(vscode.workspace.workspaceFolders ?? []);
@@ -47,6 +51,7 @@ export class SessionWatcher implements vscode.Disposable {
         void vscode.window.showWarningMessage(`The learning session ended, but its Devin hooks could not be removed: ${(error as Error).message}`);
       }
     }
+    this.changed.fire();
     const panel = SessionPanel.current;
     if (panel === undefined) return;
     for (const file of changes.keys()) {
@@ -60,6 +65,7 @@ export class SessionWatcher implements vscode.Disposable {
 
   dispose(): void {
     this.batch.dispose();
+    this.changed.dispose();
     this.folderListener.dispose();
     for (const watchers of this.watchers.values()) for (const watcher of watchers) watcher.dispose();
     this.watchers.clear();

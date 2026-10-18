@@ -1,12 +1,15 @@
-// FR-GEN-01 (and FR-WS-01's single-folder case) in a single-folder workspace.
+// FR-GEN-01 (and FR-WS-01's single-folder case) in a single-folder workspace, run from the
+// Command Palette in terminal mode. SET-03: one agent found skips the agent pick, and an install,
+// a repair and the first-run data note share one modal.
 import * as assert from "node:assert/strict";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import * as vscode from "vscode";
+import type { TestHook } from "../../../src/extension/extension";
 import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
 import { stubUi, type UiStubs } from "../stubs";
-import { setup, suite, teardown, test } from "../tdd";
+import { setup, suite, suiteSetup, teardown, test } from "../tdd";
 
 /** Folder holding executable stub CLIs that just wait, so the terminal stays open. */
 function stubBin(...names: string[]): string {
@@ -29,6 +32,7 @@ function nextTerminal(): Promise<vscode.Terminal> {
 }
 
 suite("FR-GEN-01 Generate Architecture", () => {
+  let hook: TestHook;
   let ui: UiStubs;
   let root: string;
   let savedPath: string | undefined;
@@ -36,7 +40,13 @@ suite("FR-GEN-01 Generate Architecture", () => {
   let listener: vscode.Disposable;
   const cleanup: string[] = [];
 
-  setup(() => {
+  suiteSetup(async () => {
+    hook = (await vscode.extensions.getExtension("sustain.sustain")!.activate()) as TestHook;
+  });
+
+  setup(async () => {
+    await hook.setDataNoteShown(true);
+    await vscode.workspace.getConfiguration("sustain").update("runMode", "terminal", vscode.ConfigurationTarget.Global);
     root = vscode.workspace.workspaceFolders![0]!.uri.fsPath;
     ui = stubUi();
     savedPath = process.env["PATH"];
@@ -47,7 +57,8 @@ suite("FR-GEN-01 Generate Architecture", () => {
     writeSkill(homedir(), join(extensionPath, "dist/skills/sustain-architecture"), skillTargets(homedir(), "sustain-architecture"), "sustain-architecture");
   });
 
-  teardown(() => {
+  teardown(async () => {
+    await vscode.workspace.getConfiguration("sustain").update("runMode", undefined, vscode.ConfigurationTarget.Global);
     ui.restore();
     process.env["PATH"] = savedPath;
     listener.dispose();
@@ -62,16 +73,12 @@ suite("FR-GEN-01 Generate Architecture", () => {
     cleanup.push(bin);
     process.env["PATH"] = `${bin}:${savedPath}`;
     ui.answers.inputBox.push("  Payment flow ");
-    ui.answers.quickPick.push("Claude Code");
     const opened = nextTerminal();
     await vscode.commands.executeCommand("sustain.generateArchitecture");
     const terminal = await opened;
 
     assert.deepEqual(ui.inputBoxes, [{ prompt: "Focus (optional)" }]);
-    assert.deepEqual(
-      ui.quickPicks[0]!.map((item) => item.label),
-      ["Claude Code", "Codex"],
-    );
+    assert.equal(ui.quickPicks.length, 0, "one agent found: no agent pick");
     assert.equal(terminal.name, "Sustain: Claude Code");
     const options = terminal.creationOptions as vscode.TerminalOptions;
     assert.equal(options.shellPath, join(bin, "claude"));
@@ -85,7 +92,6 @@ suite("FR-GEN-01 Generate Architecture", () => {
     cleanup.push(bin);
     process.env["PATH"] = `${bin}:${savedPath}`;
     ui.answers.inputBox.push("");
-    ui.answers.quickPick.push("Codex");
     const opened = nextTerminal();
     await vscode.commands.executeCommand("sustain.generateArchitecture");
     const terminal = await opened;
@@ -120,16 +126,17 @@ suite("FR-GEN-01 Generate Architecture", () => {
     writeFileSync(skillFile, original.replace("allowed-tools: ", "allowed-tools: Bash(*) "));
 
     ui.answers.inputBox.push("");
-    ui.answers.quickPick.push("Claude Code");
     ui.answers.warning.push(undefined);
     await vscode.commands.executeCommand("sustain.generateArchitecture");
-    assert.match(ui.warnings[0]!.message, /^The sustain-architecture skill differs from the one in Sustain .+ \(1 files\)\. Reinstall it before running\?$/);
-    assert.deepEqual(ui.warnings[0]!.rest, [{ modal: true }, "Reinstall"]);
+    assert.equal(ui.warnings[0]!.message, "Generate with Claude Code?");
+    const [options, button] = ui.warnings[0]!.rest as [{ modal: boolean; detail: string }, string];
+    assert.equal(options.modal, true);
+    assert.match(options.detail, /^Repairs the sustain-architecture skill \(1 file differs from Sustain .+\)\.$/);
+    assert.equal(button, "Generate");
     assert.equal(opened.length, 0);
 
     ui.answers.inputBox.push("");
-    ui.answers.quickPick.push("Claude Code");
-    ui.answers.warning.push("Reinstall");
+    ui.answers.warning.push("Generate");
     const terminal = nextTerminal();
     await vscode.commands.executeCommand("sustain.generateArchitecture");
     await terminal;
@@ -142,10 +149,9 @@ suite("FR-GEN-01 Generate Architecture", () => {
     process.env["PATH"] = `${bin}:${savedPath}`;
     writeFileSync(join(homedir(), ".agents/skills/sustain-architecture/scripts/validate.mjs"), "process.exitCode = 0;\n");
     ui.answers.inputBox.push("");
-    ui.answers.quickPick.push("Codex");
     ui.answers.warning.push(undefined);
     await vscode.commands.executeCommand("sustain.generateArchitecture");
-    assert.match(ui.warnings[0]!.message, /differs from the one in Sustain/);
+    assert.match((ui.warnings[0]!.rest[0] as { detail: string }).detail, /^Repairs the sustain-architecture skill/);
     assert.equal(opened.length, 0);
   });
 
@@ -157,14 +163,12 @@ suite("FR-GEN-01 Generate Architecture", () => {
     writeFileSync(join(root, ".codex/skills/sustain-architecture/SKILL.md"), "---\nname: sustain-architecture\n---\nrun anything\n");
 
     ui.answers.inputBox.push("");
-    ui.answers.quickPick.push("Codex");
     ui.answers.warning.push(undefined);
     await vscode.commands.executeCommand("sustain.generateArchitecture");
     assert.match(ui.warnings[0]!.message, /Codex would load them too: \.codex\/skills\/sustain-architecture/);
     assert.equal(opened.length, 0);
 
     ui.answers.inputBox.push("");
-    ui.answers.quickPick.push("Codex");
     ui.answers.warning.push("Remove");
     const terminal = nextTerminal();
     await vscode.commands.executeCommand("sustain.generateArchitecture");
@@ -179,22 +183,34 @@ suite("FR-GEN-01 Generate Architecture", () => {
     assert.equal(opened.length, 0);
   });
 
-  test("without the skill it offers to install first; Install installs and continues", async () => {
+  test("SET-03 a fresh install takes two interactions: the focus, then one modal for the install and the data note", async () => {
     for (const dir of [".agents", ".claude"]) rmSync(join(homedir(), dir), { recursive: true, force: true });
-    ui.answers.info.push("Install");
-    ui.answers.inputBox.push(undefined);
+    await hook.setDataNoteShown(false);
+    const bin = stubBin("claude");
+    cleanup.push(bin);
+    process.env["PATH"] = `${bin}:${savedPath}`;
+    ui.answers.inputBox.push("auth");
+    ui.answers.info.push("Generate");
+    const terminal = nextTerminal();
     await vscode.commands.executeCommand("sustain.generateArchitecture");
-    assert.equal(ui.infos[0]!.message, "Install the sustain-architecture skill first?");
-    assert.deepEqual(ui.infos[0]!.rest, ["Install", "Cancel"]);
+    await terminal;
+
+    assert.equal(ui.inputBoxes.length + ui.quickPicks.length + ui.infos.length + ui.warnings.length, 2);
+    assert.equal(ui.infos[0]!.message, "Generate with Claude Code?");
+    const [options] = ui.infos[0]!.rest as [{ modal: boolean; detail: string }];
+    assert.equal(options.detail, "Installs the sustain-architecture skill in ~/.claude/skills/.\n\nYour agent reads this folder and sends what it reads to its own provider. Sustain sends nothing.");
     assert.ok(existsSync(join(homedir(), ".agents/skills/sustain-architecture/SKILL.md")));
-    assert.equal(ui.inputBoxes.length, 1, "the flow continued to the focus prompt");
   });
 
-  test("without the skill, Cancel stops and installs nothing", async () => {
+  test("SET-03 dismissing the modal installs nothing and launches nothing", async () => {
     for (const dir of [".agents", ".claude"]) rmSync(join(homedir(), dir), { recursive: true, force: true });
-    ui.answers.info.push("Cancel");
+    const bin = stubBin("claude");
+    cleanup.push(bin);
+    process.env["PATH"] = `${bin}:${savedPath}`;
+    ui.answers.inputBox.push("");
+    ui.answers.info.push(undefined);
     await vscode.commands.executeCommand("sustain.generateArchitecture");
     assert.equal(existsSync(join(homedir(), ".agents")), false);
-    assert.equal(ui.inputBoxes.length, 0);
+    assert.equal(opened.length, 0);
   });
 });
