@@ -43,11 +43,13 @@ export class RunTracker {
     this.state.feed.push(...update.items);
     if (this.state.feed.length > FEED_LIMIT) this.state.feed.splice(0, this.state.feed.length - FEED_LIMIT);
     if (update.usage) this.state.usage = update.usage;
-    if (update.answer) this.state.answer += update.answer;
+    // Separate messages are separate paragraphs.
+    if (update.answer) this.state.answer += (this.state.answer === "" ? "" : "\n\n") + update.answer;
     if (update.end) {
       this.state.costUsd = update.end.costUsd;
       this.state.denials = update.end.denials;
       this.state.sessionId = update.end.sessionId;
+      if (update.end.finalAnswer !== undefined) this.state.answer = update.end.finalAnswer;
       if (!update.end.ok) this.state.status = "failed";
     }
   }

@@ -10,6 +10,7 @@ import type { HomeHostMessage, HomeState, HomeWebviewMessage, SessionSummary } f
 import { runPreflight, type Check } from "../model/preflight";
 import { assertWritable } from "../model/confine";
 import { AGENTS } from "./agents";
+import type { Ask } from "./ask";
 import { findDevinCli } from "./devin";
 import { chosenAgent, configuredRunMode, foundAgents, launchGenerate, launchNotes, rememberAgent } from "./generate";
 import { webviewHtml } from "./html";
@@ -32,9 +33,10 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly runs: Runs,
+    private readonly ask: Ask,
     changes: vscode.Event<void>[],
   ) {
-    for (const change of [runs.onDidChange, ...changes]) this.disposables.push(change(() => this.send()));
+    for (const change of [runs.onDidChange, ask.onDidChange, ...changes]) this.disposables.push(change(() => this.send()));
     this.disposables.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => this.send()),
       vscode.workspace.onDidChangeConfiguration((event) => {
@@ -102,6 +104,7 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
       run: this.runs.current,
       setup: root === this.setupRoot ? this.setup : null,
       session: root === null ? null : sessionSummary(root),
+      ask: this.ask.view(root),
       serverNow: new Date().toISOString(),
     };
   }
@@ -191,6 +194,21 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         return;
       case "startLearning":
         await vscode.commands.executeCommand("sustain.startLearning");
+        return;
+      case "ask":
+        if (root !== null) await this.ask.ask(root, message.question);
+        return;
+      case "cancelAsk":
+        this.ask.cancel();
+        return;
+      case "clearAsk":
+        if (root !== null) await this.ask.clear(root);
+        return;
+      case "openCitation":
+        if (root !== null) await this.ask.openCitation(root, message.path, message.line, message.endLine);
+        return;
+      case "focusBox":
+        if (root !== null) this.ask.focusBox(root, message.id);
         return;
     }
   }

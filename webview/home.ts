@@ -1,9 +1,10 @@
 // The Sustain sidebar's DOM (UI-01): header, composer, run card, maps, setup and learning
 // session. Built from the HomeState the host sends; every string goes in as text. The composer's
 // text box persists across states, so typing survives updates.
-import { mapStatus, relativeAge, runFigures } from "../src/model/home";
-import type { HomeState, HomeWebviewMessage, MapItem, RunCard } from "../src/model/messages";
+import { mapStatus, relativeAge, runFigures, tokenCount } from "../src/model/home";
+import type { AskTurn, AskView, HomeState, HomeWebviewMessage, MapItem, RunCard } from "../src/model/messages";
 import type { Check } from "../src/model/preflight";
+import { renderAnswer } from "./answer";
 
 export type Post = (message: HomeWebviewMessage) => void;
 
@@ -70,7 +71,28 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   const maps = el("div", "maps-slot");
   const setup = el("details", "section setup");
   const session = el("div", "session-slot");
-  container.append(header, composer, runSlot, maps, setup, session);
+  // UI-06: the Ask chat sits at the bottom; its text box persists like the composer's.
+  const askSection = section("Ask", "ask");
+  const askTurns = el("div", "ask__turns");
+  const askNote = el("p", "ask__note");
+  const question = el("textarea", "ask__question");
+  question.rows = 2;
+  question.placeholder = "Ask about this repository";
+  question.setAttribute("aria-label", "Question");
+  const askButtons = el("div", "ask__buttons");
+  const askButton = button("Ask", "button button--primary", () => {
+    if (question.value.trim() === "") return;
+    post({ type: "ask", question: question.value });
+    question.value = "";
+  });
+  const stopButton = button("Stop", "button", () => post({ type: "cancelAsk" }));
+  const clearButton = button("Clear", "link", () => post({ type: "clearAsk" }));
+  askButtons.append(askButton, stopButton, clearButton);
+  askSection.append(askTurns, askNote, question, askButtons);
+  question.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !askButton.disabled) askButton.click();
+  });
+  container.append(header, composer, runSlot, maps, setup, session, askSection);
 
   let current: HomeState | null = null;
   let figures: HTMLElement | null = null;
@@ -220,6 +242,32 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     session.append(block);
   }
 
+  function askTurn(turn: AskTurn): HTMLElement {
+    const entry = el("div", `turn turn--${turn.status}`);
+    entry.append(el("div", "turn__question", turn.question));
+    if (turn.blocks.length > 0) entry.append(renderAnswer(turn.blocks, post));
+    else if (turn.status === "running") entry.append(el("p", "turn__pending", `${turn.agent} is reading the map…`));
+    if (turn.error !== null) entry.append(el("p", "turn__error", turn.error));
+    const input = turn.usage.input + turn.usage.cacheRead + turn.usage.cacheWrite;
+    const figures = [turn.agent];
+    if (input + turn.usage.output > 0) figures.push(`${tokenCount(input)} in`, `${tokenCount(turn.usage.output)} out`);
+    if (turn.costUsd !== null) figures.push(`$${turn.costUsd.toFixed(2)}`);
+    if (turn.status === "cancelled") figures.push("stopped");
+    entry.append(el("div", "turn__figures", figures.join(" · ")));
+    return entry;
+  }
+
+  function renderAsk(ask: AskView): void {
+    askTurns.replaceChildren(...ask.turns.map(askTurn));
+    const running = ask.turns.at(-1)?.status === "running";
+    askNote.textContent = ask.blocked ?? "";
+    askNote.hidden = ask.blocked === null;
+    question.disabled = ask.blocked !== null;
+    askButton.disabled = ask.blocked !== null || running;
+    stopButton.hidden = !running;
+    clearButton.hidden = running || ask.turns.length === 0;
+  }
+
   return {
     render(state) {
       current = state;
@@ -229,6 +277,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
       renderMaps(state.maps);
       renderSetup(state.setup);
       renderSession(state);
+      renderAsk(state.ask);
     },
     tick() {
       if (current?.run?.status === "running" && figures !== null) figures.textContent = runFigures(current.run, now());

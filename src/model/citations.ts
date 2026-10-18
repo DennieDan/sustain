@@ -81,6 +81,14 @@ export function probeFile(rootReal: string, path: string): FileProbe {
   }
 }
 
+/**
+ * Whether an answer may link to `path` (UI-06): the same path rule, deny-list and confinement as
+ * a map citation, and a readable text file.
+ */
+export function citable(rootReal: string, path: string): boolean {
+  return citationPathOk(path) && !isDenied(path) && probeFile(rootReal, path).kind === "text";
+}
+
 function lines(count: number): string {
   return count === 1 ? "1 line" : `${count} lines`;
 }

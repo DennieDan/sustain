@@ -1,6 +1,7 @@
 // Opening the code behind a diagram node (FR-NAV-01..03, ADR 0011).
 import * as vscode from "vscode";
 import type { ViewComponent } from "../model/tolerant";
+import type { SourceRef } from "../model/types";
 import { resolveSource } from "./sourceTarget";
 
 /** How long the opened lines stay highlighted. */
@@ -18,7 +19,11 @@ export async function openSource(root: string, component: ViewComponent, index: 
     return;
   }
   const source = component.sources[index];
-  if (!source) return;
+  if (source) await openSourceRef(root, source, panelColumn);
+}
+
+/** Opens `source` from `root` beside the panel's column, selecting and briefly highlighting the cited lines. */
+export async function openSourceRef(root: string, source: SourceRef, panelColumn: vscode.ViewColumn | undefined): Promise<void> {
   const target = resolveSource(root, source);
   if (target.kind === "error") {
     void vscode.window.showErrorMessage(target.message);

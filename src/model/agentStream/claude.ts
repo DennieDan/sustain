@@ -100,6 +100,7 @@ export function claudeParser(): StreamParser {
               costUsd: typeof event["total_cost_usd"] === "number" ? event["total_cost_usd"] : null,
               denials,
               sessionId: text(event["session_id"]) || null,
+              ...(ok && text(event["result"]).trim() !== "" ? { finalAnswer: text(event["result"]) } : {}),
             },
           };
         }

@@ -1,4 +1,4 @@
-// UI-01, UI-02, UI-04, SET-02, SET-03 and CST-04 in a single-folder workspace. The suite posts
+// UI-01, UI-02, UI-04, UI-06, SET-02, SET-03 and CST-04 in a single-folder workspace. The suite posts
 // to the sidebar through the test hook as its webview would, with a stub agent on PATH that
 // replays recorded streams (test/fixtures/streams/stub-agent.mjs).
 import * as assert from "node:assert/strict";
@@ -268,5 +268,51 @@ suite("UI-01 Sustain sidebar", () => {
     await hook.postFromHome({ type: "deleteMap", file: join(dir, "candidate.json") });
     assert.equal(existsSync(dir), false);
     assert.deepEqual(hook.homeState().state?.maps, []);
+  });
+
+  test("UI-06 a recorded answer renders with checked links, its citation opens the line, and a follow-up resumes the session", async () => {
+    const run = ".archify/architecture-ask-20261018-120000";
+    mkdirSync(join(root, run), { recursive: true });
+    writeFileSync(join(root, run, "candidate.json"), JSON.stringify({ components: [{ id: "alpha", label: "Alpha service", type: "backend", sources: [{ path: "src/a.ts", line: 2 }] }] }));
+    mkdirSync(join(root, "src"), { recursive: true });
+    writeFileSync(join(root, "src/a.ts"), "// alpha\nexport const alpha = 1;\n");
+    writeFileSync(join(root, ".env"), "SECRET=1\n");
+    cleanup.push(join(root, "src"), join(root, ".env"));
+    agents(["claude"]);
+    const args = scratch("args.json");
+    Object.assign(process.env, { SUSTAIN_STUB_STREAM: stream("claude-ask.jsonl"), SUSTAIN_STUB_ARGS: args });
+    await reveal();
+    await hook.postFromHome({ type: "clearAsk" });
+
+    await hook.postFromHome({ type: "ask", question: "Where does alpha start?" });
+    const turn = hook.homeState().state!.ask.turns[0]!;
+    assert.equal(turn.status, "done");
+    assert.equal(turn.costUsd, 0.0311);
+    const argv = JSON.parse(readFileSync(args, "utf8")) as string[];
+    assert.match(argv[1]!, /First read the architecture map in \.archify\/architecture-ask-20261018-120000\/candidate\.json/);
+    assert.deepEqual(argv.slice(argv.indexOf("--allowedTools") + 1), ["Read", "Grep", "Glob"]);
+    assert.equal(argv.includes("--resume"), false);
+
+    const spans = turn.blocks.flatMap((block) => (block.kind === "paragraph" ? block.spans : block.kind === "list" ? block.items.flat() : []));
+    assert.deepEqual(spans.filter((span) => span.kind === "cite").map((span) => span.text), ["src/a.ts:2"], "the .env citation stays text");
+    assert.deepEqual(spans.filter((span) => span.kind === "box").map((span) => span.text), ["Alpha service"]);
+
+    await hook.postFromHome({ type: "openCitation", path: "src/a.ts", line: 2, endLine: null });
+    await until(() => vscode.window.activeTextEditor?.document.uri.fsPath === join(root, "src/a.ts"), "src/a.ts to open");
+    assert.equal(vscode.window.activeTextEditor!.selection.start.line, 1);
+    await hook.postFromHome({ type: "openCitation", path: ".env", line: 1, endLine: null });
+    assert.equal(vscode.window.activeTextEditor?.document.uri.fsPath, join(root, "src/a.ts"), "a denied path never opens");
+
+    await hook.postFromHome({ type: "focusBox", id: "alpha" });
+    await until(() => hook.panelHighlight()?.ids.join() === "alpha", "the box to be marked");
+
+    await hook.postFromHome({ type: "ask", question: "And where is it used?" });
+    const follow = JSON.parse(readFileSync(args, "utf8")) as string[];
+    assert.deepEqual(follow.slice(follow.indexOf("--resume"), follow.indexOf("--resume") + 2), ["--resume", "ask-1"]);
+    assert.equal(follow[1], "And where is it used?\n\nCite every claim as path:line, relative to the repository root.");
+    assert.equal(hook.homeState().state!.ask.turns.length, 2);
+
+    await hook.postFromHome({ type: "clearAsk" });
+    assert.deepEqual(hook.homeState().state!.ask.turns, []);
   });
 });

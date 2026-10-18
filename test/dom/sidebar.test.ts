@@ -1,5 +1,6 @@
-// UI-01, SET-02, UI-02, CST-04: the sidebar renders each state from the HomeState it is sent.
+// UI-01, SET-02, UI-02, CST-04, UI-06: the sidebar renders each state from the HomeState it is sent.
 import { beforeEach, describe, expect, test } from "vitest";
+import { parseAnswer } from "../../src/model/ask";
 import type { HomeState, HomeWebviewMessage, MapItem, RunCard } from "../../src/model/messages";
 import type { Check } from "../../src/model/preflight";
 import { createHome, phaseLine, type Home } from "../../webview/home";
@@ -33,6 +34,7 @@ function state(fields: Partial<HomeState> = {}): HomeState {
     run: null,
     setup: OK_CHECKS,
     session: null,
+    ask: { blocked: null, turns: [] },
     serverNow: NOW.toISOString(),
     ...fields,
   };
@@ -207,5 +209,53 @@ describe("CST-04 terminal-mode card", () => {
     home.render(state({ run: run({ mode: "terminal", phase: "rejected", attempts: 1 }) }));
     expect(text(".run__agent")).toEqual(["Claude Code in a terminal"]);
     expect(text(".run__phase")).toEqual(["Rejected on attempt 1, repairing"]);
+  });
+});
+
+describe("UI-06 Ask", () => {
+  const turn = {
+    question: "Where does Cancel go?",
+    agent: "Claude Code",
+    status: "done" as const,
+    blocks: parseAnswer("It kills the group in src/extension/runner.ts:31."),
+    usage: { input: 3000, output: 200, cacheRead: 0, cacheWrite: 0 },
+    costUsd: 0.02,
+    error: null,
+  };
+
+  test("history shows each question, its answer and figures; Ask posts the question and clears the box", () => {
+    home.render(state({ ask: { blocked: null, turns: [turn] } }));
+    expect(text(".turn__question")).toEqual(["Where does Cancel go?"]);
+    expect(text(".answer .cite")).toEqual(["src/extension/runner.ts:31"]);
+    expect(text(".turn__figures")).toEqual(["Claude Code · 3k in · 200 out · $0.02"]);
+    const box = container.querySelector<HTMLTextAreaElement>(".ask__question")!;
+    box.value = "And the terminal?";
+    click("Ask");
+    expect(posted).toEqual([{ type: "ask", question: "And the terminal?" }]);
+    expect(box.value).toBe("");
+    click("Clear");
+    expect(posted.at(-1)).toEqual({ type: "clearAsk" });
+  });
+
+  test("while an answer streams, Ask is disabled and Stop shows", () => {
+    home.render(state({ ask: { blocked: null, turns: [{ ...turn, status: "running", blocks: [], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, costUsd: null }] } }));
+    expect(text(".turn__pending")).toEqual(["Claude Code is reading the map…"]);
+    const ask = [...container.querySelectorAll("button")].find((node) => node.textContent === "Ask")!;
+    expect(ask.disabled).toBe(true);
+    const stop = [...container.querySelectorAll<HTMLButtonElement>("button")].find((node) => node.textContent === "Stop")!;
+    expect(stop.hidden).toBe(false);
+    stop.click();
+    expect(posted).toEqual([{ type: "cancelAsk" }]);
+  });
+
+  test("a blocked Ask says why and disables the box", () => {
+    home.render(state({ ask: { blocked: "Generate a map first. Ask uses it as the guide.", turns: [] } }));
+    expect(text(".ask__note")).toEqual(["Generate a map first. Ask uses it as the guide."]);
+    expect(container.querySelector<HTMLTextAreaElement>(".ask__question")!.disabled).toBe(true);
+  });
+
+  test("a failed answer shows its error", () => {
+    home.render(state({ ask: { blocked: null, turns: [{ ...turn, status: "failed", blocks: [], error: "Not logged in" }] } }));
+    expect(text(".turn__error")).toEqual(["Not logged in"]);
   });
 });

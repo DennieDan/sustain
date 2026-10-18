@@ -88,7 +88,7 @@ followButton.addEventListener("click", () => vscode.postMessage({ type: "setFoll
 function applyHighlight(): void {
   const marked = new Set(highlight.ids);
   for (const node of content.querySelectorAll(".node")) node.classList.toggle("node--highlight", marked.has(node.getAttribute("data-id") ?? ""));
-  app.classList.toggle("app--highlighting", highlight.file !== null && marked.size > 0);
+  app.classList.toggle("app--highlighting", marked.size > 0);
   followButton.setAttribute("aria-pressed", String(highlight.follow));
   followButton.classList.toggle("highlight__follow--on", highlight.follow);
   highlightBar.hidden = highlight.file === null && !highlight.follow;

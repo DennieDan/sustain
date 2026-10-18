@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { HomeState, HomeWebviewMessage, RunCard, SessionWebviewMessage, WebviewMessage } from "../model/messages";
+import { Ask } from "./ask";
 import { generateArchitectureCommand, resetDataNote } from "./generate";
 import { HOME_VIEW, HomeView } from "./home";
 import { removeHooksWhenIdle } from "./hooksFiles";
@@ -45,11 +46,13 @@ export function activate(context: vscode.ExtensionContext): TestHook {
   const runs = new Runs(extensionUri);
   const candidates = new CandidateWatcher(extensionUri, (root) => runs.runningRoot === root && runs.current?.mode === "sidebar");
   const sessions = new SessionWatcher();
-  const home = new HomeView(context, runs, [candidates.onDidChange, sessions.onDidChange]);
+  const ask = new Ask(context, extensionUri);
+  const home = new HomeView(context, runs, ask, [candidates.onDidChange, sessions.onDidChange]);
   const status = new StatusItem(runs);
   const running = runs.onDidChange(() => void vscode.commands.executeCommand("setContext", "sustain.running", runs.current?.status === "running"));
   context.subscriptions.push(
     runs,
+    ask,
     candidates,
     sessions,
     home,

@@ -36,6 +36,8 @@ export class ArchitecturePanel {
   private highlightFile: string | null = null;
   /** Follow editor: the marks move with the active editor. */
   private follow = false;
+  /** A box marked on its own, from an Ask answer (UI-06). */
+  private focused: string[] = [];
   private readonly disposables: vscode.Disposable[] = [];
 
   private constructor(
@@ -110,13 +112,22 @@ export class ArchitecturePanel {
 
   /** The boxes marked as citing the highlighted file, and whether they follow the editor. */
   get highlightState(): { ids: string[]; file: string | null; follow: boolean } {
-    const rel = this.highlightFile === null ? null : repoRelative(this.root, this.highlightFile);
+    if (this.highlightFile === null) return { ids: this.focused, file: null, follow: this.follow };
+    const rel = repoRelative(this.root, this.highlightFile);
     return { ids: rel !== null && this.shown.kind === "diagram" ? citingBoxes(this.shown.diagram, rel) : [], file: rel, follow: this.follow };
   }
 
   /** Marks the boxes citing `file` (absolute), or clears the marks for `null` (UI-03). */
   highlight(file: string | null): void {
     this.highlightFile = file;
+    this.focused = [];
+    this.sendHighlight();
+  }
+
+  /** Marks box `id` alone (UI-06). */
+  focusBox(id: string): void {
+    this.highlightFile = null;
+    this.focused = [id];
     this.sendHighlight();
   }
 

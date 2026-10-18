@@ -292,3 +292,122 @@ select.header__folder,
   align-items: flex-start;
   gap: 6px;
 }
+
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ask__question {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  padding: 6px;
+  font: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+}
+
+.ask__question:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.ask__buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ask__note,
+.turn__pending,
+.turn__figures {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+}
+
+.turn {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--vscode-widget-border, transparent);
+}
+
+.turn__question {
+  padding: 4px 8px;
+  font-weight: 600;
+  background: var(--vscode-textBlockQuote-background, var(--vscode-input-background));
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+.turn__figures {
+  font-size: 0.9em;
+}
+
+.turn__error {
+  margin: 4px 0;
+  color: var(--vscode-errorForeground);
+}
+
+.answer {
+  overflow-wrap: anywhere;
+}
+
+.answer p,
+.answer ul,
+.answer ol {
+  margin: 6px 0;
+}
+
+.answer ul,
+.answer ol {
+  padding-left: 18px;
+}
+
+.answer code {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.95em;
+  padding: 0 3px;
+  background: var(--vscode-textCodeBlock-background, var(--vscode-input-background));
+  border-radius: 3px;
+}
+
+.answer pre {
+  margin: 6px 0;
+  padding: 6px;
+  overflow-x: auto;
+  background: var(--vscode-textCodeBlock-background, var(--vscode-input-background));
+  border-radius: 3px;
+}
+
+.answer pre code {
+  padding: 0;
+  background: none;
+}
+
+.cite,
+.box-link {
+  padding: 0;
+  font: inherit;
+  color: var(--vscode-textLink-foreground);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.cite {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.95em;
+}
+
+.box-link {
+  text-decoration: underline dotted;
+}
+
+.cite:hover,
+.box-link:hover {
+  color: var(--vscode-textLink-activeForeground);
+  text-decoration: underline;
+}

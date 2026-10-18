@@ -36,7 +36,7 @@ describe("UI-02 Claude Code stream", () => {
     expect(updates[3]!.usage).toEqual({ input: 3200, output: 230, cacheRead: 7000, cacheWrite: 500 });
     const last = updates.at(-1)!;
     expect(last.usage).toEqual({ input: 8300, output: 1190, cacheRead: 15000, cacheWrite: 500 });
-    expect(last.end).toEqual({ ok: true, costUsd: 0.4123, denials: [], sessionId: "sess-123" });
+    expect(last.end).toEqual({ ok: true, costUsd: 0.4123, denials: [], sessionId: "sess-123", finalAnswer: "Accepted: 14 components in .archify/architecture-r-20261018-120000/candidate.json" });
   });
 
   test("a denied tool and an error result are reported", () => {
@@ -100,5 +100,23 @@ describe("UI-02 run tracker", () => {
     const line = JSON.stringify({ type: "item.started", item: { type: "command_execution", command: "ls" } });
     tracker.push(`${`${line}\n`.repeat(FEED_LIMIT + 5)}`);
     expect(tracker.state.feed).toHaveLength(FEED_LIMIT);
+  });
+});
+
+describe("UI-06 answers", () => {
+  test("messages are paragraphs, and Claude Code's final reply replaces the narration before it", () => {
+    const tracker = new RunTracker(claudeParser());
+    const say = (text: string): string => JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text }] } });
+    tracker.push(`${say("Reading the map first.")}\n${say("Generate lives in src/extension/generate.ts:60.")}\n`);
+    expect(tracker.state.answer).toBe("Reading the map first.\n\nGenerate lives in src/extension/generate.ts:60.");
+    tracker.push(`${JSON.stringify({ type: "result", subtype: "success", is_error: false, result: "Generate lives in src/extension/generate.ts:60.", session_id: "s1" })}\n`);
+    expect(tracker.finish(0, false).answer).toBe("Generate lives in src/extension/generate.ts:60.");
+  });
+
+  test("a failed result keeps the streamed text", () => {
+    const tracker = new RunTracker(claudeParser());
+    tracker.push(`${JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "Partial" }] } })}\n`);
+    tracker.push(`${JSON.stringify({ type: "result", subtype: "error_max_turns", is_error: true, result: "" })}\n`);
+    expect(tracker.finish(1, false).answer).toBe("Partial");
   });
 });

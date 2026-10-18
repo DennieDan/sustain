@@ -24,6 +24,8 @@ export interface StreamEnd {
   denials: string[];
   /** The session to resume for a follow-up question. */
   sessionId: string | null;
+  /** The agent's final reply, which replaces the text streamed before it (UI-06). */
+  finalAnswer?: string;
 }
 
 /** What one line of agent output adds. `usage` replaces the running total; `answer` is text to show in Ask. */

@@ -1,5 +1,6 @@
 // Messages between the extension host and the webviews (FR-VIEW-04). Types only.
 import type { FeedItem, StreamUsage } from "./agentStream/feed";
+import type { Block } from "./ask";
 import type { RunStatus } from "./agentStream/tracker";
 import type { LeaderboardEntry } from "./leaderboard";
 import type { Check, CheckId } from "./preflight";
@@ -106,6 +107,25 @@ export interface SessionSummary {
   score: number;
 }
 
+/** One question and its answer in the sidebar's Ask section (UI-06). */
+export interface AskTurn {
+  question: string;
+  agent: string;
+  status: RunStatus;
+  /** The answer, with only the citations the host checked left as links. */
+  blocks: Block[];
+  usage: StreamUsage;
+  costUsd: number | null;
+  /** Why the answer failed, when it did. */
+  error: string | null;
+}
+
+export interface AskView {
+  /** Why a question cannot be asked now, or `null` when it can. */
+  blocked: string | null;
+  turns: AskTurn[];
+}
+
 /** Everything the sidebar renders, sent whole on every change. */
 export interface HomeState {
   /** Workspace folders; the picker shows when there are several. */
@@ -125,6 +145,7 @@ export interface HomeState {
   /** SET-02's checks, or `null` while they run. */
   setup: Check[] | null;
   session: SessionSummary | null;
+  ask: AskView;
   /** Host time at send, for the run card's elapsed time. */
   serverNow: string;
 }
@@ -146,4 +167,9 @@ export type HomeWebviewMessage =
   | { type: "fix"; check: CheckId }
   | { type: "checkSetup" }
   | { type: "openSession" }
-  | { type: "startLearning" };
+  | { type: "startLearning" }
+  | { type: "ask"; question: string }
+  | { type: "cancelAsk" }
+  | { type: "clearAsk" }
+  | { type: "openCitation"; path: string; line: number; endLine: number | null }
+  | { type: "focusBox"; id: string };
