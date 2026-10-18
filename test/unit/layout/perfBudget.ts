@@ -12,7 +12,7 @@ export interface BudgetResult {
 }
 
 /** Median of `runs` timed calls, after one untimed warm-up call. */
-async function timedMedian(run: () => Promise<unknown>, now: () => number, runs: number): Promise<number> {
+export async function timedMedian(run: () => Promise<unknown>, now: () => number, runs: number): Promise<number> {
   await run();
   const times: number[] = [];
   for (let i = 0; i < runs; i++) {

@@ -17,9 +17,9 @@ describe("RCH-01 page assembly", () => {
     expect(JSON.parse(escaped)).toEqual({ label: HOSTILE });
   });
 
-  test("the CSP allows exactly the inline script and style by hash, and nothing else", () => {
+  test("VWR-02 the CSP allows exactly the inline script and style by hash and workers from Blob URLs, and nothing else", () => {
     const html = renderPage({ title: HOSTILE, doc: { meta: { title: HOSTILE } }, root: null, project: null, repository: null }, ASSETS);
-    expect(html).toContain(`default-src 'none'; script-src 'sha256-${hash(ASSETS.script)}'; style-src 'sha256-${hash(ASSETS.style)}'`);
+    expect(html).toContain(`default-src 'none'; script-src 'sha256-${hash(ASSETS.script)}'; style-src 'sha256-${hash(ASSETS.style)}'; worker-src blob:"`);
     expect(html).toContain(`<script>${ASSETS.script}</script>`);
     expect(html).toContain(`<style>${ASSETS.style}</style>`);
     expect(html.match(/<script/g)).toHaveLength(2);

@@ -187,17 +187,18 @@ The GitHub Action ([ADR 0053](adr/0053-the-check-runs-as-a-javascript-action.md)
 
 ### `src/layout/`
 
-Browser-safe; runs in the webview ([ADR 0010](adr/0010-elkjs-layout-in-the-webview.md)). Entry `layout.ts › layoutDiagram(diagram, {measure, viewport}) → Promise<Scene>` (types in `scene.ts`).
+Browser-safe; runs in the webview, whose ELK runs in two Web Workers from a Blob URL ([ADR 0064](adr/0064-layout-runs-in-web-workers-from-blob-urls.md)). Entry `layout.ts › layoutDiagram(diagram, {measure, viewport, run}) → Promise<Scene>` (types in `scene.ts`), where `run(input, direction)` is `workerRunner()` from `webview/layoutWorkers.ts` on a page and `runInThread` from `elkInThread.ts` in Node.
 
 | File | Responsibility |
 |---|---|
 | `mode.ts` | `authoredRects`: authored mode when every component has `pos` or a grid cell (Archify grid defaults), `size` default 120×60 (FR-LAY-01). |
 | `measure.ts` | `autoNodeSize`: label 14 px bold, sublabel 12 px, tag 11 px, padding 12/10, at least 120×60; the font sizes the renderer also uses. |
-| `elk.ts` | `runElk(input, direction)`: elkjs `layered`, orthogonal, `INCLUDE_CHILDREN`, spec spacings, ROOT coordinates (FR-LAY-02, [ADR 0023](adr/0023-auto-layout-direction-by-fit-scale.md)). |
+| `elk.ts` | `runElk(input, direction, engine)`: elkjs `layered`, orthogonal, `INCLUDE_CHILDREN`, spec spacings, ROOT coordinates (FR-LAY-02, [ADR 0023](adr/0023-auto-layout-direction-by-fit-scale.md)). |
 | `boundaries.ts` | `memberSets`, `hierarchy` (placement and parents, FR-LAY-03), `overlayRect` (16 px), `authoredBoundaryRects` (30/50 px) ([ADR 0022](adr/0022-authored-straight-edges-and-overlay-boundaries.md)). |
 | `edges.ts` | `straightEdge` (clipped), `selfLoop`, `labelAnchor` (FR-LAY-04). |
 | `geom.ts` | `center`, `boundingBox`, `pad`. |
-| `layout.ts` | Mode choice, both ELK directions, choice by fit scale (ties RIGHT), translation to a 40 px origin, `bounds` with a 40 px margin. |
+| `elkInThread.ts` | `runInThread`: bundled ELK in the calling thread, for Node (VWR-02). |
+| `layout.ts` | Mode choice, both ELK directions at once, choice by fit scale (ties RIGHT), translation to a 40 px origin, `bounds` with a 40 px margin. |
 
 ### `webview/`
 
@@ -375,7 +376,7 @@ The session panel speaks a parallel protocol (`SessionView` carries only public 
 | `.archify/<run>/audit.json` | `Audit` (see `audit.ts`) | `audit-record.mjs`, from the audit skill's `audit-draft.json` (ACC-05). |
 | `.archify/<run>/tour.json` | `{schema: 1, createdAt, stops: [{component, title, explanation, question, answer, citation: {path, line, end_line?}}]}`, 4 to 12 stops, checked by `tour.schema.json` ([ADR 0060](adr/0060-tours-are-a-sidecar-the-viewer-plays.md)) | `tour-record.mjs`, from the tour skill's `tour-draft.json` (SKL-02). |
 | `.archify/<run>/evidence.json` | `{schema: 1, findings: [{code: "DeclarationOnly" \| "Isolated", pointer: "/components/<i>", component, message} \| {code: "UnsupportedEdge" \| "NotChecked", pointer: "/connections/<i>", connection?, message} \| {code: "MissingEdge", pointer, between: [a, b], links, message}]}` | `validate.mjs` on acceptance (ACC-01), from the listed files' imports (ACC-02). |
-| `.archify/<run>/<slug>.html` | The diagram page: CSP of hashes, the map in `<script type="application/json" id="sustain-data">` as `{title, doc, root, project, repository}`, the inline viewer. | `render-html.mjs`, Export Page, `sustain.mjs export-page` (RCH-01). |
+| `.archify/<run>/<slug>.html` | The diagram page: CSP of hashes and `worker-src blob:`, the map in `<script type="application/json" id="sustain-data">` as `{title, doc, root, project, repository}`, the inline viewer. | `render-html.mjs`, Export Page, `sustain.mjs export-page` (RCH-01). |
 | `sustain.config.json` | `{map?: "<run>", ignore?: [glob], check?: {failOn?: ["stale"|"new-box"]}, rules?: []}`, unknown keys rejected. | The user; Review's Ignore adds `<folder>/**` (PRC-01, PRC-02). |
 
 The validator's accepted report gains `evidence: [finding]` (ADR 0050). `refresh-facts.mjs` prints `{root, runFolder, draft, base: {runFolder, revision, createdAt, fingerprints}, paths, boxes, stale, changes: [{path, added, deleted, covered}], uncovered, newFolders}`. `sustain.mjs check` prints `{map, base, head, mergeBase, touched: {strong, weak}, stale, uncovered, candidates: [{dir, files: [{path, added}], lines, label}], gone, result, reasons}`.
@@ -441,7 +442,7 @@ Export and audit (CLD-13): `GET /api/v1/account/export` downloads `{exportedAt, 
 * **Session secrets:** `manifest.json` (seeded-bug locations, kinds and hunks) is read only by `session.mjs`; the session panel and webview see `session.json` + `events.jsonl` exclusively (`sessionFiles.ts`, [ADR 0034](adr/0034-sustain-folder-layout-and-session-state-files.md)).
 * **Git:** fixed argv, no shell, no terminal prompts, stdin closed; HTTP(S) credentials are stripped from the origin before it is written anywhere (`git.ts`).
 * **Agent launch:** the prompt is a single argv element of the resolved CLI, never parsed by a shell ([ADR 0020](adr/0020-launch-agent-terminal-with-shellpath-and-shellargs.md)). Writes by the agent still need approval in Claude Code ([ADR 0005](adr/0005-manual-invocation-and-claude-pre-approvals.md)).
-* **Webview CSP:** `default-src 'none'; script-src 'nonce-…'; style-src <cspSource>`; `localResourceRoots` is `dist/`; the webview receives the diagram JSON only, never file contents (`html.ts`, `panel.ts`, NFR-SEC-01). The sidebar uses the same policy.
+* **Webview CSP:** `default-src 'none'; script-src 'nonce-…'; style-src <cspSource>; worker-src blob:`, the last for the layout's workers (VWR-02, [ADR 0064](adr/0064-layout-runs-in-web-workers-from-blob-urls.md)); `localResourceRoots` is `dist/`; the webview receives the diagram JSON only, never file contents (`html.ts`, `panel.ts`, NFR-SEC-01). The sidebar uses the same policy.
 * **Diagram page:** `default-src 'none'` with the inline script and style allowed by SHA-256 hash; the map's JSON is escaped; links only for paths the citation rule and the deny-list accept; the absolute root only in a local page (RCH-01).
 * **Headless agents:** spawned by absolute path without a shell; Claude Code gets an exact tool list and `dontAsk`, Codex a sandbox, Ask read-only tools; no permission-skipping flag anywhere (SAF-04, UI-02, UI-06).
 * **Explain-back keys:** each question's answer key stays in the extension host. The sidebar receives the questions, the user's answers and the grades only (SKL-01).

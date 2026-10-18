@@ -35,8 +35,17 @@ const SCRIPT_ENTRIES = {
 };
 
 /**
- * The diagram page's script and stylesheet (RCH-01): the viewer with its layout, for a browser, with
- * any `</script` in string literals escaped so the script can sit inline in the page.
+ * VWR-02: ELK's worker code, which the viewers embed as the string `__SUSTAIN_LAYOUT_WORKER__` and
+ * start from a Blob URL. The viewers themselves keep only ELK's small API.
+ * @returns {Promise<Record<string, string>>} the `define` that embeds it
+ */
+export async function layoutWorkerDefine() {
+  return { __SUSTAIN_LAYOUT_WORKER__: JSON.stringify(readFileSync(join(root, "node_modules/elkjs/lib/elk-worker.min.js"), "utf8")) };
+}
+
+/**
+ * The diagram page's script and stylesheet (RCH-01): the viewer with its layout worker, for a browser,
+ * with any `</script` in string literals escaped so the script can sit inline in the page.
  * @returns {Promise<{ script: string, style: string, metafile: import("esbuild").Metafile | undefined }>}
  */
 export function buildPage() {
@@ -57,6 +66,7 @@ async function buildPageOnce() {
     target: "es2022",
     minify: true,
     supported: { "inline-script": false },
+    define: await layoutWorkerDefine(),
   });
   const output = result.outputFiles?.[0];
   if (output === undefined) throw new Error("buildPage: esbuild returned no output");
@@ -208,8 +218,8 @@ async function buildDist() {
     external: ["vscode"],
   }));
 
-  // The webviews: one IIFE each (the diagram one includes elkjs) loaded by nonce under a
-  // strict CSP (NFR-SEC-01).
+  // The webviews: one IIFE each loaded by nonce under a strict CSP (NFR-SEC-01). The diagram one
+  // carries elkjs inside its layout worker's code (VWR-02).
   results.push(await esbuild.build({
     ...common,
     entryPoints: [join(root, "webview/main.ts")],
@@ -218,6 +228,7 @@ async function buildDist() {
     format: "iife",
     target: "es2022",
     minify: true,
+    define: await layoutWorkerDefine(),
   }));
   results.push(await esbuild.build({
     ...common,

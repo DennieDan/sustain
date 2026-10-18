@@ -1,10 +1,13 @@
-// Auto layout through elkjs (FR-LAY-02): the graph, its options, and absolute geometry back.
-import ELK from "elkjs/lib/elk.bundled.js";
-import type { ElkExtendedEdge, ElkNode, LayoutOptions as ElkOptions } from "elkjs/lib/elk.bundled.js";
+// Auto layout through elkjs (FR-LAY-02): the graph, its options, and absolute geometry back. The
+// engine is passed in (VWR-02): ELK's API with a worker on a page, or bundled ELK in the thread.
+import type { ElkExtendedEdge, ElkNode, LayoutOptions as ElkOptions } from "elkjs/lib/elk-api.js";
 import type { Hierarchy } from "./boundaries";
 import type { Point, Rect } from "./scene";
 
-const elk = new ELK();
+/** What lays an ELK graph out: an `ELK` instance from `elk-api.js` or `elk.bundled.js`. */
+export interface ElkEngine {
+  layout(graph: ElkNode): Promise<ElkNode>;
+}
 
 /** Shared by the root and every compound node: with INCLUDE_CHILDREN, ELK reads spacing per graph. */
 const SHARED_OPTIONS: ElkOptions = {
@@ -41,7 +44,7 @@ export interface ElkInput {
  * and `e<i>` (connections), so document ids never clash. `json.shapeCoords`/`edgeCoords`
  * `ROOT` make every returned coordinate absolute.
  */
-export async function runElk(input: ElkInput, direction: Direction): Promise<ElkResult> {
+export async function runElk(input: ElkInput, direction: Direction, elk: ElkEngine): Promise<ElkResult> {
   const options: ElkOptions = { ...SHARED_OPTIONS, "elk.direction": direction };
   const root: ElkNode = {
     id: "root",

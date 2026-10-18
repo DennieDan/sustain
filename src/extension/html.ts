@@ -14,9 +14,9 @@ export interface WebviewAssets {
   title?: string;
 }
 
-/** `default-src 'none'`; the nonce'd script and the extension's own stylesheet only. */
+/** `default-src 'none'`; the nonce'd script, the extension's own stylesheet, and workers from Blob URLs for the layout (VWR-02) only. */
 export function webviewCsp(cspSource: string, nonce: string): string {
-  return `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${cspSource}`;
+  return `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${cspSource}; worker-src blob:`;
 }
 
 function attr(value: string): string {

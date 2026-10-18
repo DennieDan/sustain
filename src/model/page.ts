@@ -36,9 +36,9 @@ function sha256(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("base64");
 }
 
-/** The page's Content Security Policy: nothing but its own inline script and style. */
+/** The page's Content Security Policy: nothing but its own inline script and style, and the layout's workers from Blob URLs (VWR-02). */
 export function pageCsp(assets: PageAssets): string {
-  return `default-src 'none'; script-src 'sha256-${sha256(assets.script)}'; style-src 'sha256-${sha256(assets.style)}'`;
+  return `default-src 'none'; script-src 'sha256-${sha256(assets.script)}'; style-src 'sha256-${sha256(assets.style)}'; worker-src blob:`;
 }
 
 export function renderPage(data: PageData, assets: PageAssets): string {

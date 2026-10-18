@@ -1,8 +1,12 @@
 // NFR-PERF-01 as changed by ENG-02: a 60-component, 120-connection layout with 2 levels of
 // boundaries stays within a fixed multiple of a 12-component layout on the same machine.
-import { expect, test } from "vitest";
-import { comp, diagramOf, lay } from "./helpers";
-import { BUDGET_FACTOR, checkLayoutBudget } from "./perfBudget";
+import { readFileSync } from "node:fs";
+import { Worker as Thread } from "node:worker_threads";
+import { afterAll, expect, test } from "vitest";
+import { layoutDiagram } from "../../../src/layout/layout";
+import { workerRunner } from "../../../webview/layoutWorkers";
+import { comp, diagramOf, fixedAdvance, lay, VIEWPORT } from "./helpers";
+import { BUDGET_FACTOR, checkLayoutBudget, timedMedian } from "./perfBudget";
 
 /** `n` components in regions of 10 (each with 2 inner groups of 5) and `m` pseudo-random connections. */
 function generated(n: number, m: number) {
@@ -49,4 +53,34 @@ test("ENG-02 the budget fails a large layout 10 times slower than usual", async 
   };
   expect((await checkLayoutBudget(advance(740), advance(100), now)).ok).toBe(true);
   expect((await checkLayoutBudget(advance(7400), advance(100), now)).ok).toBe(false);
+});
+
+const threads: Thread[] = [];
+afterAll(async () => {
+  await Promise.all(threads.map((thread) => thread.terminate()));
+});
+
+/** ELK's worker code on a Node thread, wired the way a Web Worker runs it. */
+function threadWorker(source: string): Worker {
+  const thread = new Thread(
+    `const { parentPort } = require("node:worker_threads");
+globalThis.self = globalThis;
+globalThis.postMessage = (data) => parentPort.postMessage(data);
+${source}
+parentPort.on("message", (data) => globalThis.onmessage({ data }));`,
+    { eval: true },
+  );
+  threads.push(thread);
+  const worker = { onmessage: null as ((event: { data: unknown }) => void) | null, postMessage: (data: unknown) => thread.postMessage(data), terminate: () => void thread.terminate() };
+  thread.on("message", (data) => worker.onmessage?.({ data }));
+  return worker as unknown as Worker;
+}
+
+// VWR-02 [ci]: on CI's Ubuntu runner, with RIGHT and DOWN in two workers, the 60/120 layout's median is under 1 s.
+test.runIf(process.env["CI"] === "true" && process.platform === "linux")("VWR-02 the 60/120 layout's median in two workers is under 1 s", { timeout: 120_000 }, async () => {
+  const source = readFileSync(require.resolve("elkjs/lib/elk-worker.min.js"), "utf8");
+  const run = workerRunner(source, () => threadWorker(source));
+  const large = generated(60, 120);
+  const median = await timedMedian(() => layoutDiagram(large, { measure: fixedAdvance, viewport: VIEWPORT, run }), () => performance.now(), 5);
+  expect(median, `${median.toFixed(0)} ms`).toBeLessThan(1000);
 });

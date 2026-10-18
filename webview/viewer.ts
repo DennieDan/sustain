@@ -12,6 +12,7 @@ import { onMessage, post } from "./bridge";
 import { NodeClicks } from "./click";
 import { renderScene } from "./render";
 import { TooltipController } from "./tooltip";
+import { workerRunner } from "./layoutWorkers";
 import { TourPlayer } from "./tour";
 import { ViewportController } from "./viewport";
 
@@ -163,6 +164,9 @@ export function startViewer(mount: HTMLElement = document.body): void {
   viewport.onChange = () => tooltip.hide();
 
   const canvasContext = document.createElement("canvas").getContext("2d");
+  // VWR-02: the workers start with the first layout.
+  let runner: ReturnType<typeof workerRunner> | undefined;
+  const run: ReturnType<typeof workerRunner> = (input, direction) => (runner ??= workerRunner())(input, direction);
 
   /** File of the diagram on screen; a reload of the same file keeps the viewport (FR-VIEW-06). */
   let shownFile: string | undefined;
@@ -378,7 +382,7 @@ export function startViewer(mount: HTMLElement = document.body): void {
     firstViolation = checked.connections.length;
     firstGhostArrow = firstViolation + broken.length;
     const diagram = withGhosts({ ...checked, connections: [...checked.connections, ...broken] }, ghosts, ghostArrows);
-    const scene = await layoutDiagram(diagram, { measure, viewport: viewport.size() });
+    const scene = await layoutDiagram(diagram, { measure, viewport: viewport.size(), run });
     if (current !== generation) return;
     renderScene(content, diagram, scene, measure);
     applyGhosts();

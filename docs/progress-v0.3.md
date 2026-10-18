@@ -586,7 +586,7 @@ Tests the I6 ACs call for:
 Done when: Gates green.
 
 - [x] **FRS-07 Compare maps** `[unit]` `[dom]` — built in I3 for PRC-03 (see there).
-- [ ] **VWR-02 Layout in workers** `[unit]` `[ci]`
+- [ ] **VWR-02 Layout in workers** `[unit]` `[ci]` — `[unit]` done 2026-10-19: `webview/layoutWorkers.ts` (ELK's API with one Blob worker per direction), `src/layout/elkInThread.ts`, the engine passed into `runElk` and `layoutDiagram`, ELK's worker code embedded by `esbuild.mjs`, and `worker-src blob:` in the webview's and the page's CSP. ADR 0064 supersedes 0010. Tests: `worker.test.ts` (ELK's embedded worker code through ELK's API lays out every fixture as the thread does, in two workers), `html.test.ts` and `page.test.ts` › VWR-02 (the CSP strings). `perf.test.ts` › VWR-02 runs on CI's Ubuntu only; here, with `CI=true`, its median was about 0.44 s. `[ci]` waits for the owner's push.
 - [ ] **VWR-03 Finder** `[dom]`
 - [ ] **VWR-04 Keyboard and screen readers** `[dom]`
 - [ ] **VWR-05 Drill down** `[e2e]`

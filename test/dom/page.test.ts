@@ -4,6 +4,12 @@ import { describe, expect, test, vi } from "vitest";
 import type { PageData } from "../../src/model/page";
 import { escapeJson, renderPage } from "../../src/model/page";
 
+// VWR-02: pages lay out in Web Workers, which happy-dom lacks; here ELK runs in the thread instead.
+vi.mock("../../webview/layoutWorkers", async () => {
+  const { runInThread } = await import("../../src/layout/elkInThread");
+  return { workerRunner: () => runInThread };
+});
+
 const HOSTILE = "</script><img src=x onerror=alert(1)>";
 const DOC = {
   meta: { title: "Shop" },
@@ -35,7 +41,7 @@ describe("RCH-01 diagram page", () => {
     expect((data.doc as typeof DOC).components[0]!.label).toBe(HOSTILE);
   });
 
-  test("the page script draws the map offline and copies a clicked citation", async () => {
+  test("RCH-01 VWR-02 the page script draws the map offline and copies a clicked citation", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const store = document.createElement("script");
     store.type = "application/json";
