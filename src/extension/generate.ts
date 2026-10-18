@@ -3,7 +3,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
-import { agentPrompt, AGENTS, findOnPath } from "./agents";
+import { agentLaunchArgs, agentPrompt, AGENTS, findOnPath } from "./agents";
 import { pickRepoRoot } from "./folders";
 import { installSkill } from "./install";
 import { agentsSkillDir } from "./skillFiles";
@@ -35,6 +35,6 @@ export async function generateArchitectureCommand(extensionUri: vscode.Uri): Pro
     if (action === "Copy prompt") await vscode.env.clipboard.writeText(prompt);
     return;
   }
-  const terminal = vscode.window.createTerminal({ name: `Sustain: ${agent.label}`, cwd: root, shellPath, shellArgs: [prompt] });
+  const terminal = vscode.window.createTerminal({ name: `Sustain: ${agent.label}`, cwd: root, shellPath, shellArgs: agentLaunchArgs(prompt) });
   terminal.show();
 }
