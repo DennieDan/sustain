@@ -100,16 +100,17 @@ test("CST-01 20,000 files take at most 4 times as long as 2,000", { timeout: 120
   };
   const env = envWithoutGit();
   const time = (root: string): number => {
-    let best = Infinity;
-    for (let run = 0; run < 3; run++) {
-      const start = performance.now();
-      repoSize(root, env);
-      best = Math.min(best, performance.now() - start);
-    }
-    return best;
+    const start = performance.now();
+    repoSize(root, env);
+    return performance.now() - start;
   };
   const small = tree(2_000);
   const large = tree(20_000);
   expect(repoSize(large, env).files).toBe(20_000);
-  expect(time(large)).toBeLessThanOrEqual(4 * time(small));
+  // Other test files run alongside, so each pair is timed back to back and the best pair counts.
+  const ratios = Array.from({ length: 5 }, () => {
+    const pair = time(small);
+    return time(large) / pair;
+  });
+  expect(Math.min(...ratios)).toBeLessThanOrEqual(4);
 });
