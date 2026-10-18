@@ -2,7 +2,8 @@
 // `node esbuild.mjs`        → dist/
 // `node esbuild.mjs --e2e`  → out/e2e/ (the @vscode/test-electron suite; never shipped)
 import * as esbuild from "esbuild";
-import { cpSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -61,6 +62,35 @@ function writeBundleInputs(metafiles) {
   writeFileSync(join(root, "out/meta/bundles.json"), `${JSON.stringify({ inputs: [...inputs].sort() }, null, 2)}\n`);
 }
 
+/**
+ * SHA-256 of every file below `dir`, keyed by `/`-separated relative path, with links marked
+ * `link`. It matches `hashTree` in src/model/integrity.ts, and the e2e smoke test checks that.
+ * @param {string} dir
+ * @param {string} [prefix]
+ * @returns {Record<string, string>}
+ */
+function hashTree(dir, prefix = "") {
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const name of readdirSync(dir).sort()) {
+    const path = join(dir, name);
+    const key = prefix === "" ? name : `${prefix}/${name}`;
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink()) out[key] = "link";
+    else if (stat.isDirectory()) Object.assign(out, hashTree(path, key));
+    else out[key] = createHash("sha256").update(readFileSync(path)).digest("hex");
+  }
+  return out;
+}
+
+/** Writes `dist/skill-hashes.json`, the reference for the skill integrity check (SAF-01). */
+function writeSkillHashes() {
+  const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const skillsDir = join(dist, "skills");
+  const skills = Object.fromEntries(readdirSync(skillsDir).sort().map((name) => [name, hashTree(join(skillsDir, name))]));
+  writeFileSync(join(dist, "skill-hashes.json"), `${JSON.stringify({ version, skills }, null, 2)}\n`);
+}
+
 async function buildDist() {
   rmSync(dist, { recursive: true, force: true });
   /** @type {import("esbuild").BuildResult[]} */
@@ -70,6 +100,7 @@ async function buildDist() {
   cpSync(join(root, "skills"), join(dist, "skills"), { recursive: true });
   results.push(await buildScripts(join(dist, "skills/sustain-architecture/scripts"), ["repo-facts", "validate"]));
   results.push(await buildScripts(join(dist, "skills/sustain-bugfix/scripts"), ["session", "session-hook"]));
+  writeSkillHashes();
 
   results.push(await esbuild.build({
     ...common,

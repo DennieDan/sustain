@@ -7,6 +7,7 @@ import * as vscode from "vscode";
 import { devinPromptArgs, findDevinCli } from "./devin";
 import { pickRepoRoot } from "./folders";
 import { ensureSessionAssets, installSkill } from "./install";
+import { ensureSkillIntact } from "./integrity";
 import { SessionPanel } from "./sessionPanel";
 import { agentsSkillDir } from "./skillFiles";
 
@@ -42,6 +43,7 @@ export async function startLearningSessionCommand(extensionUri: vscode.Uri): Pro
     validateInput: (value) => (value.trim() === "" ? "A task is required — the agent implements it step by step" : undefined),
   });
   if (task === undefined) return;
+  if (!(await ensureSkillIntact(extensionUri, root, "devin", "sustain-bugfix"))) return;
 
   try {
     ensureSessionAssets(root);

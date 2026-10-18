@@ -20,12 +20,14 @@ const NODE_MODEL: Record<string, true> = {
   "src/model/session.ts": true,
   "src/model/confine.ts": true,
   "src/model/which.ts": true,
+  "src/model/integrity.ts": true,
 };
 const NODE_ALLOWED: Record<string, true> = {
   "node:fs": true,
   "node:fs/promises": true,
   "node:path": true,
   "node:child_process": true,
+  "node:crypto": true,
 };
 
 function isNodeBuiltin(specifier: string): boolean {
@@ -42,7 +44,7 @@ function boundaryViolations(file: string, source: string): string[] {
     } else if (isNodeBuiltin(specifier)) {
       if (browserSafe) violations.push(`${file}: browser-safe module imports ${specifier}`);
       else if (!NODE_MODEL[file]) violations.push(`${file}: imports ${specifier} outside the listed Node modules`);
-      else if (!NODE_ALLOWED[specifier]) violations.push(`${file}: imports ${specifier}; only fs, path, child_process are allowed`);
+      else if (!NODE_ALLOWED[specifier]) violations.push(`${file}: imports ${specifier}; only fs, path, child_process, crypto are allowed`);
     } else if (specifier.startsWith(".")) {
       const target = join(file, "..", specifier).split("\\").join("/");
       const allowedPrefixes = file.startsWith("src/layout/") ? ["src/layout/", "src/model/"] : ["src/model/"];

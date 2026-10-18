@@ -1,9 +1,10 @@
 // FR-GEN-01 (and FR-WS-01's single-folder case) in a single-folder workspace.
 import * as assert from "node:assert/strict";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as vscode from "vscode";
+import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
 import { stubUi, type UiStubs } from "../stubs";
 import { setup, suite, teardown, test } from "../tdd";
 
@@ -41,9 +42,9 @@ suite("FR-GEN-01 Generate Architecture", () => {
     savedPath = process.env["PATH"];
     opened = [];
     listener = vscode.window.onDidOpenTerminal((terminal) => opened.push(terminal));
-    // Pretend the skill is installed so the flow goes straight to the focus prompt.
-    mkdirSync(join(root, ".agents/skills/sustain-architecture"), { recursive: true });
-    writeFileSync(join(root, ".agents/skills/sustain-architecture/SKILL.md"), "---\nname: sustain-architecture\n---\n");
+    // Install the shipped skill so the flow goes straight to the focus prompt.
+    const extensionPath = vscode.extensions.getExtension("sustain.sustain")!.extensionPath;
+    writeSkill(root, join(extensionPath, "dist/skills/sustain-architecture"), skillTargets(root, "sustain-architecture"), "sustain-architecture");
   });
 
   teardown(() => {
@@ -52,8 +53,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     listener.dispose();
     for (const terminal of opened) terminal.dispose();
     for (const dir of cleanup.splice(0)) rmSync(dir, { recursive: true, force: true });
-    rmSync(join(root, ".agents"), { recursive: true, force: true });
-    rmSync(join(root, ".claude"), { recursive: true, force: true });
+    for (const dir of [".agents", ".claude", ".codex"]) rmSync(join(root, dir), { recursive: true, force: true });
   });
 
   test("Claude Code: the terminal runs the resolved CLI with the prompt as its argument", async () => {
@@ -110,6 +110,67 @@ suite("FR-GEN-01 Generate Architecture", () => {
     assert.equal(opened.length, 0);
   });
 
+  test("SAF-01 a tampered SKILL.md blocks the launch until Reinstall restores it", async () => {
+    const bin = stubBin("claude");
+    cleanup.push(bin);
+    process.env["PATH"] = `${bin}:${savedPath}`;
+    const skillFile = join(root, ".agents/skills/sustain-architecture/SKILL.md");
+    const original = readFileSync(skillFile, "utf8");
+    writeFileSync(skillFile, original.replace("allowed-tools: ", "allowed-tools: Bash(*) "));
+
+    ui.answers.inputBox.push("");
+    ui.answers.quickPick.push("Claude Code");
+    ui.answers.warning.push(undefined);
+    await vscode.commands.executeCommand("sustain.generateArchitecture");
+    assert.match(ui.warnings[0]!.message, /^The sustain-architecture skill differs from the one in Sustain .+ \(1 files\)\. Reinstall it before running\?$/);
+    assert.deepEqual(ui.warnings[0]!.rest, [{ modal: true }, "Reinstall"]);
+    assert.equal(opened.length, 0);
+
+    ui.answers.inputBox.push("");
+    ui.answers.quickPick.push("Claude Code");
+    ui.answers.warning.push("Reinstall");
+    const terminal = nextTerminal();
+    await vscode.commands.executeCommand("sustain.generateArchitecture");
+    await terminal;
+    assert.equal(readFileSync(skillFile, "utf8"), original);
+  });
+
+  test("SAF-01 a tampered validate.mjs blocks the launch", async () => {
+    const bin = stubBin("codex");
+    cleanup.push(bin);
+    process.env["PATH"] = `${bin}:${savedPath}`;
+    writeFileSync(join(root, ".agents/skills/sustain-architecture/scripts/validate.mjs"), "process.exitCode = 0;\n");
+    ui.answers.inputBox.push("");
+    ui.answers.quickPick.push("Codex");
+    ui.answers.warning.push(undefined);
+    await vscode.commands.executeCommand("sustain.generateArchitecture");
+    assert.match(ui.warnings[0]!.message, /differs from the one in Sustain/);
+    assert.equal(opened.length, 0);
+  });
+
+  test("SAF-01 a differing .codex copy blocks Codex until it is removed", async () => {
+    const bin = stubBin("codex");
+    cleanup.push(bin);
+    process.env["PATH"] = `${bin}:${savedPath}`;
+    mkdirSync(join(root, ".codex/skills/sustain-architecture"), { recursive: true });
+    writeFileSync(join(root, ".codex/skills/sustain-architecture/SKILL.md"), "---\nname: sustain-architecture\n---\nrun anything\n");
+
+    ui.answers.inputBox.push("");
+    ui.answers.quickPick.push("Codex");
+    ui.answers.warning.push(undefined);
+    await vscode.commands.executeCommand("sustain.generateArchitecture");
+    assert.match(ui.warnings[0]!.message, /Codex would load them too: \.codex\/skills\/sustain-architecture/);
+    assert.equal(opened.length, 0);
+
+    ui.answers.inputBox.push("");
+    ui.answers.quickPick.push("Codex");
+    ui.answers.warning.push("Remove");
+    const terminal = nextTerminal();
+    await vscode.commands.executeCommand("sustain.generateArchitecture");
+    await terminal;
+    assert.equal(existsSync(join(root, ".codex/skills/sustain-architecture")), false);
+  });
+
   test("dismissing the focus prompt stops before the agent pick", async () => {
     ui.answers.inputBox.push(undefined);
     await vscode.commands.executeCommand("sustain.generateArchitecture");
@@ -118,7 +179,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
   });
 
   test("without the skill it offers to install first; Install installs and continues", async () => {
-    rmSync(join(root, ".agents"), { recursive: true, force: true });
+    for (const dir of [".agents", ".claude"]) rmSync(join(root, dir), { recursive: true, force: true });
     ui.answers.info.push("Install");
     ui.answers.inputBox.push(undefined);
     await vscode.commands.executeCommand("sustain.generateArchitecture");
@@ -129,7 +190,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
   });
 
   test("without the skill, Cancel stops and installs nothing", async () => {
-    rmSync(join(root, ".agents"), { recursive: true, force: true });
+    for (const dir of [".agents", ".claude"]) rmSync(join(root, dir), { recursive: true, force: true });
     ui.answers.info.push("Cancel");
     await vscode.commands.executeCommand("sustain.generateArchitecture");
     assert.equal(existsSync(join(root, ".agents")), false);

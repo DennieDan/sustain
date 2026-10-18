@@ -1,0 +1,60 @@
+// SAF-01: before a launch, the skill the agent will load must match the copy Sustain ships.
+import { lstatSync, readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import * as vscode from "vscode";
+import { assertWritable } from "../model/confine";
+import { checkSkill, diffSize, type AgentId, type SkillHashes } from "../model/integrity";
+import { skillTargets, writeSkill } from "./skillFiles";
+
+const AGENT_LABELS: Record<AgentId, string> = { claude: "Claude Code", codex: "Codex", devin: "Devin" };
+
+function shippedHashes(extensionUri: vscode.Uri): SkillHashes {
+  return JSON.parse(readFileSync(join(extensionUri.fsPath, "dist", "skill-hashes.json"), "utf8")) as SkillHashes;
+}
+
+/** Removes a skill copy. A link is removed as a link, and a folder only when it lies inside the root. */
+function removeCopy(root: string, rel: string): void {
+  const path = join(root, ...rel.split("/"));
+  if (!lstatSync(path).isSymbolicLink()) assertWritable(root, path);
+  rmSync(path, { recursive: true, force: true });
+}
+
+/**
+ * Checks skill `name` as `agent` will load it from `root`, and offers the fix. Returns whether
+ * the launch may go ahead. A changed or missing skill is reinstalled on request. Other copies
+ * that differ only warn for Claude Code, which loads its own folder, and block Codex and Devin
+ * until they are removed.
+ */
+export async function ensureSkillIntact(extensionUri: vscode.Uri, root: string, agent: AgentId, name: string): Promise<boolean> {
+  const shipped = shippedHashes(extensionUri);
+  const expected = shipped.skills[name];
+  if (expected === undefined) throw new Error(`Sustain ${shipped.version} ships no ${name} skill`);
+
+  let check = checkSkill(root, agent, name, expected);
+  if (check.diff === null || diffSize(check.diff) > 0) {
+    const what = check.diff === null ? "not installed" : `${diffSize(check.diff)} files`;
+    const choice = await vscode.window.showWarningMessage(
+      `The ${name} skill differs from the one in Sustain ${shipped.version} (${what}). Reinstall it before running?`,
+      { modal: true },
+      "Reinstall",
+    );
+    if (choice !== "Reinstall") return false;
+    writeSkill(root, vscode.Uri.joinPath(extensionUri, "dist", "skills", name).fsPath, skillTargets(root, name), name);
+    check = checkSkill(root, agent, name, expected);
+  }
+
+  if (check.differingCopies.length === 0) return true;
+  const copies = check.differingCopies.join(", ");
+  if (agent === "claude") {
+    void vscode.window.showWarningMessage(`Other copies of ${name} differ from Sustain's: ${copies}. Claude Code loads the one in ${check.effective}.`);
+    return true;
+  }
+  const choice = await vscode.window.showWarningMessage(
+    `Other copies of ${name} differ from Sustain's, and ${AGENT_LABELS[agent]} would load them too: ${copies}. Remove them before running?`,
+    { modal: true },
+    "Remove",
+  );
+  if (choice !== "Remove") return false;
+  for (const copy of check.differingCopies) removeCopy(root, copy);
+  return true;
+}

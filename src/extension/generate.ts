@@ -7,6 +7,7 @@ import { agentLaunchArgs, agentPrompt, AGENTS, findOnPath } from "./agents";
 import { pickRepoRoot } from "./folders";
 import { ensureGitExclude } from "./hooksFiles";
 import { installSkill } from "./install";
+import { ensureSkillIntact } from "./integrity";
 import { agentsSkillDir } from "./skillFiles";
 
 export async function generateArchitectureCommand(extensionUri: vscode.Uri): Promise<void> {
@@ -28,6 +29,7 @@ export async function generateArchitectureCommand(extensionUri: vscode.Uri): Pro
   );
   if (!picked) return;
   const { agent } = picked;
+  if (!(await ensureSkillIntact(extensionUri, root, agent.cli, "sustain-architecture"))) return;
   const prompt = agentPrompt(agent, focus);
 
   const shellPath = findOnPath(agent.cli, process.env);
