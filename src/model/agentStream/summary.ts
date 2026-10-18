@@ -1,6 +1,7 @@
-// CST-06: what a run's transcript says, read with the same parsers as the sidebar (UI-02).
-import type { StreamParser, StreamUsage } from "../../src/model/agentStream/feed";
-import { NO_USAGE } from "../../src/model/agentStream/feed";
+// CST-06, PRC-05: what a headless run's transcript says, read with the same parsers as the sidebar
+// (UI-02).
+import type { StreamParser, StreamUsage } from "./feed";
+import { NO_USAGE } from "./feed";
 
 export interface StreamSummary {
   usage: StreamUsage;

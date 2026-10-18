@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { main as bench } from "../../../bench/bench";
-import { summarizeStream } from "../../../bench/lib/summary";
+import { summarizeStream } from "../../../src/model/agentStream/summary";
 import { main as plan } from "../../../bench/plan";
 import { claudeParser } from "../../../src/model/agentStream/claude";
 import { codexParser } from "../../../src/model/agentStream/codex";

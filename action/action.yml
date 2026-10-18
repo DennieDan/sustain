@@ -21,6 +21,10 @@ inputs:
     description: "Sustain Cloud's address, for upload."
     required: false
     default: ""
+  refresh:
+    description: "Update the map on the pull request's branch when it has new box candidates or stale boxes: claude or codex. Needs that agent's CLI on PATH, ANTHROPIC_API_KEY or OPENAI_API_KEY in the step's env, the pull request's head checked out, and `permissions: contents: write`. Never runs on a fork's pull request."
+    required: false
+    default: ""
   github-token:
     description: "The token that posts the comment."
     required: false

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0058](0058-the-action-updates-the-map-only-when-asked.md)
 date: 2026-10-18
 decision-makers: implementer
 ---

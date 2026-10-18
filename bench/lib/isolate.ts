@@ -1,10 +1,9 @@
 // CST-06: every run starts from a clean copy of a pinned commit with no agent configuration, and an
 // agent home that holds only the skill. Clones are cached outside the repository.
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readdirSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import type { EstimateAgent } from "../../src/model/estimate";
 import { globToRegExp } from "../../src/model/refresh";
 import { findOnPath } from "../../src/model/which";
 import type { CorpusEntry } from "./corpus";
@@ -89,21 +88,5 @@ export function prepareRepo(entry: CorpusEntry, repoRoot: string, cache: string,
   return cleanRepo(work, entry.strip);
 }
 
-/** A fresh home holding only `skill` for `agent`, with hooks off. Returns the variables that point the agent at it. */
-export function agentHome(home: string, agent: EstimateAgent, skill: { name: string; source: string } | null): Record<string, string> {
-  for (const base of [".agents", ".claude"]) {
-    mkdirSync(join(home, base, "skills"), { recursive: true });
-    if (skill !== null) cpSync(skill.source, join(home, base, "skills", skill.name), { recursive: true });
-  }
-  if (agent === "claude") {
-    writeFileSync(join(home, ".claude", "settings.json"), `${JSON.stringify({ disableAllHooks: true }, null, 2)}\n`);
-    return { CLAUDE_CONFIG_DIR: join(home, ".claude") };
-  }
-  mkdirSync(join(home, ".codex"), { recursive: true });
-  return { CODEX_HOME: join(home, ".codex") };
-}
-
-/** The variables {@link agentHome} would return, without making anything (for --dry-run). */
-export function agentHomePreview(home: string, agent: EstimateAgent): Record<string, string> {
-  return agent === "claude" ? { CLAUDE_CONFIG_DIR: join(home, ".claude") } : { CODEX_HOME: join(home, ".codex") };
-}
+// The isolated agent home lives in src/model/agentHome.ts, which the Action shares (PRC-05).
+export { agentHome, agentHomePreview } from "../../src/model/agentHome";

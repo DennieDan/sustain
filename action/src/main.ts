@@ -1,6 +1,7 @@
 // PRC-04: the Sustain check on a pull request. It runs PRC-01 from origin/<base> to HEAD, posts or
-// updates one comment marked <!-- sustain-check --> and sets the job result from fail-on. It never
-// calls an agent. Only with `upload` does it send the check and its map to Sustain Cloud (CLD-09).
+// updates one comment marked <!-- sustain-check --> and sets the job result from fail-on. Only with
+// `upload` does it send the check and its map to Sustain Cloud (CLD-09), and only with `refresh` does
+// it run an agent to update the map (PRC-05).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { actionsOidcToken, postUpload } from "../../src/cloud/client";
@@ -10,6 +11,7 @@ import { COMMENT_MARKER, deltaMarkdown, deltaMermaid } from "../../src/model/del
 import { collectGitFacts } from "../../src/model/git";
 import { checkPayload, checkUpload } from "../../src/model/upload";
 import type { GitHubClient } from "./github";
+import { refreshDecision, refreshLines, runRefresh } from "./refresh";
 
 /** Items per list in the comment; GitHub caps a comment at 65,536 characters. */
 export const COMMENT_ITEMS = 30;
@@ -90,9 +92,19 @@ export async function runAction(context: ActionContext): Promise<ActionResult> {
     if (uploaded.ok) page = uploaded.page;
     else context.log(`Not uploaded: ${uploaded.reason}`);
   }
+  let update: string[] = [];
+  const decision = refreshDecision({ refresh: input(context.env, "refresh"), env: context.env, event: context.event, report, components: diagram.components, head: collectGitFacts(context.root)?.head ?? null });
+  if (decision.run) {
+    const outcome = runRefresh({ root: context.root, map: report.map, agent: decision.agent, paths: decision.paths, headRef: pull.headRef, skillSource: join(__dirname, "..", "..", "skills", "sustain-refresh"), env: context.env });
+    update = refreshLines(outcome);
+    context.log(outcome.ok ? `Map updated in ${outcome.run}.` : `Map not updated: ${outcome.reason}`);
+  } else if (decision.reason !== null) {
+    update = refreshLines({ ok: false, reason: decision.reason });
+    context.log(`Map not updated: ${decision.reason}`);
+  }
   const chart = deltaMermaid(report, diagram);
   const link = page === null ? [] : ["", `[See it on the map in Sustain Cloud](${page})`];
-  const body = [COMMENT_MARKER, deltaMarkdown(report, report, COMMENT_ITEMS).trimEnd(), ...link, ...(chart === null ? [] : ["", chart])].join("\n");
+  const body = [COMMENT_MARKER, deltaMarkdown(report, report, COMMENT_ITEMS).trimEnd(), ...update, ...link, ...(chart === null ? [] : ["", chart])].join("\n");
 
   if (input(context.env, "comment") !== "false") {
     const existing = (await context.client.listComments(pull.number)).find((comment) => comment.body.startsWith(COMMENT_MARKER));

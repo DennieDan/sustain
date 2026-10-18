@@ -59,7 +59,7 @@ The sidebar's setup checklist names anything missing and offers a fix for each.
 
 3. Open a pull request. Sustain comments with the boxes it touches, the boxes it leaves stale and the code no box covers.
 
-Setting `fail-on: stale,new-box` in the Action's `with:` block fails the check on those findings. Replace `main` with a release tag to pin a version.
+Setting `fail-on: stale,new-box` in the Action's `with:` block fails the check on those findings. Setting `refresh: claude` or `refresh: codex` there updates the map on the pull request's branch when it has new folders or changed boxes. It needs that agent's CLI and API key in the job, the pull request's head checked out, and `contents: write`, and it never runs for a fork. Replace `main` with a release tag to pin a version.
 
 ### Sustain Cloud
 

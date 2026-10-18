@@ -14,7 +14,7 @@ import { newRunSince, runFolderNames } from "../../src/model/runRecord";
 import type { CorpusEntry } from "./corpus";
 import { agentHome, prepareRepo } from "./isolate";
 import { benchArgs, benchEnv, benchPrompt, benchSkill } from "./launch";
-import { summarizeStream } from "./summary";
+import { summarizeStream } from "../../src/model/agentStream/summary";
 
 /** How every agent is spawned: by absolute path, never through a shell (SAF-04). */
 export const SPAWN = { shell: false } as const;

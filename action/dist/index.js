@@ -2216,20 +2216,20 @@ var require_resolve = __commonJS({
       return false;
     }
     function countKeys(schema) {
-      let count = 0;
+      let count3 = 0;
       for (const key in schema) {
         if (key === "$ref")
           return Infinity;
-        count++;
+        count3++;
         if (SIMPLE_INLINED.has(key))
           continue;
         if (typeof schema[key] == "object") {
-          (0, util_1.eachItem)(schema[key], (sch) => count += countKeys(sch));
+          (0, util_1.eachItem)(schema[key], (sch) => count3 += countKeys(sch));
         }
-        if (count === Infinity)
+        if (count3 === Infinity)
           return Infinity;
       }
-      return count;
+      return count3;
     }
     function getFullPath(resolver, id = "", normalize) {
       if (normalize !== false)
@@ -4621,7 +4621,7 @@ var require_core = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text, msg) => text + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text3, msg) => text3 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -5711,8 +5711,8 @@ var require_contains = __commonJS({
         cxt.result(valid, () => cxt.reset());
         function validateItemsWithCount() {
           const schValid = gen.name("_valid");
-          const count = gen.let("count", 0);
-          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count)));
+          const count3 = gen.let("count", 0);
+          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count3)));
         }
         function validateItems(_valid, block) {
           gen.forRange("i", 0, len, (i) => {
@@ -5725,16 +5725,16 @@ var require_contains = __commonJS({
             block();
           });
         }
-        function checkLimits(count) {
-          gen.code((0, codegen_1._)`${count}++`);
+        function checkLimits(count3) {
+          gen.code((0, codegen_1._)`${count3}++`);
           if (max === void 0) {
-            gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid, true).break());
+            gen.if((0, codegen_1._)`${count3} >= ${min}`, () => gen.assign(valid, true).break());
           } else {
-            gen.if((0, codegen_1._)`${count} > ${max}`, () => gen.assign(valid, false).break());
+            gen.if((0, codegen_1._)`${count3} > ${max}`, () => gen.assign(valid, false).break());
             if (min === 1)
               gen.assign(valid, true);
             else
-              gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid, true));
+              gen.if((0, codegen_1._)`${count3} >= ${min}`, () => gen.assign(valid, true));
           }
         }
       }
@@ -7454,7 +7454,7 @@ var require__ = __commonJS({
 });
 
 // action/src/index.ts
-var import_node_fs9 = require("node:fs");
+var import_node_fs11 = require("node:fs");
 
 // action/src/github.ts
 function restClient(api, repository, token) {
@@ -7483,8 +7483,8 @@ function restClient(api, repository, token) {
 }
 
 // action/src/main.ts
-var import_node_fs8 = require("node:fs");
-var import_node_path7 = require("node:path");
+var import_node_fs10 = require("node:fs");
+var import_node_path9 = require("node:path");
 
 // src/cloud/client.ts
 var CLOUD_AUDIENCE = "sustain-cloud";
@@ -7560,10 +7560,10 @@ function sidePath(line, prefix) {
   if (raw === "/dev/null") return null;
   return raw.startsWith(prefix) ? raw.slice(2) : raw;
 }
-function parseDiff(text) {
+function parseDiff(text3) {
   const files = [];
   let current = null;
-  for (const line of text.split("\n")) {
+  for (const line of text3.split("\n")) {
     if (line.startsWith("diff --git ")) {
       const [oldPath, path2] = headerPaths(line.slice("diff --git ".length));
       current = { path: path2, oldPath, status: "modified", hunks: [] };
@@ -7684,6 +7684,13 @@ function globToRegExp(glob) {
     else pattern += char.replace(/[.+^${}()|[\]\\]/g, "\\$&");
   }
   return new RegExp(`^${pattern}(?:/.*)?$`);
+}
+function refreshArgs(run2, paths = []) {
+  const tokens = paths.flatMap((path2) => {
+    if (/^[\w./@+-]+$/.test(path2)) return [path2];
+    return /["$`\\]/.test(path2) ? [] : [`"${path2}"`];
+  });
+  return tokens.length === 0 ? `--from ${run2}` : `--from ${run2} --paths ${tokens.join(" ")}`;
 }
 
 // src/model/rules.ts
@@ -7955,9 +7962,9 @@ function joinPath(dir, rel) {
   }
   return parts.join("/");
 }
-function lineAt(text, index) {
+function lineAt(text3, index) {
   let line = 1;
-  for (let at = text.indexOf("\n"); at !== -1 && at < index; at = text.indexOf("\n", at + 1)) line++;
+  for (let at = text3.indexOf("\n"); at !== -1 && at < index; at = text3.indexOf("\n", at + 1)) line++;
   return line;
 }
 var ImportSet = class {
@@ -7982,20 +7989,20 @@ var baseName = (path2) => path2.slice(path2.lastIndexOf("/") + 1).replace(/\.jav
 function javaIndex(files, read) {
   const index = { classes: /* @__PURE__ */ new Map(), packages: /* @__PURE__ */ new Map(), packageOf: /* @__PURE__ */ new Map() };
   for (const file of files) {
-    const text = read(file);
-    if (text === null) continue;
-    const pkg = PACKAGE.exec(text)?.[1] ?? "";
+    const text3 = read(file);
+    if (text3 === null) continue;
+    const pkg = PACKAGE.exec(text3)?.[1] ?? "";
     index.classes.set(pkg === "" ? baseName(file) : `${pkg}.${baseName(file)}`, file);
     index.packages.set(pkg, [...index.packages.get(pkg) ?? [], file]);
     index.packageOf.set(file, pkg);
   }
   return index;
 }
-function javaImports(file, text, index) {
+function javaImports(file, text3, index) {
   const found = new ImportSet();
-  for (const match of text.matchAll(IMPORT)) {
+  for (const match of text3.matchAll(IMPORT)) {
     const [, , name, star] = match;
-    const line = lineAt(text, match.index);
+    const line = lineAt(text3, match.index);
     if (star) {
       const classFile = index.classes.get(name);
       if (classFile !== void 0) found.add(classFile, line);
@@ -8013,9 +8020,9 @@ function javaImports(file, text, index) {
   const pkg = index.packageOf.get(file) ?? "";
   for (const other of index.packages.get(pkg) ?? []) {
     if (other === file) continue;
-    for (const use of text.matchAll(new RegExp(`\\b${baseName(other)}\\b`, "g"))) {
-      const line = lineAt(text, use.index);
-      if (/^\s*(package|import)\b/.test(text.split("\n")[line - 1] ?? "")) continue;
+    for (const use of text3.matchAll(new RegExp(`\\b${baseName(other)}\\b`, "g"))) {
+      const line = lineAt(text3, use.index);
+      if (/^\s*(package|import)\b/.test(text3.split("\n")[line - 1] ?? "")) continue;
       found.add(other, line);
       break;
     }
@@ -8057,15 +8064,15 @@ function absolute(name, index) {
   }
   return [];
 }
-function pythonImports(file, text, index) {
+function pythonImports(file, text3, index) {
   const found = new ImportSet();
-  for (const match of text.matchAll(IMPORT2)) {
-    const line = lineAt(text, match.index);
+  for (const match of text3.matchAll(IMPORT2)) {
+    const line = lineAt(text3, match.index);
     for (const part of match[1].split(",")) for (const target of absolute(part.trim().split(/[ \t]+/)[0], index)) found.add(target, line);
   }
-  for (const match of text.matchAll(FROM)) {
+  for (const match of text3.matchAll(FROM)) {
     const [, dots, module2, list] = match;
-    const line = lineAt(text, match.index);
+    const line = lineAt(text3, match.index);
     const names = list.replace(/[()]/g, "").split(",").map((name) => name.trim().split(/\s+/)[0]).filter((name) => /^\w+$/.test(name));
     if (dots === "") {
       for (const name of names) {
@@ -8097,30 +8104,30 @@ var SPECIFIERS = [
 var EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
 var SOURCE_FOR = { ".js": [".ts", ".tsx"], ".jsx": [".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] };
 var CONFIG_NAMES = ["tsconfig.json", "jsconfig.json"];
-function parseLoose(text) {
+function parseLoose(text3) {
   let out = "";
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
+  for (let i = 0; i < text3.length; i++) {
+    const char = text3[i];
     if (char === '"') {
       let j = i + 1;
-      while (j < text.length && text[j] !== '"') j += text[j] === "\\" ? 2 : 1;
-      out += text.slice(i, j + 1);
+      while (j < text3.length && text3[j] !== '"') j += text3[j] === "\\" ? 2 : 1;
+      out += text3.slice(i, j + 1);
       i = j;
-    } else if (char === "/" && text[i + 1] === "/") {
-      while (i < text.length && text[i] !== "\n") i++;
+    } else if (char === "/" && text3[i + 1] === "/") {
+      while (i < text3.length && text3[i] !== "\n") i++;
       out += "\n";
-    } else if (char === "/" && text[i + 1] === "*") {
-      i = text.indexOf("*/", i + 2);
+    } else if (char === "/" && text3[i + 1] === "*") {
+      i = text3.indexOf("*/", i + 2);
       if (i < 0) break;
       i++;
     } else out += char;
   }
   return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"));
 }
-function pathConfig(path2, text) {
+function pathConfig(path2, text3) {
   let options;
   try {
-    options = parseLoose(text).compilerOptions;
+    options = parseLoose(text3).compilerOptions;
   } catch {
     return null;
   }
@@ -8150,16 +8157,16 @@ function throughConfig(specifier, config, files) {
   }
   return config.baseUrl === null ? null : resolveFile(joinPath(config.baseUrl, specifier), files);
 }
-function typescriptImports(file, text, files, configFor) {
+function typescriptImports(file, text3, files, configFor) {
   const found = new ImportSet();
   for (const pattern of SPECIFIERS) {
-    for (const match of text.matchAll(pattern)) {
+    for (const match of text3.matchAll(pattern)) {
       const specifier = match[1];
       const resolved = specifier.startsWith(".") ? resolveFile(joinPath(dirOf(file), specifier), files) : (() => {
         const config = configFor(dirOf(file));
         return config === null ? null : throughConfig(specifier, config, files);
       })();
-      if (resolved !== null && resolved !== file) found.add(resolved, lineAt(text, match.index));
+      if (resolved !== null && resolved !== file) found.add(resolved, lineAt(text3, match.index));
     }
   }
   return found.refs();
@@ -8183,9 +8190,9 @@ function importResolver(files, read) {
     let found = null;
     for (const name of CONFIG_NAMES) {
       const path2 = joinPath(dir, name);
-      const text = all.has(path2) ? read(path2) : null;
-      if (text !== null) {
-        found = pathConfig(path2, text);
+      const text3 = all.has(path2) ? read(path2) : null;
+      if (text3 !== null) {
+        found = pathConfig(path2, text3);
         break;
       }
     }
@@ -8193,11 +8200,11 @@ function importResolver(files, read) {
     configs.set(dir, found);
     return found;
   };
-  return (file, text) => {
+  return (file, text3) => {
     const language = importLanguage(file);
-    if (language === "java") return javaImports(file, text, java);
-    if (language === "python") return pythonImports(file, text, python);
-    return language === "typescript" ? typescriptImports(file, text, all, configFor) : [];
+    if (language === "java") return javaImports(file, text3, java);
+    if (language === "python") return pythonImports(file, text3, python);
+    return language === "typescript" ? typescriptImports(file, text3, all, configFor) : [];
   };
 }
 
@@ -8271,10 +8278,10 @@ function parsePorcelainZ(output) {
   const fields = output.split("\0");
   const paths = [];
   for (let i = 0; i < fields.length; i += 1) {
-    const record = fields[i];
-    if (record.length < 4) continue;
-    paths.push(record.slice(3));
-    if (/[RC]/.test(record.slice(0, 2))) i += 1;
+    const record3 = fields[i];
+    if (record3.length < 4) continue;
+    paths.push(record3.slice(3));
+    if (/[RC]/.test(record3.slice(0, 2))) i += 1;
   }
   return paths;
 }
@@ -8459,6 +8466,23 @@ function readRunRecord(runDir) {
     return null;
   }
 }
+function runFolderNames(root) {
+  try {
+    return new Set((0, import_node_fs5.readdirSync)((0, import_node_path4.join)(root, ARCHIFY_DIR)));
+  } catch {
+    return /* @__PURE__ */ new Set();
+  }
+}
+function newRunSince(root, before) {
+  let found = null;
+  for (const runFolder of runFolderNames(root)) {
+    if (before.has(runFolder)) continue;
+    const dir = (0, import_node_path4.join)(root, ARCHIFY_DIR, runFolder);
+    const record3 = readRunRecord(dir);
+    if (record3 !== null && (found === null || record3.createdAt > found.record.createdAt)) found = { runFolder, dir, record: record3 };
+  }
+  return found;
+}
 
 // src/model/staleness.ts
 var import_node_fs6 = require("node:fs");
@@ -8470,8 +8494,8 @@ var FINGERPRINTS_FILE = "fingerprints.json";
 function gitBlobId(bytes) {
   return (0, import_node_crypto.createHash)("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
 }
-function normalizedLines(text) {
-  return text.split("\n").map((line) => line.trimEnd());
+function normalizedLines(text3) {
+  return text3.split("\n").map((line) => line.trimEnd());
 }
 function hashLines(lines) {
   return (0, import_node_crypto.createHash)("sha256").update(lines.join("\n")).digest("hex");
@@ -8691,15 +8715,15 @@ function readDiagram(value) {
 
 // src/model/check.ts
 function loadConfig(root) {
-  let text;
+  let text3;
   try {
-    text = (0, import_node_fs7.readFileSync)((0, import_node_path6.join)(root, CONFIG_FILE), "utf8");
+    text3 = (0, import_node_fs7.readFileSync)((0, import_node_path6.join)(root, CONFIG_FILE), "utf8");
   } catch {
     return { ok: true, config: {} };
   }
   let value;
   try {
-    value = JSON.parse(text);
+    value = JSON.parse(text3);
   } catch (error) {
     return { ok: false, reason: `${CONFIG_FILE} is not valid JSON: ${error.message}` };
   }
@@ -8768,14 +8792,14 @@ function runCheck(options) {
   }
   const prints = readFingerprints(runDir);
   const read = head === void 0 ? fileReader(root) : (path2) => fileAt(root, head, path2);
-  const text = (path2) => read(path2)?.toString("utf8") ?? null;
+  const text3 = (path2) => read(path2)?.toString("utf8") ?? null;
   const headFiles = head === void 0 ? [.../* @__PURE__ */ new Set([...listFiles(root).files, ...changes.map((change) => change.path)])] : filesAt(root, head, "");
-  const resolve = importResolver(headFiles, text);
+  const resolve = importResolver(headFiles, text3);
   const imports = { base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
   const headRefs = /* @__PURE__ */ new Map();
   for (const change of changes) {
     if (change.status === "deleted" || importLanguage(change.path) === null) continue;
-    const now = text(change.path);
+    const now = text3(change.path);
     if (now !== null) {
       const refs = resolve(change.path, now);
       imports.head.set(change.path, refs.map((ref) => ref.path));
@@ -8803,14 +8827,14 @@ function runCheck(options) {
 
 // src/model/deltaMarkdown.ts
 var COMMENT_MARKER = "<!-- sustain-check -->";
-function escapeMarkdown(text) {
-  return text.replace(/([\\`*_{}[\]()#+!~-])/g, "\\$1").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\|/g, "&#124;").replace(/\r?\n/g, " ");
+function escapeMarkdown(text3) {
+  return text3.replace(/([\\`*_{}[\]()#+!~-])/g, "\\$1").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\|/g, "&#124;").replace(/\r?\n/g, " ");
 }
-function path(text) {
-  return text.includes("`") || /[\r\n]/.test(text) ? escapeMarkdown(text) : `\`${text}\``;
+function path(text3) {
+  return text3.includes("`") || /[\r\n]/.test(text3) ? escapeMarkdown(text3) : `\`${text3}\``;
 }
-function plural(count, one, many = `${one}s`) {
-  return `${count} ${count === 1 ? one : many}`;
+function plural(count3, one, many = `${one}s`) {
+  return `${count3} ${count3 === 1 ? one : many}`;
 }
 function deltaSummary(report) {
   const touched = report.touched.strong.length + report.touched.weak.length;
@@ -8860,8 +8884,8 @@ function deltaMarkdown(report, meta, maxItems = Number.POSITIVE_INFINITY) {
   return `${lines.join("\n")}
 `;
 }
-function mermaidLabel(text) {
-  return text.replace(/"/g, "#quot;").replace(/</g, "#lt;").replace(/>/g, "#gt;").replace(/[\r\n]+/g, " ");
+function mermaidLabel(text3) {
+  return text3.replace(/"/g, "#quot;").replace(/</g, "#lt;").replace(/>/g, "#gt;").replace(/[\r\n]+/g, " ");
 }
 function deltaMermaid(report, diagram) {
   const touched = new Set([...report.touched.strong, ...report.touched.weak].map((box) => box.id));
@@ -9533,27 +9557,27 @@ var PATTERNS = [
   { kind: "Slack token", pattern: /\bxox[abprs]-[A-Za-z0-9-]{10,}/ },
   { kind: "AWS access key", pattern: /\bAKIA[0-9A-Z]{16}\b/ }
 ];
-function entropy(text) {
+function entropy(text3) {
   const counts = /* @__PURE__ */ new Map();
-  for (const char of text) counts.set(char, (counts.get(char) ?? 0) + 1);
+  for (const char of text3) counts.set(char, (counts.get(char) ?? 0) + 1);
   let bits = 0;
-  for (const count of counts.values()) {
-    const p = count / text.length;
+  for (const count3 of counts.values()) {
+    const p = count3 / text3.length;
     bits -= p * Math.log2(p);
   }
   return bits;
 }
-function highEntropyRun(text) {
-  for (const match of text.matchAll(/[A-Za-z0-9+_=-]{32,}/g)) {
+function highEntropyRun(text3) {
+  for (const match of text3.matchAll(/[A-Za-z0-9+_=-]{32,}/g)) {
     const run2 = match[0];
     if (/^[0-9a-fA-F]+$/.test(run2)) continue;
     if (/\d/.test(run2) && /[a-z]/.test(run2) && /[A-Z]/.test(run2) && entropy(run2) >= 4.2) return true;
   }
   return false;
 }
-function secretKind(text) {
-  for (const { kind, pattern } of PATTERNS) if (pattern.test(text)) return kind;
-  return highEntropyRun(text) ? "high-entropy string" : null;
+function secretKind(text3) {
+  for (const { kind, pattern } of PATTERNS) if (pattern.test(text3)) return kind;
+  return highEntropyRun(text3) ? "high-entropy string" : null;
 }
 function findSecrets(value, pointer = "") {
   if (typeof value === "string") {
@@ -9600,6 +9624,402 @@ function checkPayload(input2) {
   };
 }
 
+// action/src/refresh.ts
+var import_node_child_process2 = require("node:child_process");
+var import_node_fs9 = require("node:fs");
+var import_node_os = require("node:os");
+var import_node_path8 = require("node:path");
+
+// src/extension/agents.ts
+var SKILL_SCRIPTS = {
+  "sustain-architecture": ["repo-facts.mjs", "validate.mjs", "render-html.mjs"],
+  "sustain-refresh": ["refresh-facts.mjs", "validate.mjs", "render-html.mjs"],
+  "sustain-audit": ["audit-record.mjs"]
+};
+function headlessArgs(cli, prompt, options) {
+  if (cli === "codex") return ["exec", "--json", "--sandbox", options.readOnly ? "read-only" : "workspace-write", prompt];
+  const tools = options.readOnly ? ["Read", "Grep", "Glob"] : [
+    "Read",
+    "Grep",
+    "Glob",
+    ...options.subagents ? ["Task"] : [],
+    ...(options.scripts ?? SKILL_SCRIPTS["sustain-architecture"]).map((script) => `Bash(node ${options.skillDir}/scripts/${script} *)`),
+    "Edit(./.archify/**)"
+  ];
+  const resume = options.resume === void 0 ? [] : ["--resume", options.resume];
+  return ["-p", prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk", ...resume, "--allowedTools", ...tools];
+}
+function skillPrompt(cli, skill, args) {
+  const invoke = `${cli === "claude" ? "/" : "$"}${skill}`;
+  const trimmed = args.trim();
+  return trimmed === "" ? invoke : `${invoke} ${trimmed}`;
+}
+
+// src/model/agentHome.ts
+var import_node_fs8 = require("node:fs");
+var import_node_path7 = require("node:path");
+function agentHome(home, agent, skill) {
+  for (const base of [".agents", ".claude"]) {
+    (0, import_node_fs8.mkdirSync)((0, import_node_path7.join)(home, base, "skills"), { recursive: true });
+    if (skill !== null) (0, import_node_fs8.cpSync)(skill.source, (0, import_node_path7.join)(home, base, "skills", skill.name), { recursive: true });
+  }
+  if (agent === "claude") {
+    (0, import_node_fs8.writeFileSync)((0, import_node_path7.join)(home, ".claude", "settings.json"), `${JSON.stringify({ disableAllHooks: true }, null, 2)}
+`);
+    return { CLAUDE_CONFIG_DIR: (0, import_node_path7.join)(home, ".claude") };
+  }
+  (0, import_node_fs8.mkdirSync)((0, import_node_path7.join)(home, ".codex"), { recursive: true });
+  return { CODEX_HOME: (0, import_node_path7.join)(home, ".codex") };
+}
+function agentHomePreview(home, agent) {
+  return agent === "claude" ? { CLAUDE_CONFIG_DIR: (0, import_node_path7.join)(home, ".claude") } : { CODEX_HOME: (0, import_node_path7.join)(home, ".codex") };
+}
+
+// src/model/agentStream/feed.ts
+var NO_USAGE = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+function clip(text3, max = 120) {
+  const flat = text3.replace(/\s+/g, " ").trim();
+  return flat.length <= max ? flat : `${flat.slice(0, max - 1)}\u2026`;
+}
+function commandItem(command) {
+  if (/validate\.mjs/.test(command)) return { kind: "validate", text: "Validating the draft" };
+  if (/repo-facts\.mjs/.test(command)) return { kind: "command", text: "Creating the run folder" };
+  if (/refresh-facts\.mjs/.test(command)) return { kind: "command", text: "Finding what changed" };
+  return { kind: "command", text: `Running ${clip(command, 80)}` };
+}
+function validatorItem(output) {
+  let report;
+  try {
+    report = JSON.parse(output.trim());
+  } catch {
+    return null;
+  }
+  if (typeof report !== "object" || report === null) return null;
+  const { status, errors } = report;
+  if (status === "accepted") return { kind: "validate", text: "Accepted" };
+  if (status === "rejected") {
+    const count3 = Array.isArray(errors) ? errors.length : 0;
+    return { kind: "validate", text: `Rejected with ${count3} error${count3 === 1 ? "" : "s"}, repairing` };
+  }
+  return null;
+}
+
+// src/model/agentStream/claude.ts
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+}
+function text(value) {
+  return typeof value === "string" ? value : "";
+}
+function count(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+function usageOf(value) {
+  const usage = record(value);
+  return {
+    input: count(usage["input_tokens"]),
+    output: count(usage["output_tokens"]),
+    cacheRead: count(usage["cache_read_input_tokens"]),
+    cacheWrite: count(usage["cache_creation_input_tokens"])
+  };
+}
+function toolItem(name, input2) {
+  const path2 = text(input2["file_path"]) || text(input2["path"]);
+  switch (name) {
+    case "Read":
+      return { kind: "read", text: `Reading ${path2}` };
+    case "Grep":
+    case "Glob":
+      return { kind: "search", text: `Searching for ${clip(text(input2["pattern"]), 60)}` };
+    case "Write":
+    case "Edit":
+      return { kind: "write", text: path2.endsWith("draft.json") ? "Writing the draft" : `Writing ${path2}` };
+    case "Bash":
+      return commandItem(text(input2["command"]));
+    default:
+      return { kind: "command", text: `Using ${name}` };
+  }
+}
+function resultText(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return content.map((block) => text(record(block)["text"])).join("\n");
+  return "";
+}
+function claudeParser() {
+  const total = { ...NO_USAGE };
+  return {
+    line(raw) {
+      let event;
+      try {
+        event = record(JSON.parse(raw));
+      } catch {
+        return { items: [] };
+      }
+      const message = record(event["message"]);
+      const content = Array.isArray(message["content"]) ? message["content"].map(record) : [];
+      switch (event["type"]) {
+        case "assistant": {
+          const items = [];
+          let answer = "";
+          for (const block of content) {
+            if (block["type"] === "tool_use") items.push(toolItem(text(block["name"]), record(block["input"])));
+            if (block["type"] === "text" && text(block["text"]).trim() !== "") {
+              items.push({ kind: "message", text: clip(text(block["text"])) });
+              answer += text(block["text"]);
+            }
+          }
+          const step = usageOf(message["usage"]);
+          total.input += step.input;
+          total.output += step.output;
+          total.cacheRead += step.cacheRead;
+          total.cacheWrite += step.cacheWrite;
+          return { items, usage: { ...total }, ...answer === "" ? {} : { answer } };
+        }
+        case "user": {
+          const items = content.filter((block) => block["type"] === "tool_result").flatMap((block) => validatorItem(resultText(block["content"])) ?? []);
+          return { items };
+        }
+        case "result": {
+          const denials = (Array.isArray(event["permission_denials"]) ? event["permission_denials"] : []).map((denial) => {
+            const entry = record(denial);
+            const input2 = record(entry["tool_input"]);
+            return `${text(entry["tool_name"])}: ${clip(text(input2["command"]) || text(input2["file_path"]) || "", 80)}`;
+          });
+          const ok = event["subtype"] === "success" && event["is_error"] !== true;
+          return {
+            items: ok ? [] : [{ kind: "error", text: clip(text(event["result"]) || `The run ended with ${text(event["subtype"])}`) }],
+            usage: event["usage"] === void 0 ? { ...total } : usageOf(event["usage"]),
+            end: {
+              ok,
+              costUsd: typeof event["total_cost_usd"] === "number" ? event["total_cost_usd"] : null,
+              denials,
+              sessionId: text(event["session_id"]) || null,
+              ...ok && text(event["result"]).trim() !== "" ? { finalAnswer: text(event["result"]) } : {}
+            }
+          };
+        }
+        default:
+          return { items: [] };
+      }
+    }
+  };
+}
+
+// src/model/agentStream/codex.ts
+function record2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+}
+function text2(value) {
+  return typeof value === "string" ? value : "";
+}
+function count2(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+function codexParser() {
+  const total = { ...NO_USAGE };
+  return {
+    line(raw) {
+      let event;
+      try {
+        event = record2(JSON.parse(raw));
+      } catch {
+        return { items: [] };
+      }
+      const item = record2(event["item"]);
+      switch (event["type"]) {
+        case "item.started":
+          return item["type"] === "command_execution" ? { items: [commandItem(text2(item["command"]))] } : { items: [] };
+        case "item.completed": {
+          if (item["type"] === "command_execution") {
+            const verdict2 = validatorItem(text2(item["aggregated_output"]));
+            return { items: verdict2 ? [verdict2] : [] };
+          }
+          if (item["type"] === "file_change") {
+            const items = (Array.isArray(item["changes"]) ? item["changes"] : []).map((change) => {
+              const path2 = text2(record2(change)["path"]);
+              return { kind: "write", text: path2.endsWith("draft.json") ? "Writing the draft" : `Writing ${path2}` };
+            });
+            return { items };
+          }
+          if (item["type"] === "agent_message" && text2(item["text"]).trim() !== "") {
+            return { items: [{ kind: "message", text: clip(text2(item["text"])) }], answer: text2(item["text"]) };
+          }
+          return { items: [] };
+        }
+        case "turn.completed": {
+          const usage = record2(event["usage"]);
+          const cached = count2(usage["cached_input_tokens"]);
+          total.input += Math.max(0, count2(usage["input_tokens"]) - cached);
+          total.cacheRead += cached;
+          total.output += count2(usage["output_tokens"]);
+          return { items: [], usage: { ...total } };
+        }
+        case "turn.failed":
+          return { items: [{ kind: "error", text: clip(text2(record2(event["error"])["message"]) || "The turn failed") }] };
+        case "error":
+          return { items: [{ kind: "error", text: clip(text2(event["message"]) || "Codex reported an error") }] };
+        default:
+          return { items: [] };
+      }
+    }
+  };
+}
+
+// src/model/agentStream/summary.ts
+function summarizeStream(transcript, parser) {
+  const summary = { usage: { ...NO_USAGE }, costUsd: null, reads: 0, searches: 0, writes: 0, validations: 0, ok: null, denials: [], answer: "" };
+  for (const line of transcript.split("\n")) {
+    if (line.trim() === "") continue;
+    const update = parser.line(line);
+    for (const item of update.items) {
+      if (item.kind === "read") summary.reads++;
+      else if (item.kind === "search") summary.searches++;
+      else if (item.kind === "write") summary.writes++;
+      else if (item.kind === "validate" && item.text === "Validating the draft") summary.validations++;
+    }
+    if (update.usage) summary.usage = { ...update.usage };
+    if (update.answer) summary.answer += update.answer;
+    if (update.end) {
+      summary.ok = update.end.ok;
+      summary.costUsd = update.end.costUsd;
+      summary.denials = update.end.denials;
+      if (update.end.finalAnswer !== void 0) summary.answer = update.end.finalAnswer;
+    }
+  }
+  return summary;
+}
+
+// src/model/branchMaps.ts
+function branchPaths(report, components) {
+  const boxes = new Set([...report.stale, ...report.gone].map((box) => box.id));
+  const cited = components.filter((component) => boxes.has(component.id)).flatMap((component) => (component.sources ?? []).map((source) => source.path));
+  return [.../* @__PURE__ */ new Set([...report.candidates.map((candidate) => candidate.dir), ...cited])].sort();
+}
+
+// src/model/diff.ts
+var SAME_FILES = 0.5;
+function overlap(a, b) {
+  const left = new Set((a.sources ?? []).map((source) => source.path));
+  const right = new Set((b.sources ?? []).map((source) => source.path));
+  const shared = [...left].filter((path2) => right.has(path2)).length;
+  const union = (/* @__PURE__ */ new Set([...left, ...right])).size;
+  return union === 0 ? 0 : shared / union;
+}
+function diffMaps(before, after) {
+  const newIds = new Set(after.components.map((box) => box.id));
+  const oldIds = new Set(before.components.map((box) => box.id));
+  const renamed = /* @__PURE__ */ new Map();
+  for (const box of before.components) if (newIds.has(box.id)) renamed.set(box.id, box.id);
+  const unmatchedNew = after.components.filter((box) => !oldIds.has(box.id));
+  for (const box of before.components.filter((entry) => !newIds.has(entry.id))) {
+    let best = null;
+    for (const candidate of unmatchedNew) {
+      const score = overlap(box, candidate);
+      if (score >= SAME_FILES && (best === null || score > best.score) && ![...renamed.values()].includes(candidate.id)) best = { id: candidate.id, score };
+    }
+    if (best !== null) renamed.set(box.id, best.id);
+  }
+  const matchedNew = new Set(renamed.values());
+  const newLabel = new Map(after.components.map((box) => [box.id, box.label]));
+  const relabelled = before.components.filter((box) => renamed.has(box.id) && (renamed.get(box.id) !== box.id || newLabel.get(box.id) !== box.label)).map((box) => ({ id: renamed.get(box.id), was: box.id, label: box.label }));
+  const key = (from, to) => `${from}\0${to}`;
+  const oldArrows = new Map(before.connections.map((arrow) => [key(renamed.get(arrow.from) ?? arrow.from, renamed.get(arrow.to) ?? arrow.to), arrow]));
+  const newKeys = new Set(after.connections.map((arrow) => key(arrow.from, arrow.to)));
+  return {
+    boxes: {
+      added: after.components.filter((box) => !matchedNew.has(box.id)).map((box) => box.id),
+      removed: before.components.filter((box) => !renamed.has(box.id)).map((box) => ({ id: box.id, label: box.label })),
+      relabelled
+    },
+    arrows: {
+      added: after.connections.flatMap((arrow, index) => oldArrows.has(key(arrow.from, arrow.to)) ? [] : [index]),
+      removed: [...oldArrows].filter(([arrowKey]) => !newKeys.has(arrowKey)).map(([arrowKey, arrow]) => {
+        const [from, to] = arrowKey.split("\0");
+        return { from, to, ...arrow.label ? { label: arrow.label } : {} };
+      }),
+      relabelled: after.connections.flatMap((arrow, index) => {
+        const was = oldArrows.get(key(arrow.from, arrow.to));
+        return was !== void 0 && (was.label ?? "") !== (arrow.label ?? "") ? [{ index, was: was.label ?? "" }] : [];
+      })
+    }
+  };
+}
+function diffSummary(diff) {
+  const plural2 = (count3, one, many) => `${count3} ${count3 === 1 ? one : many}`;
+  return [
+    `${plural2(diff.boxes.added.length, "box", "boxes")} added`,
+    `${diff.boxes.removed.length} removed`,
+    `${diff.boxes.relabelled.length} relabelled`,
+    `${plural2(diff.arrows.added.length, "arrow", "arrows")} added`,
+    `${diff.arrows.removed.length} removed`
+  ].join(" \xB7 ");
+}
+
+// action/src/refresh.ts
+var REFRESH_KEYS = { claude: "ANTHROPIC_API_KEY", codex: "OPENAI_API_KEY" };
+var REFRESH_TIMEOUT_MS = 30 * 6e4;
+function refreshDecision(input2) {
+  if (input2.refresh === "") return { run: false, reason: null };
+  if (input2.refresh !== "claude" && input2.refresh !== "codex") return { run: false, reason: "refresh takes claude or codex." };
+  const event = input2.event;
+  const headRepo = event?.pull_request?.head?.repo;
+  if (headRepo === null || headRepo === void 0 || headRepo.fork === true || headRepo.full_name !== event?.repository?.full_name) {
+    return { run: false, reason: "The map is never updated on a pull request from a fork." };
+  }
+  const agent = input2.refresh;
+  if (!input2.env[REFRESH_KEYS[agent]]) return { run: false, reason: `refresh: ${agent} needs ${REFRESH_KEYS[agent]} in the step's env.` };
+  if (input2.head === null || input2.head !== event?.pull_request?.head?.sha) {
+    return { run: false, reason: "Updating the map needs the pull request's head checked out. Set ref to github.head_ref in actions/checkout." };
+  }
+  const paths = branchPaths(input2.report, input2.components);
+  if (paths.length === 0) return { run: false, reason: null };
+  return { run: true, agent, paths };
+}
+function refreshCommand(agent, map, paths, home, env) {
+  const skillDir = (0, import_node_path8.join)(home, agent === "claude" ? ".claude" : ".agents", "skills", "sustain-refresh");
+  const args = headlessArgs(agent, skillPrompt(agent, "sustain-refresh", refreshArgs(map, paths)), { skillDir, scripts: SKILL_SCRIPTS["sustain-refresh"] });
+  const key = env[REFRESH_KEYS[agent]] ?? "";
+  const keys = agent === "claude" ? { ANTHROPIC_API_KEY: key } : { OPENAI_API_KEY: key, CODEX_API_KEY: key };
+  return { args, env: { PATH: env["PATH"] ?? "", HOME: home, LANG: "C.UTF-8", ...agentHomePreview(home, agent), ...keys } };
+}
+function git(root, args) {
+  const program = findOnPath("git", process.env);
+  if (program === void 0) return null;
+  const result = (0, import_node_child_process2.spawnSync)(program, ["-c", "core.fsmonitor=false", ...args], { cwd: root, encoding: "utf8", env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
+  return result.status === 0 ? result.stdout : null;
+}
+function runRefresh(input2) {
+  const binary = findOnPath(input2.agent, input2.env);
+  if (binary === void 0) return { ok: false, reason: `refresh: ${input2.agent} needs the ${input2.agent} CLI on PATH; install it in an earlier step.` };
+  const home = (0, import_node_fs9.mkdtempSync)((0, import_node_path8.join)((0, import_node_os.tmpdir)(), "sustain-refresh-"));
+  try {
+    agentHome(home, input2.agent, { name: "sustain-refresh", source: input2.skillSource });
+    const { args, env } = refreshCommand(input2.agent, input2.map, input2.paths, home, input2.env);
+    const before = runFolderNames(input2.root);
+    const result = (0, import_node_child_process2.spawnSync)(binary, args, { cwd: input2.root, env, shell: false, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, timeout: REFRESH_TIMEOUT_MS });
+    const usage = summarizeStream(result.stdout ?? "", input2.agent === "claude" ? claudeParser() : codexParser()).usage;
+    const tokens = usage.input + usage.output + usage.cacheRead + usage.cacheWrite;
+    const made = newRunSince(input2.root, before);
+    if (made === null || made.record.phase !== "accepted") return { ok: false, reason: `the refresh ended without an accepted map (exit ${result.status ?? "none"}).` };
+    const read = (run2) => readDiagram(JSON.parse((0, import_node_fs9.readFileSync)((0, import_node_path8.join)(input2.root, ARCHIFY_DIR, run2, CANDIDATE_FILE), "utf8")));
+    const older = read(input2.map);
+    const newer = read(made.runFolder);
+    const summary = older.ok && newer.ok ? diffSummary(diffMaps(older.diagram, newer.diagram)) : "the map changed";
+    const folder = `${ARCHIFY_DIR}/${made.runFolder}`;
+    const committed = git(input2.root, ["add", "-f", "--", folder]) !== null && git(input2.root, ["-c", "user.name=Sustain", "-c", "user.email=sustain@users.noreply.github.com", "-c", "commit.gpgsign=false", "commit", "-q", "-m", `Update the architecture map for this pull request
+
+${summary}.`, "--", folder]) !== null && git(input2.root, ["push", "-q", "origin", `HEAD:refs/heads/${input2.headRef}`]) !== null;
+    if (!committed) return { ok: false, reason: `the new map ${made.runFolder} could not be committed and pushed to ${input2.headRef}.` };
+    return { ok: true, run: made.runFolder, summary, tokens };
+  } finally {
+    (0, import_node_fs9.rmSync)(home, { recursive: true, force: true });
+  }
+}
+function refreshLines(outcome) {
+  if (!outcome.ok) return ["", "**Map update**", "", `The map was not updated. ${outcome.reason.charAt(0).toUpperCase()}${outcome.reason.slice(1)}`];
+  return ["", "**Map update**", "", `Sustain refreshed the map in \`${outcome.run}\` and pushed it to this branch. ${outcome.summary.charAt(0).toUpperCase()}${outcome.summary.slice(1)}. It used ${outcome.tokens.toLocaleString("en-US")} tokens.`];
+}
+
 // action/src/main.ts
 var COMMENT_ITEMS = 30;
 function input(env, name) {
@@ -9618,7 +10038,7 @@ async function uploadCheck(context, pull, report, run2) {
   if (cloud === "") return { ok: false, reason: "upload needs the cloud-url input." };
   const head = collectGitFacts(context.root)?.head;
   if (head === void 0) return { ok: false, reason: "upload needs the checked-out commit." };
-  const map = JSON.parse((0, import_node_fs8.readFileSync)((0, import_node_path7.join)(context.root, ".archify", run2, "candidate.json"), "utf8"));
+  const map = JSON.parse((0, import_node_fs10.readFileSync)((0, import_node_path9.join)(context.root, ".archify", run2, "candidate.json"), "utf8"));
   const payload = checkPayload({ repo, commit: head, branch: pull.headRef, pull: pull.number, check: report, map, run: run2, ...pull.defaultBranch ? { defaultBranch: pull.defaultBranch } : {} });
   const issues = checkUpload(payload);
   if (issues.length > 0) return { ok: false, reason: `the upload would be refused: ${issues.map((issue) => `${issue.pointer} ${issue.message}`).join("; ")}` };
@@ -9651,9 +10071,19 @@ async function runAction(context) {
     if (uploaded.ok) page = uploaded.page;
     else context.log(`Not uploaded: ${uploaded.reason}`);
   }
+  let update = [];
+  const decision = refreshDecision({ refresh: input(context.env, "refresh"), env: context.env, event: context.event, report, components: diagram.components, head: collectGitFacts(context.root)?.head ?? null });
+  if (decision.run) {
+    const outcome2 = runRefresh({ root: context.root, map: report.map, agent: decision.agent, paths: decision.paths, headRef: pull.headRef, skillSource: (0, import_node_path9.join)(__dirname, "..", "..", "skills", "sustain-refresh"), env: context.env });
+    update = refreshLines(outcome2);
+    context.log(outcome2.ok ? `Map updated in ${outcome2.run}.` : `Map not updated: ${outcome2.reason}`);
+  } else if (decision.reason !== null) {
+    update = refreshLines({ ok: false, reason: decision.reason });
+    context.log(`Map not updated: ${decision.reason}`);
+  }
   const chart = deltaMermaid(report, diagram);
   const link = page === null ? [] : ["", `[See it on the map in Sustain Cloud](${page})`];
-  const body = [COMMENT_MARKER, deltaMarkdown(report, report, COMMENT_ITEMS).trimEnd(), ...link, ...chart === null ? [] : ["", chart]].join("\n");
+  const body = [COMMENT_MARKER, deltaMarkdown(report, report, COMMENT_ITEMS).trimEnd(), ...update, ...link, ...chart === null ? [] : ["", chart]].join("\n");
   if (input(context.env, "comment") !== "false") {
     const existing = (await context.client.listComments(pull.number)).find((comment) => comment.body.startsWith(COMMENT_MARKER));
     if (existing) await context.client.updateComment(existing.id, body);
@@ -9666,13 +10096,13 @@ async function runAction(context) {
 // action/src/index.ts
 async function main() {
   const env = process.env;
-  const event = JSON.parse((0, import_node_fs9.readFileSync)(env["GITHUB_EVENT_PATH"] ?? "", "utf8"));
+  const event = JSON.parse((0, import_node_fs11.readFileSync)(env["GITHUB_EVENT_PATH"] ?? "", "utf8"));
   const client = restClient(env["GITHUB_API_URL"] ?? "https://api.github.com", env["GITHUB_REPOSITORY"] ?? "", env["INPUT_GITHUB-TOKEN"] ?? "");
   const outcome = await runAction({ env, root: env["GITHUB_WORKSPACE"] ?? process.cwd(), event, client, log: (line) => process.stdout.write(`${line}
 `) });
-  if (env["GITHUB_OUTPUT"]) (0, import_node_fs9.appendFileSync)(env["GITHUB_OUTPUT"], `result=${outcome.result}
+  if (env["GITHUB_OUTPUT"]) (0, import_node_fs11.appendFileSync)(env["GITHUB_OUTPUT"], `result=${outcome.result}
 `);
-  if (env["GITHUB_STEP_SUMMARY"] && outcome.comment !== null) (0, import_node_fs9.appendFileSync)(env["GITHUB_STEP_SUMMARY"], `${outcome.comment}
+  if (env["GITHUB_STEP_SUMMARY"] && outcome.comment !== null) (0, import_node_fs11.appendFileSync)(env["GITHUB_STEP_SUMMARY"], `${outcome.comment}
 `);
   return outcome.exitCode;
 }

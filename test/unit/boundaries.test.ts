@@ -42,6 +42,7 @@ const NODE_MODEL: Record<string, true> = {
   "src/model/page.ts": true,
   "src/model/check.ts": true,
   "src/model/repoSize.ts": true,
+  "src/model/agentHome.ts": true,
 };
 const NODE_ALLOWED: Record<string, true> = {
   "node:fs": true,

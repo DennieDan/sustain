@@ -29,12 +29,13 @@ describe("NFR-SEC-02 no network", () => {
     expect(violations).toEqual([]);
   });
 
-  test("PRC-04 in the Action only the GitHub client uses the network, and nothing starts a program", () => {
+  test("PRC-04 PRC-05 in the Action only the GitHub client uses the network, and only the map update starts a program", () => {
     const files = sourceFiles("action/src");
     expect(files).toContain("action/src/github.ts");
+    expect(files).toContain("action/src/refresh.ts");
     const violations = files.filter((file) => file !== "action/src/github.ts").flatMap((file) => networkViolations(file, readFileSync(join(repoRoot, file), "utf8")));
     expect(violations).toEqual([]);
-    for (const file of files) expect(readFileSync(join(repoRoot, file), "utf8")).not.toMatch(/child_process|\bspawn|\bexec(File)?(Sync)?\(/);
+    for (const file of files.filter((entry) => entry !== "action/src/refresh.ts")) expect(readFileSync(join(repoRoot, file), "utf8")).not.toMatch(/child_process|\bspawn|\bexec(File)?(Sync)?\(/);
   });
 
   test.each([
