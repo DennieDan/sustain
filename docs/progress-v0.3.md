@@ -64,7 +64,7 @@ Tests the D1 ACs call for:
 Done when: Gates green; a tampered skill cannot launch; no pre-approved command runs a caller's program.
 
 - [ ] **ENG-01 Toolchain and CI** `[unit]` `[ci]` — `[unit]` done 2026-10-18: `test/unit/ci.test.ts` (2 tests, seen to fail with macOS removed from the matrix). `SUSTAIN_SCRIPT_NODE=/usr/bin/node` (v18.19.1) → `vitest run --project unit test/unit/agent`: 148 passed. `[ci]` waits for the first push.
-- [ ] **ENG-02 Meaningful layout test** `[unit]`
+- [x] **ENG-02 Meaningful layout test** `[unit]` — 2026-10-18: `test/unit/layout/perf.test.ts` (2 tests) with `perfBudget.ts`. Outside vitest the 60/120 median was 729 ms and the 12-component median 99 ms (ratio 7.4); the old test failed on vitest's 5 s default timeout, not on the 1 s budget. The fake-clock test fails when the budget check is disabled.
 - [ ] **ENG-04 Third-party notices** `[unit]` `[ci]`
 - [ ] **SAF-01 Skill integrity check** `[unit]` `[e2e]`
 - [ ] **SAF-02 Safe pre-approvals** `[unit]`
@@ -209,5 +209,7 @@ Done when: The plugin opens cited lines on AB3.
 - [ ] **IDE-01 IntelliJ plugin** `[jvm]` `[smoke]`
 
 ## Log
+
+- 2026-10-18 — ENG-02 departs from the spec: the budget factor is 12, not 8. The measured ratio is 7.4, so 8 would flake.
 
 - 2026-10-18 — Spec v0.3 written (`docs/spec-v0.3.md`, features only) with `docs/vision.md`, `AGENTS.md`, `CLAUDE.md`, `.nvmrc` and this file. `kerk` rebased onto `origin/feat/bugfix-mode` (`5df3221`). No code changed. Baseline on Node 26: `npm run check` 774 of 775 tests pass; NFR-PERF-01 times out (ENG-02).
