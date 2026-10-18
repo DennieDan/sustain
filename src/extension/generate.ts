@@ -7,6 +7,7 @@ import { claudeParser } from "../model/agentStream/claude";
 import { codexParser } from "../model/agentStream/codex";
 import type { ComposerAgent, RunMode } from "../model/messages";
 import { agentLaunchArgs, AGENTS, findOnPath, headlessArgs, SKILL_SCRIPTS, skillPrompt, type Agent, type SkillName } from "./agents";
+import { estimateKind, launchEstimate } from "./estimates";
 import { pickRepoRoot } from "./folders";
 import { ensureGitExclude } from "./hooksFiles";
 import { ensureSkillIntact, skillNote, skillStatus } from "./integrity";
@@ -45,8 +46,10 @@ export function rememberAgent(context: vscode.ExtensionContext, cli: "claude" | 
 
 export interface LaunchNote {
   /** A repair means the skill on disk was changed (SAF-01), so the palette asks with a warning. */
-  kind: "install" | "repair" | "data" | "terminal";
+  kind: "estimate" | "install" | "repair" | "data" | "terminal";
   text: string;
+  /** An estimate above `sustain.confirmAboveTokens`, which needs a second click (CST-03). */
+  confirm?: boolean;
 }
 
 /** What a run of `skill` will launch: its arguments, and what the run card shows. */
@@ -61,9 +64,14 @@ export function generateTask(focus: string): LaunchTask {
   return { skill: "sustain-architecture", args: focus.trim(), title: focus.trim() };
 }
 
-/** What a run of `skill` with `cli` will also do (SET-03): install or repair the skill, and the first-run data note. */
+/**
+ * What a run of `skill` with `cli` will spend and also do: the estimate (CST-03), installing or
+ * repairing the skill, and the first-run data note (SET-03).
+ */
 export function launchNotes(context: vscode.ExtensionContext, root: string, cli: "claude" | "codex", mode: RunMode, headless: boolean, skillName: SkillName = "sustain-architecture"): LaunchNote[] {
   const notes: LaunchNote[] = [];
+  const estimate = launchEstimate(root, cli, estimateKind(skillName));
+  if (estimate !== null) notes.push({ kind: "estimate", text: estimate.text, confirm: estimate.confirm });
   const status = skillStatus(context.extensionUri, root, cli, skillName);
   const skill = skillNote(status, skillName);
   if (skill !== null) notes.push({ kind: status.differing === null ? "install" : "repair", text: skill });
@@ -103,7 +111,7 @@ export async function launchTask(context: vscode.ExtensionContext, runs: Runs, r
   } catch (error) {
     void vscode.window.showWarningMessage(`Draft and page files may show up in git status: ${(error as Error).message}`);
   }
-  const request = { root, focus: task.title, agent: { cli: agent.cli, label: agent.label }, task };
+  const request = { root, focus: task.title, agent: { cli: agent.cli, label: agent.label }, task, estimate: launchEstimate(root, agent.cli, estimateKind(task.skill)) };
   if (mode === "sidebar" && canRunHeadless(binary)) {
     const skillDir = join(skillBase(configuredScope(), root), agent.cli === "claude" ? ".claude" : ".agents", "skills", task.skill);
     const args = headlessArgs(agent.cli, prompt, { skillDir, scripts: SKILL_SCRIPTS[task.skill] });
@@ -147,7 +155,8 @@ export async function confirmAndLaunch(context: vscode.ExtensionContext, runs: R
 
   const mode = configuredRunMode();
   const notes = launchNotes(context, root, agent.cli, mode, found.find((entry) => entry.cli === agent.cli)?.headless ?? true, task.skill);
-  if (notes.length > 0) {
+  // The estimate alone asks only above the threshold (CST-03); every other note always asks (SET-03).
+  if (notes.some((note) => note.kind !== "estimate" || note.confirm === true)) {
     const ask = notes.some((note) => note.kind === "repair") ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
     const verb = task.skill === "sustain-refresh" ? "Refresh" : "Generate";
     const choice = await ask(`${verb} with ${agent.label}?`, { modal: true, detail: notes.map((note) => note.text).join("\n\n") }, verb);

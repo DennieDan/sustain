@@ -97,6 +97,14 @@ describe("FRS-05 refresh skill", () => {
   });
 });
 
+describe("CST-03 cost before every run", () => {
+  test.each(["sustain-architecture", "sustain-refresh"])("%s tells the user its estimate in step 2", (name) => {
+    const text = readFileSync(join(repoRoot, "skills", name, "SKILL.md"), "utf8");
+    const step2 = text.slice(text.indexOf("## 2."), text.indexOf("## 3."));
+    expect(step2).toContain("Before you go on, tell the user the estimate in one line. Use `estimate.claude.text` if you are Claude Code, and `estimate.codex.text` otherwise.");
+  });
+});
+
 describe("CST-05 exploration budget", () => {
   test("the architecture skill keeps to repo-facts' budget and names each tier's", () => {
     const text = read("SKILL.md");

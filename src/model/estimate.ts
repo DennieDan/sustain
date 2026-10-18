@@ -91,3 +91,43 @@ export function priceRange(range: Estimate, agent: EstimateAgent, model: ModelPr
   const mix = table.mix[agent];
   return { low: dollars(range.low, model, mix), high: dollars(range.high, model, mix) };
 }
+
+/** "180k" below a million tokens (to the nearest 10k, at least 10k), "1.2M" from a million. */
+export function tokenAmount(tokens: number): string {
+  if (tokens >= 995_000) return `${(tokens / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  return `${Math.max(10, Math.round(tokens / 10_000) * 10)}k`;
+}
+
+const usd = (value: number): string => `$${Math.max(0.01, value).toFixed(2)}`;
+
+/** CST-03: the line every token-spending action shows before a run. */
+export function estimateText(range: Estimate, price: { low: number; high: number } | null): string {
+  const tokens = `About ${tokenAmount(range.low)}–${tokenAmount(range.high)} tokens`;
+  const subscription = "on a subscription it uses part of your plan's limit";
+  return price === null ? `${tokens} (${subscription})` : `${tokens} (about ${usd(price.low)}–${usd(price.high)} at API prices; ${subscription})`;
+}
+
+/** What a run will cost and whether it needs a second click: above `confirmAbove` tokens at the top of the range. */
+export interface RunEstimate {
+  range: Estimate;
+  text: string;
+  /** The model the dollars are priced at. */
+  model: string | null;
+  confirm: boolean;
+}
+
+/** CST-03: the estimate of a `kind` run by `agent`, priced at the agent's default model. */
+export function runEstimate(size: SizeFacts, agent: EstimateAgent, kind: EstimateKind, confirmAbove: number): RunEstimate {
+  const range = estimate(size, agent, kind);
+  const model = modelPrice(agent);
+  return { range, text: estimateText(range, model ? priceRange(range, agent, model) : null), model: model?.id ?? null, confirm: range.high > confirmAbove };
+}
+
+/** What the skills' fact scripts print as `estimate`, for each agent (CST-03). */
+export function skillEstimates(size: SizeFacts, kind: EstimateKind): Record<EstimateAgent, Estimate & { text: string }> {
+  const entry = (agent: EstimateAgent): Estimate & { text: string } => {
+    const { range, text } = runEstimate(size, agent, kind, Infinity);
+    return { ...range, text };
+  };
+  return { claude: entry("claude"), codex: entry("codex") };
+}

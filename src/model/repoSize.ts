@@ -5,6 +5,7 @@
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isDenied } from "./deny";
+import type { SizeFacts } from "./estimate";
 import { generatedFiles, trackedFiles } from "./git";
 
 export type Tier = "S" | "M" | "L";
@@ -78,6 +79,11 @@ export function isTestPath(path: string): boolean {
   const segments = path.split("/");
   const name = segments.pop()!;
   return segments.some((segment) => TEST_DIRS.has(segment.toLowerCase())) || TEST_FILES.test(name);
+}
+
+/** What an estimate needs from a size (CST-02). */
+export function sizeFacts(size: RepoSize): SizeFacts {
+  return { nonTestLines: size.lines.nonTest, files: size.files };
 }
 
 export function tierOf(nonTestLines: number): Tier {

@@ -40,6 +40,8 @@ The script prints one JSON object and creates a new run folder whose draft start
 
 If it exits non-zero, stop and report its stderr.
 
+Before you go on, tell the user the estimate in one line. Use `estimate.claude.text` if you are Claude Code, and `estimate.codex.text` otherwise.
+
 ## 3. Read the format reference
 
 Read `${CLAUDE_SKILL_DIR}/references/archify-format.md` completely.

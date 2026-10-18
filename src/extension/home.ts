@@ -13,6 +13,7 @@ import { AGENTS } from "./agents";
 import type { Ask } from "./ask";
 import { changedBoxes, type FreshnessService } from "./freshness";
 import { findDevinCli } from "./devin";
+import { launchEstimate } from "./estimates";
 import { chosenAgent, configuredRunMode, foundAgents, launchGenerate, launchNotes, launchTask, rememberAgent } from "./generate";
 import { webviewHtml } from "./html";
 import { installSkill } from "./install";
@@ -95,9 +96,12 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
     const agent = chosenAgent(this.context, agents);
     const runMode = configuredRunMode();
     let notes: string[] = [];
+    let confirm = false;
     if (root !== null && agent !== null) {
       try {
-        notes = launchNotes(this.context, root, agent, runMode, agents.find((entry) => entry.cli === agent)?.headless ?? true).map((note) => note.text);
+        const launch = launchNotes(this.context, root, agent, runMode, agents.find((entry) => entry.cli === agent)?.headless ?? true);
+        notes = launch.map((note) => note.text);
+        confirm = launch.some((note) => note.confirm === true);
       } catch (error) {
         notes = [(error as Error).message];
       }
@@ -106,7 +110,7 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
       folders: (vscode.workspace.workspaceFolders ?? []).map((folder) => ({ name: folder.name, root: folder.uri.fsPath })),
       root,
       maps: root === null ? [] : this.mapsOf(root),
-      composer: { agents, agent, runMode, notes },
+      composer: { agents, agent, runMode, notes, confirm },
       run: this.runs.current,
       setup: root === this.setupRoot ? this.setup : null,
       session: root === null ? null : sessionSummary(root),
@@ -178,6 +182,8 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         const cli = chosenAgent(this.context, foundAgents());
         const agent = AGENTS.find((entry) => entry.cli === cli);
         if (!agent) return;
+        // Above the threshold the sidebar sends a second, confirmed click (CST-03).
+        if (launchEstimate(root, agent.cli, "full")?.confirm === true && message.confirmed !== true) return;
         this.runs.dismiss();
         await launchGenerate(this.context, this.runs, root, agent, message.focus, configuredRunMode());
         this.send();
@@ -232,7 +238,7 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
         await vscode.commands.executeCommand("sustain.startLearning");
         return;
       case "ask":
-        if (root !== null) await this.ask.ask(root, message.question);
+        if (root !== null) await this.ask.ask(root, message.question, message.confirmed === true);
         return;
       case "cancelAsk":
         this.ask.cancel();

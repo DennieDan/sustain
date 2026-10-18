@@ -97,3 +97,13 @@ export function prompts(stubs: UiStubs): number {
   const modal = (call: MessageCall): boolean => (call.rest[0] as { modal?: unknown } | undefined)?.modal === true;
   return stubs.quickPicks.length + stubs.inputBoxes.length + stubs.infos.filter(modal).length + stubs.warnings.filter(modal).length;
 }
+
+/** CST-03's estimate line. */
+export const ESTIMATE = /^About \d+k–\d+k tokens \(about \$\d+\.\d\d–\$\d+\.\d\d at API prices; on a subscription it uses part of your plan's limit\)$/;
+
+/** A modal's detail after its first paragraph, which must be the estimate (CST-03). */
+export function afterEstimate(detail: string): string {
+  const [estimate, ...rest] = detail.split("\n\n");
+  if (!ESTIMATE.test(estimate ?? "")) throw new Error(`the modal does not open with the estimate: ${JSON.stringify(detail)}`);
+  return rest.join("\n\n");
+}

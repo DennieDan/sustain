@@ -1,9 +1,11 @@
 // `node <skill>/scripts/repo-facts.mjs [--focus <text>]`, run with cwd = repo root (FR-RF-01):
 // creates the run folder with its run.json (CST-04) and prints where the draft goes (ADR 0018), with
-// the repository's size (CST-01) and the read budget for its tier (CST-05).
+// the repository's size (CST-01), the estimate for each agent (CST-03) and the read budget for its
+// tier (CST-05).
 import { basename, join } from "node:path";
 import { collectGitFacts } from "../model/git";
-import { READ_BUDGET, repoSize } from "../model/repoSize";
+import { skillEstimates } from "../model/estimate";
+import { READ_BUDGET, repoSize, sizeFacts } from "../model/repoSize";
 import { ARCHIFY_DIR, createRunFolder, DRAFT_FILE, runTimestamp, slugify } from "../model/runFolder";
 import { newRunRecord, writeRunRecord } from "../model/runRecord";
 
@@ -35,6 +37,7 @@ function main(args: string[]): number {
     draft: `${ARCHIFY_DIR}/${run}/${DRAFT_FILE}`,
     git: git && { head: git.head, origin: git.origin, dirtyCount: git.dirtyCount, dirty: git.dirty },
     size,
+    estimate: skillEstimates(sizeFacts(size), "full"),
     budget: READ_BUDGET[size.tier],
   };
   process.stdout.write(`${JSON.stringify(facts, null, 2)}\n`);

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import type { StreamParser } from "../model/agentStream/feed";
 import type { RunState } from "../model/agentStream/tracker";
+import type { RunEstimate } from "../model/estimate";
 import type { RunCard, RunMode } from "../model/messages";
 import { CANDIDATE_FILE } from "../model/runFolder";
 import type { LaunchTask } from "./generate";
@@ -22,6 +23,8 @@ export interface RunRequest {
   focus: string;
   agent: { cli: "claude" | "codex"; label: string };
   task: LaunchTask;
+  /** The estimate stated before the run (CST-03), or `null` when the folder could not be measured. */
+  estimate: RunEstimate | null;
 }
 
 export class Runs implements vscode.Disposable {
@@ -70,6 +73,7 @@ export class Runs implements vscode.Disposable {
       feed: [],
       usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       costUsd: null,
+      estimate: request.estimate?.text ?? null,
       denials: [],
       startedAt: new Date().toISOString(),
       finishedAt: null,
@@ -161,14 +165,15 @@ export class Runs implements vscode.Disposable {
     this.changed.fire();
   }
 
-  /** Adds what the extension knows to run.json (CST-04): agent, mode, tokens and cost. */
+  /** Adds what the extension knows to run.json (CST-04): agent, mode, tokens, cost and the estimate (CST-03). */
   private record(request: RunRequest, card: RunCard): void {
     if (card.runFolder === null) return;
     const dir = join(request.root, ".archify", card.runFolder);
     const tokens = card.usage.input + card.usage.output > 0 ? { tokens: { ...card.usage } } : {};
     const cost = card.costUsd === null ? {} : { costUsd: card.costUsd };
+    const estimate = request.estimate === null ? {} : { estimate: { ...request.estimate.range, model: request.estimate.model } };
     try {
-      updateRunRecord(request.root, dir, { agent: card.agent, mode: card.mode, ...tokens, ...cost }, () => newRunRecord({ focus: card.focus, skillVersion: "unknown" }));
+      updateRunRecord(request.root, dir, { agent: card.agent, mode: card.mode, ...tokens, ...cost, ...estimate }, () => newRunRecord({ focus: card.focus, skillVersion: "unknown" }));
     } catch (error) {
       void vscode.window.showWarningMessage(`Could not record the run in run.json: ${(error as Error).message}`);
     }

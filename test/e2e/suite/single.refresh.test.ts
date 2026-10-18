@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import * as vscode from "vscode";
 import type { TestHook } from "../../../src/extension/extension";
 import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
-import { stubUi, type UiStubs } from "../stubs";
+import { afterEstimate, stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
 import { until } from "../until";
 
@@ -122,7 +122,7 @@ suite("FRS-06 Refresh from the UI", () => {
     ui.answers.info.push("Refresh");
     await launched(() => vscode.commands.executeCommand("sustain.refreshArchitecture"));
     assert.equal(ui.infos[0]!.message, "Refresh with Claude Code?");
-    assert.equal((ui.infos[0]!.rest[0] as { detail: string }).detail, "Installs the sustain-refresh skill in ~/.claude/skills/.");
+    assert.equal(afterEstimate((ui.infos[0]!.rest[0] as { detail: string }).detail), "Installs the sustain-refresh skill in ~/.claude/skills/.");
     assert.ok(readFileSync(join(homedir(), ".agents/skills/sustain-refresh/SKILL.md"), "utf8").includes("name: sustain-refresh"));
   });
 

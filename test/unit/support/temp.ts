@@ -66,6 +66,8 @@ export interface RepoFacts {
   git: { head: string; origin: string | null; dirtyCount: number; dirty: string[] } | null;
   /** CST-01. */
   size: RepoSize;
+  /** CST-03. */
+  estimate: Record<"claude" | "codex", { low: number; high: number; basis: string; text: string }>;
   /** CST-05. */
   budget: number;
 }

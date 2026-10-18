@@ -128,6 +128,131 @@ function generatedFiles(root, paths, env = process.env) {
   return marked;
 }
 
+// src/model/coefficients.json
+var coefficients_default = {
+  basis: "provisional",
+  fittedAt: null,
+  runs: 0,
+  lines: {
+    claude: {
+      full: {
+        base: 12e4,
+        perLine: 1.5,
+        perFile: 30,
+        low: 0.7,
+        high: 1.4
+      },
+      refresh: {
+        base: 6e4,
+        perLine: 0.3,
+        perFile: 10,
+        low: 0.6,
+        high: 1.6
+      },
+      ask: {
+        base: 3e4,
+        perLine: 0.1,
+        perFile: 5,
+        low: 0.5,
+        high: 2
+      }
+    },
+    codex: {
+      full: {
+        base: 9e4,
+        perLine: 1.5,
+        perFile: 30,
+        low: 0.7,
+        high: 1.4
+      },
+      refresh: {
+        base: 45e3,
+        perLine: 0.3,
+        perFile: 10,
+        low: 0.6,
+        high: 1.6
+      },
+      ask: {
+        base: 25e3,
+        perLine: 0.1,
+        perFile: 5,
+        low: 0.5,
+        high: 2
+      }
+    }
+  },
+  mix: {
+    claude: {
+      input: 0.05,
+      cacheWrite: 0.1,
+      cacheRead: 0.82,
+      output: 0.03
+    },
+    codex: {
+      input: 0.15,
+      cacheWrite: 0,
+      cacheRead: 0.8,
+      output: 0.05
+    }
+  }
+};
+
+// src/model/pricing.json
+var pricing_default = {
+  asOf: "2026-10-18",
+  unit: "USD per million tokens",
+  defaults: { claude: "claude-opus-5-5", codex: "gpt-5.5" },
+  models: [
+    { id: "claude-fable-5-1", label: "Claude Fable 5.1", agent: "claude", input: 10, cacheWrite: 12.5, cacheRead: 0.25, output: 50, source: "https://platform.claude.com/docs/en/about-claude/pricing" },
+    { id: "claude-opus-5-5", label: "Claude Opus 5.5", agent: "claude", input: 4, cacheWrite: 5, cacheRead: 0.2, output: 20, source: "https://platform.claude.com/docs/en/about-claude/pricing" },
+    { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5", agent: "claude", input: 2, cacheWrite: 2.5, cacheRead: 0.1, output: 10, source: "https://platform.claude.com/docs/en/about-claude/pricing" },
+    { id: "gpt-5.5", label: "GPT-5.5", agent: "codex", input: 5, cacheWrite: 0, cacheRead: 0.5, output: 30, source: "https://developers.openai.com/api/docs/pricing" },
+    { id: "gpt-5.4", label: "GPT-5.4", agent: "codex", input: 2.5, cacheWrite: 0, cacheRead: 0.25, output: 15, source: "https://developers.openai.com/api/docs/pricing" },
+    { id: "gpt-5.3-codex", label: "GPT-5.3-Codex", agent: "codex", input: 1.75, cacheWrite: 0, cacheRead: 0.175, output: 14, source: "https://developers.openai.com/api/docs/pricing" }
+  ]
+};
+
+// src/model/estimate.ts
+var COEFFICIENTS = coefficients_default;
+var PRICING = pricing_default;
+function estimate(size, agent, kind, table = COEFFICIENTS) {
+  const line = table.lines[agent][kind];
+  const tokens = line.base + line.perLine * size.nonTestLines + line.perFile * size.files;
+  return { low: Math.round(tokens * line.low), high: Math.round(tokens * line.high), basis: table.basis };
+}
+function modelPrice(agent, id, table = PRICING) {
+  return table.models.find((model) => model.id === (id ?? table.defaults[agent]) && model.agent === agent);
+}
+function dollars(tokens, model, mix) {
+  return tokens / 1e6 * (mix.input * model.input + mix.cacheWrite * model.cacheWrite + mix.cacheRead * model.cacheRead + mix.output * model.output);
+}
+function priceRange(range, agent, model, table = COEFFICIENTS) {
+  const mix = table.mix[agent];
+  return { low: dollars(range.low, model, mix), high: dollars(range.high, model, mix) };
+}
+function tokenAmount(tokens) {
+  if (tokens >= 995e3) return `${(tokens / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
+  return `${Math.max(10, Math.round(tokens / 1e4) * 10)}k`;
+}
+var usd = (value) => `$${Math.max(0.01, value).toFixed(2)}`;
+function estimateText(range, price) {
+  const tokens = `About ${tokenAmount(range.low)}\u2013${tokenAmount(range.high)} tokens`;
+  const subscription = "on a subscription it uses part of your plan's limit";
+  return price === null ? `${tokens} (${subscription})` : `${tokens} (about ${usd(price.low)}\u2013${usd(price.high)} at API prices; ${subscription})`;
+}
+function runEstimate(size, agent, kind, confirmAbove) {
+  const range = estimate(size, agent, kind);
+  const model = modelPrice(agent);
+  return { range, text: estimateText(range, model ? priceRange(range, agent, model) : null), model: model?.id ?? null, confirm: range.high > confirmAbove };
+}
+function skillEstimates(size, kind) {
+  const entry = (agent) => {
+    const { range, text } = runEstimate(size, agent, kind, Infinity);
+    return { ...range, text };
+  };
+  return { claude: entry("claude"), codex: entry("codex") };
+}
+
 // src/model/repoSize.ts
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join as join2 } from "node:path";
@@ -243,6 +368,9 @@ function isTestPath(path) {
   const segments = path.split("/");
   const name = segments.pop();
   return segments.some((segment) => TEST_DIRS.has(segment.toLowerCase())) || TEST_FILES.test(name);
+}
+function sizeFacts(size) {
+  return { nonTestLines: size.lines.nonTest, files: size.files };
 }
 function tierOf(nonTestLines) {
   return nonTestLines < TIER_BOUNDS.M ? "S" : nonTestLines <= TIER_BOUNDS.L ? "M" : "L";
@@ -512,6 +640,7 @@ function main(args) {
     draft: `${ARCHIFY_DIR}/${run2}/${DRAFT_FILE}`,
     git: git && { head: git.head, origin: git.origin, dirtyCount: git.dirtyCount, dirty: git.dirty },
     size,
+    estimate: skillEstimates(sizeFacts(size), "full"),
     budget: READ_BUDGET[size.tier]
   };
   process.stdout.write(`${JSON.stringify(facts, null, 2)}

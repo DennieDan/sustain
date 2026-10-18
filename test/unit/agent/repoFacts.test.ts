@@ -2,6 +2,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { describe, expect, test } from "vitest";
+import { skillEstimates } from "../../../src/model/estimate";
+import { sizeFacts } from "../../../src/model/repoSize";
 import { runTimestamp } from "../../../src/model/runFolder";
 import { envWithoutGit, git, gitRepo, put, runScript, tempDir } from "../support/temp";
 
@@ -14,7 +16,7 @@ describe("FR-RF-01 repo-facts CLI", () => {
     expect(run.status).toBe(0);
     expect(run.stderr).toBe("");
     const facts = run.json();
-    expect(Object.keys(facts)).toEqual(["root", "runFolder", "draft", "git", "size", "budget"]);
+    expect(Object.keys(facts)).toEqual(["root", "runFolder", "draft", "git", "size", "estimate", "budget"]);
     expect(facts.root).toBe(root);
     const name = facts.runFolder.replace(/^\.archify\//, "");
     expect(name).toMatch(RUN_NAME);
@@ -38,6 +40,12 @@ describe("FR-RF-01 repo-facts CLI", () => {
     const root = gitRepo({ "src/app.ts": "a\nb\nc\n", "src/app.test.ts": "t\n" });
     const facts = runScript("repo-facts", [], { cwd: root }).json();
     expect(facts.size).toMatchObject({ listing: "git", files: 2, lines: { total: 4, test: 1, nonTest: 3 }, tier: "S" });
+  });
+
+  test("CST-03 prints each agent's estimate for a full run, as the sidebar states it", () => {
+    const facts = runScript("repo-facts", [], { cwd: gitRepo({ "src/app.ts": "a\n".repeat(30) }) }).json();
+    expect(facts.estimate).toEqual(skillEstimates(sizeFacts(facts.size), "full"));
+    expect(facts.estimate.claude.text).toMatch(/^About \d+k–\d+k tokens \(about \$\d+\.\d\d–\$\d+\.\d\d at API prices; on a subscription it uses part of your plan's limit\)$/);
   });
 
   test("CST-05 prints the tier's read budget", () => {

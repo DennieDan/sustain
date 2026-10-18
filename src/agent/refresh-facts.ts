@@ -1,12 +1,15 @@
 // `node <skill>/scripts/refresh-facts.mjs --from <run> [--paths <glob>…]`, run with cwd = repo
 // root (FRS-05): reports how the base map compares with the code since it was made, then creates
-// the refresh's run folder with a draft that starts from the base map.
+// the refresh's run folder with a draft that starts from the base map. Prints the refresh's estimate
+// for each agent (CST-03).
 import { readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { assertWritable, isWithin } from "../model/confine";
 import { readFingerprints, fileReader, mapFreshness } from "../model/staleness";
+import { skillEstimates } from "../model/estimate";
 import { foldersAt, numstatSince, renamesSince, untrackedFiles } from "../model/git";
 import { globToRegExp, refreshReport } from "../model/refresh";
+import { repoSize, sizeFacts } from "../model/repoSize";
 import { ARCHIFY_DIR, CANDIDATE_FILE, createRunFolder, DRAFT_FILE, runTimestamp, slugify } from "../model/runFolder";
 import { newRunRecord, readRunRecord, writeRunRecord } from "../model/runRecord";
 import { stripAppOwned } from "../model/submission";
@@ -115,6 +118,7 @@ function main(args: string[]): number {
     changes: report.changes,
     uncovered: report.uncovered,
     newFolders: report.newFolders,
+    estimate: skillEstimates(sizeFacts(repoSize(root)), "refresh"),
   };
   process.stdout.write(`${JSON.stringify(facts, null, 2)}\n`);
   return 0;

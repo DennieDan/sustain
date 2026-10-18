@@ -9,7 +9,7 @@ import * as vscode from "vscode";
 import type { TestHook } from "../../../src/extension/extension";
 import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
 import { findOnPath } from "../../../src/model/which";
-import { prompts, stubUi, type UiStubs } from "../stubs";
+import { ESTIMATE, prompts, stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
 import { until } from "../until";
 
@@ -93,6 +93,7 @@ suite("UI-01 Sustain sidebar", () => {
     savedPath = process.env["PATH"];
     await hook.setDataNoteShown(true);
     await vscode.workspace.getConfiguration("sustain").update("runMode", undefined, vscode.ConfigurationTarget.Global);
+    await vscode.workspace.getConfiguration("sustain").update("confirmAboveTokens", undefined, vscode.ConfigurationTarget.Global);
     installSkill();
   });
 
@@ -127,7 +128,9 @@ suite("UI-01 Sustain sidebar", () => {
     const args = scratch("args.json");
     Object.assign(process.env, { SUSTAIN_STUB_STREAM: stream("claude-generate.jsonl"), SUSTAIN_STUB_ARGS: args });
     await reveal();
-    assert.deepEqual(hook.homeState().state?.composer.notes, [
+    const [estimate, ...notes] = hook.homeState().state?.composer.notes ?? [];
+    assert.match(estimate ?? "", ESTIMATE);
+    assert.deepEqual(notes, [
       "Installs the sustain-architecture skill in ~/.claude/skills/.",
       "Your agent reads this folder and sends what it reads to its own provider. Sustain sends nothing.",
     ]);
@@ -139,7 +142,32 @@ suite("UI-01 Sustain sidebar", () => {
     assert.deepEqual(argv.slice(argv.indexOf("--permission-mode"), argv.indexOf("--permission-mode") + 2), ["--permission-mode", "dontAsk"]);
     assert.equal(prompts(ui), 0, "no prompt besides the click");
     assert.ok(existsSync(join(homedir(), ".claude/skills/sustain-architecture/SKILL.md")));
-    assert.deepEqual(hook.homeState().state?.composer.notes, []);
+    assert.deepEqual(hook.homeState().state?.composer.notes, [estimate]);
+    assert.equal(hook.runCard()?.estimate, estimate);
+  });
+
+  test("CST-03 above sustain.confirmAboveTokens the sidebar needs a second click and the palette asks in a modal", async () => {
+    installSkill();
+    await hook.setDataNoteShown(true);
+    agents(["claude"]);
+    const args = scratch("args.json");
+    Object.assign(process.env, { SUSTAIN_STUB_STREAM: stream("claude-generate.jsonl"), SUSTAIN_STUB_ARGS: args });
+    await vscode.workspace.getConfiguration("sustain").update("confirmAboveTokens", 1, vscode.ConfigurationTarget.Global);
+    await reveal();
+    assert.equal(hook.homeState().state?.composer.confirm, true);
+
+    await hook.postFromHome({ type: "generate", focus: "first click" });
+    assert.equal(existsSync(args), false, "one click launches nothing");
+    await hook.postFromHome({ type: "generate", focus: "second click", confirmed: true });
+    await settled();
+    assert.deepEqual((JSON.parse(readFileSync(args, "utf8")) as string[]).slice(0, 2), ["-p", "/sustain-architecture second click"]);
+
+    ui.answers.inputBox.push("palette");
+    ui.answers.info.push(undefined);
+    await vscode.commands.executeCommand("sustain.generateArchitecture");
+    const modal = ui.infos.find((call) => (call.rest[0] as { modal?: boolean } | undefined)?.modal === true);
+    assert.equal(modal?.message, "Generate with Claude Code?");
+    assert.match((modal?.rest[0] as { detail: string }).detail, ESTIMATE);
   });
 
   test("UI-02 a replayed stream shows feed, tokens and acceptance, records the run and opens the map", async () => {

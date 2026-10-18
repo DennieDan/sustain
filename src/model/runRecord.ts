@@ -11,6 +11,14 @@ export const RUN_FILE = "run.json";
 export type RunKind = "full" | "refresh" | "drill";
 export type RunPhase = "created" | "validating" | "accepted" | "rejected";
 
+/** The estimate stated before the run (CST-03). */
+export interface RunEstimateRecord {
+  low: number;
+  high: number;
+  basis: "provisional" | "fitted";
+  model: string | null;
+}
+
 export interface RunTokens {
   input: number;
   output: number;
@@ -39,6 +47,7 @@ export interface RunRecord {
   mode?: "sidebar" | "terminal";
   tokens?: RunTokens;
   costUsd?: number;
+  estimate?: RunEstimateRecord;
 }
 
 /** A fresh record for a run created now. */

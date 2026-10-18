@@ -98,6 +98,8 @@ export interface RunCard {
   feed: FeedItem[];
   usage: StreamUsage;
   costUsd: number | null;
+  /** The estimate stated before the run (CST-03). */
+  estimate: string | null;
   /** Tools the agent was refused, as "Tool: detail". */
   denials: string[];
   startedAt: string;
@@ -151,6 +153,9 @@ export interface AskView {
   /** Why a question cannot be asked now, or `null` when it can. */
   blocked: string | null;
   turns: AskTurn[];
+  /** What a question costs (CST-03), and whether it needs a second click. */
+  estimate: string | null;
+  confirm: boolean;
 }
 
 /** The sidebar's Review changes section (PRC-02). */
@@ -174,8 +179,10 @@ export interface HomeState {
     /** The remembered agent, or the first one found. */
     agent: "claude" | "codex" | null;
     runMode: RunMode;
-    /** What the next Generate click will also do (SET-03): installs, repairs, the data note. */
+    /** What the next Generate click will also do (SET-03): the estimate (CST-03), installs, repairs, the data note. */
     notes: string[];
+    /** Whether Generate needs a second click, the estimate being above `sustain.confirmAboveTokens` (CST-03). */
+    confirm: boolean;
   };
   run: RunCard | null;
   /** SET-02's checks, or `null` while they run. */
@@ -196,7 +203,7 @@ export type HomeWebviewMessage =
   | { type: "pickFolder"; root: string }
   | { type: "setAgent"; agent: "claude" | "codex" }
   | { type: "setRunMode"; runMode: RunMode }
-  | { type: "generate"; focus: string }
+  | { type: "generate"; focus: string; confirmed?: boolean }
   | { type: "cancelRun" }
   | { type: "runInTerminal" }
   | { type: "openMap"; file: string }
@@ -211,7 +218,7 @@ export type HomeWebviewMessage =
   | { type: "checkSetup" }
   | { type: "openSession" }
   | { type: "startLearning" }
-  | { type: "ask"; question: string }
+  | { type: "ask"; question: string; confirmed?: boolean }
   | { type: "cancelAsk" }
   | { type: "clearAsk" }
   | { type: "openCitation"; path: string; line: number; endLine: number | null }

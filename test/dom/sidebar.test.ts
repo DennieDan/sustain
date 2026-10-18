@@ -30,11 +30,11 @@ function state(fields: Partial<HomeState> = {}): HomeState {
     folders: [{ name: "repo", root: "/r" }],
     root: "/r",
     maps: [],
-    composer: { agents: [{ cli: "claude", label: "Claude Code", headless: true }], agent: "claude", runMode: "sidebar", notes: [] },
+    composer: { agents: [{ cli: "claude", label: "Claude Code", headless: true }], agent: "claude", runMode: "sidebar", notes: [], confirm: false },
     run: null,
     setup: OK_CHECKS,
     session: null,
-    ask: { blocked: null, turns: [] },
+    ask: { blocked: null, turns: [], estimate: null, confirm: false },
     review: null,
     serverNow: NOW.toISOString(),
     ...fields,
@@ -57,6 +57,7 @@ function run(fields: Partial<RunCard>): RunCard {
     feed: [],
     usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     costUsd: null,
+    estimate: null,
     denials: [],
     startedAt: "2026-10-18T11:58:28Z",
     finishedAt: null,
@@ -179,6 +180,49 @@ describe("UI-01 sidebar states", () => {
   });
 });
 
+describe("CST-03 cost before every run", () => {
+  const ESTIMATE = "About 180k–260k tokens (about $0.50–$0.80 at API prices; on a subscription it uses part of your plan's limit)";
+  const generate = (): HTMLButtonElement => container.querySelector<HTMLButtonElement>(".composer__generate")!;
+
+  test("the estimate shows under Generate, and one click generates below the threshold", () => {
+    home.render(state({ composer: { ...state().composer, notes: [ESTIMATE] } }));
+    expect(text(".composer__note")).toEqual([ESTIMATE]);
+    container.querySelector<HTMLTextAreaElement>(".composer__focus")!.value = "payments";
+    generate().click();
+    expect(posted).toEqual([{ type: "generate", focus: "payments" }]);
+  });
+
+  test("above the threshold the first click asks for a second, which sends the run as confirmed", () => {
+    home.render(state({ composer: { ...state().composer, notes: [ESTIMATE], confirm: true } }));
+    generate().click();
+    expect(posted).toEqual([]);
+    expect(generate().textContent).toBe("Click again to generate");
+    home.render(state({ composer: { ...state().composer, notes: [ESTIMATE], confirm: true } }));
+    expect(generate().textContent).toBe("Click again to generate");
+    generate().click();
+    expect(posted).toEqual([{ type: "generate", focus: "", confirmed: true }]);
+    expect(generate().textContent).toBe("Generate");
+  });
+
+  test("the run card keeps the estimate it was started with", () => {
+    home.render(state({ run: run({ estimate: ESTIMATE }) }));
+    expect(text(".run__estimate")).toEqual([ESTIMATE]);
+    home.render(state({ run: run({}) }));
+    expect(text(".run__estimate")).toEqual([]);
+  });
+
+  test("Ask shows what a question costs, and above the threshold asks for a second click", () => {
+    const ask = { blocked: null, turns: [], estimate: "About 30k–60k tokens (about $0.10–$0.20 at API prices; on a subscription it uses part of your plan's limit)", confirm: true };
+    home.render(state({ ask }));
+    expect(text(".ask__estimate")).toEqual([ask.estimate]);
+    container.querySelector<HTMLTextAreaElement>(".ask__question")!.value = "Where are payments retried?";
+    click("Ask");
+    expect(posted).toEqual([]);
+    click("Click again to ask");
+    expect(posted).toEqual([{ type: "ask", question: "Where are payments retried?", confirmed: true }]);
+  });
+});
+
 describe("UI-02 run card outcomes", () => {
   test("a finished run shows tokens and cost and no Cancel", () => {
     home.render(state({ run: run({ status: "done", phase: "accepted", attempts: 2, usage: { input: 8300, output: 1190, cacheRead: 15000, cacheWrite: 500 }, costUsd: 0.4123, finishedAt: "2026-10-18T11:59:59Z" }) }));
@@ -227,7 +271,7 @@ describe("UI-06 Ask", () => {
   };
 
   test("history shows each question, its answer and figures; Ask posts the question and clears the box", () => {
-    home.render(state({ ask: { blocked: null, turns: [turn] } }));
+    home.render(state({ ask: { estimate: null, confirm: false, blocked: null, turns: [turn] } }));
     expect(text(".turn__question")).toEqual(["Where does Cancel go?"]);
     expect(text(".answer .cite")).toEqual(["src/extension/runner.ts:31"]);
     expect(text(".turn__figures")).toEqual(["Claude Code · 3k in · 200 out · $0.02"]);
@@ -241,7 +285,7 @@ describe("UI-06 Ask", () => {
   });
 
   test("while an answer streams, Ask is disabled and Stop shows", () => {
-    home.render(state({ ask: { blocked: null, turns: [{ ...turn, status: "running", blocks: [], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, costUsd: null }] } }));
+    home.render(state({ ask: { estimate: null, confirm: false, blocked: null, turns: [{ ...turn, status: "running", blocks: [], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, costUsd: null }] } }));
     expect(text(".turn__pending")).toEqual(["Claude Code is reading the map…"]);
     const ask = [...container.querySelectorAll("button")].find((node) => node.textContent === "Ask")!;
     expect(ask.disabled).toBe(true);
@@ -252,13 +296,13 @@ describe("UI-06 Ask", () => {
   });
 
   test("a blocked Ask says why and disables the box", () => {
-    home.render(state({ ask: { blocked: "Generate a map first. Ask uses it as the guide.", turns: [] } }));
+    home.render(state({ ask: { estimate: null, confirm: false, blocked: "Generate a map first. Ask uses it as the guide.", turns: [] } }));
     expect(text(".ask__note")).toEqual(["Generate a map first. Ask uses it as the guide."]);
     expect(container.querySelector<HTMLTextAreaElement>(".ask__question")!.disabled).toBe(true);
   });
 
   test("a failed answer shows its error", () => {
-    home.render(state({ ask: { blocked: null, turns: [{ ...turn, status: "failed", blocks: [], error: "Not logged in" }] } }));
+    home.render(state({ ask: { estimate: null, confirm: false, blocked: null, turns: [{ ...turn, status: "failed", blocks: [], error: "Not logged in" }] } }));
     expect(text(".turn__error")).toEqual(["Not logged in"]);
   });
 });

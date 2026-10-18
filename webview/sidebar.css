@@ -37,6 +37,7 @@ select.header__folder,
 .composer__note,
 .composer__none,
 .run__focus,
+.run__estimate,
 .run__figures,
 .map__meta,
 .learning__status {
@@ -351,6 +352,7 @@ select.header__folder,
 }
 
 .ask__note,
+.ask__estimate,
 .turn__pending,
 .turn__figures {
   margin: 0;

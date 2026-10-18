@@ -8,7 +8,7 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import type { TestHook } from "../../../src/extension/extension";
 import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
-import { prompts, stubUi, type UiStubs } from "../stubs";
+import { afterEstimate, prompts, stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
 
 /** Folder holding executable stub CLIs that just wait, so the terminal stays open. */
@@ -131,7 +131,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     assert.equal(ui.warnings[0]!.message, "Generate with Claude Code?");
     const [options, button] = ui.warnings[0]!.rest as [{ modal: boolean; detail: string }, string];
     assert.equal(options.modal, true);
-    assert.match(options.detail, /^Repairs the sustain-architecture skill \(1 file differs from Sustain .+\)\.$/);
+    assert.match(afterEstimate(options.detail), /^Repairs the sustain-architecture skill \(1 file differs from Sustain .+\)\.$/);
     assert.equal(button, "Generate");
     assert.equal(opened.length, 0);
 
@@ -151,7 +151,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     ui.answers.inputBox.push("");
     ui.answers.warning.push(undefined);
     await vscode.commands.executeCommand("sustain.generateArchitecture");
-    assert.match((ui.warnings[0]!.rest[0] as { detail: string }).detail, /^Repairs the sustain-architecture skill/);
+    assert.match(afterEstimate((ui.warnings[0]!.rest[0] as { detail: string }).detail), /^Repairs the sustain-architecture skill/);
     assert.equal(opened.length, 0);
   });
 
@@ -198,7 +198,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     assert.equal(prompts(ui), 2);
     assert.equal(ui.infos[0]!.message, "Generate with Claude Code?");
     const [options] = ui.infos[0]!.rest as [{ modal: boolean; detail: string }];
-    assert.equal(options.detail, "Installs the sustain-architecture skill in ~/.claude/skills/.\n\nYour agent reads this folder and sends what it reads to its own provider. Sustain sends nothing.");
+    assert.equal(afterEstimate(options.detail), "Installs the sustain-architecture skill in ~/.claude/skills/.\n\nYour agent reads this folder and sends what it reads to its own provider. Sustain sends nothing.");
     assert.ok(existsSync(join(homedir(), ".agents/skills/sustain-architecture/SKILL.md")));
   });
 

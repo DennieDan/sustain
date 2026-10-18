@@ -31,6 +31,8 @@ node ${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs --focus "<focus>"
 
 Omit `--focus "<focus>"` entirely when the focus is empty. The script prints one JSON object. Keep its `runFolder`, `draft`, `git` and `budget` values; `git` lists uncommitted paths whose line numbers may still change. If it exits non-zero, stop and report its stderr.
 
+Before you go on, tell the user the estimate in one line. Use `estimate.claude.text` if you are Claude Code, and `estimate.codex.text` otherwise.
+
 ## 3. Read the format reference
 
 Read `${CLAUDE_SKILL_DIR}/references/archify-format.md` completely. Use `${CLAUDE_SKILL_DIR}/references/example.json` only as an example of the JSON shape, never as content.

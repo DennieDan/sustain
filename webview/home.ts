@@ -29,6 +29,8 @@ function section(title: string, className: string): HTMLElement {
 }
 
 const STATUS_LABEL: Record<RunCard["status"], string> = { running: "Running", done: "Done", failed: "Failed", cancelled: "Cancelled" };
+/** The Generate button once a run above `sustain.confirmAboveTokens` needs a second click (CST-03). */
+const SECOND_CLICK = "Click again to generate";
 
 /** "Validating, attempt 2" and the like, from run.json's phase. */
 export function phaseLine(run: RunCard): string | null {
@@ -61,7 +63,19 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   focus.placeholder = "What should the map focus on? (optional)";
   focus.setAttribute("aria-label", "Focus");
   const controls = el("div", "composer__controls");
-  const generate = button("Generate", "button button--primary composer__generate", () => post({ type: "generate", focus: focus.value }));
+  // CST-03: above the threshold the first click arms the button and the second sends the run.
+  let generateArmed = false;
+  const generate = button("Generate", "button button--primary composer__generate", () => {
+    const confirm = current?.composer.confirm === true;
+    if (confirm && !generateArmed) {
+      generateArmed = true;
+      generate.textContent = SECOND_CLICK;
+      return;
+    }
+    generateArmed = false;
+    generate.textContent = "Generate";
+    post({ type: "generate", focus: focus.value, ...(confirm ? { confirmed: true } : {}) });
+  });
   const notes = el("div", "composer__notes");
   composer.append(focus, controls, generate, notes);
   focus.addEventListener("keydown", (event) => {
@@ -76,6 +90,8 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   const askSection = section("Ask", "ask");
   const askTurns = el("div", "ask__turns");
   const askNote = el("p", "ask__note");
+  const askEstimate = el("p", "ask__estimate");
+  let askArmed = false;
   const question = el("textarea", "ask__question");
   question.rows = 2;
   question.placeholder = "Ask about this repository";
@@ -83,13 +99,21 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   const askButtons = el("div", "ask__buttons");
   const askButton = button("Ask", "button button--primary", () => {
     if (question.value.trim() === "") return;
-    post({ type: "ask", question: question.value });
+    const confirm = current?.ask.confirm === true;
+    if (confirm && !askArmed) {
+      askArmed = true;
+      askButton.textContent = "Click again to ask";
+      return;
+    }
+    askArmed = false;
+    askButton.textContent = "Ask";
+    post({ type: "ask", question: question.value, ...(confirm ? { confirmed: true } : {}) });
     question.value = "";
   });
   const stopButton = button("Stop", "button", () => post({ type: "cancelAsk" }));
   const clearButton = button("Clear", "link", () => post({ type: "clearAsk" }));
   askButtons.append(askButton, stopButton, clearButton);
-  askSection.append(askTurns, askNote, question, askButtons);
+  askSection.append(askTurns, askNote, question, askEstimate, askButtons);
   question.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !askButton.disabled) askButton.click();
   });
@@ -150,7 +174,8 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     }
     controls.append(mode);
     generate.disabled = running || state.root === null || state.composer.agent === null;
-    generate.textContent = running ? "Generating…" : "Generate";
+    if (!state.composer.confirm) generateArmed = false;
+    generate.textContent = running ? "Generating…" : generateArmed ? SECOND_CLICK : "Generate";
     notes.replaceChildren(...state.composer.notes.map((note) => el("p", "composer__note", note)));
   }
 
@@ -165,6 +190,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     if (run.focus !== "") card.append(el("div", "run__focus", run.focus));
     const phase = phaseLine(run);
     if (phase !== null) card.append(el("div", "run__phase", phase));
+    if (run.estimate !== null) card.append(el("div", "run__estimate", run.estimate));
     figures = el("div", "run__figures", runFigures(run, now()));
     card.append(figures);
     if (run.feed.length > 0) {
@@ -305,6 +331,10 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     const running = ask.turns.at(-1)?.status === "running";
     askNote.textContent = ask.blocked ?? "";
     askNote.hidden = ask.blocked === null;
+    askEstimate.textContent = ask.estimate ?? "";
+    askEstimate.hidden = ask.estimate === null;
+    if (!ask.confirm) askArmed = false;
+    askButton.textContent = askArmed ? "Click again to ask" : "Ask";
     question.disabled = ask.blocked !== null;
     askButton.disabled = ask.blocked !== null || running;
     stopButton.hidden = !running;

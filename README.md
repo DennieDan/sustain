@@ -120,6 +120,7 @@ Without it, checks use the newest map with an empty focus.
 Sustain makes no AI calls of its own. Your agent does the work, on your account.
 
 - Generating a map uses your agent's tokens. On an API account they are billed at the model's price. On a subscription they count towards your plan's limits.
+- Before every run, Sustain states an estimate under Generate, in the confirmation and on the run card, such as "About 180k–260k tokens (about $0.50–$0.80 at API prices; on a subscription it uses part of your plan's limit)". The skill states it too. Runs above `sustain.confirmAboveTokens`, 300,000 tokens by default, need a second click.
 - A run in the sidebar shows its elapsed time and tokens as it goes, and the final tokens and cost when the agent reports them. `run.json` keeps the figures.
 - Refresh reads only the code that changed since the map was made.
 - Ask spends tokens on each question.

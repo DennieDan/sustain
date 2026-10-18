@@ -10,10 +10,12 @@ import { codexParser } from "../model/agentStream/codex";
 import type { RunStatus } from "../model/agentStream/tracker";
 import { askPrompt, keepCites, parseAnswer, type BoxLabel } from "../model/ask";
 import { citable } from "../model/citations";
+import type { RunEstimate } from "../model/estimate";
 import { listCandidates } from "../model/discovery";
 import type { AskView } from "../model/messages";
 import { parseDiagram } from "../model/tolerant";
 import { findOnPath, headlessArgs } from "./agents";
+import { launchEstimate } from "./estimates";
 import { chosenAgent, foundAgents } from "./generate";
 import { openSourceRef } from "./navigate";
 import { ArchitecturePanel } from "./panel";
@@ -77,6 +79,12 @@ export class Ask implements vscode.Disposable {
     return null;
   }
 
+  /** What one question costs with the chosen agent (CST-03). */
+  private estimate(root: string): RunEstimate | null {
+    const cli = chosenAgent(this.context, foundAgents());
+    return cli === null ? null : launchEstimate(root, cli, "ask");
+  }
+
   /** The box labels of `map`, for linking them in answers. */
   private boxes(map: string): BoxLabel[] {
     const cached = this.labels.get(map);
@@ -106,8 +114,12 @@ export class Ask implements vscode.Disposable {
       if (!checked.has(path)) checked.set(path, citable(rootReal, path));
       return checked.get(path)!;
     };
+    const blocked = this.blocked(root);
+    const estimate = root === null || blocked !== null ? null : this.estimate(root);
     return {
-      blocked: this.blocked(root),
+      blocked,
+      estimate: estimate?.text ?? null,
+      confirm: estimate?.confirm ?? false,
       turns: turns.map((turn) => ({
         question: turn.question,
         agent: turn.agent,
@@ -124,9 +136,10 @@ export class Ask implements vscode.Disposable {
     return this.run !== undefined;
   }
 
-  /** Asks `question` about `root`'s map with the chosen agent. */
-  async ask(root: string, question: string): Promise<void> {
+  /** Asks `question` about `root`'s map with the chosen agent; above the threshold only once `confirmed` (CST-03). */
+  async ask(root: string, question: string, confirmed = false): Promise<void> {
     if (this.run !== undefined || question.trim() === "" || this.blocked(root) !== null) return;
+    if (this.estimate(root)?.confirm === true && !confirmed) return;
     const map = this.mapFor(root)!;
     const cli = chosenAgent(this.context, foundAgents())!;
     const binary = findOnPath(cli, process.env);

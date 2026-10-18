@@ -72,6 +72,12 @@
           ],
           "default": "sidebar",
           "description": "Where Generate runs the agent."
+        },
+        "sustain.confirmAboveTokens": {
+          "type": "number",
+          "default": 300000,
+          "minimum": 0,
+          "description": "Runs whose estimate reaches above this many tokens need a second click before they start."
         }
       }
     },

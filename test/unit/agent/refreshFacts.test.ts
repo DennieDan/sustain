@@ -1,8 +1,11 @@
 // FRS-05: refresh-facts.mjs reports how a map compares with the code since it was made, and
-// creates the refresh's run folder with a draft copied from the map.
+// creates the refresh's run folder with a draft copied from the map. CST-03: it prints the refresh's
+// estimate.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
+import { skillEstimates } from "../../../src/model/estimate";
+import { repoSize, sizeFacts } from "../../../src/model/repoSize";
 import { git, gitRepo, put, runScript } from "../support/temp";
 
 const SOURCE = ["import x from 'x';", "", "export function handle(req) {", "  const body = parse(req);", "  return save(body);", "}", ""].join("\n");
@@ -63,6 +66,12 @@ describe("FRS-05 refresh-facts", () => {
     expect(draft.meta).toEqual({ title: "Payments" });
     expect(draft.components).toEqual(candidate.components);
     expect(runScript("validate", [facts["draft"]], { cwd: root }).status).toBe(0);
+  });
+
+  test("CST-03 prints each agent's estimate for a refresh", () => {
+    const { root, base } = mappedRepo();
+    const facts = runScript("refresh-facts", ["--from", base], { cwd: root }).json() as Record<string, any>;
+    expect(facts["estimate"]).toEqual(skillEstimates(sizeFacts(repoSize(root)), "refresh"));
   });
 
   test("--paths limits the report to its globs and is recorded", () => {

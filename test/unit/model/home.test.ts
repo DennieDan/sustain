@@ -26,6 +26,7 @@ function run(fields: Partial<RunCard>): RunCard {
     feed: [],
     usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     costUsd: null,
+    estimate: null,
     denials: [],
     startedAt: "2026-10-18T11:58:28Z",
     finishedAt: null,
