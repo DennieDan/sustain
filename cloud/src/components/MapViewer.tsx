@@ -1,5 +1,7 @@
 // The shared viewer (VWR-01) on a cloud page: the map's data in a JSON script, the viewer bundle,
-// and the element it mounts in. Every string reaches the page as escaped JSON or text.
+// and the element it mounts in. Every string reaches the page as escaped JSON or text. The bundle
+// starts after React has hydrated the page, so the map it draws stays in place.
+import Script from "next/script";
 import { escapeJson, type PageData } from "../../../src/model/page";
 
 export function MapViewer({ data }: { data: PageData }) {
@@ -8,7 +10,7 @@ export function MapViewer({ data }: { data: PageData }) {
       <link rel="stylesheet" href="/viewer.css" />
       <div id="sustain-viewer" className="map-shell" />
       <script type="application/json" id="sustain-data" dangerouslySetInnerHTML={{ __html: escapeJson(JSON.stringify(data)) }} />
-      <script src="/viewer.js" defer />
+      <Script src="/viewer.js" strategy="afterInteractive" />
     </>
   );
 }
