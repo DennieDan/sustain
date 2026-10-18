@@ -16,7 +16,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | I2 Accuracy | Closed pending owner (ACC-04 `[smoke]`) | `949d927` |
 | I3 Architecture guardrails | Closed pending owner (PRC-05 `[smoke]`) | `e97077f` |
 | I4 Skill retention | Closed pending owner (LRN-01 `[smoke]`) | `5b7a19c` |
-| I5 Cloud for teams | In progress | |
+| I5 Cloud for teams | Waiting for the owner (CLD-12 hard stop, CLD-10 `[ci]`, CLD-07 Stripe products) | `f732167` |
 | I6 Polish and reach | Not started | |
 | I7 IntelliJ plugin | Not started | |
 
@@ -522,14 +522,14 @@ Done when: Explain-back, tours and sessions on every agent work.
 
 ### I5 proposal (2026-10-19)
 
-| Location | Change | Est. LoC |
-|---|---|---|
-| `cloud/src/lib/dashboard.ts`, `cloud/src/app/[owner]/page.tsx` | CLD-05: `/<org>` lists each repository the viewer can see under that account with its main map's age, freshness, uncovered changed files and open violations from the latest check, the boxes pull requests touched most, a trend of stale boxes and uncovered files over the checks against the default branch, and recent pull requests with the boxes they touched. Every figure is per repository; nothing names a person | +280 |
-| `cloud/src/db/schema.ts`, `cloud/src/db/migrations.ts`, `cloud/src/lib/shares.ts`, `cloud/src/app/s/[token]/page.tsx`, the repository's settings | CLD-06: share links stored as a hash with an expiry of 1, 7 or 30 days; owners create and revoke them in settings; `/s/<token>` shows the main map read-only until it expires or is revoked | +220 |
-| `cloud/plans.ts`, `cloud/src/lib/billing.ts`, `cloud/src/app/api/v1/billing/`, `cloud/src/app/api/stripe/webhook/route.ts`, schema | CLD-07: Free, Team and Enterprise with their limits enforced on the server (one private repository and 30 days of history on Free; pull request pages, the dashboard and share links on Team). Checkout and the Customer Portal through Stripe's REST API with `fetch`, and webhooks checked by their HMAC signature with `node:crypto`, so Stripe adds no dependency. Prices and Stripe ids come from the environment. Without Stripe keys billing is off and every space is Enterprise | +380 |
-| `cloud/Dockerfile`, `cloud/docker-compose.yml`, `cloud/src/app/api/health/route.ts`, `.github/workflows/ci.yml` | CLD-10: an image of the built app, a compose file, a health endpoint, and a CI job that builds the image and asks the endpoint | +120 |
-| — | CLD-12: a hard stop (network access in shipped extension code). It waits for the owner's go, and nothing is built | 0 |
-| `cloud/src/lib/exportData.ts`, `cloud/src/lib/retention.ts`, `cloud/src/app/api/v1/account/export/route.ts`, settings, `cloud/src/instrumentation.ts` | CLD-13: an owner's data as one JSON download; each repository's audit log of uploads with how each was signed (the token's name or the OIDC repository), the time and the size; a daily job that removes uploads older than the plan keeps | +240 |
+| Location | Change | Est. LoC | Built |
+|---|---|---|---|
+| `cloud/src/lib/dashboard.ts`, `cloud/src/app/[owner]/page.tsx` | CLD-05: `/<org>` lists each repository the viewer can see under that account with its main map's age, freshness, uncovered changed files and open violations from the latest check, the boxes pull requests touched most, a trend of stale boxes and uncovered files over the checks against the default branch, and recent pull requests with the boxes they touched. Every figure is per repository; nothing names a person | +280 | +206 |
+| `cloud/src/db/schema.ts`, `cloud/src/db/migrations.ts`, `cloud/src/lib/shares.ts`, `cloud/src/app/s/[token]/page.tsx`, the repository's settings | CLD-06: share links stored as a hash with an expiry of 1, 7 or 30 days; owners create and revoke them in settings; `/s/<token>` shows the main map read-only until it expires or is revoked | +220 | +203 / -6 |
+| `cloud/plans.ts`, `cloud/src/lib/billing.ts`, `cloud/src/app/api/v1/billing/`, `cloud/src/app/api/stripe/webhook/route.ts`, schema | CLD-07: Free, Team and Enterprise with their limits enforced on the server (one private repository and 30 days of history on Free; pull request pages, the dashboard and share links on Team). Checkout and the Customer Portal through Stripe's REST API with `fetch`, and webhooks checked by their HMAC signature with `node:crypto`, so Stripe adds no dependency. Prices and Stripe ids come from the environment. Without Stripe keys billing is off and every space is Enterprise | +380 | +427 / -31 with the limits in each route and page |
+| `cloud/Dockerfile`, `cloud/docker-compose.yml`, `cloud/src/app/api/health/route.ts`, `.github/workflows/ci.yml` | CLD-10: an image of the built app, a compose file, a health endpoint, and a CI job that builds the image and asks the endpoint | +120 | +79 |
+| — | CLD-12: a hard stop (network access in shipped extension code). It waits for the owner's go, and nothing is built | 0 | not built; waits for the owner's go |
+| `cloud/src/lib/exportData.ts`, `cloud/src/lib/retention.ts`, `cloud/src/app/api/v1/account/export/route.ts`, settings, `cloud/src/instrumentation.ts` | CLD-13: an owner's data as one JSON download; each repository's audit log of uploads with how each was signed (the token's name or the OIDC repository), the time and the size; a daily job that removes uploads older than the plan keeps | +240 | +170 / -12 |
 
 Tests the I5 ACs call for:
 - CLD-05: the dashboard `[web]`; no route returns author-level data `[unit]`.
@@ -537,6 +537,17 @@ Tests the I5 ACs call for:
 - CLD-07: signed test webhooks and the limits `[unit]`; the upgrade flow against a mocked Stripe `[web]`.
 - CLD-10: the image builds and the health endpoint answers `[ci]`.
 - CLD-13: the export, the audit log and retention `[unit]`; the export and the audit log in settings `[web]`.
+
+Where the I5 build differs from the proposal:
+- The dashboard counts uncovered changed files, because check reports list files without their lines. Its checks against the default branch are those run on it and those of pull requests into it, since the Action checks pull requests. The cloud holds no git history, so its hotspots are the boxes the most pull requests touched in the last 90 days. The dashboard needs the Team plan.
+- Share links also have a unit test for expiry, revocation and the stored hash, because the `[web]` server's clock cannot move. The settings list refreshes through the router, so the new link stays shown once.
+- Billing calls Stripe's REST API with `fetch` and checks the webhook's HMAC with `node:crypto`, so it adds no dependency. Plans belong to the GitHub account that owns the repositories. Seats are the people with access, sent to Checkout and kept from Stripe, and nothing else limits them. Free's limits apply to an account's public repositories too, apart from the private-repository count. The `[web]` suite runs a second app instance with billing on, against a Stripe stand-in, so the other specs keep every feature.
+- The image runs the app on PGlite in its `/data` volume, and the compose file has no Postgres service, because Postgres needs a driver that is not installed. The image uses Node 22. The health endpoint was checked by hand, since its AC is `[ci]`.
+- CLD-12 is not built. It adds network access to the shipped extension, a hard stop, and waits for the owner's go.
+- The audit log names the signer as the token's name or "GitHub Actions OIDC for owner/name". Retention keeps each repository's newest default-branch map, so a quiet repository keeps its map. The daily job runs from `instrumentation.ts` with a timer.
+- Fixed along the way: the SKL-02 e2e test waits for the stop's lines to be selected, after it failed once on VS Code 1.126.0.
+
+29 deliberate breaks across I5 each failed their tests, including four `[web]` breaks for CLD-05, CLD-06, CLD-07 and CLD-13. One more e2e break checked the SKL-02 test fix.
 
 Done when: Dashboard, billing and self-hosting work.
 
@@ -577,6 +588,7 @@ Done when: The plugin opens cited lines on AB3.
 - 2026-10-19 — I2 closed pending owner. Gates: `npm run check` exit 0 (1134 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after ACC-06 (single 76, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 7 passed and one failed on its 5 s wait for a signed-out page to draw while the machine was loaded. That spec passed alone in 1.3 s, and the suite now waits up to 15 s. 48 deliberate breaks across I2. ACC-04 `[smoke]` waits for the owner.
 - 2026-10-19 — I3 closed pending owner. Gates: `npm run check` exit 0 (1167 tests, 58 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after PRC-05 (single 81, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 8 passed. The web run took 4.7 minutes, because after the machine restarted a connection to an unused local port waited for its timeout instead of being refused. 52 deliberate breaks across I3. PRC-05 `[smoke]` waits for the owner.
 - 2026-10-19 — I4 closed pending owner. Gates: `npm run check` exit 0 (1219 tests, 62 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after LRN-02 (single 85, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0 and cloud `[web]` 8 passed after SKL-02, the last I4 change to the cloud. 50 deliberate breaks across I4. LRN-01 `[smoke]` waits for the owner.
+- 2026-10-19 — I5 built but for CLD-12, which waits for the owner's go (hard stop: network access in shipped extension code). Gates after CLD-13: `npm run check` exit 0 (1219 tests, 63 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 85, empty 3, multi 2 each); cloud typecheck exit 0; cloud `vitest` 45 passed; cloud build exit 0; cloud `[web]` 12 passed in 9.3 minutes with two app instances. 29 deliberate breaks across I5. CLD-10 `[ci]` and the Stripe products wait for the owner. I6 starts while CLD-12 waits, as §7 allows.
 - 2026-10-18 — `architecture.md` had not been updated per feature during D2 to D4, as spec §7 asks; it was brought up to date at D4's close (`29f183b`) and kept current since. The layout fixtures test got a 30 s timeout: it lays out 48 diagrams and passed 5 s only narrowly when the whole suite ran in parallel.
 
 - 2026-10-18 — D4 closed pending owner. Gates: `npm run check` exit 0 (1066 tests, 53 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each). Every new test was seen to fail once with its behaviour broken: 18 deliberate breaks across D4. PRC-04 waits for a committed map of this repository and a push (see Waiting).
