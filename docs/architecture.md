@@ -2,6 +2,8 @@
 
 Sustain is a VS Code extension that shows a repository's architecture as an Archify diagram and opens the code cited by each node. Diagrams are produced by an external coding agent (Claude Code or Codex) running the bundled `sustain-architecture` skill, whose scripts validate and publish the diagram; the extension itself never calls an LLM ([ADR 0002](adr/0002-external-coding-agent-generates-diagrams.md)).
 
+Since v0.3 the same model modules also run in a core CLI (`dist/cli/sustain.mjs`, [ADR 0052](adr/0052-a-core-cli-shares-the-model-with-every-host.md)), in a GitHub Action that comments on pull requests ([ADR 0053](adr/0053-the-check-runs-as-a-javascript-action.md)), and in a one-file diagram page ([ADR 0051](adr/0051-the-diagram-page-is-one-offline-html-file.md)). The extension adds a sidebar where Generate, Refresh and Ask stream the agent's work ([ADR 0046](adr/0046-generate-streams-headless-runs-into-the-sidebar.md)), and the map shows how it compares with the code ([ADR 0048](adr/0048-maps-show-staleness-from-fingerprints.md)).
+
 ## Components
 
 ```mermaid
@@ -45,9 +47,9 @@ Pure TypeScript shared by the scripts, the extension host and the webview. No `v
 | `checks.ts` | `semanticChecks(doc)`: duplicate IDs, unknown references, missing sources, overlapping/equal boundaries; `boundaryRelation` (FR-VAL-04). | none (browser-safe) |
 | `deny.ts` | `isDenied(path)`: citation deny-list, any segment, case-insensitive (FR-VAL-05). | none |
 | `citations.ts` | `citationPathOk`, `countLines`, `probeFile(rootReal, path)` (real-path confinement, regular file, ≤ 2 MiB, NUL sniff), `rangeProblem`, `checkCitations(doc, root)` (FR-VAL-05). | `node:fs`, `node:path` |
-| `git.ts` | `collectGitFacts(root)` via fixed-argv `git` with `GIT_TERMINAL_PROMPT=0`; `sanitizeOrigin`, `parsePorcelainZ`, `repositoryFromGit` (FR-GIT-01). | `node:child_process`, `node:fs` |
+| `git.ts` | `collectGitFacts(root)` via fixed-argv `git` with `GIT_TERMINAL_PROMPT=0` and `-c core.fsmonitor=false --no-optional-locks` (SAF-07); `sanitizeOrigin`, `parsePorcelainZ`, `repositoryFromGit` (FR-GIT-01). Since v0.3 also `renamesSince`, `diffFor` (FRS-04 scopes, `DIFF_FLAGS`), `defaultBranch`, `numstatSince`, `untrackedFiles`, `foldersAt`, `mergeBase`, `diffBetween`, `fileAt`, `existsAt`, `filesAt`; every revision passes `REVISION_PATTERN`. | `node:child_process`, `node:fs` |
 | `runFolder.ts` | `slugify`, `runTimestamp`, `RUN_FOLDER_PATTERN`/`parseRunFolderName`, `createRunFolder` (collision `-N`), `locateDraft`, `publishCandidate` (temp + rename, then delete draft) (FR-RF-01, FR-VAL-06). | `node:fs`, `node:path` |
-| `submission.ts` | `applyAppOwnedFields` (step 1, FR-VAL-02) and `checkSubmission(value, app, checkCitations)`: schema, then semantic + injected citation check (FR-VAL-03..06). | none (file access injected) |
+| `submission.ts` | `applyAppOwnedFields` (step 1, FR-VAL-02) and `checkSubmission(value, app, checkCitations)`: schema, then semantic + injected citation check (FR-VAL-03..06). `stripAppOwned` gives a refresh its starting draft (FRS-05). | none (file access injected) |
 | `secrets.ts` | `secretKind`, `findSecrets`: strings shaped like private keys, GitHub, Slack, AWS or `sk-` tokens, or long high-entropy runs, become `SecretLike` issues with their JSON pointer. The validator runs it in step 3 (spec v0.3 SAF-03). | none (browser-safe) |
 | `confine.ts` | `assertWritable(root, path)`: the nearest existing ancestor of `path` resolves inside `root` and `path` is not a link; `assertNotLink`; `isWithin`. Every writer calls it first: skill install, hooks merge, the validator's publish, the session script's lock, mutations, restores and ledger (spec v0.3 SAF-05). | `node:fs`, `node:path` |
 | `which.ts` | `findOnPath`: the first executable on PATH, skipping relative entries (SAF-04, SAF-07). Shared by the agent launchers and git. | `node:fs`, `node:path` |
@@ -58,14 +60,33 @@ Pure TypeScript shared by the scripts, the extension host and the webview. No `v
 | `discovery.ts` | `listCandidates(root)`: `.archify/*/candidate.json` inside the root, newest first (`compareCandidates`, FR-VIEW-02); `repoRootFor(file, folder)`. | `node:fs`, `node:path` |
 | `session.ts` | Learning-session model (ADRs 0029–0035, 0037): `SessionPhase`/`SessionState` (`session.json`), `Manifest`/`ManifestBug` (`manifest.json`), `EventType` + `appendEvent` (`events.jsonl`), the `.sustain/active` lock helpers, step/score tables (`TIER_POINTS`, `HINT_COST`, `KIND_TIER`) and the checked load/save pair (temp + rename writes). | `node:fs`, `node:path` |
 | `leaderboard.ts` | `parseLedger` (tolerant `events.jsonl`), `leaderboardEntry` (one ranked row per run: status, score, bug counters, hint cost), `rankLeaderboard` — pure aggregation for the session panel ([ADR 0034](adr/0034-sustain-folder-layout-and-session-state-files.md), [ADR 0040](adr/0040-hooks-merge-panel-read-side-and-devin-detection.md)). | none |
-| `messages.ts` | `HostMessage` / `WebviewMessage` plus `SessionView` / `SessionHostMessage` / `SessionWebviewMessage` types (protocol below). | none |
+| `messages.ts` | `HostMessage` / `WebviewMessage` (map), `HomeState` / `HomeHostMessage` / `HomeWebviewMessage` (sidebar), `SessionView` / `SessionHostMessage` / `SessionWebviewMessage` types (protocol below). | none |
+| `agentStream/feed.ts`, `claude.ts`, `codex.ts`, `tracker.ts` | UI-02: `StreamParser`s turning `claude -p --output-format stream-json` and `codex exec --json` lines into feed items, usage, the answer text and the end (`ok`, cost, denials, session id, final answer); `RunTracker` joins split lines, caps the feed at 50 and settles `running`/`done`/`failed`/`cancelled`. | none (browser-safe) |
+| `maps.ts` | UI-01: `listMaps(root)`, each candidate with title, focus, agent, date and box count from `candidate.json` and `run.json`. | `node:fs`, `node:path` |
+| `home.ts` | UI-01, UI-04, FRS-03: `relativeAge`, `mapStatus`, `clock`, `tokenCount`, `runFigures`, `statusText`, `freshnessHeader`, and `SIDEBAR_ACTIONS` (sidebar buttons and the commands they stand for). | none (browser-safe) |
+| `citing.ts` | UI-03: `citingBoxes(diagram, rel)`, the boxes citing a file or a folder holding it. | none (browser-safe) |
+| `ask.ts` | UI-06: `askPrompt`, `parseAnswer` into paragraphs, lists and fenced code with `cite`, `code` and `box` spans, `keepCites` (the host's check turns rejected citations back into text). | none (browser-safe) |
+| `citationPath.ts` | `citationPathOk`, shared with the diagram page; re-exported by `citations.ts`, which also gains `citable(rootReal, path)` for Ask links. | none (browser-safe) |
+| `fingerprints.ts` | FRS-01: `gitBlobId` (as `git hash-object --no-filters`), `normalizedLines`, `hashLines`, `fingerprint(doc, root, revision)`, `writeFingerprints`. | `node:fs`, `node:path`, `node:crypto` |
+| `staleness.ts` | FRS-02: `classify` and `mapFreshness` (fresh, moved with the new lines, edited, missing, unknown; a box takes its worst), `readFingerprints`, `fileReader`. | `node:fs`, `node:path` |
+| `changes.ts` | FRS-04, PRC-01: `parseDiff` (old-side hunks, renames, quoted paths, added lines), `markChanges` (strong, weak, uncovered), `REVISION_PATTERN`, `rangeOf`. | none (browser-safe) |
+| `refresh.ts` | FRS-05, FRS-06: `globToRegExp`, `inScope`, `refreshReport`, `refreshArgs`. | none (browser-safe) |
+| `evidence.ts` | ACC-01: `declarationOnly`, `checkEvidence`. | none (browser-safe) |
+| `openLinks.ts` | RCH-01: `availableTargets`, `openLink` for VS Code, Cursor, JetBrains, GitHub and Copy; `linkablePath` (path rule and deny-list). | none (browser-safe) |
+| `page.ts` | RCH-01: `escapeJson`, `pageCsp`, `renderPage(data, assets)`, `pageOutput`. | `node:crypto` |
+| `config.ts` | PRC-01: `readConfig` for `sustain.config.json`, `withIgnored`. | none (browser-safe) |
+| `ownership.ts` | PRC-01: `Ownership.owners(path)` (the citing boxes, else those citing files in the nearest folder) and `ownsBelow(dir)`. | none (browser-safe) |
+| `delta.ts`, `deltaMarkdown.ts` | PRC-01: `deltaReport` (touched, stale, uncovered, candidates, gone), `verdict`, `isSourceFile`, `isTestFile`; `deltaMarkdown`, `deltaSummary`, `deltaMermaid`, `escapeMarkdown`, `COMMENT_MARKER`. | none (browser-safe) |
+| `check.ts` | PRC-01: `runCheck` gathers the config, the map (`mainMap`), the diff from the merge-base, the code at the head and the candidate facts, then calls `deltaReport`; `loadConfig`. | `node:fs`, `node:path` |
 
 ### `src/agent/`
 
 CLI entry points bundled by `esbuild.mjs` into `dist/skills/<skill>/scripts/*.mjs` (ESM, platform node, target node18, dependencies inlined; [ADR 0007](adr/0007-validator-as-dependency-free-node-bundles.md)).
 
 * `repo-facts.ts` → `repo-facts.mjs [--focus <text>]`: creates the run folder, prints `{root, runFolder, draft, git}` ([ADR 0018](adr/0018-repo-facts-creates-the-run-folder.md)).
-* `validate.ts` → `validate.mjs <draft>`: locate draft → parse → git facts → `checkSubmission` → publish or report ([ADR 0017](adr/0017-validator-output-contract-and-exit-codes.md), [ADR 0019](adr/0019-validator-deviations-from-the-prototype-gate.md)).
+* `validate.ts` → `validate.mjs <draft>`: locate draft → parse → git facts → `checkSubmission` → publish or report ([ADR 0017](adr/0017-validator-output-contract-and-exit-codes.md), [ADR 0019](adr/0019-validator-deviations-from-the-prototype-gate.md)). On acceptance it also writes `fingerprints.json` (FRS-01) and `evidence.json`, and adds `evidence` to the report ([ADR 0050](adr/0050-the-validator-reports-evidence-on-acceptance.md)).
+* `refresh-facts.ts` → `refresh-facts.mjs --from <run> [--paths <glob>…]` (`dist/skills/sustain-refresh/scripts/`): the base map's staleness, changed and uncovered files, new folders; creates the refresh's run folder with a starting draft ([ADR 0049](adr/0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md)).
+* `render-html.ts` → `render-html.mjs <candidate.json> [--share]` (both map skills): writes the diagram page `meta.output` names ([ADR 0051](adr/0051-the-diagram-page-is-one-offline-html-file.md)).
 * `session.ts` → `session.mjs <command>` (`dist/skills/sustain-bugfix/scripts/`): the learning-session referee — `init`, `plan`, `inject`, `status`, `report`, `hint`, `verify`, `complete`, `pause`, `resume`, `restore`, `abandon` over `.sustain/<run>/` ([ADR 0030](adr/0030-session-state-machine-as-bundled-scripts.md), [ADR 0037](adr/0037-session-command-contract-and-scoring.md), [ADR 0039](adr/0039-lifecycle-commands-and-hook-contract.md)).
 * `session-hook.ts` → `session-hook.mjs` (same folder): the Devin lifecycle hook wired from `.devin/hooks.v1.json` — blocks `edit`/`write`/`apply_patch`/`notebook_edit`/`run_subagent` while `phase === "hunting"` (exit 2 + `decision: block`) and re-injects session state as `additionalContext` on `UserPromptSubmit`/`PostCompaction`/`SessionStart`; inert otherwise ([ADR 0032](adr/0032-hunt-phase-enforcement-via-devin-hooks.md), [ADR 0039](adr/0039-lifecycle-commands-and-hook-contract.md)).
 * `modes/bugfix/mutations.ts`: the deterministic mutation engine — ordered rewrite tables for `off-by-one`, `flipped-comparison`, `missing-await` over a string/comment-aware line mask, `mutateText`/`mutateFile`, `bugStillPresent`, `restoreHunk` ([ADR 0031](adr/0031-mutation-engine-seeds-the-bugs.md), [ADR 0038](adr/0038-mutation-engine-v1-rule-tables.md)).
@@ -76,6 +97,12 @@ The static skill, copied as-is to `dist/skills/sustain-architecture/` next to th
 
 * `SKILL.md`: frontmatter (manual invocation, Claude pre-approvals) and the seven imperative steps of FR-SKL-02; every script is referenced by its repo-root path `.agents/skills/sustain-architecture/scripts/…`.
 * `agents/openai.yaml`: Codex display name and `allow_implicit_invocation: false`.
+
+### `skills/sustain-refresh/`
+
+The refresh skill ([ADR 0049](adr/0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md)), manual-only like the architecture skill. `SKILL.md` runs `refresh-facts.mjs`, re-examines only edited and missing boxes, moved citations, uncovered changes and new folders (within `--paths`), keeps unchanged ids, validates, reviews the evidence once and writes the page. The build copies the architecture skill's `references/` into it and bundles `refresh-facts.mjs`, `validate.mjs` and `render-html.mjs`.
+
+Both map skills find their scripts as `${CLAUDE_SKILL_DIR}/scripts/…` (SET-01), pre-approve only their own scripts (SAF-02), and end by reviewing `evidence` once and running `render-html.mjs`.
 
 ### `skills/sustain-bugfix/`
 
@@ -103,15 +130,34 @@ The learning-session skill ([ADRs 0029–0036](adr/0029-learning-modes-in-one-ag
 | `sessionFiles.ts` | No `vscode`: `listSessionRuns` (`.sustain/` run folders with a `session.json`, newest first), `readSessionSnapshot` (active-else-newest shown run + the leaderboard; `session.json` + `events.jsonl` only — never `manifest.json`) ([ADR 0040](adr/0040-hooks-merge-panel-read-side-and-devin-detection.md)). |
 | `sessionPanel.ts` | `SessionPanel`: one `WebviewPanel` (`sustain.session`) per window, posts `session` views built from `readSessionSnapshot` + `serverNow`; re-sends on `ready`/visible/`reload` ([ADR 0034](adr/0034-sustain-folder-layout-and-session-state-files.md)). |
 | `sessionWatcher.ts` | `SessionWatcher`: per-folder `FileSystemWatcher`s on `.sustain/active` and `.sustain/*/session.json` through `ChangeBatch`; every change reloads the open panel — no notifications ([ADR 0040](adr/0040-hooks-merge-panel-read-side-and-devin-detection.md)). |
-| `agents.ts` | No `vscode`: the two agents, `agentPrompt` (`/sustain-architecture …`, `$sustain-architecture …`), `findOnPath` (PATH, PATHEXT). |
-| `generate.ts` | FR-GEN-01 flow: folder → install offer → focus → agent → terminal with `shellPath`/`shellArgs` or the "not found" warning with "Copy prompt" ([ADR 0020](adr/0020-launch-agent-terminal-with-shellpath-and-shellargs.md), [ADR 0021](adr/0021-command-ui-details-not-fixed-by-the-spec.md)). |
+| `agents.ts` | No `vscode`: the two agents, `agentPrompt` and `skillPrompt` (`/<skill> …`, `$<skill> …`), `SKILL_SCRIPTS`, `headlessArgs` (UI-02, UI-06: exact tools and `dontAsk` for Claude Code, a sandbox for Codex, never a permission-skipping flag), `findOnPath` (PATH, PATHEXT). |
 | `open.ts` | `Open Architecture` (newest candidate, or "No architecture diagram yet." with "Generate") and `Open Architecture File…` (candidates + "Browse…") (FR-VIEW-01). |
-| `panel.ts` | `ArchitecturePanel`: one `WebviewPanel` (`sustain.architecture`) per window, `ViewColumn.Active` without visible editors else `Beside`, `retainContextWhenHidden: false`; reads the file, tolerant-parses it, sets the title, posts `load`/`empty`; re-sends on `ready` and when visible (FR-VIEW-04, [ADR 0011](adr/0011-webview-panel-viewer-with-code-beside.md), [ADR 0025](adr/0025-viewer-details-not-fixed-by-the-spec.md)). |
+| `panel.ts` | `ArchitecturePanel`: one `WebviewPanel` (`sustain.architecture`) per window, `ViewColumn.Active` without visible editors else `Beside`, `retainContextWhenHidden: false`; reads the file, tolerant-parses it, sets the title, posts `load`/`empty`; re-sends on `ready` and when visible (FR-VIEW-04, [ADR 0011](adr/0011-webview-panel-viewer-with-code-beside.md), [ADR 0025](adr/0025-viewer-details-not-fixed-by-the-spec.md)). Since v0.3 it also holds the highlight and Follow editor (UI-03), the focused box (UI-06), freshness with moved lines (FRS-03), the change overlay (FRS-04) and ghost boxes (PRC-02), and opens a folder without a map with "Map this folder". |
 | `html.ts` | No `vscode`: `webviewCsp`, `webviewHtml` (CSP meta, stylesheet link, one nonce'd script) (NFR-SEC-01). |
 | `sourceTarget.ts` | No `vscode`: `resolveSource(root, source)` → open with lines, open with a stale-line warning, or "Invalid source path" / "Stale reference … no longer exists" (FR-NAV-03). |
 | `navigate.ts` | `openSource`: "no source references" status message, error or open in the other column (`panel === 1 ? 2 : 1`), select whole lines, reveal, 2 s `editor.rangeHighlightBackground` highlight (FR-NAV-01/02, [ADR 0027](adr/0027-navigation-and-watching-details.md)). |
 | `watchLogic.ts` | No `vscode`: `ChangeBatch` (300 ms debounce, per-file merge) and `watchAction` (reload / deleted / switch / notify). |
-| `watcher.ts` | `CandidateWatcher`: one `FileSystemWatcher` per workspace folder on `.archify/**`. Any event in a run folder rechecks its `candidate.json`, and `noteCandidate` decides "new" against the candidates already known, because watchers can miss a file created inside a just-created folder. Applies `watchAction` to the panel or a "New architecture diagram" notification (FR-WAT-01). |
+| `watcher.ts` | `CandidateWatcher`: one `FileSystemWatcher` per workspace folder on `.archify/**`, plus a listing of each folder every 2 s for events that never arrive. Any event in a run folder rechecks its `candidate.json`, and `noteCandidate` decides "new" against the candidates already known, because watchers can miss a file created inside a just-created folder. Applies `watchAction` to the panel or a "New architecture diagram" notification, which a sidebar run of that folder skips; fires `onDidChange` for the sidebar (FR-WAT-01). |
+| `home.ts` | UI-01: `HomeView`, the `sustain.home` webview view: builds `HomeState`, handles `HomeWebviewMessage`s, runs the setup checks. |
+| `runner.ts` | UI-02, no `vscode`: `startHeadless` spawns the agent by absolute path in its own process group and feeds a `RunTracker`; Cancel signals the group (`taskkill /T` on Windows); `canRunHeadless` sends Windows `.cmd`/`.bat` launchers to a terminal. |
+| `runs.ts` | UI-02, CST-04: `Runs`, the window's one run as a `RunCard`: headless or terminal, `run.json` polled every second for phase and attempts, agent, mode, tokens and cost recorded at the end, the map opened on acceptance. |
+| `generate.ts` | FR-GEN-01, SET-03: `LaunchTask` (skill, args, card title), `launchNotes` (install or repair, the data note), `launchTask` (repair, remember the agent, headless or terminal), `confirmAndLaunch` (agent pick when several, one modal for notes), the palette command. |
+| `refresh.ts` | FRS-06: `refreshTask`, `refreshArchitectureCommand` (shown or chosen map; Generate without one), `refreshBoxCommand`. |
+| `ask.ts` | UI-06: `Ask`: read-only runs, Claude Code `--resume` for follow-ups, history in workspace state, the second citation check before a line opens, `focusBox`. |
+| `freshness.ts` | FRS-03: `FreshnessService`, cached `mapFreshness` per candidate, invalidated by a `**/*` watcher per folder and editor saves with a 300 ms pause; `changedBoxes`. |
+| `changes.ts` | FRS-04: `Sustain: Show Changes on Diagram`, the scope pick, `diffFor`, `markChanges`, the panel's overlay. |
+| `review.ts` | PRC-02: `Review`: scope pick, `runCheck`, the sidebar section, overlay and ghost boxes, Show files, Add to map, Ignore with a `vscode.diff` preview of `sustain.config.json`. |
+| `exportPage.ts` | RCH-01: Export Page from the map and the maps list, from `dist/page.js` and `dist/page.css`. |
+| `showInMap.ts` | UI-03, UI-05: Show in Map (marks the citing boxes, keeps the editor active), Map this folder, Open code from a box's menu. |
+| `statusBar.ts` | UI-04: the status bar item (idle, the running clock, changed boxes), whose command focuses the sidebar. |
+
+### `src/cli/`
+
+`sustain.ts` and `commands.ts`, bundled to `dist/cli/sustain.mjs` (ESM, Node ≥ 18) beside `dist/skills/` and `dist/skill-hashes.json`, which it finds from its own path ([ADR 0052](adr/0052-a-core-cli-shares-the-model-with-every-host.md)). Commands: `install [--scope user|project]`, `verify-skills [--agent] [--scope]`, `staleness [--map]`, `changes --scope uncommitted|branch|range [--range a..b]`, `export-page [--map] [--share]`, `preflight`, `check --base <ref> [--head <ref>] [--map] [--fail-on stale,new-box]`. Every command takes `--root` and `--format json|markdown`, prints one JSON object or markdown, and exits 0 (done, passed), 1 (a failing finding) or 2 (usage or I/O error).
+
+### `action/`
+
+The GitHub Action ([ADR 0053](adr/0053-the-check-runs-as-a-javascript-action.md)): `action.yml` (inputs `fail-on`, `map`, `comment`, `upload`, `github-token`; output `result`), `src/main.ts` (`runAction`: `runCheck` from `origin/<base_ref>` to `HEAD`, one comment marked `<!-- sustain-check -->` with the markdown and `deltaMermaid`, the job result from `fail-on`), `src/github.ts` (`GitHubClient` over the REST API, the only network use), `src/index.ts` (entry). `node esbuild.mjs --action` writes the committed `dist/index.js`; CI rebuilds and compares it.
 
 ### `src/layout/`
 
@@ -133,12 +179,18 @@ Bundled into `dist/webview.js` (IIFE, browser, minified, elkjs included) and `di
 
 | File | Responsibility |
 |---|---|
-| `main.ts` | Builds the DOM (`div.app` > `svg.canvas` > `g.viewport`, toolbar, empty state, tooltip), posts `ready`, handles `load` (tolerant parse → canvas text measurement in `--vscode-font-family` → `layoutDiagram` at the panel size → render → fit unless the same file is reloaded) and `empty`. |
+| `viewer.ts` | `startViewer()`: builds the DOM (`div.app` > `svg.canvas` > `g.viewport`, toolbar, highlight bar, freshness bar, changes bar, empty state, tooltip), posts `ready`, handles `load` (tolerant parse → canvas text measurement in `--sustain-font-family` → `layoutDiagram` with any ghost boxes → render → fit unless the same file is reloaded), `empty`, `highlight`, `freshness`, `changes` and `ghosts`. It reaches its host only through `bridge.ts` (VWR-01, [ADR 0047](adr/0047-the-viewer-reaches-its-host-through-a-bridge.md)). |
+| `bridge.ts` | `useHost`, `post`, `onMessage`, `applyTokens`. |
+| `hosts/vscode.ts`, `hosts/standalone.ts` | The VS Code host maps every `--sustain-*` token to a theme variable and posts through the webview API; the standalone host sets a light or dark palette and delivers embedded messages. |
+| `main.ts` | The VS Code entry: `useHost(vscodeHost())`, then `startViewer()`. |
+| `page.ts`, `page.css` | RCH-01: the diagram page's entry: reads the data script, installs the standalone host, and opens a clicked citation through the chosen target (`openLink`), remembered in guarded `localStorage`. Bundled to `dist/page.js` and inlined into each page. |
+| `home.ts`, `sidebar.ts`, `sidebar.css` | UI-01: the sidebar (`dist/sidebar.js`): header, composer with a text box that survives updates, run card, maps list, Review changes, setup checklist, learning session and Ask; renders each `HomeState` and posts `HomeWebviewMessage`s. |
+| `answer.ts` | UI-06: renders answer blocks as `p`, `ul`/`ol`, `pre > code`; citations and box names are buttons. |
 | `render.ts` | `renderScene`: boundaries, edges with arrowheads, edge labels with halo, nodes with label/sublabel/tag (FR-VIEW-05, [ADR 0024](adr/0024-theme-colour-mapping-and-svg-styling.md)). |
 | `viewport.ts` | Pure math (`fitView`, `zoomAt`, `panBy`, 10–400 % clamp) and `ViewportController` (drag, wheel, pinch, toolbar Fit/−/+/100 %, keys `+ = - 0 f`) (FR-VIEW-06). |
 | `tooltip.ts` | `TooltipController`: 300 ms show, 200 ms hide, sources as `path:line–end_line` buttons posting `openSource` (FR-VIEW-07). |
 | `click.ts` | `NodeClicks`: press and release on the same node within 4 px posts `openSource` with index 0 (FR-NAV-01). |
-| `styles.css` | Theme-variable styling only. |
+| `styles.css` | `--sustain-*` token styling only, set by the host. |
 | `session.ts` | Session webview (`dist/session-webview.js`): phase badge, step k/n, bugs found/fixed/seeded, score, a 1 s elapsed timer offset from `serverNow`, and the local leaderboard table; posts `ready`, handles `session`/`empty`. |
 | `session.css` | Session-panel styling on theme variables only. |
 
@@ -146,9 +198,9 @@ Bundled into `dist/webview.js` (IIFE, browser, minified, elkjs included) and `di
 
 Enforced by `test/unit/boundaries.test.ts` (NFR-QUAL-03):
 
-* `src/model/` imports no `vscode` and nothing outside `src/model/` (plus `ajv` in `schema.ts`). Only `citations.ts`, `git.ts`, `runFolder.ts`, `discovery.ts`, `session.ts` may import `node:fs`, `node:path`, `node:child_process`; `types.ts`, `tolerant.ts`, `checks.ts`, `leaderboard.ts`, `messages.ts` import no Node built-in.
+* `src/model/` imports no `vscode` and nothing outside `src/model/` (plus `ajv` in `schema.ts`). Only the modules listed as Node modules in `test/unit/boundaries.test.ts` may import `node:fs`, `node:path`, `node:child_process` or `node:crypto`; the browser-safe ones listed there import no Node built-in, because the webviews and the diagram page bundle them.
 * `src/layout/` is browser-safe and may import only `src/model/` and elkjs.
-* `src/agent/`, `src/extension/` and `webview/` sit on top of `model` and `layout`. No module makes network requests (`test/unit/noNetwork.test.ts`, NFR-SEC-02).
+* `src/agent/`, `src/cli/`, `src/extension/`, `webview/` and `action/src/` sit on top of `model` and `layout`. No module in `src/` or `webview/` makes network requests; in `action/src/` only `github.ts` does, and nothing there starts a program (`test/unit/noNetwork.test.ts`, NFR-SEC-02, PRC-04).
 
 ## Flows
 
@@ -227,6 +279,18 @@ sequenceDiagram
   end
 ```
 
+### Headless run in the sidebar (UI-02)
+
+The sidebar's Generate (or Refresh) states any install, repair or data note under the button and acts on them with the click (SET-03). In sidebar mode `launchTask` spawns `claude -p "<prompt>" --output-format stream-json --verbose --permission-mode dontAsk --allowedTools Read Grep Glob <the skill's script rules> Edit(./.archify/**)` or `codex exec --json --sandbox workspace-write "<prompt>"` by absolute path. `Runs` feeds each stdout chunk to the agent's parser, polls the new run folder's `run.json`, and on exit records agent, mode, tokens and cost there and opens the accepted map. Denials appear with "Run in terminal instead". In terminal mode the card follows `run.json` alone (CST-04).
+
+### Freshness (FRS-01 to FRS-03)
+
+`validate.mjs` writes `fingerprints.json` on acceptance. When a map loads, and whenever a file it cites changes, `FreshnessService` classifies each citation against the code (renames through `git diff -M --name-status <revision>`); the panel badges edited and missing boxes, shows the header, and opens moved citations at their new lines; the maps list and status bar show the count.
+
+### Check (PRC-01) in the CLI, the Action and Review
+
+`runCheck` reads `sustain.config.json`, picks the map (`--map`, the config's `map`, else the newest unfocused accepted run), diffs from the merge-base of the base and the head (or the working tree with untracked files), reads the code at the head with `git cat-file`, and returns the delta report and its verdict. The CLI prints it, the Action comments it, and Review shows it in the sidebar and on the map.
+
 ### Watching
 
 A `FileSystemWatcher` per workspace folder feeds a 300 ms debounce; each changed `candidate.json` then reloads the panel (its file changed), empties it ("This diagram was deleted."), switches it to a newer candidate of the same folder, or announces the new candidate with "Open" ([ADR 0027](adr/0027-navigation-and-watching-details.md)).
@@ -244,6 +308,19 @@ A `FileSystemWatcher` per workspace folder feeds a 300 ms debounce; each changed
 | webview → host | `{type: "ready"}` | The page started; the host (re)sends the current state. |
 | webview → host | `{type: "openSource", componentId, index}` | Open `sources[index]` of that component (node click: index 0; tooltip entry: its index). |
 
+Since v0.3 the map also takes:
+
+| Direction | Message | Meaning |
+|---|---|---|
+| host → webview | `{type: "empty", message, action?: "mapFolder"}` | An empty map may offer "Map this folder" (UI-03). |
+| host → webview | `{type: "highlight", ids, file, follow}` | Mark the boxes citing `file` (repository-relative) or the focused box; `follow` is the Follow editor toggle (UI-03, UI-06). |
+| host → webview | `{type: "freshness", boxes, header}` | Each box's `Freshness` and the header, or `null` when no box changed (FRS-03). |
+| host → webview | `{type: "changes", overlay}` | `{scope, strong, weak, uncovered}` or `null` to clear (FRS-04). |
+| host → webview | `{type: "ghosts", ghosts}` | New box candidates `{label, files}` drawn as dashed, view-only boxes with ids `ghost:<n>` (PRC-02). |
+| webview → host | `{type: "setFollow", on}`, `{type: "mapFolder"}`, `{type: "clearChanges"}`, `{type: "refresh"}` | Follow editor, Map this folder, Clear the overlay, Refresh from the freshness header. |
+
+The sidebar receives `{type: "state", state: HomeState}` whole on every change. `HomeState` holds `folders`, `root`, `maps` (`MapItem` with `changed`), `composer` (`agents`, `agent`, `runMode`, `notes`), `run` (`RunCard`), `setup` (SET-02 checks or `null` while running), `session`, `ask` (`AskView`), `review` (`ReviewView`) and `serverNow`. It posts `ready`, `pickFolder`, `setAgent`, `setRunMode`, `generate {focus}`, `cancelRun`, `runInTerminal`, `openMap`, `deleteMap`, `refreshMap`, `exportMap`, `review`, `showFiles`, `addToMap`, `ignoreCandidate`, `fix {check}`, `checkSetup`, `openSession`, `startLearning`, `ask {question}`, `cancelAsk`, `clearAsk`, `openCitation {path, line, endLine}` and `focusBox {id}`. The host checks every file and path a message names before acting on it.
+
 The session panel speaks a parallel protocol (`SessionView` carries only public `session.json` fields plus `serverNow` and the leaderboard):
 
 | Direction | Message | Meaning |
@@ -251,6 +328,18 @@ The session panel speaks a parallel protocol (`SessionView` carries only public 
 | host → webview | `{type: "session", view}` | Render the snapshot: shown run, phase, step, bug counters, score, leaderboard. |
 | host → webview | `{type: "empty", message}` | Show `message` (no renderable state). |
 | webview → host | `{type: "ready"}` | The page started; the host (re)sends the current snapshot. |
+
+## Sidecars and config
+
+| File | Shape | Written by |
+|---|---|---|
+| `.archify/<run>/run.json` | `{schema: 1, kind: "full"|"refresh"|"drill", focus, paths, base, parent, createdAt, skillVersion, phase: "created"|"validating"|"accepted"|"rejected", attempts, finishedAt?, agent?, mode?: "sidebar"|"terminal", tokens?: {input, output, cacheRead, cacheWrite}, costUsd?}` | `repo-facts.mjs` and `refresh-facts.mjs` create it, `validate.mjs` updates phase and attempts, the extension adds agent, mode, tokens and cost ([ADR 0045](adr/0045-run-json-records-each-run.md)). |
+| `.archify/<run>/fingerprints.json` | `{schema: 1, revision, createdAt, citations: [{component, index, path, line?, end_line?, blob, range?, loose?}]}`; `blob` is the git blob id, `range` the SHA-256 of the cited lines without `\r` or trailing whitespace, `loose` the same also without leading whitespace. | `validate.mjs` on acceptance (FRS-01). |
+| `.archify/<run>/evidence.json` | `{schema: 1, findings: [{code: "DeclarationOnly", pointer, component, message}]}` | `validate.mjs` on acceptance (ACC-01). |
+| `.archify/<run>/<slug>.html` | The diagram page: CSP of hashes, the map in `<script type="application/json" id="sustain-data">` as `{title, doc, root, project, repository}`, the inline viewer. | `render-html.mjs`, Export Page, `sustain.mjs export-page` (RCH-01). |
+| `sustain.config.json` | `{map?: "<run>", ignore?: [glob], check?: {failOn?: ["stale"|"new-box"]}, rules?: []}`, unknown keys rejected. | The user; Review's Ignore adds `<folder>/**` (PRC-01, PRC-02). |
+
+The validator's accepted report gains `evidence: [finding]` (ADR 0050). `refresh-facts.mjs` prints `{root, runFolder, draft, base: {runFolder, revision, createdAt, fingerprints}, paths, boxes, stale, changes: [{path, added, deleted, covered}], uncovered, newFolders}`. `sustain.mjs check` prints `{map, base, head, mergeBase, touched: {strong, weak}, stale, uncovered, candidates: [{dir, files: [{path, added}], lines, label}], gone, result, reasons}`.
 
 ## On-disk layout
 
@@ -266,8 +355,14 @@ The session panel speaks a parallel protocol (`SessionView` carries only public 
 | `dist/skills/sustain-bugfix/` | `SKILL.md`, `references/bug-taxonomy.md`, `agents/openai.yaml`, `scripts/session.mjs`, `scripts/session-hook.mjs`. |
 | `<repo>/.devin/hooks.v1.json` | Devin lifecycle hooks wiring `session-hook.mjs` — `PreToolUse` blocklist for the hunt phase plus `UserPromptSubmit`/`PostCompaction`/`SessionStart` context injection ([ADR 0032](adr/0032-hunt-phase-enforcement-via-devin-hooks.md)). The extension merges Sustain's entries (marker: `command` containing `.agents/skills/sustain-`), preserving everything else ([ADR 0040](adr/0040-hooks-merge-panel-read-side-and-devin-detection.md)). |
 | `dist/webview.js`, `dist/webview.css` | Architecture webview bundle (IIFE, elkjs included, minified) and stylesheet. |
+| `dist/sidebar.js`, `dist/sidebar.css` | The sidebar's bundle and stylesheet (UI-01). |
+| `dist/page.js`, `dist/page.css` | The diagram page's script and styles, which Export Page inlines (RCH-01). |
+| `dist/skills/sustain-refresh/` | `SKILL.md`, `agents/openai.yaml`, the shared `references/`, `scripts/refresh-facts.mjs`, `scripts/validate.mjs`, `scripts/render-html.mjs` (FRS-05). |
+| `dist/skill-hashes.json` | `{version, skills: {name: {path: sha256}}}`, the integrity reference (SAF-01). |
+| `dist/cli/sustain.mjs` | The core CLI (RCH-03). |
+| `action/dist/index.js` | The committed Action bundle (PRC-04). |
 | `dist/session-webview.js`, `dist/session-webview.css` | Session-panel bundle and stylesheet; `localResourceRoots` is `dist/` for both panels. |
-| `out/e2e/`, `out/test-scripts/` | Test builds (gitignored, never packaged): the e2e suite (scenarios `single`, `empty`, `multi`, each in its own VS Code launch), and the script bundles the unit tests run ([ADR 0016](adr/0016-build-test-and-docs-check-harness.md)). |
+| `out/e2e/`, `out/test-scripts/`, `out/test-dist/` | Test builds (gitignored, never packaged): the e2e suite (scenarios `single`, `empty`, `multi`, each in its own VS Code launch), and the script bundles the unit tests run ([ADR 0016](adr/0016-build-test-and-docs-check-harness.md)). |
 | `sustain-<version>.vsix` | `npm run package` (`vsce package --no-dependencies`, build via `vscode:prepublish`); `.vscodeignore` ships only `dist/**`, `package.json`, `README.md`, `THIRD_PARTY_NOTICES.md` (and `LICENSE` if one is added). |
 
 ## Trust boundaries
@@ -278,7 +373,11 @@ The session panel speaks a parallel protocol (`SessionView` carries only public 
 * **Session secrets:** `manifest.json` (seeded-bug locations, kinds and hunks) is read only by `session.mjs`; the session panel and webview see `session.json` + `events.jsonl` exclusively (`sessionFiles.ts`, [ADR 0034](adr/0034-sustain-folder-layout-and-session-state-files.md)).
 * **Git:** fixed argv, no shell, no terminal prompts, stdin closed; HTTP(S) credentials are stripped from the origin before it is written anywhere (`git.ts`).
 * **Agent launch:** the prompt is a single argv element of the resolved CLI, never parsed by a shell ([ADR 0020](adr/0020-launch-agent-terminal-with-shellpath-and-shellargs.md)). Writes by the agent still need approval in Claude Code ([ADR 0005](adr/0005-manual-invocation-and-claude-pre-approvals.md)).
-* **Webview CSP:** `default-src 'none'; script-src 'nonce-…'; style-src <cspSource>`; `localResourceRoots` is `dist/`; the webview receives the diagram JSON only, never file contents (`html.ts`, `panel.ts`, NFR-SEC-01).
+* **Webview CSP:** `default-src 'none'; script-src 'nonce-…'; style-src <cspSource>`; `localResourceRoots` is `dist/`; the webview receives the diagram JSON only, never file contents (`html.ts`, `panel.ts`, NFR-SEC-01). The sidebar uses the same policy.
+* **Diagram page:** `default-src 'none'` with the inline script and style allowed by SHA-256 hash; the map's JSON is escaped; links only for paths the citation rule and the deny-list accept; the absolute root only in a local page (RCH-01).
+* **Headless agents:** spawned by absolute path without a shell; Claude Code gets an exact tool list and `dontAsk`, Codex a sandbox, Ask read-only tools; no permission-skipping flag anywhere (SAF-04, UI-02, UI-06).
+* **Agent output:** stream text, Ask answers and map labels reach the webviews and the pull request comment as text only; Ask citations are checked again by the host before a line opens.
+* **Network:** the Action's GitHub client is the only network use in the repository's shipped code; it sends the comment with the workflow's token and nothing else (PRC-04).
 
 ## Decisions
 
