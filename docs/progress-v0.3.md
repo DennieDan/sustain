@@ -15,7 +15,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | I1 Cost | Closed pending owner (CST-06 `[smoke]`) | `777db40` |
 | I2 Accuracy | Closed pending owner (ACC-04 `[smoke]`) | `949d927` |
 | I3 Architecture guardrails | Closed pending owner (PRC-05 `[smoke]`) | `e97077f` |
-| I4 Skill retention | In progress | |
+| I4 Skill retention | Closed pending owner (LRN-01 `[smoke]`) | `5b7a19c` |
 | I5 Cloud for teams | Not started | |
 | I6 Polish and reach | Not started | |
 | I7 IntelliJ plugin | Not started | |
@@ -476,18 +476,18 @@ Done when: Rule violations show on the map, in Problems and in PR checks.
 
 ### I4 proposal (2026-10-19)
 
-| Location | Change | Est. LoC |
-|---|---|---|
-| `src/model/practice.ts` | SKL-01: the prompt that asks for three questions about a scope, and the prompt that grades one answer; the checks on the agent's JSON, three questions each with `question`, `key` and a `path:line` citation, and a grade of `correct`, `partial` or `wrong` with one sentence and a citation | +180 |
-| `src/extension/practice.ts`, `package.json` | SKL-01: `Sustain: Check My Understanding` and the box menu's "Check my understanding"; the scopes this branch's changes, uncommitted changes and a box; UI-06's read-only agent for the questions and for each grade; the keys kept in the extension host; results in workspace state | +260 |
-| `src/model/messages.ts`, `webview/home.ts`, `webview/sidebar.css` | SKL-01: the sidebar's Practice section with the three scopes, the questions with an answer box each, and each grade with its sentence and code link | +170 |
-| `src/model/tour.ts`, `src/model/schemas/tour.schema.json`, `src/agent/tour-record.ts`, `skills/sustain-tour/` | SKL-02: `tour.json` with 4–12 ordered stops, each checked against the map's boxes and the code; `tour-record.mjs`; the `sustain-tour` skill | +260 |
-| `src/extension/tour.ts`, `webview/viewer.ts`, `webview/tour.ts`, `package.json` | SKL-02: the map's title-bar Tour and the maps list's Create tour; the player highlights the stop's box, opens its code beside, explains, asks and reveals the answer, with Back, Next and End | +250 |
-| `src/model/upload.ts`, upload schema, `src/cli/commands.ts`, `cloud/src/lib/mapPage.ts`, `webview/page.ts` | SKL-02: `publish` uploads the tour as a sidecar, and the cloud's map page plays it with each stop's code opening on GitHub | +80 |
-| `src/model/practiceLog.ts`, `src/extension/practice.ts`, `webview/home.ts` | SKL-03: the Practice section lists bug-hunt sessions from `.sustain/`, and explain-back scores and finished tours from workspace state, newest first with dates | +120 |
-| `src/extension/learn.ts`, `src/extension/hooksFiles.ts`, `src/agent/session-hook.ts` | LRN-01: Start Learning offers Claude Code, Codex and Devin. A launch merges its agent's hooks, into `.claude/settings.local.json` (matcher `Edit\|Write\|NotebookEdit\|Agent`), `.codex/hooks.json` (matcher `apply_patch`) or `.devin/hooks.v1.json`, and removes Sustain's entries from the other two, so the Devin CLI meets one entry. Removal at the session's end covers all three. The hook blocks the Claude Code and Codex tool names and finds the repository from its event's `cwd` | +200 |
-| `src/agent/modes/bugfix/mutations.ts`, `src/model/session.ts`, `src/agent/session.ts`, `skills/sustain-bugfix/references/bug-taxonomy.md` | LRN-02: Java rule tables for off-by-one and flipped comparison, with generic type arguments left alone, plus `and-or-swap` (T1) and `reference-equality` (T2); `inject` takes `.java` files and the kinds of their language | +150 |
-| `docs/adr/` | ADRs for the explain-back keys staying in the extension host, `tour.json` and tours in the cloud, hunt enforcement on Claude Code and Codex, and bug kinds per language | 4 ADRs |
+| Location | Change | Est. LoC | Built |
+|---|---|---|---|
+| `src/model/practice.ts` | SKL-01: the prompt that asks for three questions about a scope, and the prompt that grades one answer; the checks on the agent's JSON, three questions each with `question`, `key` and a `path:line` citation, and a grade of `correct`, `partial` or `wrong` with one sentence and a citation | +180 | +217 |
+| `src/extension/practice.ts`, `package.json` | SKL-01: `Sustain: Check My Understanding` and the box menu's "Check my understanding"; the scopes this branch's changes, uncommitted changes and a box; UI-06's read-only agent for the questions and for each grade; the keys kept in the extension host; results in workspace state | +260 | +277 / -2 |
+| `src/model/messages.ts`, `webview/home.ts`, `webview/sidebar.css` | SKL-01: the sidebar's Practice section with the three scopes, the questions with an answer box each, and each grade with its sentence and code link | +170 | +222 / -6 |
+| `src/model/tour.ts`, `src/model/schemas/tour.schema.json`, `src/agent/tour-record.ts`, `skills/sustain-tour/` | SKL-02: `tour.json` with 4–12 ordered stops, each checked against the map's boxes and the code; `tour-record.mjs`; the `sustain-tour` skill | +260 | +250 / -4 with the skill lists and the build |
+| `src/extension/tour.ts`, `webview/viewer.ts`, `webview/tour.ts`, `package.json` | SKL-02: the map's title-bar Tour and the maps list's Create tour; the player highlights the stop's box, opens its code beside, explains, asks and reveals the answer, with Back, Next and End | +250 | +355 / -7 with the panel and the styles |
+| `src/model/upload.ts`, upload schema, `src/cli/commands.ts`, `cloud/src/lib/mapPage.ts`, `webview/page.ts` | SKL-02: `publish` uploads the tour as a sidecar, and the cloud's map page plays it with each stop's code opening on GitHub | +80 | +54 / -10 with the privacy page |
+| `src/model/practiceLog.ts`, `src/extension/practice.ts`, `webview/home.ts` | SKL-03: the Practice section lists bug-hunt sessions from `.sustain/`, and explain-back scores and finished tours from workspace state, newest first with dates | +120 | +115 / -11 |
+| `src/extension/learn.ts`, `src/extension/hooksFiles.ts`, `src/agent/session-hook.ts` | LRN-01: Start Learning offers Claude Code, Codex and Devin. A launch merges its agent's hooks, into `.claude/settings.local.json` (matcher `Edit\|Write\|NotebookEdit\|Agent`), `.codex/hooks.json` (matcher `apply_patch`) or `.devin/hooks.v1.json`, and removes Sustain's entries from the other two, so the Devin CLI meets one entry. Removal at the session's end covers all three. The hook blocks the Claude Code and Codex tool names and finds the repository from its event's `cwd` | +200 | +172 / -39 with `sessionAgents.ts` |
+| `src/agent/modes/bugfix/mutations.ts`, `src/model/session.ts`, `src/agent/session.ts`, `skills/sustain-bugfix/references/bug-taxonomy.md` | LRN-02: Java rule tables for off-by-one and flipped comparison, with generic type arguments left alone, plus `and-or-swap` (T1) and `reference-equality` (T2); `inject` takes `.java` files and the kinds of their language | +150 | +142 / -49 |
+| `docs/adr/` | ADRs for the explain-back keys staying in the extension host, `tour.json` and tours in the cloud, hunt enforcement on Claude Code and Codex, and bug kinds per language | 4 ADRs | ADRs 0059 to 0062 |
 
 Tests the I4 ACs call for:
 - SKL-01: the prompts and the question and grade checks `[unit]`; no answer key in the sidebar's DOM `[dom]`; a stub agent's questions and grade shown in the sidebar `[e2e]`.
@@ -495,6 +495,16 @@ Tests the I4 ACs call for:
 - SKL-03: the log's entries from sessions, explain-backs and tours `[unit]`; the Practice section `[dom]`.
 - LRN-01: the hooks merge and removal for Claude Code and Codex, and the hook's verdicts on their tool names `[unit]`; Start Learning with a stub Claude Code merging its hooks, and a released lock removing them `[e2e]`; one real session per agent `[smoke]`.
 - LRN-02: each Java kind on AB3-style fixtures, with generics, strings and comments left alone `[unit]`.
+
+Where the I4 build differs from the proposal:
+- The explain-back's checks are written in `practice.ts` without a schema file, and they accept a little more text than the prompts ask for. The estimate shown is one Ask run's, said to cover the questions and each grade. Starting a check above the threshold takes a second click, or a modal from the palette; grading an answer does not. A box is picked from the boxes that cite code.
+- A tour's title is at most 100 characters, its question 300 and its answer 400, and each citation names a line. The viewer shows its own Tour button under the toolbar whenever the map has a tour, because the cloud page has no title bar. Create Tour also sits in the map title bar's menu and the palette. The cloud's tour was checked by hand with a scratch script, since the AC names no `[web]` test. The README's title-bar and box-menu rows now list every entry, including ones I3 had added.
+- The practice log shows at most 20 entries, dated by day. Bug hunts appear once completed or abandoned. Clear hides an explain-back from the section and keeps it in the log. Tours are logged when Finish is pressed in VS Code.
+- The agent pick and each agent's argv live in a new `sessionAgents.ts`. Claude Code and Codex get the PreToolUse hook only. The context hooks stay Devin's. Their hook runs by absolute path, also for a project install, and finds the repository through `CLAUDE_PROJECT_DIR` or by walking up from the event's `cwd`. Each launch removes Sustain's entries from the other agents' files, which is how the Devin CLI meets one entry.
+- The Java kinds are named `and-or-swap` and `reference-equality`. Generic type arguments are recognised by their shape, so a comparison that looks like one loses its target. `verify` checks that Java still compiles only through `--check-cmd`.
+- Committed `render-html.mjs` scripts were rebuilt in SKL-02 and SKL-03, because the diagram page inlines the viewer. The first SKL-01 e2e break changed nothing observable (on a repository whose branch is `main`, this branch and uncommitted give the same diff), so a second break was used.
+
+50 deliberate breaks across I4 each failed their tests, including four e2e breaks for SKL-01, SKL-02 (two) and LRN-01.
 
 Done when: Explain-back, tours and sessions on every agent work.
 
@@ -544,6 +554,7 @@ Done when: The plugin opens cited lines on AB3.
 - 2026-10-18 — I1 closed pending owner. Gates: `npm run check` exit 0 (1113 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after CST-03 (single 75, empty 3, multi 2 each); later I1 commits touch only the skills' fact scripts, the bench and docs. Cloud untouched since D6. 41 deliberate breaks across I1. One check run under a load average of 15 from another project's browsers timed out three unrelated tests; they passed alone and in the next full run. CST-06 `[smoke]` waits for the owner.
 - 2026-10-19 — I2 closed pending owner. Gates: `npm run check` exit 0 (1134 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after ACC-06 (single 76, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 7 passed and one failed on its 5 s wait for a signed-out page to draw while the machine was loaded. That spec passed alone in 1.3 s, and the suite now waits up to 15 s. 48 deliberate breaks across I2. ACC-04 `[smoke]` waits for the owner.
 - 2026-10-19 — I3 closed pending owner. Gates: `npm run check` exit 0 (1167 tests, 58 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after PRC-05 (single 81, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 8 passed. The web run took 4.7 minutes, because after the machine restarted a connection to an unused local port waited for its timeout instead of being refused. 52 deliberate breaks across I3. PRC-05 `[smoke]` waits for the owner.
+- 2026-10-19 — I4 closed pending owner. Gates: `npm run check` exit 0 (1219 tests, 62 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 after LRN-02 (single 85, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0 and cloud `[web]` 8 passed after SKL-02, the last I4 change to the cloud. 50 deliberate breaks across I4. LRN-01 `[smoke]` waits for the owner.
 - 2026-10-18 — `architecture.md` had not been updated per feature during D2 to D4, as spec §7 asks; it was brought up to date at D4's close (`29f183b`) and kept current since. The layout fixtures test got a 30 s timeout: it lays out 48 diagrams and passed 5 s only narrowly when the whole suite ran in parallel.
 
 - 2026-10-18 — D4 closed pending owner. Gates: `npm run check` exit 0 (1066 tests, 53 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each). Every new test was seen to fail once with its behaviour broken: 18 deliberate breaks across D4. PRC-04 waits for a committed map of this repository and a push (see Waiting).
