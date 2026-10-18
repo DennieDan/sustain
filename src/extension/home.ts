@@ -225,6 +225,12 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
       case "suggestRules":
         await suggestRulesCommand(this.rules, root);
         return;
+      case "compareBase":
+        this.review.compareBase();
+        return;
+      case "updateBranchMap":
+        await this.review.updateBranchMap();
+        return;
       case "showFiles":
         await this.review.showFiles(message.dir);
         return;

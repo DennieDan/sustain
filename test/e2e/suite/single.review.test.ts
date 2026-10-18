@@ -1,5 +1,6 @@
 // PRC-02: Review changes on a temporary repository branch lists the new box candidates, draws
 // them on the map, launches a refresh limited to a candidate, and writes Ignore into the config.
+// PRC-03: a branch with a newer map compares it with the base map and updates it for the review.
 import * as assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -114,5 +115,39 @@ suite("PRC-02 Review changes", () => {
     assert.deepEqual(JSON.parse(readFileSync(join(root, "sustain.config.json"), "utf8")), { ignore: ["src/payments/**"] });
     assert.deepEqual(hook.reviewReport()!.candidates, []);
     assert.ok(vscode.window.tabGroups.all.flatMap((group) => group.tabs).some((tab) => tab.label.startsWith("sustain.config.json: ignore src/payments/")), "the diff was shown");
+  });
+  test("PRC-03 a branch with a newer map compares it with the base map, and updates it for its candidates", async () => {
+    const BRANCH = "architecture-branch-20261019-090000";
+    write(
+      root,
+      `.archify/${BRANCH}/candidate.json`,
+      JSON.stringify({
+        meta: { title: "Shop" },
+        components: [
+          { id: "api", type: "backend", label: "API", sources: [{ path: "src/api/handler.ts", line: 1 }] },
+          { id: "payments", type: "backend", label: "Payments", sources: [{ path: "src/payments/a.ts", line: 1 }] },
+        ],
+        connections: [{ from: "api", to: "payments" }],
+      }),
+    );
+    for (const name of ["a", "b", "c"]) write(root, `src/billing/${name}.ts`, `export const ${name} = 1;\n`);
+    git(root, "add", "-f", ".");
+    git(root, "commit", "-qm", "branch map");
+    await reviewBranch();
+    assert.equal(hook.reviewReport()!.map, BRANCH);
+    const review = hook.homeState().state?.review;
+    assert.deepEqual([review?.branchMap, review?.canUpdate], [{ map: BRANCH, base: RUN }, true]);
+
+    await hook.postFromHome({ type: "compareBase" });
+    const compare = hook.panelCompare();
+    assert.match(compare?.against ?? "", /^the base map at [0-9a-f]{7}$/);
+    assert.deepEqual(compare?.diff.boxes.added, ["payments"]);
+    assert.equal(hook.panelState().file, join(root, ".archify", BRANCH, "candidate.json"));
+
+    const opened = nextTerminal();
+    await hook.postFromHome({ type: "updateBranchMap" });
+    const terminal = await opened;
+    terminals.push(terminal);
+    assert.deepEqual((terminal.creationOptions as vscode.TerminalOptions).shellArgs, [`/sustain-refresh --from ${BRANCH} --paths src/billing`]);
   });
 });

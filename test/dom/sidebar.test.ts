@@ -343,6 +343,8 @@ describe("PRC-02 Review changes", () => {
     error: null,
     counts: { touched: 2, stale: 1, gone: 0, uncovered: 4, candidates: 1, arrows: 0 },
     candidates: [{ dir: "src/payments", label: "payments", lines: 240, files: ["src/payments/a.ts", "src/payments/b.ts", "src/payments/c.ts"] }],
+    branchMap: null,
+    canUpdate: true,
   };
 
   test("the section shows the counts and each candidate's actions", () => {
@@ -359,7 +361,7 @@ describe("PRC-02 Review changes", () => {
   });
 
   test("an error is shown, and a folder without maps has no section", () => {
-    home.render(state({ maps: [map({})], review: { scope: "", error: "No common commit", counts: null, candidates: [] } }));
+    home.render(state({ maps: [map({})], review: { scope: "", error: "No common commit", counts: null, candidates: [], branchMap: null, canUpdate: false } }));
     expect(text(".review__error")).toEqual(["No common commit"]);
     home.render(state({ maps: [] }));
     expect(container.querySelector(".review")).toBeNull();

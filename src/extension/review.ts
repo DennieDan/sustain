@@ -7,10 +7,14 @@ import * as vscode from "vscode";
 import { rangeOf } from "../model/changes";
 import { mainMap, runCheck, type CheckReport } from "../model/check";
 import { CONFIG_FILE, withIgnored } from "../model/config";
-import { defaultBranch } from "../model/git";
+import { baseMap, branchPaths, newerRun } from "../model/branchMaps";
+import { diffMaps } from "../model/diff";
+import { defaultBranch, fileAt } from "../model/git";
+import { parseDiagram } from "../model/tolerant";
 import type { ReviewView } from "../model/messages";
 import { ARCHIFY_DIR, CANDIDATE_FILE } from "../model/runFolder";
 import { chosenAgent, foundAgents } from "./generate";
+import { readMap } from "./compare";
 import { ArchitecturePanel } from "./panel";
 import { configFile, configText, confirmWrite } from "./previewWrite";
 import { refreshArchitectureCommand } from "./refresh";
@@ -28,6 +32,8 @@ export class Review implements vscode.Disposable {
   /** The scope of the last run, so Ignore can run it again. */
   private lastScope: { scope: string; base: string; head: string | undefined } | null = null;
   private error: string | null = null;
+  /** PRC-03: the reviewed map when it is newer than the main map at the merge-base. */
+  private branch: { map: string; base: string; mergeBase: string } | null = null;
   private readonly changed = new vscode.EventEmitter<void>();
 
   readonly onDidChange = this.changed.event;
@@ -38,7 +44,7 @@ export class Review implements vscode.Disposable {
   ) {}
 
   view(root: string | null): ReviewView | null {
-    if (this.error !== null) return { scope: "", error: this.error, counts: null, candidates: [] };
+    if (this.error !== null) return { scope: "", error: this.error, counts: null, candidates: [], branchMap: null, canUpdate: false };
     if (this.result === null || this.result.root !== root) return null;
     const { report, scope } = this.result;
     return {
@@ -53,6 +59,8 @@ export class Review implements vscode.Disposable {
         arrows: report.arrows.length,
       },
       candidates: report.candidates.map((candidate) => ({ dir: candidate.dir, label: candidate.label, lines: candidate.lines, files: candidate.files.map((file) => file.path) })),
+      branchMap: this.branch === null ? null : { map: this.branch.map, base: this.branch.base },
+      canUpdate: report.candidates.length + report.stale.length + report.gone.length > 0,
     };
   }
 
@@ -97,6 +105,8 @@ export class Review implements vscode.Disposable {
     }
     this.error = null;
     this.result = { root, scope, report: outcome.report };
+    const mainAtBase = baseMap(root, outcome.report.mergeBase);
+    this.branch = mainAtBase !== null && newerRun(outcome.report.map, mainAtBase) ? { map: outcome.report.map, base: mainAtBase, mergeBase: outcome.report.mergeBase } : null;
     this.lastScope = { scope, base, head };
     const file = join(root, ARCHIFY_DIR, outcome.report.map, CANDIDATE_FILE);
     const map = ArchitecturePanel.show(this.context.extensionUri, root, file, true);
@@ -109,9 +119,37 @@ export class Review implements vscode.Disposable {
     this.changed.fire();
   }
 
+  /** PRC-03 "Compare with base map": the branch's map, compared with the main map at the merge-base. */
+  compareBase(): void {
+    if (this.result === null || this.branch === null) return;
+    const { root } = this.result;
+    const { map, base, mergeBase } = this.branch;
+    const older = fileAt(root, mergeBase, `${ARCHIFY_DIR}/${base}/${CANDIDATE_FILE}`);
+    const parsed = older === null ? null : parseDiagram(older.toString("utf8"));
+    const panel = ArchitecturePanel.show(this.context.extensionUri, root, join(root, ARCHIFY_DIR, map, CANDIDATE_FILE), true);
+    const shown = panel.components().length > 0 ? readMap(join(root, ARCHIFY_DIR, map, CANDIDATE_FILE)) : null;
+    if (parsed === null || !parsed.ok || shown === null) {
+      void vscode.window.showErrorMessage(`Cannot read the base map ${base} at ${mergeBase.slice(0, 7)}.`);
+      return;
+    }
+    panel.showCompare({ against: `the base map at ${mergeBase.slice(0, 7)}`, diff: diffMaps(parsed.diagram, shown) });
+  }
+
+  /** PRC-03 "Update map for this branch": a refresh of the reviewed map limited to its candidates and stale boxes. */
+  async updateBranchMap(): Promise<void> {
+    if (this.result === null) return;
+    const { root, report } = this.result;
+    const file = join(root, ARCHIFY_DIR, report.map, CANDIDATE_FILE);
+    const paths = branchPaths(report, readMap(file)?.components ?? []);
+    if (paths.length === 0) return;
+    this.runs.dismiss();
+    await refreshArchitectureCommand(this.context, this.runs, file, paths, chosenAgent(this.context, foundAgents()) ?? undefined);
+  }
+
   private fail(reason: string): void {
     this.error = reason;
     this.result = null;
+    this.branch = null;
     this.changed.fire();
   }
 

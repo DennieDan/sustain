@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { CheckReport } from "../model/check";
+import type { MapDiff } from "../model/diff";
 import type { ChangeOverlay, Ghost, HomeState, HomeWebviewMessage, RunCard, SessionWebviewMessage, WebviewMessage } from "../model/messages";
 import type { MapFreshness } from "../model/staleness";
 import { Ask } from "./ask";
@@ -39,6 +40,8 @@ export interface TestHook {
   /** The change overlay on the shown map (FRS-04). */
   panelChanges(): ChangeOverlay | null | undefined;
   /** The new box candidates drawn on the map, and the last review's report (PRC-02). */
+  /** The comparison on the shown map (FRS-07, PRC-03). */
+  panelCompare(): { against: string; diff: MapDiff } | null | undefined;
   panelGhosts(): Ghost[] | undefined;
   reviewReport(): CheckReport | null;
   /** Delivers `message` as if the webview had posted it; resolves when it has been handled. */
@@ -129,6 +132,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     panelHighlight: () => ArchitecturePanel.current?.highlightState,
     panelFreshness: () => ArchitecturePanel.current?.freshnessState,
     panelChanges: () => ArchitecturePanel.current?.changeOverlay,
+    panelCompare: () => ArchitecturePanel.current?.comparison,
     panelGhosts: () => ArchitecturePanel.current?.ghostBoxes,
     reviewReport: () => review.report,
     postFromWebview: async (message) => ArchitecturePanel.current?.handleMessage(message),

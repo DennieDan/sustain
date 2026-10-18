@@ -312,6 +312,11 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
         list.append(entry);
       }
       block.append(list);
+      // PRC-03: a branch's own map, and refreshing it for what the review found.
+      const branch = el("div", "map__actions review__branch");
+      if (review.branchMap) branch.append(button("Compare with base map", "link", () => post({ type: "compareBase" })));
+      if (review.canUpdate) branch.append(button("Update map for this branch", "link", () => post({ type: "updateBranchMap" })));
+      if (branch.childElementCount > 0) block.append(branch);
     }
     reviewSlot.append(block);
   }

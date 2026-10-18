@@ -189,6 +189,10 @@ export interface ReviewView {
   error: string | null;
   counts: { touched: number; stale: number; gone: number; uncovered: number; candidates: number; arrows: number } | null;
   candidates: { dir: string; label: string; lines: number; files: string[] }[];
+  /** PRC-03: the branch's map and the base map, when the branch's map is the newer. */
+  branchMap: { map: string; base: string } | null;
+  /** PRC-03: whether there are candidates or stale boxes for "Update map for this branch". */
+  canUpdate: boolean;
 }
 
 /** Everything the sidebar renders, sent whole on every change. */
@@ -240,6 +244,8 @@ export type HomeWebviewMessage =
   | { type: "exportMap"; file: string }
   | { type: "review" }
   | { type: "suggestRules" }
+  | { type: "compareBase" }
+  | { type: "updateBranchMap" }
   | { type: "showFiles"; dir: string }
   | { type: "addToMap"; dir: string }
   | { type: "ignoreCandidate"; dir: string }
