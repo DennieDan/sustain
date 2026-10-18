@@ -4,11 +4,12 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { checkCitations } from "../model/citations";
 import { assertWritable } from "../model/confine";
+import { fingerprint, writeFingerprints } from "../model/fingerprints";
 import { collectGitFacts, repositoryFromGit } from "../model/git";
 import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftLocation } from "../model/runFolder";
 import { newRunRecord, readRunRecord, RUN_FILE, updateRunRecord, type RunRecord } from "../model/runRecord";
 import { checkSubmission, REMOVED_FIELD_MESSAGE } from "../model/submission";
-import { stringifyDocument, type Issue } from "../model/types";
+import { stringifyDocument, type ArchifyDoc, type Issue } from "../model/types";
 
 const MAX_LISTED_ERRORS = 50;
 const HINT = "Fix exactly these errors and run the validator again.";
@@ -96,6 +97,7 @@ function main(args: string[]): number {
   try {
     assertWritable(location.root, join(dirname(location.draft), CANDIDATE_FILE));
     publishCandidate(location.draft, stringifyDocument(value));
+    writeFingerprints(location.root, dirname(location.draft), fingerprint(value as ArchifyDoc, location.root, git?.head ?? null));
     record(location, { phase: "accepted", finishedAt: new Date().toISOString() });
   } catch (error) {
     return usageError(`cannot publish ${CANDIDATE_FILE}: ${(error as Error).message}`);

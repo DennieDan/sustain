@@ -87,7 +87,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
     const { root, draftPath } = setup(draftDoc());
     const run = runScript("validate", [draftPath], { cwd: tempDir() });
     expect(run.status).toBe(0);
-    expect(runFiles(root)).toEqual(["candidate.json", "run.json"]);
+    expect(runFiles(root)).toEqual(["candidate.json", "fingerprints.json", "run.json"]);
   });
 
   test("malformed JSON is a rejection at pointer \"\"", () => {
@@ -124,6 +124,26 @@ describe("FR-VAL-01 CLI exit paths", () => {
     expect(runScript("validate", [DRAFT], { cwd: root }).status).toBe(0);
     expect(runJson()).toMatchObject({ phase: "accepted", attempts: 2 });
     expect(Date.parse(runJson().finishedAt)).not.toBeNaN();
+  });
+
+  test("FRS-01 an accepted run gets fingerprints with the revision; a rejected run gets none", () => {
+    const doc = draftDoc();
+    doc.components[1]!["type"] = "nope";
+    const { root } = setup(doc);
+    git(root, "init", "-q");
+    git(root, "add", ".");
+    git(root, "commit", "-q", "-m", "init");
+    expect(runScript("validate", [DRAFT], { cwd: root }).status).toBe(1);
+    expect(runFiles(root)).not.toContain("fingerprints.json");
+
+    setup(draftDoc(), { root });
+    expect(runScript("validate", [DRAFT], { cwd: root }).status).toBe(0);
+    const prints = JSON.parse(readFileSync(join(root, ".archify", RUN, "fingerprints.json"), "utf8"));
+    expect(prints.revision).toBe(git(root, "rev-parse", "HEAD").trim());
+    expect(prints.citations.map((print: Json) => [print["component"], print["index"], print["path"], print["blob"]])).toEqual([
+      ["web", 0, "src/web.ts", git(root, "hash-object", "--no-filters", "src/web.ts").trim()],
+      ["api", 0, "src/api.ts", git(root, "hash-object", "--no-filters", "src/api.ts").trim()],
+    ]);
   });
 
   test("CST-04 a read-only run folder is an I/O error: exit 2 and the draft stays", () => {
@@ -281,7 +301,7 @@ describe("FR-VAL-06 publish", () => {
   test("CST-04 an accepted run leaves candidate.json and run.json, the candidate written as 2-space JSON with a trailing newline", () => {
     const { root } = setup(draftDoc());
     expect(runScript("validate", [DRAFT], { cwd: root, env: envWithoutGit() }).status).toBe(0);
-    expect(runFiles(root)).toEqual(["candidate.json", "run.json"]);
+    expect(runFiles(root)).toEqual(["candidate.json", "fingerprints.json", "run.json"]);
     const text = readFileSync(join(root, ".archify", RUN, "candidate.json"), "utf8");
     expect(text).toBe(`${JSON.stringify(JSON.parse(text), null, 2)}\n`);
   });
