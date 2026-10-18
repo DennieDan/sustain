@@ -41,7 +41,12 @@ export type HostMessage =
   /** VWR-03: open the finder, for Find in the map's title bar. */
   | { type: "find" }
   /** VWR-05: the run folder of the map a drill-down came from, when that map still exists, else `null`. */
-  | { type: "overview"; parent: string | null };
+  | { type: "overview"; parent: string | null }
+  /** VWR-06: draw the shown map as an image for Save Image, answered by the request's number. */
+  | { type: "image"; request: number; format: ImageFormat };
+
+/** The formats Save Image writes (VWR-06). */
+export type ImageFormat = "svg" | "png";
 
 /** A new box candidate on the map (PRC-02). */
 export interface Ghost {
@@ -81,7 +86,9 @@ export type WebviewMessage =
   /** SKL-03: the tour was played to its last stop and finished. */
   | { type: "tourFinished" }
   /** VWR-05: Back to overview. */
-  | { type: "backToOverview" };
+  | { type: "backToOverview" }
+  /** VWR-06: the SVG text or the PNG data URL of the shown map, or `null` while no map is shown. */
+  | { type: "image"; request: number; data: string | null };
 
 /** What the session webview renders — public `session.json` fields plus the leaderboard. */
 export interface SessionView {

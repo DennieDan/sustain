@@ -614,3 +614,20 @@ describe("VWR-04 keyboard and screen readers", () => {
     expect(posted).toEqual([{ type: "openSource", componentId: "web", index: 0 }]);
   });
 });
+
+describe("VWR-06 image export", () => {
+  test("Save Image's request is answered with the shown map as SVG, and with nothing while no map is shown", async () => {
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    posted.length = 0;
+    send({ type: "image", request: 7, format: "svg" });
+    expect(posted).toEqual([{ type: "image", request: 7, data: expect.stringContaining("<svg") }]);
+    const image = new DOMParser().parseFromString((posted[0] as { data: string }).data, "image/svg+xml");
+    expect([...image.querySelectorAll("text")].map((label) => label.textContent)).toEqual(["Web", "API"]);
+
+    send({ type: "empty", message: "No map of this folder yet." });
+    posted.length = 0;
+    send({ type: "image", request: 8, format: "png" });
+    expect(posted).toEqual([{ type: "image", request: 8, data: null }]);
+  });
+});

@@ -261,6 +261,12 @@
         "icon": "$(globe)"
       },
       {
+        "command": "sustain.saveImage",
+        "title": "Save Image",
+        "category": "Sustain",
+        "icon": "$(device-camera)"
+      },
+      {
         "command": "sustain.auditMap",
         "title": "Audit Map",
         "category": "Sustain",
@@ -484,6 +490,11 @@
           "command": "sustain.compareMaps",
           "when": "activeWebviewPanelId == 'sustain.architecture'",
           "group": "z_sustain@0"
+        },
+        {
+          "command": "sustain.saveImage",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "z_sustain@3"
         }
       ],
       "explorer/context": [

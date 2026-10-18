@@ -5,7 +5,7 @@ import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { citingBoxes } from "../model/citing";
 import { freshnessHeader } from "../model/home";
-import type { ChangeOverlay, Ghost, GhostArrow, HostMessage, WebviewMessage } from "../model/messages";
+import type { ChangeOverlay, Ghost, GhostArrow, HostMessage, ImageFormat, WebviewMessage } from "../model/messages";
 import { AUDIT_FILE } from "../model/audit";
 import type { MapDiff } from "../model/diff";
 import { EVIDENCE_FILE } from "../model/evidence";
@@ -28,6 +28,9 @@ export const VIEW_TYPE = "sustain.architecture";
 type Shown = { kind: "diagram"; doc: unknown; diagram: ViewDiagram } | { kind: "empty"; message: string; action?: "mapFolder" };
 
 export const NO_MAP_MESSAGE = "No map of this folder yet.";
+
+/** How long Save Image waits for the map to draw itself (VWR-06). */
+const IMAGE_TIMEOUT_MS = 10_000;
 
 /** `file` relative to `root`, `/`-separated, or `null` when it lies outside. */
 function repoRelative(root: string, file: string): string | null {
@@ -378,6 +381,30 @@ export class ArchitecturePanel {
     void this.panel.webview.postMessage(message);
   }
 
+  /** VWR-06: Save Image's requests the map has yet to answer. */
+  private readonly images = new Map<number, (data: string | null) => void>();
+  private lastImage = 0;
+
+  /** VWR-06: the shown map drawn as `format`, or `null` when it shows no map or gives no answer in time. */
+  image(format: ImageFormat): Promise<string | null> {
+    const request = ++this.lastImage;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => this.answerImage(request, null), IMAGE_TIMEOUT_MS);
+      this.images.set(request, (data) => {
+        clearTimeout(timer);
+        resolve(data);
+      });
+      const message: HostMessage = { type: "image", request, format };
+      void this.panel.webview.postMessage(message);
+    });
+  }
+
+  private answerImage(request: number, data: string | null): void {
+    const resolve = this.images.get(request);
+    this.images.delete(request);
+    resolve?.(data);
+  }
+
   /** Opens stop `index`'s cited lines beside the map (SKL-02). */
   private async openTourStop(index: number): Promise<void> {
     const stop = Number.isInteger(index) ? this.tour?.[index] : undefined;
@@ -483,6 +510,9 @@ export class ArchitecturePanel {
       case "backToOverview":
         if (this.parent !== null) ArchitecturePanel.show(this.extensionUri, this.root, join(this.root, ARCHIFY_DIR, this.parent, CANDIDATE_FILE));
         return;
+      case "image":
+        this.answerImage(message.request, typeof message.data === "string" ? message.data : null);
+        return;
       case "tourFinished":
         if (this.tour !== null && this.shown.kind === "diagram") ArchitecturePanel.toursFinished.fire({ root: this.root, title: this.shown.diagram.title ?? basename(dirname(this.file)), stops: this.tour.length, finishedAt: new Date().toISOString() });
         return;
@@ -505,6 +535,7 @@ export class ArchitecturePanel {
       ArchitecturePanel.instance = undefined;
       ArchitecturePanel.freshnessChanged.fire(0);
     }
+    for (const request of [...this.images.keys()]) this.answerImage(request, null);
     this.sidecars?.watcher.dispose();
     for (const disposable of this.disposables.splice(0)) disposable.dispose();
   }

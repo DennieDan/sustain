@@ -79,7 +79,7 @@ Every command is also in the Command Palette under "Sustain".
 | Sidebar | The folder and its map status, the composer (focus, agent, run mode and Generate), the live run, your maps, Review changes, the setup checklist, Practice, learning sessions and Ask |
 | Sidebar title bar | Refresh and Check Setup |
 | Editor title, any file | Show in Map |
-| Editor title, map | Refresh Architecture, Show Changes on Diagram, Export Page, Audit Map, Show Hotspots and Tour, with Compare With…, Write Architecture Notes for Agents and Create Tour in its menu |
+| Editor title, map | Refresh Architecture, Show Changes on Diagram, Export Page, Audit Map, Show Hotspots and Tour, with Compare With…, Write Architecture Notes for Agents, Create Tour and Save Image in its menu |
 | Status bar | Sustain's state, the time of a running generation or the number of changed boxes. A click opens the sidebar. |
 | Explorer right-click | Map This Folder with Sustain, and Show in Architecture Map |
 | Box right-click | Open Code, Refresh This Box, This Box Is Wrong…, Check My Understanding, Map This Box in Detail, Only Allow Imports From… and Route Dependencies Through… |
@@ -99,6 +99,7 @@ Every command is also in the Command Palette under "Sustain".
 - **Show Changes on Diagram** marks the boxes touched by your uncommitted changes, your branch or a commit range, and lists the changes no box covers.
 - **Refresh Architecture** asks your agent to update only the boxes whose code changed.
 - **Export Page** writes the map as one HTML file that opens anywhere.
+- **Save Image** in the map's menu saves the map as an SVG or PNG file, with the theme's colours.
 - **Ask** in the sidebar answers questions about the map, with links to the lines it cites.
 - **Map This Box in Detail** on a box asks your agent for a map of that box alone. The new map offers **Back to overview**.
 - **Tour** in the map's title bar plays the map's tour. Each stop marks a box, opens its code beside the map, explains it and asks a question, and **Show answer** gives the answer. **Create tour** in the maps list asks your agent to write one.

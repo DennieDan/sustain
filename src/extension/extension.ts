@@ -8,6 +8,7 @@ import { Ask } from "./ask";
 import { Practice } from "./practice";
 import { showChangesCommand } from "./changes";
 import { exportPageCommand } from "./exportPage";
+import { saveImageCommand } from "./saveImage";
 import { refreshArchitectureCommand, refreshBoxCommand } from "./refresh";
 import { writeAgentNotesCommand } from "./agentNotes";
 import { compareMapsCommand } from "./compare";
@@ -148,6 +149,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     vscode.commands.registerCommand("sustain.hideHotspots", () => ArchitecturePanel.setHotspotsShown(false)),
     vscode.commands.registerCommand("sustain.showChecks", () => ArchitecturePanel.setChecksShown(true)),
     vscode.commands.registerCommand("sustain.exportPage", counted("exportPage", () => exportPageCommand(extensionUri))),
+    vscode.commands.registerCommand("sustain.saveImage", () => saveImageCommand()),
     vscode.commands.registerCommand("sustain.reviewChanges", counted("review", () => review.command(home.root()))),
     vscode.commands.registerCommand("sustain.refreshBox", (box?: { componentId?: unknown }) => refreshBoxCommand(context, runs, box)),
     vscode.commands.registerCommand("sustain.checkUnderstanding", counted("checkUnderstanding", (box?: { componentId?: unknown }) => practice.command(home.root(), box))),

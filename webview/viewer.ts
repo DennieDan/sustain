@@ -13,6 +13,7 @@ import { NodeClicks } from "./click";
 import { renderScene } from "./render";
 import { screenReaderList } from "./a11y";
 import { Finder } from "./finder";
+import { mapPng, mapSvg } from "./imageExport";
 import { TooltipController } from "./tooltip";
 import { workerRunner } from "./layoutWorkers";
 import { TourPlayer } from "./tour";
@@ -461,6 +462,13 @@ export function startViewer(mount: HTMLElement = document.body): void {
     }
     if (message.type === "find") {
       if (lastLoad !== null) finder.open();
+      return;
+    }
+    if (message.type === "image") {
+      const bounds = viewport.bounds;
+      const background = getComputedStyle(document.body).backgroundColor;
+      const data = bounds === undefined ? null : message.format === "svg" ? mapSvg(content, bounds, background) : mapPng(content, bounds, background);
+      post({ type: "image", request: message.request, data });
       return;
     }
     if (message.type === "highlight") {
