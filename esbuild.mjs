@@ -1,6 +1,7 @@
 // Builds the shipped bundles into dist/ (see docs/spec.md §6).
 // `node esbuild.mjs`        → dist/
 // `node esbuild.mjs --e2e`  → out/e2e/ (the @vscode/test-electron suite; never shipped)
+// `node esbuild.mjs --action` → action/dist/index.js (the GitHub Action, committed; PRC-04)
 import * as esbuild from "esbuild";
 import { createHash } from "node:crypto";
 import { cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -243,7 +244,24 @@ async function buildE2e() {
   });
 }
 
+/**
+ * The GitHub Action's bundle (PRC-04). It is committed, so it must come out the same on every machine.
+ * @param {string} [outfile]
+ */
+export async function buildAction(outfile = join(root, "action/dist/index.js")) {
+  await esbuild.build({
+    ...common,
+    metafile: false,
+    entryPoints: [join(root, "action/src/index.ts")],
+    outfile,
+    platform: "node",
+    format: "cjs",
+    target: "node20",
+  });
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.includes("--e2e")) await buildE2e();
+  else if (process.argv.includes("--action")) await buildAction();
   else await buildDist();
 }

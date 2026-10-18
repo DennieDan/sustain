@@ -56,3 +56,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0050](0050-the-validator-reports-evidence-on-acceptance.md) | The validator reports evidence on acceptance | accepted | 2026-10-18 |
 | [0051](0051-the-diagram-page-is-one-offline-html-file.md) | The diagram page is one offline HTML file | accepted | 2026-10-18 |
 | [0052](0052-a-core-cli-shares-the-model-with-every-host.md) | A core CLI shares the model with every host | accepted | 2026-10-18 |
+| [0053](0053-the-check-runs-as-a-javascript-action.md) | The pull request check runs as a JavaScript Action | accepted | 2026-10-18 |

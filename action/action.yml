@@ -1,0 +1,29 @@
+name: Sustain check
+description: Compares a pull request with the repository's architecture map and comments what it touches.
+inputs:
+  fail-on:
+    description: "Comma-separated findings that fail the job: stale, new-box."
+    required: false
+    default: ""
+  map:
+    description: "The run folder of the map to compare with. Defaults to sustain.config.json's map, then the newest map with an empty focus."
+    required: false
+    default: ""
+  comment:
+    description: "Whether to post or update the pull request comment."
+    required: false
+    default: "true"
+  upload:
+    description: "Whether to upload the result to Sustain Cloud. Nothing leaves the runner without it."
+    required: false
+    default: "false"
+  github-token:
+    description: "The token that posts the comment."
+    required: false
+    default: ${{ github.token }}
+outputs:
+  result:
+    description: "pass or fail"
+runs:
+  using: node20
+  main: dist/index.js

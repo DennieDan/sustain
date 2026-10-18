@@ -1,4 +1,4 @@
-// ENG-01: the CI workflow runs the gates the spec names.
+// ENG-01 and PRC-04: the CI workflow runs the gates the spec names and the Sustain check.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -29,4 +29,13 @@ test("the e2e, package and Node 18 script jobs run their commands", () => {
     "npm ci",
     "npx vitest run --project unit test/unit/agent",
   ]);
+});
+
+test("PRC-04 the Action's committed bundle is rebuilt and compared, and the Action checks pull requests", () => {
+  expect(jobRuns("action-dist")).toEqual(["npm ci", "npm run action", "git diff --exit-code action/dist"]);
+  const job = workflow.slice(workflow.indexOf("\n  sustain-check:\n"));
+  expect(job).toContain("if: github.event_name == 'pull_request'");
+  expect(job).toContain("pull-requests: write");
+  expect(job).toContain("fetch-depth: 0");
+  expect(job).toContain("- uses: ./action");
 });

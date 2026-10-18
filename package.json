@@ -72,7 +72,7 @@
       },
       {
         "command": "sustain.openArchitectureFile",
-        "title": "Open Architecture File…",
+        "title": "Open Architecture File\u2026",
         "category": "Sustain"
       },
       {
@@ -264,6 +264,7 @@
   },
   "scripts": {
     "build": "node esbuild.mjs",
+    "action": "node esbuild.mjs --action",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:docs": "node scripts/check-docs.mjs",

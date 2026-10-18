@@ -50,10 +50,13 @@ export interface MarkdownMeta {
   reasons: string[];
 }
 
-export function deltaMarkdown(report: DeltaReport, meta: MarkdownMeta): string {
+/** Markdown of the report; each list shows at most `maxItems`, then how many more there are. */
+export function deltaMarkdown(report: DeltaReport, meta: MarkdownMeta, maxItems = Number.POSITIVE_INFINITY): string {
   const lines = [`### Sustain check: ${meta.result}`, "", `**${deltaSummary(report)}**`, "", `Map ${path(meta.map)}, compared from ${path(meta.mergeBase.slice(0, 7))}.`];
   const section = (title: string, items: string[]): void => {
-    if (items.length > 0) lines.push("", `**${title}**`, "", ...items);
+    if (items.length === 0) return;
+    const more = items.length > maxItems ? [`- and ${items.length - maxItems} more`] : [];
+    lines.push("", `**${title}**`, "", ...items.slice(0, maxItems), ...more);
   };
   section("Touched boxes", [
     ...report.touched.strong.map((box) => `- ${escapeMarkdown(box.label)}: cited lines changed`),

@@ -1,4 +1,5 @@
-// NFR-SEC-02: neither the extension, the webview nor the skill scripts make network requests.
+// NFR-SEC-02 and PRC-04: neither the extension, the webview nor the skill scripts make network
+// requests; in the Action only the GitHub client does.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
@@ -24,6 +25,14 @@ describe("NFR-SEC-02 no network", () => {
     const files = [...sourceFiles("src"), ...sourceFiles("webview")];
     const violations = files.flatMap((file) => networkViolations(file, readFileSync(join(repoRoot, file), "utf8")));
     expect(violations).toEqual([]);
+  });
+
+  test("PRC-04 in the Action only the GitHub client uses the network, and nothing starts a program", () => {
+    const files = sourceFiles("action/src");
+    expect(files).toContain("action/src/github.ts");
+    const violations = files.filter((file) => file !== "action/src/github.ts").flatMap((file) => networkViolations(file, readFileSync(join(repoRoot, file), "utf8")));
+    expect(violations).toEqual([]);
+    for (const file of files) expect(readFileSync(join(repoRoot, file), "utf8")).not.toMatch(/child_process|\bspawn|\bexec(File)?(Sync)?\(/);
   });
 
   test.each([
