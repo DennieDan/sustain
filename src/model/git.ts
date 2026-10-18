@@ -1,8 +1,10 @@
 // Git facts through the git CLI (FR-GIT-01), ported from the prototype's
-// `archalign-repo/src/git.rs`. Git runs with a fixed argv, never through a shell.
+// `archalign-repo/src/git.rs`. Git runs by absolute path with a fixed argv, never through a
+// shell, and with the repository's fsmonitor hook switched off (SAF-07).
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import type { Repository } from "./types";
+import { findOnPath } from "./which";
 
 /** Most dirty paths reported; `dirtyCount` carries the total. */
 export const MAX_DIRTY_PATHS = 200;
@@ -18,13 +20,21 @@ export interface GitFacts {
   dirty: string[];
 }
 
-/** The fixed argument vectors; each starts with `--no-optional-locks`. */
+/** Every git call starts with these. A repository's `core.fsmonitor` can name a program to run. */
+export const GIT_PREFIX = ["-c", "core.fsmonitor=false", "--no-optional-locks"] as const;
+
+/** The fixed argument vectors; each starts with {@link GIT_PREFIX}. */
 export const GIT_READS = {
-  topLevel: ["--no-optional-locks", "rev-parse", "--show-toplevel"],
-  head: ["--no-optional-locks", "rev-parse", "--verify", "--quiet", "HEAD"],
-  origin: ["--no-optional-locks", "config", "--get", "remote.origin.url"],
-  status: ["--no-optional-locks", "status", "--porcelain=v1", "-z"],
+  topLevel: [...GIT_PREFIX, "rev-parse", "--show-toplevel"],
+  head: [...GIT_PREFIX, "rev-parse", "--verify", "--quiet", "HEAD"],
+  origin: [...GIT_PREFIX, "config", "--get", "remote.origin.url"],
+  status: [...GIT_PREFIX, "status", "--porcelain=v1", "-z"],
 } as const;
+
+/** Absolute path of the git binary from absolute PATH entries, or `undefined`. */
+export function gitProgram(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  return findOnPath("git", env);
+}
 
 /** stdout of a successful run; `null` when git cannot start (not on PATH) or exits non-zero. */
 function run(program: string, root: string, argv: readonly string[]): string | null {
@@ -74,7 +84,9 @@ export function parsePorcelainZ(output: string): string[] {
  * Git facts for `root`, or `null` when git is not on PATH, `root` is not inside a work
  * tree, is a subfolder of one, or HEAD does not exist yet. Never throws for those cases.
  */
-export function collectGitFacts(root: string, program = "git"): GitFacts | null {
+export function collectGitFacts(root: string, env: NodeJS.ProcessEnv = process.env): GitFacts | null {
+  const program = gitProgram(env);
+  if (program === undefined) return null;
   const top = run(program, root, GIT_READS.topLevel);
   if (top === null) return null;
   try {

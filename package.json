@@ -13,6 +13,12 @@
     "Visualization"
   ],
   "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Sustain launches coding agents and runs git in the opened folder."
+    }
+  },
   "activationEvents": [
     "onStartupFinished"
   ],

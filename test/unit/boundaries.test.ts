@@ -19,6 +19,7 @@ const NODE_MODEL: Record<string, true> = {
   "src/model/discovery.ts": true,
   "src/model/session.ts": true,
   "src/model/confine.ts": true,
+  "src/model/which.ts": true,
 };
 const NODE_ALLOWED: Record<string, true> = {
   "node:fs": true,

@@ -72,7 +72,7 @@ Done when: Gates green; a tampered skill cannot launch; no pre-approved command 
 - [x] **SAF-04 Safe launch arguments** `[unit]` — 2026-10-18: `findOnPath` skips relative PATH entries; `agentLaunchArgs` gives the terminal the prompt alone. `test/unit/extension/launchArgs.test.ts` (10): Claude Code, Codex and Devin argv for hostile focuses carry no permission flag; a relative `bin` entry holding `claude` is skipped (fails with the old empty-entry check).
 - [x] **SAF-05 Write confinement** `[unit]` — 2026-10-18: `src/model/confine.ts`, called by `writeSkill` (now takes the root), `mergeHooks`, `removeHooks`, `ensureSustainGitignore`, `validate.mjs` before publishing, `session.mjs` before the lock, `inject` and `restore`, and `appendEvent` (no link). Tests: `test/unit/model/confine.test.ts` (10: `.git`, `.devin`, `.claude`, `.agents/skills`, `.archify/<run>`, `.sustain/<run>` linked outside; `sustain.config.json` linked to an outside file; an inside link; a broken link), plus `skillFiles`, `hooksFiles` and `validate` cases that write nothing outside (the validate case fails with the check removed). Full vitest: 824 passed.
 - [ ] **SAF-06 Hook lifecycle** `[unit]` `[e2e]`
-- [ ] **SAF-07 Git and workspace hardening** `[unit]` `[e2e]`
+- [ ] **SAF-07 Git and workspace hardening** `[unit]` `[e2e]` — `[unit]` done 2026-10-18: `package.json` declares `untrustedWorkspaces.supported: false` (`test/unit/manifest.test.ts`). Git runs by absolute path from `gitProgram()` (`src/model/which.ts`) with `-c core.fsmonitor=false`. `git.test.ts` › `SAF-07 a repository's core.fsmonitor program never runs` fails when the flag is removed; `SAF-07 a git found only on a relative PATH entry is never run`. The `[e2e]` half moves to FRS-04, since Show Changes arrives in D3.
 
 ## D2 The product in VS Code
 
@@ -209,6 +209,8 @@ Done when: The plugin opens cited lines on AB3.
 - [ ] **IDE-01 IntelliJ plugin** `[jvm]` `[smoke]`
 
 ## Log
+
+- 2026-10-18 — SAF-07 departs from the spec in two places. The Windows stub `git.exe` CI test became a unit test that a relative PATH entry is never searched, since spawning by absolute path is what keeps Windows away from the current folder. The `core.fsmonitor` e2e check waits for Show Changes (FRS-04, D3); the unit test covers the git calls that exist today.
 
 - 2026-10-18 — ENG-02 departs from the spec: the budget factor is 12, not 8. The measured ratio is 7.4, so 8 would flake.
 
