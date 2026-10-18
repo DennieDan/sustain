@@ -8872,7 +8872,18 @@ var upload_schema_default = {
         agent: { type: "string", maxLength: 40 },
         mode: { enum: ["sidebar", "terminal"] },
         tokens: { $ref: "#/$defs/tokens" },
-        costUsd: { type: "number", minimum: 0 }
+        costUsd: { type: "number", minimum: 0 },
+        estimate: {
+          type: "object",
+          additionalProperties: false,
+          required: ["low", "high", "basis", "model"],
+          properties: {
+            low: { $ref: "#/$defs/count" },
+            high: { $ref: "#/$defs/count" },
+            basis: { enum: ["provisional", "fitted"] },
+            model: { type: ["string", "null"], maxLength: 60 }
+          }
+        }
       }
     },
     fingerprints: {
