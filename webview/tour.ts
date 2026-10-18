@@ -96,7 +96,13 @@ export class TourPlayer {
     const back = button("Back", "toolbar__button", () => this.go(index - 1));
     back.disabled = index === 0;
     const last = index === this.stops.length - 1;
-    nav.append(back, button(last ? "Finish" : "Next", "toolbar__button tour__next", () => (last ? this.end() : this.go(index + 1))), button("End tour", "toolbar__button", () => this.end()));
+    const next = button(last ? "Finish" : "Next", "toolbar__button tour__next", () => {
+      if (!last) return this.go(index + 1);
+      this.end();
+      // SKL-03: a finished tour joins the practice log.
+      this.post({ type: "tourFinished" });
+    });
+    nav.append(back, next, button("End tour", "toolbar__button", () => this.end()));
     const question = el("p", "tour__question");
     question.append(el("strong", "", "Question: "), document.createTextNode(stop.question));
     this.card.replaceChildren(

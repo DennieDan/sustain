@@ -483,3 +483,21 @@ describe("SKL-02 tour player", () => {
     expect(toured()).toEqual([]);
   });
 });
+
+describe("SKL-03 finished tours", () => {
+  test("Finish on the last stop tells the host the tour was finished, and End tour does not", async () => {
+    const stop = { component: "web", title: "Web", explanation: "E", question: "Q", answer: "A", citation: { path: "web/src/main.ts", line: 1 } };
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    send({ type: "tour", stops: [stop, { ...stop, component: "api" }] });
+    const press = (label: string): void => [...document.querySelectorAll<HTMLButtonElement>(".tour button")].find((node) => node.textContent === label)!.click();
+    send({ type: "playTour" });
+    press("End tour");
+    expect(posted.some((message) => message.type === "tourFinished")).toBe(false);
+    send({ type: "playTour" });
+    press("Next");
+    posted.length = 0;
+    press("Finish");
+    expect(posted).toEqual([{ type: "tourFinished" }]);
+  });
+});

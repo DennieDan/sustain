@@ -83,6 +83,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
   const home = new HomeView(context, runs, ask, freshness, review, rules, practice, [candidates.onDidChange, sessions.onDidChange, freshness.onDidChange]);
   const status = new StatusItem(runs);
   const counts = ArchitecturePanel.onDidCountChanges((changed) => (status.changed = changed));
+  const toured = ArchitecturePanel.onTourFinished((tour) => void practice.recordTour(tour));
   const running = runs.onDidChange(() => void vscode.commands.executeCommand("setContext", "sustain.running", runs.current?.status === "running"));
   context.subscriptions.push(
     registerPreviews(),
@@ -95,6 +96,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
     rules,
     ArchitecturePanel.useRules(rules),
     counts,
+    toured,
     candidates,
     sessions,
     home,

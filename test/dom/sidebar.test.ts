@@ -37,7 +37,7 @@ function state(fields: Partial<HomeState> = {}): HomeState {
     session: null,
     ask: { blocked: null, turns: [], estimate: null, confirm: false },
     review: null,
-    practice: { blocked: null, estimate: null, confirm: false, check: null },
+    practice: { blocked: null, estimate: null, confirm: false, check: null, log: [] },
     rules: null,
     hotspots: null,
     health: null,
@@ -405,14 +405,14 @@ describe("SKL-01 Practice", () => {
 
   test("the questions show with an answer box each, no expected answer reaches the DOM, and Answer posts the typed answer", () => {
     const view = checkView(check([question(1), question(2), question(3)]), () => true);
-    home.render(state({ practice: { blocked: null, estimate: null, confirm: false, check: view } }));
+    home.render(state({ practice: { log: [], blocked: null, estimate: null, confirm: false, check: view } }));
     expect(text(".practice-question__text")).toEqual(["Why does step 1 retry?", "Why does step 2 retry?", "Why does step 3 retry?"]);
     expect(JSON.stringify(view)).not.toContain("EXPECTED-ANSWER");
     expect(container.innerHTML).not.toContain("EXPECTED-ANSWER");
     const box = container.querySelectorAll<HTMLTextAreaElement>(".practice-question__answer")[1]!;
     box.value = "It retries on timeouts.";
     box.dispatchEvent(new Event("input"));
-    home.render(state({ practice: { blocked: null, estimate: null, confirm: false, check: view }, maps: [map({})] }));
+    home.render(state({ practice: { log: [], blocked: null, estimate: null, confirm: false, check: view }, maps: [map({})] }));
     expect(container.querySelectorAll<HTMLTextAreaElement>(".practice-question__answer")[1]!.value).toBe("It retries on timeouts.");
     container.querySelectorAll<HTMLButtonElement>(".practice-question__send")[1]!.click();
     expect(posted).toEqual([{ type: "practiceAnswer", index: 1, answer: "It retries on timeouts." }]);
@@ -420,7 +420,7 @@ describe("SKL-01 Practice", () => {
 
   test("a graded answer shows its grade, its reason and a link to the cited line, which only a citable file gets", () => {
     const graded = { ...question(1), answer: "On timeouts.", status: "graded" as const, grade: { grade: "partial" as const, reason: "It misses the limit of two.", citation: { path: "src/pay.ts", line: 5, endLine: null } } };
-    home.render(state({ practice: { blocked: null, estimate: null, confirm: false, check: checkView(check([graded, { ...graded, grade: { ...graded.grade, citation: { path: ".env", line: 1, endLine: null } } }, question(3)]), (path) => path !== ".env") } }));
+    home.render(state({ practice: { log: [], blocked: null, estimate: null, confirm: false, check: checkView(check([graded, { ...graded, grade: { ...graded.grade, citation: { path: ".env", line: 1, endLine: null } } }, question(3)]), (path) => path !== ".env") } }));
     expect(text(".practice-grade__label")).toEqual(["Partial", "Partial"]);
     expect(text(".practice-grade__reason")).toEqual(["It misses the limit of two.", "It misses the limit of two."]);
     expect(text(".practice-grade .cite")).toEqual(["src/pay.ts:5"]);
@@ -429,7 +429,7 @@ describe("SKL-01 Practice", () => {
   });
 
   test("each scope starts a check, and above the threshold the first click asks for a second", () => {
-    home.render(state({ practice: { blocked: null, estimate: "About 30k–60k tokens", confirm: false, check: null } }));
+    home.render(state({ practice: { log: [], blocked: null, estimate: "About 30k–60k tokens", confirm: false, check: null } }));
     expect(text(".practice__estimate")).toEqual(["About 30k–60k tokens"]);
     for (const label of ["This branch", "Uncommitted changes", "A box…"]) click(label);
     expect(posted).toEqual([
@@ -438,7 +438,7 @@ describe("SKL-01 Practice", () => {
       { type: "practiceStart", scope: "box" },
     ]);
     posted.length = 0;
-    home.render(state({ practice: { blocked: null, estimate: "About 30k–60k tokens", confirm: true, check: null } }));
+    home.render(state({ practice: { log: [], blocked: null, estimate: "About 30k–60k tokens", confirm: true, check: null } }));
     click("This branch");
     expect(posted).toEqual([]);
     click("Click again to start");
@@ -446,11 +446,30 @@ describe("SKL-01 Practice", () => {
   });
 
   test("while the questions are written, the scopes are disabled and Stop shows; a blocked section says why", () => {
-    home.render(state({ practice: { blocked: null, estimate: null, confirm: false, check: { ...checkView(check([]), () => true), status: "running" } } }));
+    home.render(state({ practice: { log: [], blocked: null, estimate: null, confirm: false, check: { ...checkView(check([]), () => true), status: "running" } } }));
     expect([...container.querySelectorAll<HTMLButtonElement>(".practice__scopes button")].map((node) => node.disabled)).toEqual([true, true, true]);
     click("Stop");
     expect(posted).toEqual([{ type: "practiceCancel" }]);
-    home.render(state({ practice: { blocked: "Explain-back needs Claude Code or Codex on PATH.", estimate: null, confirm: false, check: null } }));
+    home.render(state({ practice: { log: [], blocked: "Explain-back needs Claude Code or Codex on PATH.", estimate: null, confirm: false, check: null } }));
     expect(text(".practice__note")).toEqual(["Explain-back needs Claude Code or Codex on PATH."]);
+  });
+});
+
+describe("SKL-03 Practice log", () => {
+  test("the log lists each finished hunt, explain-back and tour with its date, and an empty log is left out", () => {
+    const log = [
+      { kind: "explain" as const, title: "Explain-back · This branch's changes", detail: "2 correct, 1 partial, 0 wrong", at: "2026-10-19T08:00:00Z" },
+      { kind: "tour" as const, title: `Tour of ${HOSTILE}`, detail: "6 stops", at: "2026-10-18T15:00:00Z" },
+      { kind: "hunt" as const, title: "Bug hunt", detail: "30 points · 2 of 2 bugs fixed", at: "2026-10-18T12:40:00Z" },
+    ];
+    home.render(state({ practice: { blocked: null, estimate: null, confirm: false, check: null, log } }));
+    expect(text(".practice-log__entry")).toEqual([
+      "2026-10-19 · Explain-back · This branch's changes · 2 correct, 1 partial, 0 wrong",
+      `2026-10-18 · Tour of ${HOSTILE} · 6 stops`,
+      "2026-10-18 · Bug hunt · 30 points · 2 of 2 bugs fixed",
+    ]);
+    expect(container.querySelector(".practice-log img")).toBeNull();
+    home.render(state());
+    expect(container.querySelector(".practice-log")).toBeNull();
   });
 });

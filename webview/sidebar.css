@@ -347,6 +347,21 @@ select.header__folder,
   font-weight: 600;
 }
 
+.practice__subtitle {
+  margin: 8px 0 0;
+  font-size: 1em;
+}
+
+.practice-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--vscode-descriptionForeground);
+  overflow-wrap: anywhere;
+}
+
 .practice__error,
 .practice-question__error {
   margin: 0;

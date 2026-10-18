@@ -10,6 +10,7 @@ import { AUDIT_FILE } from "../model/audit";
 import type { MapDiff } from "../model/diff";
 import { EVIDENCE_FILE } from "../model/evidence";
 import { readTour, TOUR_FILE, type TourStop } from "../model/tour";
+import type { FinishedTour } from "../model/practiceLog";
 import type { MapFreshness } from "../model/staleness";
 import { uncertainty } from "../model/uncertainty";
 import { hotspotMarks, hotspotsFor } from "./hotspots";
@@ -74,6 +75,9 @@ export class ArchitecturePanel {
   private sidecars: { dir: string; watcher: vscode.FileSystemWatcher } | undefined;
   /** SKL-02: the shown map's tour, or `null` when it has none. */
   private tour: TourStop[] | null = null;
+  private static readonly toursFinished = new vscode.EventEmitter<FinishedTour>();
+  /** SKL-03: fires when a tour is played to its last stop and finished. */
+  static readonly onTourFinished = ArchitecturePanel.toursFinished.event;
   private readonly disposables: vscode.Disposable[] = [];
 
   private static rules: RulesService | undefined;
@@ -450,6 +454,9 @@ export class ArchitecturePanel {
       case "tourStop":
       case "openTourCode":
         await this.openTourStop(message.index);
+        return;
+      case "tourFinished":
+        if (this.tour !== null && this.shown.kind === "diagram") ArchitecturePanel.toursFinished.fire({ root: this.root, title: this.shown.diagram.title ?? basename(dirname(this.file)), stops: this.tour.length, finishedAt: new Date().toISOString() });
         return;
     }
   }

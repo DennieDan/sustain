@@ -73,7 +73,9 @@ export type WebviewMessage =
   | { type: "refresh" }
   /** SKL-02: the tour showed stop `index`, or its citation was clicked. */
   | { type: "tourStop"; index: number }
-  | { type: "openTourCode"; index: number };
+  | { type: "openTourCode"; index: number }
+  /** SKL-03: the tour was played to its last stop and finished. */
+  | { type: "tourFinished" };
 
 /** What the session webview renders — public `session.json` fields plus the leaderboard. */
 export interface SessionView {
@@ -196,7 +198,15 @@ export interface PracticeQuestionView {
   error: string | null;
 }
 
-/** The sidebar's Practice section (SKL-01). */
+/** One entry of the practice log (SKL-03). `at` is an ISO date and time. */
+export interface PracticeLogEntry {
+  kind: "hunt" | "explain" | "tour";
+  title: string;
+  detail: string;
+  at: string;
+}
+
+/** The sidebar's Practice section (SKL-01, SKL-03). */
 export interface PracticeView {
   /** Why a check cannot start now, or `null` when it can. */
   blocked: string | null;
@@ -205,6 +215,8 @@ export interface PracticeView {
   confirm: boolean;
   /** The folder's latest check, or `null` before the first. */
   check: { scope: string; status: RunStatus; error: string | null; questions: PracticeQuestionView[] } | null;
+  /** SKL-03: finished bug hunts, explain-backs and tours, newest first. */
+  log: PracticeLogEntry[];
 }
 
 /** The sidebar's Rules section (ARC-02). */

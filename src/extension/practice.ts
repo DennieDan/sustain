@@ -13,16 +13,23 @@ import { listCandidates } from "../model/discovery";
 import { diffFor } from "../model/git";
 import type { PracticeView } from "../model/messages";
 import { changedFiles, checkView, gradePrompt, parseGrade, parseQuestions, questionsPrompt, type PracticeCheck, type PracticeSubject } from "../model/practice";
+import { practiceLog, type FinishedTour } from "../model/practiceLog";
 import { parseDiagram, type ViewComponent } from "../model/tolerant";
 import { findOnPath, headlessArgs } from "./agents";
 import { launchEstimate } from "./estimates";
 import { chosenAgent, foundAgents } from "./generate";
 import { ArchitecturePanel } from "./panel";
 import { startHeadless, type HeadlessRun } from "./runner";
+import { readSessionSnapshot } from "./sessionFiles";
 
 const STATE_KEY = "sustain.practice";
-/** Checks kept per workspace. */
+/** SKL-03: the tours finished in this workspace. */
+const TOURS_KEY = "sustain.practiceTours";
+/** Checks, and finished tours, kept per workspace. */
 export const PRACTICE_LIMIT = 50;
+
+/** A check the user cleared stays in the practice log (SKL-03). */
+type StoredCheck = PracticeCheck & { cleared?: boolean };
 
 export type PracticeScope = "branch" | "uncommitted" | "box";
 
@@ -33,7 +40,8 @@ const SCOPES: readonly { scope: PracticeScope; label: string }[] = [
 ];
 
 export class Practice implements vscode.Disposable {
-  private checks: PracticeCheck[];
+  private checks: StoredCheck[];
+  private tours: FinishedTour[];
   private run: HeadlessRun | undefined;
   private readonly changed = new vscode.EventEmitter<void>();
 
@@ -41,7 +49,8 @@ export class Practice implements vscode.Disposable {
 
   constructor(private readonly context: vscode.ExtensionContext) {
     // A run still going when VS Code closed has no reply coming.
-    this.checks = context.workspaceState.get<PracticeCheck[]>(STATE_KEY, []).map((check) => ({
+    this.tours = context.workspaceState.get<FinishedTour[]>(TOURS_KEY, []);
+    this.checks = context.workspaceState.get<StoredCheck[]>(STATE_KEY, []).map((check) => ({
       ...check,
       status: check.status === "running" ? "cancelled" : check.status,
       questions: check.questions.map((entry) => (entry.status === "grading" ? { ...entry, status: "open" } : entry)),
@@ -52,9 +61,10 @@ export class Practice implements vscode.Disposable {
     return this.run !== undefined;
   }
 
-  /** The latest check of `root`. */
-  private latest(root: string): PracticeCheck | undefined {
-    return this.checks.findLast((check) => check.root === root);
+  /** The latest check of `root` the user has not cleared. */
+  private latest(root: string): StoredCheck | undefined {
+    const check = this.checks.findLast((entry) => entry.root === root);
+    return check?.cleared === true ? undefined : check;
   }
 
   private agent(): "claude" | "codex" | null {
@@ -92,7 +102,15 @@ export class Practice implements vscode.Disposable {
       estimate: estimate === null ? null : `${estimate.text}, for the questions and for each grade.`,
       confirm: estimate?.confirm ?? false,
       check: check === undefined ? null : checkView(check, (path) => rootReal !== null && citable(rootReal, path)),
+      log: root === null ? [] : practiceLog(readSessionSnapshot(root).leaderboard, this.checks.filter((entry) => entry.root === root), this.tours.filter((tour) => tour.root === root)),
     };
+  }
+
+  /** SKL-03: adds a finished tour to the practice log. */
+  async recordTour(tour: FinishedTour): Promise<void> {
+    this.tours = [...this.tours, tour].slice(-PRACTICE_LIMIT);
+    await this.context.workspaceState.update(TOURS_KEY, this.tours);
+    this.changed.fire();
   }
 
   /** The map a box comes from and the prompt names: the one the panel shows for `root`, else the newest. */
@@ -198,11 +216,11 @@ export class Practice implements vscode.Disposable {
     this.run?.cancel();
   }
 
-  /** Forgets `root`'s latest check. */
+  /** Hides `root`'s latest check from the section; a fully graded one stays in the log (SKL-03). */
   async clear(root: string): Promise<void> {
     const check = this.latest(root);
     if (this.run !== undefined || check === undefined) return;
-    this.checks = this.checks.filter((entry) => entry !== check);
+    check.cleared = true;
     await this.save();
   }
 

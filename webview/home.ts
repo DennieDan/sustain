@@ -455,6 +455,12 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
       block.append(list);
       if (!busy) block.append(button("Clear", "link", () => post({ type: "practiceClear" })));
     }
+    // SKL-03: the practice log, newest first, with dates.
+    if (view.log.length > 0) {
+      const log = el("ul", "practice-log");
+      for (const entry of view.log) log.append(el("li", `practice-log__entry practice-log__entry--${entry.kind}`, `${entry.at.slice(0, 10)} · ${entry.title} · ${entry.detail}`));
+      block.append(el("h3", "practice__subtitle", "Your practice"), log);
+    }
     practiceSlot.append(block);
   }
 
