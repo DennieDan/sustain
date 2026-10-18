@@ -34,7 +34,15 @@ const SCRIPT_ENTRIES = {
  * any `</script` in string literals escaped so the script can sit inline in the page.
  * @returns {Promise<{ script: string, style: string, metafile: import("esbuild").Metafile | undefined }>}
  */
-export async function buildPage() {
+export function buildPage() {
+  pageBuild ??= buildPageOnce();
+  return pageBuild;
+}
+
+/** @type {ReturnType<typeof buildPageOnce> | undefined} */
+let pageBuild;
+
+async function buildPageOnce() {
   const result = await esbuild.build({
     ...common,
     entryPoints: [join(root, "webview/page.ts")],
@@ -113,12 +121,50 @@ function hashTree(dir, prefix = "") {
   return out;
 }
 
-/** Writes `dist/skill-hashes.json`, the reference for the skill integrity check (SAF-01). */
-function writeSkillHashes() {
+/**
+ * Writes `<out>/skill-hashes.json`, the reference for the skill integrity check (SAF-01).
+ * @param {string} out
+ */
+function writeSkillHashes(out) {
   const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-  const skillsDir = join(dist, "skills");
+  const skillsDir = join(out, "skills");
   const skills = Object.fromEntries(readdirSync(skillsDir).sort().map((name) => [name, hashTree(join(skillsDir, name))]));
-  writeFileSync(join(dist, "skill-hashes.json"), `${JSON.stringify({ version, skills }, null, 2)}\n`);
+  writeFileSync(join(out, "skill-hashes.json"), `${JSON.stringify({ version, skills }, null, 2)}\n`);
+}
+
+/**
+ * The skills with their scripts, their hashes, and the core CLI that installs and checks them
+ * (RCH-03), which finds the skills beside itself. The tests build this alone.
+ * @param {string} out
+ */
+export async function buildSkillsAndCli(out) {
+  /** @type {import("esbuild").BuildResult[]} */
+  const results = [];
+  // Static skill files (SKILL.md, agents/, references/) ship as-is.
+  cpSync(join(root, "skills"), join(out, "skills"), { recursive: true });
+  results.push(await buildScripts(join(out, "skills/sustain-architecture/scripts"), ["repo-facts", "validate", "render-html"]));
+  results.push(await buildScripts(join(out, "skills/sustain-bugfix/scripts"), ["session", "session-hook"]));
+  // The refresh skill reads the same format reference as the architecture skill (FRS-05).
+  cpSync(join(root, "skills/sustain-architecture/references"), join(out, "skills/sustain-refresh/references"), { recursive: true });
+  results.push(await buildScripts(join(out, "skills/sustain-refresh/scripts"), ["refresh-facts", "validate", "render-html"]));
+  writeSkillHashes(out);
+  const page = await buildPage();
+  results.push(
+    await esbuild.build({
+      ...common,
+      entryPoints: [join(root, "src/cli/sustain.ts")],
+      outfile: join(out, "cli/sustain.mjs"),
+      platform: "node",
+      format: "esm",
+      target: "node18",
+      define: {
+        "process.env.SUSTAIN_VERSION": JSON.stringify(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version),
+        "process.env.SUSTAIN_PAGE_SCRIPT": JSON.stringify(page.script),
+        "process.env.SUSTAIN_PAGE_STYLE": JSON.stringify(page.style),
+      },
+    }),
+  );
+  return results;
 }
 
 async function buildDist() {
@@ -126,14 +172,7 @@ async function buildDist() {
   /** @type {import("esbuild").BuildResult[]} */
   const results = [];
 
-  // Static skill files (SKILL.md, agents/, references/) ship as-is.
-  cpSync(join(root, "skills"), join(dist, "skills"), { recursive: true });
-  results.push(await buildScripts(join(dist, "skills/sustain-architecture/scripts"), ["repo-facts", "validate", "render-html"]));
-  results.push(await buildScripts(join(dist, "skills/sustain-bugfix/scripts"), ["session", "session-hook"]));
-  // The refresh skill reads the same format reference as the architecture skill (FRS-05).
-  cpSync(join(root, "skills/sustain-architecture/references"), join(dist, "skills/sustain-refresh/references"), { recursive: true });
-  results.push(await buildScripts(join(dist, "skills/sustain-refresh/scripts"), ["refresh-facts", "validate", "render-html"]));
-  writeSkillHashes();
+  results.push(...(await buildSkillsAndCli(dist)));
 
   results.push(await esbuild.build({
     ...common,
