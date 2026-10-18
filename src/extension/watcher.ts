@@ -1,12 +1,16 @@
 // Watches `<folder>/.archify/` in every workspace folder and acts on run folders' candidates
 // (FR-WAT-01, ADR 0026). Any event in a run folder rechecks its candidate.json, because file
-// watchers can miss a file created inside a folder created a moment before.
+// watchers can miss a file created inside a folder created a moment before. A listing every
+// 2 s catches candidates whose events never arrived, which happens on WSL under load.
 import { existsSync } from "node:fs";
 import { basename, dirname, join, sep } from "node:path";
 import * as vscode from "vscode";
 import { listCandidates } from "../model/discovery";
 import { ArchitecturePanel } from "./panel";
 import { candidateOf, ChangeBatch, DELETED_MESSAGE, noteCandidate, watchAction } from "./watchLogic";
+
+/** How often each folder's candidates are listed in case an event was missed. */
+export const LIST_INTERVAL_MS = 2_000;
 
 export class CandidateWatcher implements vscode.Disposable {
   private readonly watchers = new Map<string, vscode.FileSystemWatcher>();
@@ -23,6 +27,7 @@ export class CandidateWatcher implements vscode.Disposable {
     this.changed.fire();
   });
   private readonly folderListener: vscode.Disposable;
+  private readonly poll: NodeJS.Timeout;
 
   /** Fires after candidates were added, changed or removed, for the sidebar's maps list. */
   readonly onDidChange = this.changed.event;
@@ -43,6 +48,19 @@ export class CandidateWatcher implements vscode.Disposable {
       }
       this.watch(added);
     });
+    this.poll = setInterval(() => this.listAll(), LIST_INTERVAL_MS);
+  }
+
+  /** Feeds candidates that appeared or vanished without an event into the usual batch. */
+  private listAll(): void {
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+      const root = folder.uri.fsPath;
+      const known = this.known.get(root);
+      if (known === undefined) continue;
+      const now = new Set(listCandidates(root).map((candidate) => candidate.file));
+      for (const file of now) if (!known.has(file)) this.batch.add(file, false);
+      for (const file of known) if (!now.has(file)) this.batch.add(file, false);
+    }
   }
 
   private watch(folders: readonly vscode.WorkspaceFolder[]): void {
@@ -93,6 +111,7 @@ export class CandidateWatcher implements vscode.Disposable {
   }
 
   dispose(): void {
+    clearInterval(this.poll);
     this.batch.dispose();
     this.changed.dispose();
     this.folderListener.dispose();
