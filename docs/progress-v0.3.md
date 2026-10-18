@@ -11,7 +11,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | D3 The living map | Closed pending owner (RCH-01 `[smoke]`) | `3850c3e` |
 | D4 Pull request checks | Closed pending owner (PRC-04 `[ci]`) | `eced4f5` |
 | D5 Sustain Cloud v1 | Closed pending owner (deployment, see Waiting) | `574992c` |
-| D6 Ship | In progress | |
+| D6 Ship | Closed pending owner (RCH-02, RCH-05 `[ci]` `[smoke]`, the first release) | `488db5f` |
 | I1 Cost | Not started | |
 | I2 Accuracy | Not started | |
 | I3 Architecture guardrails | Not started | |
@@ -31,6 +31,10 @@ Items only the owner can do, with exact steps.
 - PRC-04 `[ci]`: this repository ignores `.archify/`, so the Action has no map to check here. Generate a map with an empty focus, force-add its run folder (`git add -f .archify/<run>/candidate.json .archify/<run>/run.json .archify/<run>/fingerprints.json`), push `kerk` and open a pull request. Confirm the `sustain-check` job comments once and updates that comment on the next push, and that `action-dist` passes.
 - D5 deployment (hard stops: hosting, OAuth app, publishing). (1) Choose a managed Node host and a managed Postgres; add the Postgres driver (for example `pg`) and point `cloud/src/db/client.ts` at it, since the code runs on PGlite until then. (2) Create a GitHub OAuth app with the callback `https://<domain>/api/auth/callback/github` and set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `NEXTAUTH_URL` and a random `NEXTAUTH_SECRET`. (3) Choose the domain, set it as `cloud-url` in workflows and as `SUSTAIN_CLOUD_URL` for `publish`. (4) Push, so CI's `cloud` job installs Playwright's Chromium (`npx -w cloud playwright install --with-deps chromium`) and runs the `[web]` suite.
 - RCH-01 `[smoke]`: open a page written by `render-html.mjs` from disk on Windows, macOS and Linux. With each target in "Open in", click a box and note which open: VS Code, Cursor, JetBrains (needs JetBrains Toolbox), GitHub (needs a github.com origin) and Copy.
+- RCH-02 `[ci]` `[smoke]`: after the push, confirm the `skills-fresh` and `plugin` jobs pass. Then run `npx skills add xplus2g4/sustain` in a scratch folder and confirm `/sustain-architecture` runs its scripts in Claude Code. Install the plugin from a release's `sustain-skills.zip` (`unzip sustain-skills.zip -d sustain-skills`, `/plugin marketplace add ./sustain-skills`, `/plugin install sustain@sustain`) and confirm the same.
+- RCH-05 `[ci]`: set the release version in `package.json`, push a hyphenated tag such as `v0.3.0-rc.1`, and confirm the `Release` workflow passes and keeps `release-dry-run` with the `.vsix`, `sustain-skills.zip`, `sustain-action.js`, `sustain.mjs` and `SHA256SUMS`.
+- RCH-05 `[smoke]`, the first release (hard stops: publishing, deploying). (1) Choose the licence, add `LICENSE` and the `license` field, so the package includes it and Open VSX can publish. (2) Add the secrets: `OVSX_PAT` for Open VSX, and `AZURE_CLIENT_ID` and `AZURE_TENANT_ID` for a Microsoft Entra ID app with Marketplace publish rights for the publisher `sustain`. (3) Push the tag `v<version>`, then install the extension from each store into a clean profile. (4) For the cloud, finish the D5 deployment steps, set the secret `SUSTAIN_DEPLOY_HOOK` and the variable `SUSTAIN_DEPLOY` to `true`, merge to `main`, and confirm the site serves and a `publish` lands.
+- DOC-01: record `docs/media/demo.gif` (generate a map, click a box, Show Changes) and add it under the README's first paragraph. Replace `<cloud address>` in the README once the domain is chosen.
 - UI-06 `[smoke]`: ask one question per agent from the sidebar about a mapped repository. Confirm the answer cites `path:line`, the links open the lines, and a second Claude Code question resumes the session.
 
 ## D1 Safe to ship
@@ -287,13 +291,24 @@ Done when: Uploads, map pages and PR pages work against mocks.
 
 ### D6 proposal (2026-10-18)
 
-| Location | Change | Est. LoC |
-|---|---|---|
-| `esbuild.mjs`, `skills/*/scripts/`, `skills/sustain-refresh/references/`, `.github/workflows/ci.yml` | RCH-02: the built scripts committed into each skill and refreshed by `npm run build`; CI fails when they are stale | +50, plus the generated scripts |
-| `scripts/release.mjs`, `package.json`, `.gitignore` | RCH-02: `npm run build:release` assembles `release/plugin/` with `.claude-plugin/plugin.json` and a marketplace manifest | +80 |
-| `package.json`, `media/icon.png`, `scripts/package.mjs` | RCH-05: the icon, repository, homepage, bugs, keywords, categories and `preview`; `--skip-license` only without a LICENSE; no `--allow-missing-repository` | +60 |
-| `.github/workflows/release.yml`, `.github/workflows/deploy-cloud.yml` | RCH-05: on `v*` tags the gates, then a GitHub release with the `.vsix`, skill zip, Action bundle and checksums; Open VSX and Marketplace steps behind their secrets; a pre-release tag as a dry run; the cloud deployed from `main` | +130 |
-| `README.md` | DOC-01: rewritten around value, quick starts, where to find it, committing the map, cost, what it touches and removal | +150 / -69 |
+| Location | Change | Est. LoC | Built |
+|---|---|---|---|
+| `esbuild.mjs`, `skills/*/scripts/`, `skills/sustain-refresh/references/`, `.github/workflows/ci.yml` | RCH-02: the built scripts committed into each skill and refreshed by `npm run build`; CI fails when they are stale | +50, plus the generated scripts | +42 / -1, plus about 20,000 generated lines |
+| `scripts/release.mjs`, `package.json`, `.gitignore` | RCH-02: `npm run build:release` assembles `release/plugin/` with `.claude-plugin/plugin.json` and a marketplace manifest | +80 | +44 |
+| `package.json`, `media/icon.png`, `scripts/package.mjs` | RCH-05: the icon, repository, homepage, bugs, keywords, categories and `preview`; `--skip-license` only without a LICENSE; no `--allow-missing-repository` | +60 | +50 / -4 |
+| `.github/workflows/release.yml`, `.github/workflows/deploy-cloud.yml` | RCH-05: on `v*` tags the gates, then a GitHub release with the `.vsix`, skill zip, Action bundle and checksums; Open VSX and Marketplace steps behind their secrets; a pre-release tag as a dry run; the cloud deployed from `main` | +130 | +96, with the start hook |
+| `README.md` | DOC-01: rewritten around value, quick starts, where to find it, committing the map, cost, what it touches and removal | +150 / -69 | +119 / -41 |
+
+Where the D6 build differs from the proposal:
+- The release also carries the CLI as `sustain.mjs`. Sustain Cloud's map pages are filled by `sustain publish`, and people outside the extension had no other way to get it.
+- The release fails when the committed Action bundle or skill scripts differ from a fresh build. A hyphenated tag keeps its files as the workflow artifact `release-dry-run`.
+- Open VSX needs a declared licence, and `package.json` declares none. Its step is skipped until the owner chooses one. The version stays 0.2.0 until the owner sets the release version.
+- The cloud's server opens its database in Next's start hook, `cloud/src/instrumentation.ts`. Migrations therefore run before the first request. A local `next start` with a fresh `SUSTAIN_DB` folder created the database before any request.
+- The deploy runs only when the repository variable `SUSTAIN_DEPLOY` is `true`. It calls the host's deploy hook from the secret `SUSTAIN_DEPLOY_HOOK`, and runs the cloud's tests and build first.
+- The Marketplace categories are Visualization, AI and Education.
+- The README has a short "Using the map" section besides the spec's sections. It has no demo GIF yet, and its cloud quick start says `<cloud address>` until the domain is chosen (see Waiting).
+- The refresh skill commits its own copy of the shared `references/`, because `npx skills add` copies each folder on its own.
+- CI's `plugin` job runs a pinned `@anthropic-ai/claude-code@2.1.302` through `npx`, on the runner only.
 
 Tests the D6 ACs call for:
 - the committed scripts equal a fresh build; the plugin folder's manifests;
@@ -303,9 +318,9 @@ Tests the D6 ACs call for:
 
 Done when: Released: extension published, Action tagged, cloud deployed.
 
-- [ ] **RCH-02 Skills from GitHub and as a plugin** `[ci]` `[smoke]`
-- [ ] **RCH-05 Packaging and release** `[unit]` `[ci]` `[smoke]`
-- [ ] **DOC-01 README** `[unit]`
+- [ ] **RCH-02 Skills from GitHub and as a plugin** `[ci]` `[smoke]` — the stale check done 2026-10-18: `syncCommittedSkills` in `esbuild.mjs`, the committed `skills/*/scripts/`, `scripts/release.mjs`. Tests: `test/unit/skill/committed.test.ts` (4: each skill's committed scripts equal a fresh build, seen to fail with one script edited; the refresh skill's references), `release.test.ts` (the plugin's manifests and skills), `ci.test.ts` (the `skills-fresh` and `plugin` jobs). ADR 0056. `[ci]` and `[smoke]` wait for the owner (see Waiting).
+- [ ] **RCH-05 Packaging and release** `[unit]` `[ci]` `[smoke]` — `[unit]` done 2026-10-18: `package.json`, `media/icon.png`, `scripts/package.mjs`, `.github/workflows/release.yml`, `.github/workflows/deploy-cloud.yml`, `cloud/src/instrumentation.ts`. `test/unit/package.test.ts` (4: the metadata and the 128 × 128 PNG; the vsce arguments with and without a LICENSE; the release's gates, files, dry run and secret conditions; the deploy's switch and steps), each seen to fail once with its behaviour broken. `npm run package` produced `sustain-0.2.0.vsix` (39 files, 2.49 MB) whose manifest carries the icon, the repository links, the categories and the preview flag. ADR 0057 supersedes 0014 and 0028. `[ci]` and `[smoke]` wait for the owner (see Waiting).
+- [x] **DOC-01 README** `[unit]` — 2026-10-18: `README.md`. `test/unit/readme.test.ts` (2: the quick start per setup and the five sections; the `.gitignore` line and the skill-folder advice absent), both seen to fail on the old README, and the second again with the advice added back.
 
 ## I1 Cost
 
@@ -386,6 +401,7 @@ Done when: The plugin opens cited lines on AB3.
 ## Log
 
 - 2026-10-18 — D5 closed pending owner. Gates: `npm run check` exit 0 (1073 tests, 55 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud `[web]` 8 passed against the built app. Every new test was seen to fail once with its behaviour broken: 16 deliberate breaks across D5. Deployment is a hard stop and waits for the owner (see Waiting).
+- 2026-10-18 — D6 closed pending owner. Gates: `npm run check` exit 0 (1086 tests, 57 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each); cloud `vitest` 35 passed; cloud build exit 0; cloud `[web]` 8 passed against the built app with the start hook. Every new test was seen to fail once with its behaviour broken: 8 deliberate breaks across D6. `[ci]`, `[smoke]` and the first release wait for the owner (see Waiting).
 - 2026-10-18 — `architecture.md` had not been updated per feature during D2 to D4, as spec §7 asks; it was brought up to date at D4's close (`29f183b`) and kept current since. The layout fixtures test got a 30 s timeout: it lays out 48 diagrams and passed 5 s only narrowly when the whole suite ran in parallel.
 
 - 2026-10-18 — D4 closed pending owner. Gates: `npm run check` exit 0 (1066 tests, 53 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 74, empty 3, multi 2 each). Every new test was seen to fail once with its behaviour broken: 18 deliberate breaks across D4. PRC-04 waits for a committed map of this repository and a push (see Waiting).
