@@ -8,7 +8,7 @@ import { checkUpload, COMMIT, MAP } from "../support/fixtures";
 const REPO = { id: 1, githubId: 1, owner: "acme", name: "shop", defaultBranch: "main", private: true, publicMaps: false, createdAt: new Date() } as Repository;
 
 function row(fields: Partial<UploadRow>): UploadRow {
-  return { id: 1, repoId: 1, kind: "map", commit: COMMIT, branch: "main", pull: null, payload: {}, via: "token", createdAt: new Date("2026-10-18T10:00:00Z"), ...fields };
+  return { id: 1, repoId: 1, kind: "map", commit: COMMIT, branch: "main", pull: null, payload: {}, via: "token", tokenId: null, size: null, createdAt: new Date("2026-10-18T10:00:00Z"), ...fields };
 }
 
 test("CLD-03 the map page links GitHub at the map's commit and shows the latest check's stale boxes", () => {
