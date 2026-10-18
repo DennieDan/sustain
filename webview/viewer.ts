@@ -4,6 +4,7 @@
 import { layoutDiagram } from "../src/layout/layout";
 import type { MeasureText } from "../src/layout/scene";
 import type { HostMessage } from "../src/model/messages";
+import type { Freshness } from "../src/model/staleness";
 import { readDiagram } from "../src/model/tolerant";
 import { onMessage, post } from "./bridge";
 import { NodeClicks } from "./click";
@@ -25,8 +26,8 @@ const TOOLBAR: [action: string, text: string, title: string][] = [
 /** Builds the viewer in `document.body` and starts listening to the host. */
 export function startViewer(): void {
   // body > div.app > svg.canvas > g.viewport; div.toolbar > button[data-action]×4;
-  // div.highlight[hidden] > span.highlight__text, button.highlight__follow; div.empty-state[hidden];
-  // div.tooltip[hidden]
+  // div.highlight[hidden] > span.highlight__text, button.highlight__follow; div.freshness[hidden];
+  // div.empty-state[hidden]; div.tooltip[hidden]
   const app = document.createElement("div");
   app.className = "app app--empty";
   const svg = document.createElementNS(SVG_NS, "svg");
@@ -60,6 +61,10 @@ export function startViewer(): void {
   followButton.title = "Keep the highlight in step with the active editor";
   followButton.setAttribute("aria-pressed", "false");
   highlightBar.append(highlightText, followButton);
+  // FRS-03: how many boxes changed since the map was made.
+  const freshnessBar = document.createElement("div");
+  freshnessBar.className = "freshness";
+  freshnessBar.hidden = true;
   const emptyState = document.createElement("div");
   emptyState.className = "empty-state";
   emptyState.hidden = true;
@@ -67,7 +72,7 @@ export function startViewer(): void {
   tooltipElement.className = "tooltip";
   tooltipElement.setAttribute("role", "tooltip");
   tooltipElement.hidden = true;
-  app.append(svg, toolbar, highlightBar, emptyState, tooltipElement);
+  app.append(svg, toolbar, highlightBar, freshnessBar, emptyState, tooltipElement);
   document.body.append(app);
 
   const viewport = new ViewportController(svg, content, toolbar, window);
@@ -83,6 +88,31 @@ export function startViewer(): void {
   let highlight: { ids: string[]; file: string | null; follow: boolean } = { ids: [], file: null, follow: false };
 
   followButton.addEventListener("click", () => post({ type: "setFollow", on: !highlight.follow }));
+  /** Each box's state against the code, kept across reloads (FRS-03). */
+  let freshness: Record<string, Freshness> = {};
+
+  const BADGES: Partial<Record<Freshness, string>> = { edited: "changed", missing: "missing" };
+
+  function applyFreshness(): void {
+    for (const node of content.querySelectorAll<SVGGElement>(".node")) {
+      node.querySelector(".node__badge")?.remove();
+      node.classList.remove("node--edited", "node--missing");
+      const state = freshness[node.getAttribute("data-id") ?? ""];
+      const badge = state === undefined ? undefined : BADGES[state];
+      const box = node.querySelector(".node__box");
+      if (badge === undefined || box === null) continue;
+      node.classList.add(`node--${state}`);
+      const text = document.createElementNS(SVG_NS, "text");
+      text.setAttribute("class", "node__badge");
+      text.setAttribute("x", String(Number(box.getAttribute("x")) + Number(box.getAttribute("width")) - 6));
+      text.setAttribute("y", String(Number(box.getAttribute("y")) + 10));
+      text.setAttribute("text-anchor", "end");
+      text.setAttribute("dominant-baseline", "central");
+      text.setAttribute("font-size", "10");
+      text.textContent = badge;
+      node.append(text);
+    }
+  }
 
   function applyHighlight(): void {
     const marked = new Set(highlight.ids);
@@ -135,6 +165,7 @@ export function startViewer(): void {
     if (current !== generation) return;
     renderScene(content, result.diagram, scene, measure);
     applyHighlight();
+    applyFreshness();
     tooltip.setDiagram(result.diagram);
     viewport.bounds = scene.bounds;
     if (file !== shownFile) viewport.fit();
@@ -145,6 +176,13 @@ export function startViewer(): void {
     if (message.type === "highlight") {
       highlight = { ids: message.ids, file: message.file, follow: message.follow };
       applyHighlight();
+      return;
+    }
+    if (message.type === "freshness") {
+      freshness = message.boxes;
+      freshnessBar.textContent = message.header ?? "";
+      freshnessBar.hidden = message.header === null;
+      applyFreshness();
       return;
     }
     const current = ++generation;

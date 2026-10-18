@@ -23,8 +23,10 @@ export function mapStatus(maps: readonly MapItem[], now: Date): string {
   const newest = maps[0];
   if (newest === undefined) return "No map yet";
   const age = relativeAge(newest.createdAt, now);
-  const from = age === "just now" ? "Map from just now" : `Map from ${age}`;
-  return newest.boxes === null ? from : `${from} · ${newest.boxes} box${newest.boxes === 1 ? "" : "es"}`;
+  const parts = [age === "just now" ? "Map from just now" : `Map from ${age}`];
+  if (newest.boxes !== null) parts.push(`${newest.boxes} box${newest.boxes === 1 ? "" : "es"}`);
+  if (newest.changed !== null && newest.changed > 0) parts.push(`${newest.changed} changed`);
+  return parts.join(" · ");
 }
 
 /** `m:ss`, or `h:mm:ss` from an hour on. */
@@ -74,3 +76,11 @@ export const SIDEBAR_ACTIONS: Readonly<Record<string, string>> = {
   cancelRun: "sustain.cancelRun",
   fix: "sustain.installSkills",
 };
+
+/** The map's freshness header (FRS-03), or `null` when no box changed. */
+export function freshnessHeader(changed: number, total: number, revision: string | null, createdAt: string | null, now: Date): string | null {
+  if (changed === 0) return null;
+  const since = [revision?.slice(0, 7), createdAt === null ? null : relativeAge(createdAt, now)].filter((part): part is string => part !== null && part !== undefined);
+  const boxes = `${changed} of ${total} box${total === 1 ? "" : "es"} changed since this map`;
+  return since.length === 0 ? boxes : `${boxes} (${since.join(", ")})`;
+}

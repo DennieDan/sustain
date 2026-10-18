@@ -121,6 +121,48 @@ body {
   stroke-width: 3px;
 }
 
+/* Freshness (FRS-03): changed and missing boxes, and the header */
+
+.freshness {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 4px 10px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.app--empty .freshness {
+  display: none;
+}
+
+.node--edited .node__box {
+  stroke: var(--sustain-orange);
+  stroke-dasharray: 6 3;
+}
+
+.node--missing .node__box {
+  stroke: var(--sustain-red);
+  stroke-dasharray: 2 3;
+}
+
+.node__badge {
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--sustain-background);
+  stroke-width: 3px;
+}
+
+.node--edited .node__badge {
+  fill: var(--sustain-orange);
+}
+
+.node--missing .node__badge {
+  fill: var(--sustain-red);
+}
+
 /* Empty state */
 
 .empty-state__action {

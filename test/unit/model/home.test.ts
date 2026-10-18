@@ -1,8 +1,8 @@
-// UI-01, UI-04, CST-04: the sidebar's wording, its maps list and finding the run a Generate made.
+// UI-01, UI-04, CST-04, FRS-03: the sidebar's wording, its maps list and finding the run a Generate made.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { clock, mapStatus, relativeAge, runFigures, statusText, tokenCount } from "../../../src/model/home";
+import { clock, freshnessHeader, mapStatus, relativeAge, runFigures, statusText, tokenCount } from "../../../src/model/home";
 import { listMaps } from "../../../src/model/maps";
 import type { MapItem, RunCard } from "../../../src/model/messages";
 import { newRunRecord, newRunSince, runFolderNames, writeRunRecord } from "../../../src/model/runRecord";
@@ -11,7 +11,7 @@ import { put, tempDir } from "../support/temp";
 const NOW = new Date("2026-10-18T12:00:00Z");
 
 function map(fields: Partial<MapItem>): MapItem {
-  return { runFolder: "architecture-x-20261016-120000", file: "/r/c.json", title: null, focus: "", agent: null, createdAt: "2026-10-16T12:00:00Z", boxes: 16, ...fields };
+  return { runFolder: "architecture-x-20261016-120000", file: "/r/c.json", title: null, focus: "", agent: null, createdAt: "2026-10-16T12:00:00Z", boxes: 16, changed: null, ...fields };
 }
 
 function run(fields: Partial<RunCard>): RunCard {
@@ -112,5 +112,18 @@ describe("CST-04 the run a Generate made", () => {
 
   test("a folder without .archify gives an empty snapshot", () => {
     expect(runFolderNames(tempDir()).size).toBe(0);
+  });
+});
+
+describe("FRS-03 freshness wording", () => {
+  test("the header counts changed boxes since the map's revision and age, and is absent when none changed", () => {
+    expect(freshnessHeader(3, 16, "abc1234def", "2026-10-16T12:00:00Z", NOW)).toBe("3 of 16 boxes changed since this map (abc1234, 2 days ago)");
+    expect(freshnessHeader(1, 1, null, "2026-10-18T11:00:00Z", NOW)).toBe("1 of 1 box changed since this map (1 hour ago)");
+    expect(freshnessHeader(0, 16, "abc1234", "2026-10-16T12:00:00Z", NOW)).toBeNull();
+  });
+
+  test("the sidebar header adds the newest map's changed boxes", () => {
+    expect(mapStatus([map({ changed: 3 })], NOW)).toBe("Map from 2 days ago · 16 boxes · 3 changed");
+    expect(mapStatus([map({ changed: 0 })], NOW)).toBe("Map from 2 days ago · 16 boxes");
   });
 });

@@ -203,3 +203,31 @@ describe("UI-03 boxes citing the active file", () => {
     expect(posted).toEqual([{ type: "mapFolder" }]);
   });
 });
+
+describe("FRS-03 freshness on the map", () => {
+  beforeEach(() => send({ type: "freshness", boxes: {}, header: null }));
+
+  test("edited boxes say changed, missing boxes say missing, and the header shows the count", async () => {
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    expect(document.querySelector<HTMLElement>(".freshness")!.hidden).toBe(true);
+    send({ type: "freshness", boxes: { web: "edited", api: "missing" }, header: "2 of 2 boxes changed since this map (abc1234, 2 days ago)" });
+    expect([...document.querySelectorAll(".node")].map((node) => [node.getAttribute("data-id"), node.classList.contains(`node--${node.getAttribute("data-id") === "web" ? "edited" : "missing"}`), node.querySelector(".node__badge")?.textContent])).toEqual([
+      ["web", true, "changed"],
+      ["api", true, "missing"],
+    ]);
+    const header = document.querySelector<HTMLElement>(".freshness")!;
+    expect([header.hidden, header.textContent]).toEqual([false, "2 of 2 boxes changed since this map (abc1234, 2 days ago)"]);
+  });
+
+  test("fresh and moved boxes carry no badge, and badges survive a reload", async () => {
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(document.querySelectorAll(".node").length).toBe(2));
+    send({ type: "freshness", boxes: { web: "moved", api: "edited" }, header: "1 of 2 boxes changed since this map" });
+    send({ type: "load", doc: DOC_A, file: "/r/a.json" });
+    await vi.waitFor(() => expect(vi.mocked(layoutDiagram).mock.calls.length).toBe(2));
+    await vi.waitFor(() => expect(document.querySelectorAll(".node__badge").length).toBe(1));
+    expect(document.querySelector('.node[data-id="web"] .node__badge')).toBeNull();
+    expect(document.querySelector('.node[data-id="api"] .node__badge')?.textContent).toBe("changed");
+  });
+});

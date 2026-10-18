@@ -4,10 +4,13 @@ import { readFileSync } from "node:fs";
 import { basename, isAbsolute, relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { citingBoxes } from "../model/citing";
+import { freshnessHeader } from "../model/home";
 import type { HostMessage, WebviewMessage } from "../model/messages";
+import type { MapFreshness } from "../model/staleness";
 import { parseDiagram, type ViewDiagram } from "../model/tolerant";
+import { changedBoxes, type FreshnessService } from "./freshness";
 import { webviewHtml } from "./html";
-import { openSource } from "./navigate";
+import { openSource, openSourceRef } from "./navigate";
 
 export const VIEW_TYPE = "sustain.architecture";
 
@@ -30,6 +33,19 @@ function displayName(root: string, file: string): string {
 
 export class ArchitecturePanel {
   private static instance: ArchitecturePanel | undefined;
+  private static freshnessService: FreshnessService | undefined;
+  private static readonly freshnessChanged = new vscode.EventEmitter<number>();
+
+  /** Fires with the shown map's changed boxes whenever they are counted, and 0 when the panel closes (FRS-03). */
+  static readonly onDidCountChanges = ArchitecturePanel.freshnessChanged.event;
+
+  /** Gives every panel the service that tells how its map compares with the code. */
+  static useFreshness(service: FreshnessService): vscode.Disposable {
+    ArchitecturePanel.freshnessService = service;
+    return service.onDidChange((root) => {
+      if (ArchitecturePanel.instance?.root === root) ArchitecturePanel.instance.sendFreshness();
+    });
+  }
 
   private shown: Shown = { kind: "empty", message: "" };
   /** The file whose citing boxes are marked (UI-03), absolute, or `null`. */
@@ -38,6 +54,8 @@ export class ArchitecturePanel {
   private follow = false;
   /** A box marked on its own, from an Ask answer (UI-06). */
   private focused: string[] = [];
+  /** How the shown map compares with the code (FRS-03). */
+  private freshness: MapFreshness | null = null;
   private readonly disposables: vscode.Disposable[] = [];
 
   private constructor(
@@ -178,6 +196,29 @@ export class ArchitecturePanel {
         : { type: "empty", message: this.shown.message, ...(this.shown.action ? { action: this.shown.action } : {}) };
     void this.panel.webview.postMessage(message);
     this.sendHighlight();
+    this.sendFreshness();
+  }
+
+  /** Computes the shown map's freshness and sends its badges and header. */
+  sendFreshness(): void {
+    const service = ArchitecturePanel.freshnessService;
+    if (this.shown.kind !== "diagram" || this.file === "" || service === undefined) {
+      this.freshness = null;
+      ArchitecturePanel.freshnessChanged.fire(0);
+      return;
+    }
+    const state = service.of(this.root, this.file);
+    this.freshness = state;
+    const changed = changedBoxes(state);
+    const header = freshnessHeader(changed, this.shown.diagram.components.length, state.revision, state.createdAt, new Date());
+    const message: HostMessage = { type: "freshness", boxes: state.boxes, header };
+    void this.panel.webview.postMessage(message);
+    ArchitecturePanel.freshnessChanged.fire(changed);
+  }
+
+  /** The shown map's freshness, for the e2e tests. */
+  get freshnessState(): MapFreshness | null {
+    return this.freshness;
   }
 
   private sendHighlight(): void {
@@ -214,11 +255,18 @@ export class ArchitecturePanel {
   async openBox(componentId: string, index = 0): Promise<void> {
     if (this.shown.kind !== "diagram") return;
     const component = this.shown.diagram.components.find((candidate) => candidate.id === componentId);
-    if (component) await openSource(this.root, component, index, this.panel.viewColumn);
+    if (!component) return;
+    // A moved citation opens where its lines are now (FRS-03).
+    const now = this.freshness?.citations.find((citation) => citation.component === componentId && citation.index === index && citation.state === "moved")?.now;
+    if (now) await openSourceRef(this.root, { path: now.path, ...(now.line === undefined ? {} : { line: now.line }), ...(now.end_line === undefined ? {} : { end_line: now.end_line }) }, this.panel.viewColumn);
+    else await openSource(this.root, component, index, this.panel.viewColumn);
   }
 
   private dispose(): void {
-    if (ArchitecturePanel.instance === this) ArchitecturePanel.instance = undefined;
+    if (ArchitecturePanel.instance === this) {
+      ArchitecturePanel.instance = undefined;
+      ArchitecturePanel.freshnessChanged.fire(0);
+    }
     for (const disposable of this.disposables.splice(0)) disposable.dispose();
   }
 }

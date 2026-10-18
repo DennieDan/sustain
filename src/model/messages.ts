@@ -5,6 +5,7 @@ import type { RunStatus } from "./agentStream/tracker";
 import type { LeaderboardEntry } from "./leaderboard";
 import type { Check, CheckId } from "./preflight";
 import type { RunPhase } from "./runRecord";
+import type { Freshness } from "./staleness";
 
 /**
  * Host → architecture webview. `doc` is the parsed diagram JSON; `file` its absolute path. An
@@ -14,7 +15,9 @@ import type { RunPhase } from "./runRecord";
 export type HostMessage =
   | { type: "load"; doc: unknown; file: string }
   | { type: "empty"; message: string; action?: "mapFolder" }
-  | { type: "highlight"; ids: string[]; file: string | null; follow: boolean };
+  | { type: "highlight"; ids: string[]; file: string | null; follow: boolean }
+  /** FRS-03: each box's state against the code, and the header when boxes changed. */
+  | { type: "freshness"; boxes: Record<string, Freshness>; header: string | null };
 
 /** Architecture webview → host. `index` is into the component's tolerant `sources` list. */
 export type WebviewMessage =
@@ -90,6 +93,8 @@ export interface MapItem {
   /** When the run started: `run.json`'s `createdAt`, else the candidate's modification time. */
   createdAt: string;
   boxes: number | null;
+  /** Boxes whose code was edited or is missing (FRS-03), or `null` without fingerprints. */
+  changed: number | null;
 }
 
 /** An agent the composer offers: found on PATH, with whether it can stream into the sidebar. */

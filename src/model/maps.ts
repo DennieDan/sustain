@@ -29,6 +29,7 @@ export function listMaps(root: string): MapItem[] {
       agent: record?.agent ?? null,
       createdAt: record?.createdAt ?? new Date(candidate.mtimeMs).toISOString(),
       boxes,
+      changed: null,
     };
   });
 }

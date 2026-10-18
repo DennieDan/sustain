@@ -6,11 +6,12 @@ import { dirname } from "node:path";
 import * as vscode from "vscode";
 import { listCandidates } from "../model/discovery";
 import { listMaps } from "../model/maps";
-import type { HomeHostMessage, HomeState, HomeWebviewMessage, SessionSummary } from "../model/messages";
+import type { HomeHostMessage, HomeState, HomeWebviewMessage, MapItem, SessionSummary } from "../model/messages";
 import { runPreflight, type Check } from "../model/preflight";
 import { assertWritable } from "../model/confine";
 import { AGENTS } from "./agents";
 import type { Ask } from "./ask";
+import { changedBoxes, type FreshnessService } from "./freshness";
 import { findDevinCli } from "./devin";
 import { chosenAgent, configuredRunMode, foundAgents, launchGenerate, launchNotes, rememberAgent } from "./generate";
 import { webviewHtml } from "./html";
@@ -34,7 +35,8 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
     private readonly context: vscode.ExtensionContext,
     private readonly runs: Runs,
     private readonly ask: Ask,
-    changes: vscode.Event<void>[],
+    private readonly freshness: FreshnessService,
+    changes: vscode.Event<unknown>[],
   ) {
     for (const change of [runs.onDidChange, ask.onDidChange, ...changes]) this.disposables.push(change(() => this.send()));
     this.disposables.push(
@@ -99,7 +101,7 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
     return {
       folders: (vscode.workspace.workspaceFolders ?? []).map((folder) => ({ name: folder.name, root: folder.uri.fsPath })),
       root,
-      maps: root === null ? [] : listMaps(root),
+      maps: root === null ? [] : this.mapsOf(root),
       composer: { agents, agent, runMode, notes },
       run: this.runs.current,
       setup: root === this.setupRoot ? this.setup : null,
@@ -107,6 +109,14 @@ export class HomeView implements vscode.WebviewViewProvider, vscode.Disposable {
       ask: this.ask.view(root),
       serverNow: new Date().toISOString(),
     };
+  }
+
+  /** The maps list, each with its changed boxes when it has fingerprints (FRS-03). */
+  private mapsOf(root: string): MapItem[] {
+    return listMaps(root).map((item) => {
+      const state = this.freshness.of(root, item.file);
+      return { ...item, changed: state.revision === null && state.citations.length === 0 ? null : changedBoxes(state) };
+    });
   }
 
   /** Sends the current state when the sidebar is showing. */

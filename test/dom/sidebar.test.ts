@@ -41,7 +41,7 @@ function state(fields: Partial<HomeState> = {}): HomeState {
 }
 
 function map(fields: Partial<MapItem>): MapItem {
-  return { runFolder: "architecture-x-20261016-120000", file: "/r/.archify/architecture-x-20261016-120000/candidate.json", title: "Sustain", focus: "", agent: "Claude Code", createdAt: "2026-10-16T12:00:00Z", boxes: 16, ...fields };
+  return { runFolder: "architecture-x-20261016-120000", file: "/r/.archify/architecture-x-20261016-120000/candidate.json", title: "Sustain", focus: "", agent: "Claude Code", createdAt: "2026-10-16T12:00:00Z", boxes: 16, changed: null, ...fields };
 }
 
 function run(fields: Partial<RunCard>): RunCard {

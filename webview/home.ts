@@ -187,7 +187,13 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     const entry = el("li", "map");
     const open = button(item.title ?? item.runFolder, "map__title", () => post({ type: "openMap", file: item.file }));
     open.title = item.runFolder;
-    const meta = [item.focus, item.agent, relativeAge(item.createdAt, now()), item.boxes === null ? null : `${item.boxes} box${item.boxes === 1 ? "" : "es"}`].filter(
+    const meta = [
+      item.focus,
+      item.agent,
+      relativeAge(item.createdAt, now()),
+      item.boxes === null ? null : `${item.boxes} box${item.boxes === 1 ? "" : "es"}`,
+      item.changed !== null && item.changed > 0 ? `${item.changed} changed` : null,
+    ].filter(
       (part): part is string => part !== null && part !== "",
     );
     const actions = el("div", "map__actions");

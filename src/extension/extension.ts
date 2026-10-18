@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import type { HomeState, HomeWebviewMessage, RunCard, SessionWebviewMessage, WebviewMessage } from "../model/messages";
+import type { MapFreshness } from "../model/staleness";
 import { Ask } from "./ask";
+import { FreshnessService } from "./freshness";
 import { generateArchitectureCommand, resetDataNote } from "./generate";
 import { HOME_VIEW, HomeView } from "./home";
 import { removeHooksWhenIdle } from "./hooksFiles";
@@ -20,6 +22,8 @@ export interface TestHook {
   panelState(): { file: string | undefined; open: boolean };
   /** The boxes the map marks as citing a file, and whether they follow the editor (UI-03). */
   panelHighlight(): { ids: string[]; file: string | null; follow: boolean } | undefined;
+  /** How the shown map compares with the code (FRS-03). */
+  panelFreshness(): MapFreshness | null | undefined;
   /** Delivers `message` as if the webview had posted it; resolves when it has been handled. */
   postFromWebview(message: WebviewMessage): Promise<void>;
   sessionPanelState(): { open: boolean };
@@ -47,12 +51,17 @@ export function activate(context: vscode.ExtensionContext): TestHook {
   const candidates = new CandidateWatcher(extensionUri, (root) => runs.runningRoot === root && runs.current?.mode === "sidebar");
   const sessions = new SessionWatcher();
   const ask = new Ask(context, extensionUri);
-  const home = new HomeView(context, runs, ask, [candidates.onDidChange, sessions.onDidChange]);
+  const freshness = new FreshnessService();
+  const home = new HomeView(context, runs, ask, freshness, [candidates.onDidChange, sessions.onDidChange, freshness.onDidChange]);
   const status = new StatusItem(runs);
+  const counts = ArchitecturePanel.onDidCountChanges((changed) => (status.changed = changed));
   const running = runs.onDidChange(() => void vscode.commands.executeCommand("setContext", "sustain.running", runs.current?.status === "running"));
   context.subscriptions.push(
     runs,
     ask,
+    freshness,
+    ArchitecturePanel.useFreshness(freshness),
+    counts,
     candidates,
     sessions,
     home,
@@ -78,6 +87,7 @@ export function activate(context: vscode.ExtensionContext): TestHook {
   return {
     panelState: () => ({ file: ArchitecturePanel.current?.file, open: ArchitecturePanel.current !== undefined }),
     panelHighlight: () => ArchitecturePanel.current?.highlightState,
+    panelFreshness: () => ArchitecturePanel.current?.freshnessState,
     postFromWebview: async (message) => ArchitecturePanel.current?.handleMessage(message),
     sessionPanelState: () => ({ open: SessionPanel.current !== undefined }),
     postFromSessionWebview: async (message) => SessionPanel.current?.handleMessage(message),
