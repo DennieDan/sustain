@@ -11,7 +11,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | D3 The living map | Closed pending owner (RCH-01 `[smoke]`) | `3850c3e` |
 | D4 Pull request checks | Closed pending owner (PRC-04 `[ci]`) | `eced4f5` |
 | D5 Sustain Cloud v1 | Closed pending owner (deployment, see Waiting) | `574992c` |
-| D6 Ship | Not started | |
+| D6 Ship | In progress | |
 | I1 Cost | Not started | |
 | I2 Accuracy | Not started | |
 | I3 Architecture guardrails | Not started | |
@@ -284,6 +284,22 @@ Done when: Uploads, map pages and PR pages work against mocks.
 - [x] **CLD-11 Delete data** `[unit]` `[web]` — 2026-10-18: the account and repository routes and settings pages. Tests: `cloud/test/unit/delete.test.ts` (5: one map, a repository's data, an account with only its own spaces, owners only and same-site only, tokens and public maps); `[web]` `cld11-delete.spec.ts` (a map, a token shown once, a repository's data and the account, each at once).
 
 ## D6 Ship
+
+### D6 proposal (2026-10-18)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `esbuild.mjs`, `skills/*/scripts/`, `skills/sustain-refresh/references/`, `.github/workflows/ci.yml` | RCH-02: the built scripts committed into each skill and refreshed by `npm run build`; CI fails when they are stale | +50, plus the generated scripts |
+| `scripts/release.mjs`, `package.json`, `.gitignore` | RCH-02: `npm run build:release` assembles `release/plugin/` with `.claude-plugin/plugin.json` and a marketplace manifest | +80 |
+| `package.json`, `media/icon.png`, `scripts/package.mjs` | RCH-05: the icon, repository, homepage, bugs, keywords, categories and `preview`; `--skip-license` only without a LICENSE; no `--allow-missing-repository` | +60 |
+| `.github/workflows/release.yml`, `.github/workflows/deploy-cloud.yml` | RCH-05: on `v*` tags the gates, then a GitHub release with the `.vsix`, skill zip, Action bundle and checksums; Open VSX and Marketplace steps behind their secrets; a pre-release tag as a dry run; the cloud deployed from `main` | +130 |
+| `README.md` | DOC-01: rewritten around value, quick starts, where to find it, committing the map, cost, what it touches and removal | +150 / -69 |
+
+Tests the D6 ACs call for:
+- the committed scripts equal a fresh build; the plugin folder's manifests;
+- package metadata;
+- the release workflow's steps, its secret conditions and the dry run on a pre-release tag;
+- the README's headings present and the false phrases absent.
 
 Done when: Released: extension published, Action tagged, cloud deployed.
 
