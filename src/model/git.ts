@@ -275,3 +275,11 @@ export function filesAt(root: string, revision: string, dir: string, env: NodeJS
   const output = run(program, root, [...GIT_PREFIX, "ls-tree", "-r", "-z", "--name-only", revision, "--", dir === "" ? "." : dir]);
   return (output ?? "").split("\0").filter((path) => path !== "");
 }
+
+/** The checked-out branch's name, or `null` for a detached HEAD or without git. */
+export function currentBranch(root: string, env: NodeJS.ProcessEnv = process.env): string | null {
+  const program = gitProgram(env);
+  if (program === undefined) return null;
+  const name = run(program, root, [...GIT_PREFIX, "symbolic-ref", "--quiet", "--short", "HEAD"])?.trim();
+  return name ? name : null;
+}

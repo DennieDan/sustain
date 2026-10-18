@@ -1,9 +1,9 @@
 // `node dist/cli/sustain.mjs <command> [options]` (RCH-03): install, verify-skills, staleness,
-// changes, export-page, preflight and check. Prints one JSON object, or markdown with
+// changes, export-page, preflight, check and publish (CLD-09). Prints one JSON object, or markdown with
 // `--format markdown`. `--root <dir>` names the repository; the working directory otherwise.
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { changes, check, cliHome, exportPage, install, preflight, staleness, usage, verifySkills, type CliArgs, type CommandResult } from "./commands";
+import { changes, check, cliHome, exportPage, install, preflight, publish, staleness, usage, verifySkills, type CliArgs, type CommandResult } from "./commands";
 
 /** The page script and stylesheet, filled in by the build. */
 const PAGE = { script: process.env.SUSTAIN_PAGE_SCRIPT ?? "", style: process.env.SUSTAIN_PAGE_STYLE ?? "" };
@@ -16,6 +16,7 @@ const COMMANDS: Record<string, (args: CliArgs) => CommandResult | Promise<Comman
   "export-page": exportPage,
   preflight,
   check,
+  publish,
 };
 
 /** Options as `--name value…`; a flag without a value maps to an empty list. */

@@ -14,9 +14,13 @@ inputs:
     required: false
     default: "true"
   upload:
-    description: "Whether to upload the result to Sustain Cloud. Nothing leaves the runner without it."
+    description: "Whether to upload the check and its map to Sustain Cloud through OIDC (needs `permissions: id-token: write`). Nothing leaves the runner without it."
     required: false
     default: "false"
+  cloud-url:
+    description: "Sustain Cloud's address, for upload."
+    required: false
+    default: ""
   github-token:
     description: "The token that posts the comment."
     required: false

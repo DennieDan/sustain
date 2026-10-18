@@ -48,3 +48,47 @@ export function checkUpload(value: unknown): Issue[] {
   const mapIssues = upload.map === undefined ? [] : validateArchitecture(upload.map).map((issue) => ({ ...issue, pointer: `/map${issue.pointer}` }));
   return [...mapIssues, ...findSecrets(value)];
 }
+
+/** `owner/repo` of a github.com remote in HTTPS or SSH form, or `null`. */
+export function githubSlug(origin: string): string | null {
+  const match = /^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/i.exec(origin.trim());
+  return match ? `${match[1]}/${match[2]}` : null;
+}
+
+export interface MapPayloadInput {
+  repo: string;
+  commit: string;
+  branch: string;
+  run: string;
+  map: unknown;
+  record: { focus?: string; agent?: string; tokens?: unknown; costUsd?: number; skillVersion?: string } | null;
+  sidecars: { run?: unknown; fingerprints?: unknown; evidence?: unknown };
+  defaultBranch?: string;
+}
+
+/** The upload of a map with whichever sidecars exist (CLD-09). */
+export function mapPayload(input: MapPayloadInput): Upload {
+  const record = input.record ?? {};
+  const meta: Upload["meta"] = { run: input.run };
+  if (record.focus) meta.focus = record.focus;
+  if (record.agent) meta.agent = record.agent;
+  if (record.tokens) meta["tokens"] = record.tokens;
+  if (record.costUsd !== undefined) meta["costUsd"] = record.costUsd;
+  if (record.skillVersion) meta["skillVersion"] = record.skillVersion;
+  if (input.defaultBranch) meta.defaultBranch = input.defaultBranch;
+  const sidecars = Object.fromEntries(Object.entries(input.sidecars).filter(([, value]) => value !== undefined && value !== null));
+  return { repo: input.repo, commit: input.commit, branch: input.branch, kind: "map", map: input.map, ...(Object.keys(sidecars).length > 0 ? { sidecars } : {}), meta };
+}
+
+/** The upload of a pull request's check with the map it compared against (CLD-09). */
+export function checkPayload(input: { repo: string; commit: string; branch: string; pull: number; check: unknown; map: unknown; run: string; defaultBranch?: string }): Upload {
+  return {
+    repo: input.repo,
+    commit: input.commit,
+    branch: input.branch,
+    kind: "check",
+    check: input.check,
+    map: input.map,
+    meta: { pull: input.pull, run: input.run, ...(input.defaultBranch ? { defaultBranch: input.defaultBranch } : {}) },
+  };
+}

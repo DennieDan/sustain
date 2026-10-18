@@ -1,4 +1,5 @@
-// PRC-04: the Action on a recorded pull_request payload, with a fake GitHub API.
+// PRC-04 and CLD-09: the Action on a recorded pull_request payload, with a fake GitHub API and a
+// fake cloud.
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -65,7 +66,7 @@ function checkout(label = "API"): string {
 }
 
 function env(inputs: Record<string, string> = {}): NodeJS.ProcessEnv {
-  return Object.fromEntries(Object.entries({ "fail-on": "", map: "", comment: "true", upload: "false", ...inputs }).map(([key, value]) => [`INPUT_${key.toUpperCase()}`, value]));
+  return Object.fromEntries(Object.entries({ "fail-on": "", map: "", comment: "true", upload: "false", "cloud-url": "", ...inputs }).map(([key, value]) => [`INPUT_${key.toUpperCase()}`, value]));
 }
 
 describe("PRC-04 the Action", () => {
@@ -120,5 +121,54 @@ describe("PRC-04 the Action", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("CLD-09 the Action's upload", () => {
+  test("with upload, the check and its map go to the cloud signed by the job's OIDC token, and the comment links the page", async () => {
+    const root = checkout();
+    const calls: { url: string; auth: string | null; body: any }[] = [];
+    const fetcher = (async (url: string | URL | Request, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      calls.push({ url: String(url), auth: headers.get("authorization"), body: init?.body ? JSON.parse(String(init.body)) : null });
+      if (String(url).startsWith("https://actions.test/")) return Response.json({ value: "oidc-jwt" });
+      return Response.json({ status: "accepted", id: 3, url: "/acme/shop/pull/42" }, { status: 201 });
+    }) as typeof fetch;
+    const result = await runAction({
+      env: {
+        ...env({ upload: "true", "cloud-url": "https://cloud.test/" }),
+        GITHUB_REPOSITORY: "acme/shop",
+        ACTIONS_ID_TOKEN_REQUEST_URL: "https://actions.test/token?run=1",
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN: "request-token",
+      },
+      root,
+      event: EVENT,
+      client: fakeGitHub(),
+      log: () => undefined,
+      fetcher,
+    });
+    expect(calls.map((call) => [call.url, call.auth])).toEqual([
+      ["https://actions.test/token?run=1&audience=sustain-cloud", "Bearer request-token"],
+      ["https://cloud.test/api/v1/uploads", "Bearer oidc-jwt"],
+    ]);
+    expect(calls[1]!.body).toMatchObject({ repo: "acme/shop", branch: "feature", kind: "check", meta: { pull: 42, defaultBranch: "main" }, check: { result: "pass" } });
+    expect(calls[1]!.body.map.meta.title).toBe("Shop");
+    expect(result.comment).toContain("[See it on the map in Sustain Cloud](https://cloud.test/acme/shop/pull/42)");
+  });
+
+  test("without upload nothing is sent; without the id-token permission the upload is skipped and said so", async () => {
+    const root = checkout();
+    let sent = 0;
+    const fetcher = (async () => {
+      sent++;
+      return Response.json({});
+    }) as unknown as typeof fetch;
+    await runAction({ env: env(), root, event: EVENT, client: fakeGitHub(), log: () => undefined, fetcher });
+    expect(sent).toBe(0);
+    const log: string[] = [];
+    const result = await runAction({ env: { ...env({ upload: "true", "cloud-url": "https://cloud.test" }), GITHUB_REPOSITORY: "acme/shop" }, root, event: EVENT, client: fakeGitHub(), log: (line) => log.push(line), fetcher });
+    expect(log[0]).toBe("Not uploaded: Uploading needs `permissions: id-token: write` on the job.");
+    expect(result.result).toBe("pass");
+    expect(sent).toBe(0);
   });
 });

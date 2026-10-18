@@ -153,11 +153,11 @@ The learning-session skill ([ADRs 0029–0036](adr/0029-learning-modes-in-one-ag
 
 ### `src/cli/`
 
-`sustain.ts` and `commands.ts`, bundled to `dist/cli/sustain.mjs` (ESM, Node ≥ 18) beside `dist/skills/` and `dist/skill-hashes.json`, which it finds from its own path ([ADR 0052](adr/0052-a-core-cli-shares-the-model-with-every-host.md)). Commands: `install [--scope user|project]`, `verify-skills [--agent] [--scope]`, `staleness [--map]`, `changes --scope uncommitted|branch|range [--range a..b]`, `export-page [--map] [--share]`, `preflight`, `check --base <ref> [--head <ref>] [--map] [--fail-on stale,new-box]`. Every command takes `--root` and `--format json|markdown`, prints one JSON object or markdown, and exits 0 (done, passed), 1 (a failing finding) or 2 (usage or I/O error).
+`sustain.ts` and `commands.ts`, bundled to `dist/cli/sustain.mjs` (ESM, Node ≥ 18) beside `dist/skills/` and `dist/skill-hashes.json`, which it finds from its own path ([ADR 0052](adr/0052-a-core-cli-shares-the-model-with-every-host.md)). Commands: `install [--scope user|project]`, `verify-skills [--agent] [--scope]`, `staleness [--map]`, `changes --scope uncommitted|branch|range [--range a..b]`, `export-page [--map] [--share]`, `preflight`, `check --base <ref> [--head <ref>] [--map] [--fail-on stale,new-box]`, `publish [--run] [--dry-run] [--url]` (CLD-09: the map and its sidecars to Sustain Cloud, checked first, signed with `SUSTAIN_TOKEN`). Every command takes `--root` and `--format json|markdown`, prints one JSON object or markdown, and exits 0 (done, passed), 1 (a failing finding) or 2 (usage or I/O error).
 
 ### `action/`
 
-The GitHub Action ([ADR 0053](adr/0053-the-check-runs-as-a-javascript-action.md)): `action.yml` (inputs `fail-on`, `map`, `comment`, `upload`, `github-token`; output `result`), `src/main.ts` (`runAction`: `runCheck` from `origin/<base_ref>` to `HEAD`, one comment marked `<!-- sustain-check -->` with the markdown and `deltaMermaid`, the job result from `fail-on`), `src/github.ts` (`GitHubClient` over the REST API, the only network use), `src/index.ts` (entry). `node esbuild.mjs --action` writes the committed `dist/index.js`; CI rebuilds and compares it.
+The GitHub Action ([ADR 0053](adr/0053-the-check-runs-as-a-javascript-action.md)): `action.yml` (inputs `fail-on`, `map`, `comment`, `upload`, `github-token`; output `result`), `src/main.ts` (`runAction`: `runCheck` from `origin/<base_ref>` to `HEAD`, one comment marked `<!-- sustain-check -->` with the markdown and `deltaMermaid`, the job result from `fail-on`), `src/github.ts` (`GitHubClient` over the REST API, the only network use in `action/src/`), `src/index.ts` (entry). With `upload: true` and `cloud-url`, it also sends the check and its map to Sustain Cloud through `src/cloud/client.ts`, signed by the job's OIDC token, and links the pull request page in the comment (CLD-09). `node esbuild.mjs --action` writes the committed `dist/index.js`; CI rebuilds and compares it.
 
 ### `src/layout/`
 
@@ -389,7 +389,7 @@ The validator's accepted report gains `evidence: [finding]` (ADR 0050). `refresh
 * **Diagram page:** `default-src 'none'` with the inline script and style allowed by SHA-256 hash; the map's JSON is escaped; links only for paths the citation rule and the deny-list accept; the absolute root only in a local page (RCH-01).
 * **Headless agents:** spawned by absolute path without a shell; Claude Code gets an exact tool list and `dontAsk`, Codex a sandbox, Ask read-only tools; no permission-skipping flag anywhere (SAF-04, UI-02, UI-06).
 * **Agent output:** stream text, Ask answers and map labels reach the webviews and the pull request comment as text only; Ask citations are checked again by the host before a line opens.
-* **Network:** the Action's GitHub client is the only network use in the repository's shipped code; it sends the comment with the workflow's token and nothing else (PRC-04).
+* **Network:** in `src/` only `src/cloud/client.ts` sends, for `publish` and the Action's `upload`; in `action/src/` only the GitHub client does, for the comment ([ADR 0055](adr/0055-only-the-cloud-client-sends-and-only-when-asked.md), PRC-04, CLD-09).
 
 ## Decisions
 

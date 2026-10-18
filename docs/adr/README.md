@@ -58,3 +58,4 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0052](0052-a-core-cli-shares-the-model-with-every-host.md) | A core CLI shares the model with every host | accepted | 2026-10-18 |
 | [0053](0053-the-check-runs-as-a-javascript-action.md) | The pull request check runs as a JavaScript Action | accepted | 2026-10-18 |
 | [0054](0054-the-cloud-accepts-maps-never-code.md) | The cloud accepts maps, never code | accepted | 2026-10-18 |
+| [0055](0055-only-the-cloud-client-sends-and-only-when-asked.md) | Only the cloud client sends, and only when asked | accepted | 2026-10-18 |

@@ -2,6 +2,7 @@
 // code with the validator's meaning: 0 done or passed, 1 a finding that fails, 2 a usage or I/O
 // error. The extension, the Action and the IntelliJ plugin call the same model modules.
 import { readFileSync, writeFileSync } from "node:fs";
+import { postUpload } from "../cloud/client";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { markChanges, parseDiff, rangeOf, type FileChange } from "../model/changes";
@@ -9,13 +10,15 @@ import { loadConfig, mainMap, runCheck } from "../model/check";
 import { assertWritable } from "../model/confine";
 import { FAIL_ON, type FailOn } from "../model/config";
 import { deltaMarkdown, escapeMarkdown } from "../model/deltaMarkdown";
-import { diffFor, renamesSince } from "../model/git";
+import { collectGitFacts, currentBranch, diffFor, renamesSince } from "../model/git";
 import { checkSkill, diffSize, type AgentId, type SkillHashes } from "../model/integrity";
 import { pageOutput, renderPage } from "../model/page";
 import { runPreflight } from "../model/preflight";
 import { ARCHIFY_DIR, CANDIDATE_FILE } from "../model/runFolder";
 import { fileReader, mapFreshness, readFingerprints } from "../model/staleness";
 import { readDiagram } from "../model/tolerant";
+import { checkUpload, githubSlug, mapPayload } from "../model/upload";
+import { readRunRecord } from "../model/runRecord";
 import { isJsonObject, type Repository } from "../model/types";
 import { SKILL_NAMES, skillBase, skillTargets, writeSkill } from "../extension/skillFiles";
 
@@ -184,6 +187,57 @@ export function check(args: CliArgs): CommandResult {
   const outcome = runCheck({ root: args.root, base, ...(head === undefined ? {} : { head }), ...(map === undefined ? {} : { map }), ...(failOn.length > 0 ? { failOn: failOn as FailOn[] } : {}) });
   if (!outcome.ok) return usage(outcome.reason);
   return { exitCode: outcome.report.result === "pass" ? 0 : 1, json: outcome.report, markdown: deltaMarkdown(outcome.report, outcome.report) };
+}
+
+/** Reads a run folder's JSON sidecar, or `undefined` when it is absent or unreadable. */
+function sidecar(dir: string, name: string): unknown {
+  try {
+    return JSON.parse(readFileSync(join(dir, name), "utf8"));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * CLD-09: uploads a map and its sidecars to Sustain Cloud, signed with SUSTAIN_TOKEN. The upload is
+ * checked (schema, secret scan) before anything is sent; `--dry-run` prints it and sends nothing.
+ */
+export async function publish(args: CliArgs): Promise<CommandResult> {
+  const run = one(args, "--run");
+  const mapArgs: CliArgs = run === undefined ? args : { ...args, options: new Map([...args.options, ["--map", [run]]]) };
+  const map = chosenMap(mapArgs);
+  if (typeof map === "string") return usage(map);
+  const git = collectGitFacts(args.root, args.env);
+  const repo = git?.origin ? githubSlug(git.origin) : null;
+  if (!git || repo === null) return usage("publish needs a git repository with a github.com origin.");
+  const branch = currentBranch(args.root, args.env);
+  if (branch === null) return usage("publish needs a checked-out branch.");
+  const payload = mapPayload({
+    repo,
+    commit: git.head,
+    branch,
+    run: map.run,
+    map: map.doc,
+    record: readRunRecord(map.dir),
+    sidecars: { run: sidecar(map.dir, "run.json"), fingerprints: sidecar(map.dir, "fingerprints.json"), evidence: sidecar(map.dir, "evidence.json") },
+  });
+  const issues = checkUpload(payload);
+  if (issues.length > 0) {
+    return { exitCode: 1, json: { status: "refused", message: "The upload would be refused, so nothing was sent.", issues }, markdown: list("Not sent", issues.map((issue) => `${escapeMarkdown(issue.pointer)}: ${escapeMarkdown(issue.message)}`)) };
+  }
+  const cloud = one(args, "--url") ?? args.env["SUSTAIN_CLOUD_URL"];
+  if (args.options.has("--dry-run")) return { exitCode: 0, json: { status: "dry-run", url: cloud ?? null, payload }, markdown: `Would send to ${cloud ?? "(no --url)"}:\n\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\`\n` };
+  const token = args.env["SUSTAIN_TOKEN"];
+  if (!cloud) return usage("publish needs --url or SUSTAIN_CLOUD_URL.");
+  if (!token) return usage("publish needs an upload token in SUSTAIN_TOKEN, from the repository's settings in Sustain Cloud.");
+  let result;
+  try {
+    result = await postUpload(cloud, token, payload);
+  } catch (error) {
+    return usage(`cannot reach ${cloud}: ${(error as Error).message}`);
+  }
+  if (!result.ok) return { exitCode: 1, json: { status: "rejected", httpStatus: result.status, response: result.body }, markdown: `Rejected: ${escapeMarkdown(result.message)}\n` };
+  return { exitCode: 0, json: { status: "published", response: result.body }, markdown: `Published ${escapeMarkdown(map.run)}.\n` };
 }
 
 /** The CLI's home, from the file the CLI was loaded from. */
