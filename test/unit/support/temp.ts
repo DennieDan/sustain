@@ -83,6 +83,9 @@ interface RunOptions {
   env?: NodeJS.ProcessEnv;
 }
 
+/** The node that runs the built scripts. CI sets `SUSTAIN_SCRIPT_NODE` to a Node 18 binary to test the floor. */
+const SCRIPT_NODE = process.env["SUSTAIN_SCRIPT_NODE"] ?? process.execPath;
+
 /** Runs a built skill script with `node`, as the agent does. */
 export function runScript(script: "validate", args: string[], options: RunOptions): ScriptRun<ValidateReport>;
 export function runScript(script: "repo-facts", args: string[], options: RunOptions): ScriptRun<RepoFacts>;
@@ -92,7 +95,7 @@ export function runScript(
   args: string[],
   options: RunOptions,
 ): ScriptRun<ValidateReport | RepoFacts | SessionReport> {
-  const result = spawnSync(process.execPath, [join(SCRIPTS_DIR, `${script}.mjs`), ...args], {
+  const result = spawnSync(SCRIPT_NODE, [join(SCRIPTS_DIR, `${script}.mjs`), ...args], {
     cwd: options.cwd,
     encoding: "utf8",
     env: options.env ?? process.env,
@@ -119,7 +122,7 @@ export interface HookReport {
  * on stdin, cwd = repo root, `DEVIN_PROJECT_DIR` set (ADR 0032).
  */
 export function runHook(payload: Record<string, unknown>, options: RunOptions): ScriptRun<HookReport> {
-  const result = spawnSync(process.execPath, [join(SCRIPTS_DIR, "session-hook.mjs")], {
+  const result = spawnSync(SCRIPT_NODE, [join(SCRIPTS_DIR, "session-hook.mjs")], {
     cwd: options.cwd,
     encoding: "utf8",
     input: JSON.stringify(payload),

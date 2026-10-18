@@ -1,0 +1,32 @@
+// ENG-01: the CI workflow runs the gates the spec names.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { expect, test } from "vitest";
+import { repoRoot } from "./support/sourceScan";
+
+const workflow = readFileSync(join(repoRoot, ".github/workflows/ci.yml"), "utf8");
+
+/** The `run:` commands of one job, in order. */
+function jobRuns(job: string): string[] {
+  const start = workflow.indexOf(`\n  ${job}:\n`);
+  expect(start, `job ${job} exists`).toBeGreaterThan(-1);
+  const rest = workflow.slice(start + job.length + 5);
+  const end = rest.search(/\n {2}[\w-]+:\n/);
+  const body = end < 0 ? rest : rest.slice(0, end);
+  return [...body.matchAll(/- run: (.+)/g)].map((match) => match[1]!);
+}
+
+test("the check job runs npm run check on Linux, macOS and Windows", () => {
+  expect(workflow).toContain("os: [ubuntu-latest, macos-latest, windows-latest]");
+  expect(jobRuns("check")).toEqual(["npm ci", "npm run check"]);
+});
+
+test("the e2e, package and Node 18 script jobs run their commands", () => {
+  expect(jobRuns("e2e")).toEqual(["npm ci", "xvfb-run -a npm run test:e2e"]);
+  expect(jobRuns("package")).toEqual(["npm ci", "npm run package"]);
+  expect(jobRuns("scripts-node18")).toEqual([
+    'echo "SUSTAIN_SCRIPT_NODE=$(command -v node)" >> "$GITHUB_ENV"',
+    "npm ci",
+    "npx vitest run --project unit test/unit/agent",
+  ]);
+});

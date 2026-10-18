@@ -6,7 +6,7 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 
 | Milestone | Status | Commit |
 |---|---|---|
-| D1 Safe to ship | Not started | |
+| D1 Safe to ship | In progress | |
 | D2 The product in VS Code | Not started | |
 | D3 The living map | Not started | |
 | D4 Pull request checks | Not started | |
@@ -29,9 +29,41 @@ Items only the owner can do, with exact steps.
 
 ## D1 Safe to ship
 
+### D1 proposal (2026-10-18)
+
+| Location | Change | Est. LoC |
+|---|---|---|
+| `.github/workflows/ci.yml`, `.gitattributes` | CI jobs: check on three OSes, e2e under xvfb, package, scripts on Node 18; LF endings | +70 |
+| `test/unit/support/temp.ts` | Script tests spawn `SUSTAIN_SCRIPT_NODE` when set | +4 / -2 |
+| `test/unit/layout/perf.test.ts`, `test/unit/layout/perfBudget.ts` | Relative layout budget (60/120 median ≤ 8 × 12-component median) | +35 / -5 |
+| `esbuild.mjs`, `scripts/notices.mjs`, `THIRD_PARTY_NOTICES.md` | Metafiles, notices generator, `check:notices` in `npm run check` | +130 |
+| `src/agent/session.ts`, `skills/sustain-bugfix/SKILL.md` | `verify --check-exit <code>` replaces `--check-cmd`; no shell | +20 / -20 |
+| `skills/*/SKILL.md` | Exact Bash rules, no Edit/Write pre-approval, the repository-content rule | +10 / -6 |
+| `src/model/secrets.ts`, `src/model/submission.ts` | Secret-shaped strings rejected by the validator | +70 |
+| `src/model/confine.ts` and every writer | Writes stay inside the root and never through a link | +60 / -10 |
+| `src/extension/hooksFiles.ts`, `install.ts`, `learn.ts`, `sessionWatcher.ts`, `extension.ts` | Hooks merged at session launch, removed when the session ends; `.git/info/exclude` replaces `.gitignore` | +60 / -30 |
+| `src/model/git.ts`, `src/extension/agents.ts`, `package.json` | Absolute binaries from absolute PATH entries, `core.fsmonitor=false`, untrusted workspaces off | +30 / -5 |
+| `src/model/integrity.ts`, `src/extension/integrity.ts`, `generate.ts`, `learn.ts`, `esbuild.mjs` | Bundled skill hashes and the check before every launch | +170 |
+
+Tests the D1 ACs call for:
+- the CI workflow's jobs, read from the YAML;
+- the relative budget helper, with a 10 × slower median failing;
+- notices generation from a metafile fixture, and the stale-file check;
+- every shipped SKILL.md has no Edit/Write/NotebookEdit and no Bash rule that reaches free text;
+- a source scan: no `shell: true`, and every spawn uses `process.execPath` or the resolved git path;
+- `verify --check-exit` in the session script tests, replacing the `--check-cmd` cases;
+- secret patterns: rejected and accepted cases, through the validator;
+- inert rendering of hostile strings in the map webview;
+- argv tables per agent, free of permission-skipping flags; relative PATH entries skipped;
+- confinement: each listed path linked outside the root is refused;
+- hook lifecycle: install leaves `.devin/` and `.gitignore` alone; merge at launch; removal at session end;
+- git argv carries `core.fsmonitor=false`; an fsmonitor configured in `.git/config` never runs;
+- integrity: changed, extra, missing, escaping link and CRLF cases; a tampered skill blocks Generate and Start Learning.
+
+
 Done when: Gates green; a tampered skill cannot launch; no pre-approved command runs a caller's program.
 
-- [ ] **ENG-01 Toolchain and CI** `[unit]` `[ci]`
+- [ ] **ENG-01 Toolchain and CI** `[unit]` `[ci]` — `[unit]` done 2026-10-18: `test/unit/ci.test.ts` (2 tests, seen to fail with macOS removed from the matrix). `SUSTAIN_SCRIPT_NODE=/usr/bin/node` (v18.19.1) → `vitest run --project unit test/unit/agent`: 148 passed. `[ci]` waits for the first push.
 - [ ] **ENG-02 Meaningful layout test** `[unit]`
 - [ ] **ENG-04 Third-party notices** `[unit]` `[ci]`
 - [ ] **SAF-01 Skill integrity check** `[unit]` `[e2e]`
