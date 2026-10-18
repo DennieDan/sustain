@@ -17,14 +17,14 @@ Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progres
 | I3 Architecture guardrails | Closed pending owner (PRC-05 `[smoke]`) | `e97077f` |
 | I4 Skill retention | Closed pending owner (LRN-01 `[smoke]`) | `5b7a19c` |
 | I5 Cloud for teams | Waiting for the owner (CLD-12 hard stop, CLD-10 `[ci]`, CLD-07 Stripe products) | `f732167` |
-| I6 Polish and reach | In progress | |
+| I6 Polish and reach | Closed pending owner (VWR-02 `[ci]`, RCH-04 `[smoke]`) | `34d09df` |
 | I7 IntelliJ plugin | Not started | |
 
 ## Waiting
 
 Items only the owner can do, with exact steps.
 
-- Push `kerk` and enable GitHub Actions so `[ci]` items can run: ENG-01 (the workflow's four jobs) and ENG-04 (the stale-notices check). Then tick them with the run's link.
+- Push `kerk` and enable GitHub Actions so `[ci]` items can run: ENG-01 (the workflow's four jobs), ENG-04 (the stale-notices check) and VWR-02 (`perf.test.ts`, the 60/120 layout median under 1 s on Ubuntu). Then tick them with the run's link.
 - Install and sign in to `claude`, `codex` and `devin` for `[smoke]` checks; approve any paid agent calls first (spec §6).
 - SET-01 `[smoke]`: with the default per-user install, run `/sustain-architecture` in Claude Code and `$sustain-architecture` in Codex from a repository with no `.agents/` folder, and confirm each finds the skill and its scripts.
 - UI-02 `[smoke]`: with `sustain.runMode` on "In sidebar", press Generate once with Claude Code and once with Codex in a small repository. Confirm the card shows reads, writes and validation, tokens and the final cost, and that the map opens on acceptance. Save each run's stdout (`claude -p … --output-format stream-json --verbose > claude-generate.jsonl`, `codex exec --json … > codex-generate.jsonl`) over the hand-written files in `test/fixtures/streams/`, then run `npm test`. If Claude Code reports a denial for the skill's own scripts, the `--allowedTools` rules need the folder `${CLAUDE_SKILL_DIR}` really resolves to (see "Where the D2 build differs").
@@ -563,19 +563,19 @@ Done when: Dashboard, billing and self-hosting work.
 
 ### I6 proposal (2026-10-19)
 
-| Location | Change | Est. LoC |
-|---|---|---|
-| `src/layout/worker.ts`, `src/layout/layout.ts`, `webview/layoutWorkers.ts`, `esbuild.mjs`, `src/extension/html.ts`, `src/model/page.ts` | VWR-02: ELK runs in two Web Workers started from Blob URLs, one per direction, in parallel; the worker's code is built separately and embedded as a string; the webview's and the page's CSP gain `worker-src blob:`; Node and tests run the same function in the thread | +160 |
-| `webview/finder.ts`, `webview/viewer.ts` | VWR-03: Find with `/` or Ctrl/⌘+F filters boxes by label, sublabel or cited path; Enter centres and zooms on a match, and the arrow keys cycle | +150 |
-| `webview/render.ts`, `webview/viewer.ts`, `webview/a11y.ts` | VWR-04: boxes take focus with Tab and open their code with Enter, with a focus ring, accessible names and a hidden list for screen readers | +120 |
-| `src/agent/repo-facts.ts`, `skills/sustain-architecture/SKILL.md`, `src/extension/drill.ts`, `webview/viewer.ts`, `package.json` | VWR-05: "Map this box in detail" in the box menu runs Generate focused on the box with `--parent <run>`; `repo-facts.mjs --parent` records a drill run; a drill-down map offers "Back to overview" | +150 |
-| `webview/imageExport.ts`, `src/extension/panel.ts`, `package.json` | VWR-06: Save Image in the map's title bar writes the map as SVG or PNG through a save dialog | +140 |
-| `src/extension/agents.ts`, `src/extension/generate.ts`, `webview/home.ts`, `skills/*/SKILL.md` | RCH-04: Devin in the composer, in terminal mode; `triggers: [user]` in every skill; "Copy prompt for…" GitHub Copilot agent mode, Cursor's agent, Gemini CLI, OpenCode and Devin Desktop | +140 |
-| `docs/messages.md`, `src/extension/*.ts`, `test/unit/messages.test.ts` | SET-04: every user-visible message in `docs/messages.md` with its ID, text and action; each error and warning offers exactly one action; a source scan keeps the two in step | +220 |
-| `src/model/usageLog.ts`, `src/extension/usageLog.ts`, `package.json` | SET-05: `sustain.usageLog` (off by default) keeps daily counts of fixed event names; Export Usage Log through a save dialog and Clear Usage Log | +150 |
-| `src/extension/removeSustain.ts`, `package.json` | SAF-08: `Sustain: Remove Sustain from This Folder`, also in the sidebar's title bar: repository skills, hook entries, exclude lines and the `AGENTS.md` block go; `.archify/`, `.sustain/` and `sustain.config.json` go after asking; the per-user skills are offered | +160 |
-| `scripts/check-docs.mjs` | ENG-03: every ID this spec defines is on exactly one checklist line of progress, and every requirement-shaped ID in progress is defined here or in `spec.md` | +80 |
-| `docs/adr/` | ADRs for layout in workers (superseding ADR 0010) and more agents (superseding ADR 0003) | 2 ADRs |
+| Location | Change | Est. LoC | Built |
+|---|---|---|---|
+| `src/layout/worker.ts`, `src/layout/layout.ts`, `webview/layoutWorkers.ts`, `esbuild.mjs`, `src/extension/html.ts`, `src/model/page.ts` | VWR-02: ELK runs in two Web Workers started from Blob URLs, one per direction, in parallel; the worker's code is built separately and embedded as a string; the webview's and the page's CSP gain `worker-src blob:`; Node and tests run the same function in the thread | +160 | +74 / -16 |
+| `webview/finder.ts`, `webview/viewer.ts` | VWR-03: Find with `/` or Ctrl/⌘+F filters boxes by label, sublabel or cited path; Enter centres and zooms on a match, and the arrow keys cycle | +150 | +224 / -4 |
+| `webview/render.ts`, `webview/viewer.ts`, `webview/a11y.ts` | VWR-04: boxes take focus with Tab and open their code with Enter, with a focus ring, accessible names and a hidden list for screen readers | +120 | +98 / -3 |
+| `src/agent/repo-facts.ts`, `skills/sustain-architecture/SKILL.md`, `src/extension/drill.ts`, `webview/viewer.ts`, `package.json` | VWR-05: "Map this box in detail" in the box menu runs Generate focused on the box with `--parent <run>`; `repo-facts.mjs --parent` records a drill run; a drill-down map offers "Back to overview" | +150 | +120 / -14 |
+| `webview/imageExport.ts`, `src/extension/panel.ts`, `package.json` | VWR-06: Save Image in the map's title bar writes the map as SVG or PNG through a save dialog | +140 | +210 / -3 |
+| `src/extension/agents.ts`, `src/extension/generate.ts`, `webview/home.ts`, `skills/*/SKILL.md` | RCH-04: Devin in the composer, in terminal mode; `triggers: [user]` in every skill; "Copy prompt for…" GitHub Copilot agent mode, Cursor's agent, Gemini CLI, OpenCode and Devin Desktop | +140 | +129 / -35 |
+| `docs/messages.md`, `src/extension/*.ts`, `test/unit/messages.test.ts` | SET-04: every user-visible message in `docs/messages.md` with its ID, text and action; each error and warning offers exactly one action; a source scan keeps the two in step | +220 | +114 / -69, with the 73-line `docs/messages.md` |
+| `src/model/usageLog.ts`, `src/extension/usageLog.ts`, `package.json` | SET-05: `sustain.usageLog` (off by default) keeps daily counts of fixed event names; Export Usage Log through a save dialog and Clear Usage Log | +150 | +168 / -13 |
+| `src/extension/removeSustain.ts`, `package.json` | SAF-08: `Sustain: Remove Sustain from This Folder`, also in the sidebar's title bar: repository skills, hook entries, exclude lines and the `AGENTS.md` block go; `.archify/`, `.sustain/` and `sustain.config.json` go after asking; the per-user skills are offered | +160 | +146 / -0 |
+| `scripts/check-docs.mjs` | ENG-03: every ID this spec defines is on exactly one checklist line of progress, and every requirement-shaped ID in progress is defined here or in `spec.md` | +80 | +51 / -2 |
+| `docs/adr/` | ADRs for layout in workers (superseding ADR 0010) and more agents (superseding ADR 0003) | 2 ADRs | 2 ADRs (0064, 0065) |
 
 Tests the I6 ACs call for:
 - VWR-02: worker and in-thread layouts identical `[unit]`; the 60/120 median under 1 s on CI `[ci]`.
@@ -583,6 +583,19 @@ Tests the I6 ACs call for:
 - VWR-05: Map this box in detail and Back to overview `[e2e]`.
 - RCH-04: the prompt formats `[unit]`; one Devin run `[smoke]`.
 - SET-04: the source scan `[unit]`. SET-05: the log `[unit]` and its commands `[e2e]`. SAF-08: the removal `[e2e]`. ENG-03: the traceability check `[unit]`.
+
+Where the I6 build differs from the proposal:
+- VWR-02 keeps ELK's own API in the page and starts ELK's bundled worker code from Blob URLs, one worker per direction, in place of a worker of Sustain's own in `src/layout/worker.ts`. ELK's worker build answers on the worker's own message channel and cannot be wrapped. Node lays out through `src/layout/elkInThread.ts`. The `[ci]` median waits for the owner's push.
+- VWR-03 also has the viewport leave keys typed into a text box alone.
+- VWR-04's accessible name holds the label as attribute text. SAF-03's hostile-label test now reads that attribute, and its name carries VWR-04.
+- VWR-06's Save Image sits in the map's title-bar menu beside Compare With… and Create Tour, and its command lives in `src/extension/saveImage.ts`. The PNG is painted onto a canvas from the drawn boxes, arrows and text, rather than drawn from the SVG as an image. The CSP then stays as VWR-02 left it.
+- RCH-04's Devin argv test found that `skillPrompt` gave Devin Codex's `$`, and Devin now gets `/`. Its `[smoke]` run waits for the owner.
+- SET-04 covers every notification. It changed `sourceTarget.ts` to return navigation problems as data and `confirmWrite` to ask through its callers, because the scan reads each message where it is shown. The scan reads call arguments itself, since a parser package would be a new dependency.
+- SAF-08 removes a link after checking only the folder that holds it, because SAF-05's `assertWritable` refuses any path that is a link.
+- ENG-03's first run found FRS-07 on both the I3 and the I6 checklist. FRS-07 stays ticked in I3.
+- Fixed along the way: the cloud viewer's hydration race (CLD-03) and a stale cloud type-check cache (CLD-13), both logged.
+
+51 deliberate breaks across I6 each failed their tests.
 
 Done when: Gates green.
 
@@ -616,6 +629,7 @@ Done when: The plugin opens cited lines on AB3.
 - 2026-10-19 — I5 built but for CLD-12, which waits for the owner's go (hard stop: network access in shipped extension code). Gates after CLD-13: `npm run check` exit 0 (1219 tests, 63 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 85, empty 3, multi 2 each); cloud typecheck exit 0; cloud `vitest` 45 passed; cloud build exit 0; cloud `[web]` 12 passed in 9.3 minutes with two app instances. 29 deliberate breaks across I5. CLD-10 `[ci]` and the Stripe products wait for the owner. I6 starts while CLD-12 waits, as §7 allows.
 - 2026-10-19 — The cloud's incremental type check kept `cloud/tsconfig.tsbuildinfo` between runs, and CLD-13's gate passed over a `mapPage.test.ts` fixture that lacked `size` and `tokenId`. The fixture was fixed, and the cloud gates now delete that file before the type check and the build.
 - 2026-10-19 — Signed-out cloud map pages showed no map. The viewer script filled the page before React hydrated it, and hydration replaced its work. `MapViewer.tsx` now loads the script through `next/script` once the page is interactive, and two `[web]` tests were seen failing without it. The fix went in with CLD-03.
+- 2026-10-19 — I6 closed pending owner. Gates after SET-04: `npm run check` exit 0 (1239 tests, 65 ADRs); `npm run test:e2e` exit 0 on VS Code 1.126.0 and 1.141.0 (single 91, empty 3, multi 2 each); cloud `vitest` 45 passed. After VWR-06, the last I6 change to viewer code: cloud typecheck and build exit 0, and cloud `[web]` 12 passed in 9.2 minutes. VWR-02 `[ci]` and RCH-04 `[smoke]` wait for the owner.
 - 2026-10-19 — SET-05's first e2e run failed once. VS Code's built-in git extension threw an uncaught `write EPIPE` from `git check-ignore` during VWR-05's drill test, and the suite counts any uncaught error as a failure. The rerun passed on both versions. A second occurrence will get the drill test waiting for git's work on its folder to finish.
 - 2026-10-19 — SET-04 reads "every user-visible message" as every notification, modal or not. The sidebar's and the map's own text, the status bar and quick pick prompts stay where they are. The scan reads call arguments with a small scanner in the test, because TypeScript 7 ships no parser API and a parser package would be a new dependency. The new actions are Open Folder… for errors that need a folder, Refresh Map for stale citations, Open File for an unreadable map, Open Config for config errors, Open Exclude File, Open run.json, Remove Copies, Copy Note, Compare With… and Try Again.
 - 2026-10-18 — `architecture.md` had not been updated per feature during D2 to D4, as spec §7 asks; it was brought up to date at D4's close (`29f183b`) and kept current since. The layout fixtures test got a 30 s timeout: it lays out 48 diagrams and passed 5 s only narrowly when the whole suite ran in parallel.
