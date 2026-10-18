@@ -39,6 +39,7 @@ Items only the owner can do, with exact steps.
 - ACC-04 `[smoke]`: run `npm run eval:check-truth` once with network access. It clones the four public corpus repositories into `~/.cache/sustain-bench` (zulip is the largest) and checks every glob at its pinned commit. Confirm it prints `ok` for each.
 - PRC-05 `[smoke]` (hard stop: paid agent calls). In a test repository with a committed map, add to the workflow `permissions: contents: write`, `actions/checkout` with `ref: ${{ github.head_ref }}` and `fetch-depth: 0`, a step that installs Claude Code (`npm i -g @anthropic-ai/claude-code`), and on the Sustain step `with: refresh: claude` and `env: ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}`. Open a pull request that adds a new folder of three source files. Confirm a commit "Update the architecture map for this pull request" lands on the branch with a new run folder, the comment's Map update names it with the changes and tokens, and a pull request from a fork gets "The map is never updated on a pull request from a fork."
 - LRN-01 `[smoke]`: in a small JavaScript repository, start a learning session three times from the sidebar, once each in Claude Code, Codex and Devin. In Codex, type `/hooks` and trust Sustain's hook first. In each, let the agent plant a bug, then ask it to fix the bug for you, and confirm the edit is refused with the hunting reason, once only in Devin. Finish or abandon the session and confirm `.claude/settings.local.json`, `.codex/hooks.json` and `.devin/hooks.v1.json` hold no Sustain entry.
+- CLD-12 (hard stop: network access in shipped extension code). Reply with a go to let the extension send maps to Sustain Cloud when `sustain.cloud.enabled` is on. Nothing of CLD-12 is built until then. With the go, the maps list gains "Share to Sustain Cloud", which signs in through VS Code's GitHub authentication, previews the exact JSON, asks to confirm, and sends it through `src/cloud/client.ts`, the one file the no-network test then allows in the extension.
 - UI-06 `[smoke]`: ask one question per agent from the sidebar about a mapped repository. Confirm the answer cites `path:line`, the links open the lines, and a second Claude Code question resumes the session.
 
 ## D1 Safe to ship
@@ -540,7 +541,7 @@ Done when: Dashboard, billing and self-hosting work.
 - [ ] **CLD-06 Share links** `[web]`
 - [ ] **CLD-07 Plans and billing** `[unit]` `[web]`
 - [ ] **CLD-10 Self-hosting** `[ci]`
-- [ ] **CLD-12 Share from the extension** `[unit]` `[e2e]`
+- [ ] **CLD-12 Share from the extension** `[unit]` `[e2e]` — waits for the owner's go (hard stop: network access in shipped extension code; see Waiting).
 - [ ] **CLD-13 Export and audit** `[unit]` `[web]`
 
 ## I6 Polish and reach
