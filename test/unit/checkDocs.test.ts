@@ -147,6 +147,12 @@ describe("FR-DOC-03 check:docs", () => {
     expect(checkDocs(docs).problems).toEqual(["progress.md: broken link missing.md#top"]);
   });
 
+  test("links in docs/research/ go unchecked, since they point at the researcher's own data", () => {
+    write("research/report.md", "[ledger](../../research/change-collection/results/ledger.jsonl)\n");
+    write("progress.md", "[report](research/report.md)\n");
+    expect(checkDocs(docs).problems).toEqual([]);
+  });
+
   test("relativeLinks skips fenced code blocks", () => {
     expect(relativeLinks("```\n[a](a.md)\n```\n[b](b.md)\n")).toEqual(["b.md"]);
   });

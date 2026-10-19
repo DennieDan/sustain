@@ -1,5 +1,5 @@
 // `npm run check:docs` (FR-DOC-03): validates docs/adr against MADR 4.0 as profiled by the spec,
-// checks that every relative link in docs/**/*.md resolves, and traces the v0.3 spec's IDs to the
+// checks that every relative link in docs/**/*.md outside docs/research/ resolves, and traces the v0.3 spec's IDs to the
 // progress checklist (ENG-03). Dependency-free Node ESM.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -9,6 +9,8 @@ const ADR_FILE = /^(\d{4})-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 const SUPERSEDED = /^superseded by \[ADR-(\d{4})\]\((\d{4}-[a-z0-9-]+\.md)\)$/;
 const PLAIN_STATUSES = ["proposed", "accepted", "rejected", "deprecated"];
 const REQUIRED_SECTIONS = ["## Context and Problem Statement", "## Considered Options", "## Decision Outcome", "### Consequences"];
+/** Research reports link to data that stays on the researcher's machine, so their links go unchecked. */
+const UNCHECKED_LINKS = "research";
 
 /**
  * Splits `---`-delimited YAML front matter into flat `key: value` pairs (quotes stripped).
@@ -237,7 +239,8 @@ export function checkDocs(docsDir) {
   if (!existsSync(join(adrDir, "template.md"))) problems.push("adr/template.md: missing MADR template");
 
   let linkCount = 0;
-  for (const file of markdownFiles(docsDir)) {
+  const unchecked = join(docsDir, UNCHECKED_LINKS) + sep;
+  for (const file of markdownFiles(docsDir).filter((path) => !path.startsWith(unchecked))) {
     for (const link of relativeLinks(readFileSync(file, "utf8"))) {
       linkCount += 1;
       const target = decodeURI(link.split("#")[0] ?? "");
