@@ -44,6 +44,10 @@ async function main(): Promise<void> {
     // which the per-user tmpdir (/var/folders/…) would exceed.
     const userData = mkdtempSync(join(process.platform === "win32" ? tmpdir() : "/tmp", "sustain-ud-"));
     const workspace = scenario.workspace(base);
+    // Sustain runs git itself. VS Code's git extension, left on, threw an uncaught EPIPE from
+    // `git check-ignore` when a test's folder went away, and failed whichever test was running.
+    mkdirSync(join(userData, "User"), { recursive: true });
+    writeFileSync(join(userData, "User", "settings.json"), `${JSON.stringify({ "git.enabled": false })}\n`);
     // Skills install per user by default (SET-01), so each launch gets its own home folder.
     const home = mkdtempSync(join(tmpdir(), "sustain-home-"));
     console.log(`\n=== e2e VS Code ${version}, scenario: ${scenario.name} ===`);
