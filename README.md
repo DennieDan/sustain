@@ -21,6 +21,36 @@ Or from a terminal: `code --install-extension sustain-<version>.vsix`.
 
 To build the `.vsix` from source: `npm ci && npm run package`.
 
+## Without VS Code
+
+The skill is a plain folder; Codex Chat, Codex CLI and any agent that reads `.agents/skills/` can use it without the extension. Install it into a repository with one command — no clone needed:
+
+```sh
+mkdir -p .agents/skills
+curl -sL https://github.com/xplus2g4/sustain/releases/latest/download/sustain-architecture-skill.tar.gz | tar -xz -C .agents/skills
+```
+
+Then, in a Codex chat in that repository: `$sustain-architecture` with an optional focus, e.g. `$sustain-architecture payment flow`.
+
+To let the agent install the skill on demand, add this to the repository's `AGENTS.md` (Codex reads it automatically):
+
+```md
+## Architecture diagrams
+If the user asks for an architecture diagram and `.agents/skills/sustain-architecture` is
+missing, run `mkdir -p .agents/skills && curl -sL https://github.com/xplus2g4/sustain/releases/latest/download/sustain-architecture-skill.tar.gz | tar -xz -C .agents/skills`,
+then invoke the sustain-architecture skill with the request as the focus.
+```
+
+To view the diagram without VS Code, download the viewer bundle and export the candidate to a self-contained page:
+
+```sh
+mkdir -p ~/sustain-viewer
+curl -sL https://github.com/xplus2g4/sustain/releases/latest/download/sustain-viewer.tar.gz | tar -xz -C ~/sustain-viewer
+node ~/sustain-viewer/export-viewer.mjs /path/to/repo/.archify/<run>/candidate.json --root /path/to/repo
+```
+
+The page embeds the diagram and the cited code beside it; open it in a browser and click a box to see its source. The same files are produced by `npm run build` in this repository (`dist/export-viewer.mjs`), and the skill folder can also be fetched from source: `npx degit xplus2g4/sustain/skills/sustain-architecture .agents/skills/sustain-architecture`.
+
 ## Commands
 
 Run them from the Command Palette (⇧⌘P / Ctrl+Shift+P). In a multi-root workspace each command first asks which folder to use.

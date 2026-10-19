@@ -39,9 +39,10 @@ export async function buildScripts(outdir) {
 async function buildDist() {
   rmSync(dist, { recursive: true, force: true });
 
-  // Static skill files (SKILL.md, agents/, references/) ship as-is.
+  // Static skill files (SKILL.md, agents/, references/) ship as-is. The scripts are built
+  // into the committed tree too, so the folder can be fetched directly (e.g. npx degit).
+  await buildScripts(join(root, "skills/sustain-architecture/scripts"));
   cpSync(join(root, "skills"), join(dist, "skills"), { recursive: true });
-  await buildScripts(join(dist, "skills/sustain-architecture/scripts"));
 
   await esbuild.build({
     ...common,
