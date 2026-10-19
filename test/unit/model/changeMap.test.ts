@@ -172,7 +172,7 @@ describe("FR-UPD-03 collectChanges", () => {
 
   test("Sustain's own .archify/ output is left out", () => {
     const changes = collectChanges(
-      input({ nameStatus: "M\0.archify/x/candidate.json\0M\0a.ts\0", untracked: ".archify/run/lineage.json\0b.ts\0" }),
+      input({ nameStatus: "M\0.archify/x/candidate.sir\0M\0a.ts\0", untracked: ".archify/run/lineage.json\0b.ts\0" }),
     );
     expect(changes.entries).toEqual([
       { status: "M", path: "a.ts" },

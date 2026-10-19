@@ -99,7 +99,7 @@ describe("FR-VAL-01 draft location", () => {
   });
 
   test.each([
-    [".archify/architecture-api-20261010-093000/candidate.json", /expected a path/],
+    [".archify/architecture-api-20261010-093000/candidate.sir", /expected a path/],
     ["runs/architecture-api-20261010-093000/draft.json", /expected a path/],
     [".archify/hand-made/draft.json", /does not match/],
   ])("%s is a usage error", (arg, message) => {
@@ -108,21 +108,21 @@ describe("FR-VAL-01 draft location", () => {
 });
 
 describe("FR-VAL-06 publish", () => {
-  test("writes candidate.json, deletes the draft and leaves no temp files", () => {
+  test("writes candidate.sir, deletes the draft and leaves no temp files", () => {
     const root = tempDir();
     const draft = put(root, ".archify/architecture-api-20261010-093000/draft.json", "{}");
     publishCandidate(draft, '{"a":1}\n');
     const dir = join(root, ".archify/architecture-api-20261010-093000");
-    expect(readdirSync(dir)).toEqual(["candidate.json"]);
-    expect(readFileSync(join(dir, "candidate.json"), "utf8")).toBe('{"a":1}\n');
+    expect(readdirSync(dir)).toEqual(["candidate.sir"]);
+    expect(readFileSync(join(dir, "candidate.sir"), "utf8")).toBe('{"a":1}\n');
   });
 
   test("replaces an existing candidate", () => {
     const root = tempDir();
     const dir = ".archify/architecture-api-20261010-093000";
-    put(root, `${dir}/candidate.json`, "old");
+    put(root, `${dir}/candidate.sir`, "old");
     const draft = put(root, `${dir}/draft.json`, "{}");
     publishCandidate(draft, "new\n");
-    expect(readFileSync(join(root, dir, "candidate.json"), "utf8")).toBe("new\n");
+    expect(readFileSync(join(root, dir, "candidate.sir"), "utf8")).toBe("new\n");
   });
 });

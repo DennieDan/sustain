@@ -1,12 +1,14 @@
-// FR-CMP-05..08: the baseline, Compare with…, the webview actions and watching the baseline
-// (FR-TEST-01 test hook, stub UI).
+// FR-CMP-05..08: the baseline of each viewer tab, Compare with…, the webview actions and
+// watching the baseline (FR-TEST-01 test hook, stub UI).
 import * as assert from "node:assert/strict";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import * as vscode from "vscode";
-import type { TestHook } from "../../../src/extension/extension";
+import type { TestHook, ViewerState } from "../../../src/extension/extension";
+import type { WebviewMessage } from "../../../src/model/messages";
 import { stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
+import { until, viewerTab, viewerTabsOf } from "../viewers";
 
 const OLD = "architecture-cmp-20261011-090000";
 const NEW = "architecture-cmp-20261011-120000";
@@ -61,20 +63,6 @@ const CHANGES = JSON.stringify({
   uncited: [{ status: "A", path: "README.md" }],
 });
 
-/**
- * Waits for `condition`. The real file watcher and the 300 ms debounce run on the platform
- * clock in the extension host, so there is no event to await from the test; poll briefly.
- */
-async function until(condition: () => boolean, what: string): Promise<void> {
-  const deadline = Date.now() + 10_000;
-  while (!condition()) {
-    if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
-    const { promise, resolve } = Promise.withResolvers<void>();
-    setTimeout(resolve, 50);
-    await promise;
-  }
-}
-
 function selection(editor: vscode.TextEditor | undefined): [number, number, number, number] | undefined {
   if (!editor) return undefined;
   const { start, end } = editor.selection;
@@ -85,7 +73,7 @@ suite("FR-CMP-05..08 change view host", () => {
   let hook: TestHook;
   let ui: UiStubs;
   let root: string;
-  const candidate = (run: string): string => join(root, ".archify", run, "candidate.json");
+  const candidate = (run: string): string => join(root, ".archify", run, "candidate.sir");
 
   suiteSetup(async () => {
     hook = (await vscode.extensions.getExtension("sustain.sustain")!.activate()) as TestHook;
@@ -95,8 +83,8 @@ suite("FR-CMP-05..08 change view host", () => {
     root = vscode.workspace.workspaceFolders![0]!.uri.fsPath;
     write(root, "src/web.ts", "web\n");
     write(root, "src/api.ts", "a\nbb\nccc\n");
-    write(root, `.archify/${OLD}/candidate.json`, diagram("Old"));
-    write(root, `.archify/${OTHER}/candidate.json`, diagram("Other"));
+    write(root, `.archify/${OLD}/candidate.sir`, diagram("Old"));
+    write(root, `.archify/${OTHER}/candidate.sir`, diagram("Other"));
     ui = stubUi();
   });
 
@@ -110,34 +98,41 @@ suite("FR-CMP-05..08 change view host", () => {
   function writeNew(): string {
     write(root, `.archify/${NEW}/lineage.json`, lineage(OLD));
     write(root, `.archify/${NEW}/changes.json`, CHANGES);
-    return write(root, `.archify/${NEW}/candidate.json`, diagram("New"));
+    return write(root, `.archify/${NEW}/candidate.sir`, diagram("New"));
   }
 
-  /** Opens the newest candidate and waits until the workbench shows the panel's tab. */
-  async function openPanel(title: string): Promise<void> {
+  /** Opens the newest candidate with `Open Architecture` and waits for its tab. */
+  async function openNewest(file: string): Promise<void> {
     await vscode.commands.executeCommand("sustain.openArchitecture");
-    await until(
-      () => vscode.window.tabGroups.all.some((group) => group.tabs.some((tab) => tab.input instanceof vscode.TabInputWebview && tab.label === `Architecture: ${title}`)),
-      `the panel tab "Architecture: ${title}"`,
-    );
+    await viewerTab(file);
+  }
+
+  /** The (first) viewer of `file`. */
+  function viewer(file: string): ViewerState | undefined {
+    return hook.viewers().find((state) => state.file === file);
+  }
+
+  /** Posts `message` from the webview of NEW's viewer. */
+  function post(message: WebviewMessage): Promise<void> {
+    return hook.postFromWebview(candidate(NEW), message);
   }
 
   test("FR-CMP-05 a run linked by previousRun opens with the previous run as baseline", async () => {
     const file = writeNew();
-    await openPanel("New");
-    assert.deepEqual(hook.panelState(), { file, open: true, baseline: candidate(OLD) });
+    await openNewest(file);
+    assert.deepEqual(hook.viewers(), [{ file, baseline: candidate(OLD), active: true, title: "New" }]);
   });
 
   test("FR-CMP-05 a run without a lineage opens without a baseline", async () => {
-    await openPanel("Old");
-    assert.deepEqual(hook.panelState(), { file: candidate(OLD), open: true, baseline: null });
+    await openNewest(candidate(OLD));
+    assert.deepEqual(hook.viewers(), [{ file: candidate(OLD), baseline: null, active: true, title: "Old" }]);
   });
 
   test("FR-CMP-06 the picker lists No comparison, then the other runs in run order with tags", async () => {
     writeNew();
-    await openPanel("New");
+    await openNewest(candidate(NEW));
     ui.answers.quickPick.push(undefined);
-    await hook.postFromWebview({ type: "compareWith" });
+    await post({ type: "compareWith" });
     assert.equal(ui.quickPicks.length, 1);
     assert.deepEqual(
       ui.quickPicks[0]!.map((item) => [item.label, item.description, item.detail, item.picked]),
@@ -147,63 +142,107 @@ suite("FR-CMP-05..08 change view host", () => {
         ["Other", OTHER, "different focus", undefined],
       ],
     );
-    assert.equal(hook.panelState().baseline, candidate(OLD), "Escape changes nothing");
+    assert.equal(viewer(candidate(NEW))?.baseline, candidate(OLD), "Escape changes nothing");
   });
 
   test("FR-CMP-06 a newer run is tagged after its commit and mode", async () => {
     writeNew();
-    // Open Architecture File… lists run folders as labels; open the older run.
-    ui.answers.quickPick.push(OLD);
-    await vscode.commands.executeCommand("sustain.openArchitectureFile");
-    assert.deepEqual(hook.panelState(), { file: candidate(OLD), open: true, baseline: null });
+    await vscode.commands.executeCommand("vscode.openWith", vscode.Uri.file(candidate(OLD)), "sustain.architecture");
+    await viewerTab(candidate(OLD));
+    assert.deepEqual(hook.viewers(), [{ file: candidate(OLD), baseline: null, active: true, title: "Old" }]);
     ui.answers.quickPick.push(undefined);
-    await hook.postFromWebview({ type: "compareWith" });
+    await hook.postFromWebview(candidate(OLD), { type: "compareWith" });
     assert.deepEqual(
-      ui.quickPicks[1]!.map((item) => [item.label, item.description, item.detail, item.picked]),
+      ui.quickPicks[0]!.map((item) => [item.label, item.description, item.detail, item.picked]),
       [
         ["No comparison", undefined, undefined, true],
         ["New", NEW, "1234567 Add cart · update · newer", undefined],
         ["Other", OTHER, "different focus", undefined],
       ],
     );
-    assert.equal(hook.panelState().baseline, null);
+    assert.equal(viewer(candidate(OLD))?.baseline, null);
   });
 
   test("FR-CMP-06 choosing No comparison clears the baseline; choosing an older run sets it", async () => {
     writeNew();
-    await openPanel("New");
+    await openNewest(candidate(NEW));
     ui.answers.quickPick.push("No comparison");
-    await hook.postFromWebview({ type: "compareWith" });
-    assert.equal(hook.panelState().baseline, null);
+    await post({ type: "compareWith" });
+    assert.equal(viewer(candidate(NEW))?.baseline, null);
     assert.equal(ui.quickPicks[0]![0]!.picked, undefined);
     ui.answers.quickPick.push("Other");
-    await hook.postFromWebview({ type: "compareWith" });
-    assert.equal(hook.panelState().baseline, candidate(OTHER));
+    await post({ type: "compareWith" });
+    assert.equal(viewer(candidate(NEW))?.baseline, candidate(OTHER));
     assert.equal(ui.quickPicks[1]![0]!.picked, true, "No comparison is picked while there is no baseline");
     ui.answers.quickPick.push("Old");
-    await hook.postFromWebview({ type: "compareWith" });
-    assert.equal(hook.panelState().baseline, candidate(OLD));
-    assert.equal(hook.panelState().file, candidate(NEW));
+    await post({ type: "compareWith" });
+    assert.equal(viewer(candidate(NEW))?.baseline, candidate(OLD));
+    assert.equal(hook.viewers().length, 1);
   });
 
-  test("FR-CMP-07 Open baseline shows the baseline with its own default baseline", async () => {
+  test("FR-CMP-06 two tabs of the same file keep their own baselines", async () => {
     writeNew();
-    await openPanel("New");
-    await hook.postFromWebview({ type: "openBaseline" });
-    assert.deepEqual(hook.panelState(), { file: candidate(OLD), open: true, baseline: null });
+    await openNewest(candidate(NEW));
+    await vscode.commands.executeCommand("vscode.openWith", vscode.Uri.file(candidate(NEW)), "sustain.architecture", vscode.ViewColumn.Two);
+    await until(() => viewerTabsOf(candidate(NEW)).length === 2, "a second tab of the same file");
+    ui.answers.quickPick.push("No comparison");
+    await post({ type: "compareWith" });
+    assert.deepEqual(
+      hook.viewers().map((state) => [state.file, state.baseline, state.active]),
+      [
+        [candidate(NEW), candidate(OLD), false],
+        [candidate(NEW), null, true],
+      ],
+    );
   });
 
-  test("FR-CMP-07 Swap shows the baseline compared with the previously open file", async () => {
+  test("FR-CMP-07 Open baseline opens the baseline in its own tab with its own default baseline", async () => {
     writeNew();
-    await openPanel("New");
-    await hook.postFromWebview({ type: "swap" });
-    assert.deepEqual(hook.panelState(), { file: candidate(OLD), open: true, baseline: candidate(NEW) });
+    await openNewest(candidate(NEW));
+    await post({ type: "openBaseline" });
+    assert.deepEqual(
+      hook.viewers().map((state) => [state.file, state.baseline, state.active]),
+      [
+        [candidate(NEW), candidate(OLD), false],
+        [candidate(OLD), null, true],
+      ],
+    );
+    assert.equal((await viewerTab(candidate(OLD))).group.viewColumn, vscode.ViewColumn.One);
+  });
+
+  test("FR-CMP-07 Swap opens the baseline in its own tab, compared with the file it came from", async () => {
+    writeNew();
+    await openNewest(candidate(NEW));
+    await post({ type: "swap" });
+    assert.deepEqual(
+      hook.viewers().map((state) => [state.file, state.baseline, state.active]),
+      [
+        [candidate(NEW), candidate(OLD), false],
+        [candidate(OLD), candidate(NEW), true],
+      ],
+    );
+  });
+
+  test("FR-CMP-07 Swap onto an open tab of the baseline sets that tab's baseline", async () => {
+    writeNew();
+    await openNewest(candidate(NEW));
+    await post({ type: "openBaseline" });
+    assert.equal(viewer(candidate(OLD))?.baseline, null);
+    await post({ type: "swap" });
+    assert.deepEqual(
+      hook.viewers().map((state) => [state.file, state.baseline, state.active]),
+      [
+        [candidate(NEW), candidate(OLD), false],
+        [candidate(OLD), candidate(NEW), true],
+      ],
+    );
+    assert.equal(viewerTabsOf(candidate(OLD)).length, 1);
   });
 
   test("FR-CMP-07 openFile opens a listed path at the top in the other column", async () => {
     writeNew();
-    await openPanel("New");
-    await hook.postFromWebview({ type: "openFile", path: "src/api.ts" });
+    await openNewest(candidate(NEW));
+    await post({ type: "openFile", path: "src/api.ts" });
     const editor = vscode.window.activeTextEditor;
     assert.equal(editor?.document.uri.fsPath, join(root, "src/api.ts"));
     assert.deepEqual(selection(editor), [0, 0, 0, 0]);
@@ -213,25 +252,25 @@ suite("FR-CMP-05..08 change view host", () => {
 
   test("FR-CMP-07 openFile ignores a path that is not in changes.json", async () => {
     writeNew();
-    await openPanel("New");
-    await hook.postFromWebview({ type: "openFile", path: "src/web.ts" });
+    await openNewest(candidate(NEW));
+    await post({ type: "openFile", path: "src/web.ts" });
     assert.equal(vscode.window.activeTextEditor, undefined);
     assert.equal(ui.errors.length, 0);
   });
 
   test("FR-CMP-07 openFile ignores changes.json paths once the comparison is gone", async () => {
     writeNew();
-    await openPanel("New");
+    await openNewest(candidate(NEW));
     ui.answers.quickPick.push("No comparison");
-    await hook.postFromWebview({ type: "compareWith" });
-    await hook.postFromWebview({ type: "openFile", path: "src/api.ts" });
+    await post({ type: "compareWith" });
+    await post({ type: "openFile", path: "src/api.ts" });
     assert.equal(vscode.window.activeTextEditor, undefined);
   });
 
   test("FR-CMP-07 openFile of a deleted listed path shows the stale reference message", async () => {
     writeNew();
-    await openPanel("New");
-    await hook.postFromWebview({ type: "openFile", path: "src/gone.ts" });
+    await openNewest(candidate(NEW));
+    await post({ type: "openFile", path: "src/gone.ts" });
     assert.deepEqual(
       ui.errors.map((call) => call.message),
       ["Stale reference: `src/gone.ts` no longer exists"],
@@ -239,9 +278,21 @@ suite("FR-CMP-05..08 change view host", () => {
     assert.equal(vscode.window.activeTextEditor, undefined);
   });
 
+  /**
+   * Opens NEW and picks OLD as its baseline. A chosen baseline survives a reload of NEW: the
+   * watcher's late creation event for NEW would otherwise re-take the default baseline, which
+   * is none once OLD is broken.
+   */
+  async function openWithOldChosen(): Promise<void> {
+    await openNewest(candidate(NEW));
+    ui.answers.quickPick.push("Old");
+    await post({ type: "compareWith" });
+    assert.equal(viewer(candidate(NEW))?.baseline, candidate(OLD));
+  }
+
   test("FR-CMP-08 a broken baseline keeps it with a status message; deleting it drops it", async () => {
     writeNew();
-    await openPanel("New");
+    await openWithOldChosen();
     writeFileSync(candidate(OLD), "{ not json");
     const unreadable = `Can't read baseline \`${OLD}\``;
     await until(() => ui.statusMessages.some((message) => message.text === unreadable), "the unreadable-baseline message");
@@ -249,38 +300,37 @@ suite("FR-CMP-05..08 change view host", () => {
       ui.statusMessages.find((message) => message.text === unreadable),
       { text: unreadable, timeout: 3000 },
     );
-    assert.equal(hook.panelState().baseline, candidate(OLD));
+    assert.equal(viewer(candidate(NEW))?.baseline, candidate(OLD));
     rmSync(candidate(OLD));
-    await until(() => hook.panelState().baseline === null, "the baseline to be dropped");
+    await until(() => viewer(candidate(NEW))?.baseline === null, "the baseline to be dropped");
     await until(() => ui.statusMessages.some((message) => message.text.startsWith("Baseline diagram")), "the deleted-baseline message");
     assert.deepEqual(
       ui.statusMessages.filter((message) => message.text.startsWith("Baseline diagram")),
       [{ text: "Baseline diagram was deleted; showing no comparison.", timeout: 3000 }],
     );
-    assert.equal(hook.panelState().file, candidate(NEW));
+    assert.deepEqual(hook.viewers().map((state) => state.file), [candidate(NEW)]);
   });
 
   test("FR-CMP-08 a change to the baseline keeps it", async () => {
     writeNew();
-    await openPanel("New");
+    await openWithOldChosen();
     writeFileSync(candidate(OLD), diagram("Old, edited"));
     // A broken write afterwards proves the watcher re-read the baseline after both events.
     writeFileSync(candidate(OLD), "{ not json");
     await until(() => ui.statusMessages.some((message) => message.text === `Can't read baseline \`${OLD}\``), "the re-read baseline");
     writeFileSync(candidate(OLD), diagram("Old again"));
-    assert.equal(hook.panelState().baseline, candidate(OLD));
-    assert.equal(hook.panelState().file, candidate(NEW));
+    assert.equal(viewer(candidate(NEW))?.baseline, candidate(OLD));
   });
 
-  test("FR-CMP-08 switching to a newer run applies its default baseline", async () => {
+  test("FR-CMP-08 a newer run opens with its default baseline; the open tab keeps its choice", async () => {
     const file = writeNew();
-    await openPanel("New");
+    await openNewest(file);
     ui.answers.quickPick.push("No comparison");
-    await hook.postFromWebview({ type: "compareWith" });
-    assert.equal(hook.panelState().baseline, null);
+    await post({ type: "compareWith" });
     write(root, `.archify/${NEWEST}/lineage.json`, lineage(NEW));
-    const newest = write(root, `.archify/${NEWEST}/candidate.json`, diagram("Newest"));
-    await until(() => hook.panelState().file === newest, "the panel to switch to the newest run");
-    assert.equal(hook.panelState().baseline, file);
+    const newest = write(root, `.archify/${NEWEST}/candidate.sir`, diagram("Newest"));
+    await until(() => viewer(newest) !== undefined, "the newest run to open");
+    assert.equal(viewer(newest)?.baseline, file);
+    assert.equal(viewer(file)?.baseline, null);
   });
 });

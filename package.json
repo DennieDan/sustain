@@ -32,13 +32,25 @@
         "command": "sustain.openArchitecture",
         "title": "Open Architecture",
         "category": "Sustain"
-      },
-      {
-        "command": "sustain.openArchitectureFile",
-        "title": "Open Architecture File…",
-        "category": "Sustain"
       }
-    ]
+    ],
+    "customEditors": [
+      {
+        "viewType": "sustain.architecture",
+        "displayName": "Sustain Architecture",
+        "selector": [
+          {
+            "filenamePattern": "*.sir"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "configurationDefaults": {
+      "files.associations": {
+        "*.sir": "json"
+      }
+    }
   },
   "scripts": {
     "build": "node esbuild.mjs",

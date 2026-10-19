@@ -20,7 +20,7 @@ Sustain needs an on-disk diagram format and a place to keep runs. The prototype 
 
 Chosen option: "Archify JSON v1 and the prototype's `.archify/` layout, unchanged", because existing Archify diagrams and prototype runs open without conversion, and runs live next to the code they describe.
 
-Schemas are vendored byte-for-byte (spec §6); run folders are `.archify/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]/` holding `draft.json` or `candidate.json`.
+Schemas are vendored byte-for-byte (spec §6); run folders are `.archify/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]/` holding `draft.json` or the accepted diagram, `candidate.sir` (named `candidate.json` before [ADR 0033](0033-custom-editor-for-sir-files.md); the contents are Archify JSON v1 either way).
 
 ### Consequences
 

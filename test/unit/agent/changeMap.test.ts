@@ -53,7 +53,7 @@ function lineage(overrides: Partial<Lineage>): Lineage {
 function seedPrevious(root: string, options: { doc?: unknown; lineage?: Lineage; run?: string } = {}): void {
   const dir = join(root, ".archify", options.run ?? OLD_RUN);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "candidate.json"), JSON.stringify(options.doc ?? candidate(), null, 2));
+  writeFileSync(join(dir, "candidate.sir"), JSON.stringify(options.doc ?? candidate(), null, 2));
   if (options.lineage) writeFileSync(join(dir, "lineage.json"), JSON.stringify(options.lineage, null, 2));
 }
 
@@ -116,7 +116,7 @@ describe("FR-UPD-01/02 mode decision", () => {
   test("--regenerate → requested, previous still reported", () => {
     const root = updatableRepo();
     const { report, runDir } = changeMap(root, ["--regenerate"]);
-    expect(report).toMatchObject({ mode: "regenerate", reason: "requested", previous: `.archify/${OLD_RUN}/candidate.json` });
+    expect(report).toMatchObject({ mode: "regenerate", reason: "requested", previous: `.archify/${OLD_RUN}/candidate.sir` });
     expect(readLineageFile(runDir)).toMatchObject({ mode: "regenerate", reason: "requested", previousRun: OLD_RUN, updatesSinceRegeneration: 0 });
   });
 
@@ -124,7 +124,7 @@ describe("FR-UPD-01/02 mode decision", () => {
     const root = tempDir();
     seedPrevious(root, { doc: candidate("a".repeat(40)) });
     const { report, runDir } = changeMap(root, [], envWithoutGit());
-    expect(report).toMatchObject({ mode: "regenerate", reason: "no-git", head: null, previous: `.archify/${OLD_RUN}/candidate.json` });
+    expect(report).toMatchObject({ mode: "regenerate", reason: "no-git", head: null, previous: `.archify/${OLD_RUN}/candidate.sir` });
     expect(readLineageFile(runDir)).toMatchObject({ revision: null, baseCommit: null, headCommit: null, dirty: [], dirtyCount: 0 });
   });
 
@@ -214,7 +214,7 @@ describe("FR-UPD-03 change files", () => {
     expect(report).toEqual({
       mode: "update",
       reason: "update",
-      previous: `.archify/${OLD_RUN}/candidate.json`,
+      previous: `.archify/${OLD_RUN}/candidate.sir`,
       baseRevision: head(root),
       head: head(root),
       changeFile: `${runFolder}/change.md`,
@@ -292,7 +292,7 @@ describe("FR-UPD-03 change files", () => {
 describe("FR-UPD-04 lineage", () => {
   test("regenerate → update → update counts 0, 1, 2 and links each run to the previous one", () => {
     const root = gitRepo(files);
-    const accept = (runDir: string): void => writeFileSync(join(runDir, "candidate.json"), JSON.stringify(candidate(), null, 2));
+    const accept = (runDir: string): void => writeFileSync(join(runDir, "candidate.sir"), JSON.stringify(candidate(), null, 2));
 
     const first = changeMap(root);
     expect(first.report.mode).toBe("regenerate");
@@ -306,7 +306,7 @@ describe("FR-UPD-04 lineage", () => {
     expect([first, second, third].map(({ runDir }) => readLineageFile(runDir).updatesSinceRegeneration)).toEqual([0, 1, 2]);
     expect(readLineageFile(second.runDir)).toMatchObject({ mode: "update", previousRun: firstName, baseRevision: head(root), revision: head(root) });
     expect(readLineageFile(third.runDir)).toMatchObject({ mode: "update", previousRun: secondName });
-    expect(third.report.previous).toBe(`${second.runFolder}/candidate.json`);
+    expect(third.report.previous).toBe(`${second.runFolder}/candidate.sir`);
   });
 
   test("more than 200 dirty paths are capped in the lineage and force the next run to regenerate", () => {
@@ -321,7 +321,7 @@ describe("FR-UPD-04 lineage", () => {
     expect(recorded.dirtyCount).toBe(201);
     expect(recorded.dirty).toHaveLength(200);
 
-    writeFileSync(join(first.runDir, "candidate.json"), JSON.stringify(candidate(), null, 2));
+    writeFileSync(join(first.runDir, "candidate.sir"), JSON.stringify(candidate(), null, 2));
     rmSync(join(root, "scratch"), { recursive: true, force: true });
     git(root, "add", "-A");
     expect(changeMap(root).report).toMatchObject({ mode: "regenerate", reason: "dirty-baseline" });

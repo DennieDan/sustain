@@ -1,8 +1,8 @@
-// The architecture WebviewPanel (FR-VIEW-04, ADR 0011): one per window, showing one file, and
-// compared with a baseline (FR-CMP-05..07, ADR 0031).
+// The architecture viewer (FR-VIEW-04, ADR 0033): a read-only custom editor for `*.sir` files.
+// Every tab shows one file, compared with its own baseline (FR-CMP-05..07, ADR 0031).
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { basename, relative, sep } from "node:path";
+import { basename, dirname, relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { repoRootFor } from "../model/discovery";
 import type { Compare, HostMessage, WebviewMessage } from "../model/messages";
@@ -10,13 +10,14 @@ import { parseDiagram, type ViewDiagram } from "../model/tolerant";
 import { buildCompare, defaultBaseline, pickerItems, runFolderOf } from "./baseline";
 import { webviewHtml } from "./html";
 import { openSource, openSourceRef } from "./navigate";
+import type { ViewerFacts } from "./watchLogic";
 
 export const VIEW_TYPE = "sustain.architecture";
 
 /** How long the "Can't read baseline" status bar message stays. */
 const STATUS_MS = 3_000;
 
-/** What the panel currently shows: a diagram, or an empty state with a message. */
+/** What a viewer currently shows: a diagram, or an empty state with a message. */
 type Shown = { kind: "diagram"; doc: unknown; diagram: ViewDiagram } | { kind: "empty"; message: string };
 
 /** How a file is named in messages: repo-relative when inside the root, else the base name. */
@@ -32,26 +33,51 @@ function changedPaths(compare: Compare | null): Set<string> {
   return new Set([...changes.touchedComponents.flatMap((component) => component.files), ...changes.uncited].map((change) => change.path));
 }
 
-export class ArchitecturePanel {
-  private static instance: ArchitecturePanel | undefined;
+/**
+ * The repo root a viewed file's citations resolve against: `<R>` for `<R>/.archify/<run>/<name>`,
+ * else the workspace folder holding the file, else the file's folder.
+ */
+function rootOf(uri: vscode.Uri): string {
+  return repoRootFor(uri.fsPath, vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath ?? dirname(uri.fsPath));
+}
+
+/**
+ * The column `Sustain: Open Architecture` and the watcher's "Open" use: the active column when no
+ * text editor is visible, else beside it (FR-VIEW-04).
+ */
+export function defaultColumn(): vscode.ViewColumn {
+  return vscode.window.visibleTextEditors.length === 0 ? vscode.ViewColumn.Active : vscode.ViewColumn.Beside;
+}
+
+/** Baselines chosen for viewers that are being opened (Swap), by URI; taken by `resolveCustomEditor`. */
+const pendingBaselines = new Map<string, string>();
+
+export class ArchitectureViewer {
+  private static readonly open = new Set<ArchitectureViewer>();
 
   private shown: Shown = { kind: "empty", message: "" };
   private readonly disposables: vscode.Disposable[] = [];
-  /** The `candidate.json` the shown file is compared with (FR-CMP-05), or `null`. */
+  /** The diagram file the shown file is compared with (FR-CMP-05), or `null`. */
   private baselineFile: string | null = null;
   /** The baseline was picked (Compare with…, Swap, deletion) rather than defaulted. */
   private baselineChosen = false;
   /** Paths of the `changes.json` last sent; the only ones `openFile` opens. */
   private sentPaths: ReadonlySet<string> = new Set();
 
-  private constructor(
-    private readonly panel: vscode.WebviewPanel,
-    private readonly extensionUri: vscode.Uri,
+  constructor(
+    readonly panel: vscode.WebviewPanel,
+    extensionUri: vscode.Uri,
     /** Repo root the shown file's citations resolve against. */
-    public root: string,
+    readonly root: string,
     /** Absolute path of the shown file. */
-    public file: string,
+    readonly file: string,
+    /** A chosen baseline (Swap); otherwise the file's default baseline applies. */
+    baseline: string | undefined,
   ) {
+    if (baseline !== undefined) {
+      this.baselineFile = baseline;
+      this.baselineChosen = true;
+    }
     const dist = vscode.Uri.joinPath(extensionUri, "dist");
     panel.webview.options = { enableScripts: true, localResourceRoots: [dist] };
     panel.webview.html = webviewHtml({
@@ -69,49 +95,28 @@ export class ArchitecturePanel {
       }),
       panel.onDidDispose(() => this.dispose()),
     );
+    ArchitectureViewer.open.add(this);
+    this.reload();
   }
 
-  /** The open panel, if any. */
-  static get current(): ArchitecturePanel | undefined {
-    return ArchitecturePanel.instance;
+  /** Every open viewer, in the order they were opened. */
+  static all(): ArchitectureViewer[] {
+    return [...ArchitectureViewer.open];
   }
 
-  /** Opens (or reveals and reloads) the panel on `file`, whose citations resolve against `root`. */
-  static show(extensionUri: vscode.Uri, root: string, file: string): ArchitecturePanel {
-    const existing = ArchitecturePanel.instance;
-    if (existing) {
-      existing.panel.reveal(existing.panel.viewColumn);
-      existing.showFile(root, file);
-      return existing;
-    }
-    const column = vscode.window.visibleTextEditors.length === 0 ? vscode.ViewColumn.Active : vscode.ViewColumn.Beside;
-    const panel = vscode.window.createWebviewPanel(VIEW_TYPE, "Architecture", column, { retainContextWhenHidden: false });
-    const created = new ArchitecturePanel(panel, extensionUri, root, file);
-    ArchitecturePanel.instance = created;
-    created.reload();
-    return created;
-  }
-
-  /** The baseline `candidate.json` (FR-CMP-05), or `null` without a comparison. */
+  /** The baseline file (FR-CMP-05), or `null` without a comparison. */
   get baseline(): string | null {
     return this.baselineFile;
   }
 
-  /**
-   * Switches the open panel to `file` (resolved against `root`) without revealing it. A different
-   * file gets its default baseline (FR-CMP-05) unless `baseline` chooses one (Swap); the same
-   * file keeps its baseline.
-   */
-  showFile(root: string, file: string, baseline?: string): void {
-    if (baseline !== undefined) {
-      this.baselineFile = baseline;
-      this.baselineChosen = true;
-    } else if (file !== this.file) {
-      this.baselineChosen = false;
-    }
-    this.root = root;
-    this.file = file;
-    this.reload();
+  /** `meta.title` of the shown diagram; `undefined` without a title or in the empty state. */
+  get title(): string | undefined {
+    return this.shown.kind === "diagram" ? this.shown.diagram.title : undefined;
+  }
+
+  /** What the watcher needs to know about this viewer (FR-WAT-01, FR-CMP-08). */
+  get facts(): ViewerFacts {
+    return { root: this.root, file: this.file, baseline: this.baselineFile, visible: this.panel.visible };
   }
 
   /**
@@ -133,10 +138,16 @@ export class ArchitecturePanel {
       this.fail(`Can't show \`${name}\`: ${result.reason}`);
       return;
     }
-    this.panel.title = `Architecture: ${result.diagram.title ?? basename(this.file)}`;
     // The webview gets the parsed JSON only (NFR-SEC-01), never source files.
     this.shown = { kind: "diagram", doc: result.value, diagram: result.diagram };
     if (!this.baselineChosen) this.baselineFile = defaultBaseline(this.root, this.file);
+    this.send();
+  }
+
+  /** Compares with `file` from now on, or with nothing for `null` (Compare with…, Swap; FR-CMP-06/07). */
+  chooseBaseline(file: string | null): void {
+    this.baselineFile = file;
+    this.baselineChosen = true;
     this.send();
   }
 
@@ -160,7 +171,6 @@ export class ArchitecturePanel {
 
   private fail(message: string): void {
     void vscode.window.showErrorMessage(message);
-    this.panel.title = `Architecture: ${basename(this.file)}`;
     this.showEmpty(message);
   }
 
@@ -187,7 +197,7 @@ export class ArchitecturePanel {
 
   /**
    * Handles a message from the webview (also the e2e test hook's entry point). `openSource`
-   * uses the diagram the webview was last sent, resolved against the panel's repo root;
+   * uses the diagram the webview was last sent, resolved against the viewer's repo root;
    * `openFile` only opens paths of the `changes.json` last sent (FR-CMP-07).
    */
   async handleMessage(message: WebviewMessage): Promise<void> {
@@ -205,10 +215,10 @@ export class ArchitecturePanel {
         await this.compareWith();
         return;
       case "openBaseline":
-        if (this.baselineFile !== null) this.showFile(repoRootFor(this.baselineFile, this.root), this.baselineFile);
+        if (this.baselineFile !== null) await showViewer(this.baselineFile, { viewColumn: this.panel.viewColumn ?? vscode.ViewColumn.Active });
         return;
       case "swap":
-        if (this.baselineFile !== null) this.showFile(repoRootFor(this.baselineFile, this.root), this.baselineFile, this.file);
+        if (this.baselineFile !== null) await showViewer(this.baselineFile, { viewColumn: this.panel.viewColumn ?? vscode.ViewColumn.Active, baseline: this.file });
         return;
       case "openFile":
         if (this.sentPaths.has(message.path)) await openSourceRef(this.root, { path: message.path }, this.panel.viewColumn);
@@ -219,17 +229,68 @@ export class ArchitecturePanel {
 
   /** FR-CMP-06: picks the baseline; Escape changes nothing. */
   private async compareWith(): Promise<void> {
-    const file = this.file;
-    const choice = await vscode.window.showQuickPick(pickerItems(this.root, file, this.baselineFile), { placeHolder: "Compare with" });
-    // The panel may have closed or moved to another file while the picker was open.
-    if (!choice || ArchitecturePanel.instance !== this || this.file !== file) return;
-    this.baselineFile = choice.file;
-    this.baselineChosen = true;
-    this.send();
+    const choice = await vscode.window.showQuickPick(pickerItems(this.root, this.file, this.baselineFile), { placeHolder: "Compare with" });
+    // The viewer may have closed while the picker was open.
+    if (!choice || !ArchitectureViewer.open.has(this)) return;
+    this.chooseBaseline(choice.file);
   }
 
   private dispose(): void {
-    if (ArchitecturePanel.instance === this) ArchitecturePanel.instance = undefined;
+    ArchitectureViewer.open.delete(this);
     for (const disposable of this.disposables.splice(0)) disposable.dispose();
+  }
+}
+
+/**
+ * Shows `file` in a viewer. An open viewer of it (the one in `viewColumn` first) is revealed and
+ * reloaded, or takes `baseline` when one is given; otherwise a new tab opens in `viewColumn`
+ * with `baseline` as its chosen baseline, if given.
+ */
+export async function showViewer(
+  file: string,
+  options: { viewColumn: vscode.ViewColumn; preserveFocus?: boolean; baseline?: string },
+): Promise<void> {
+  const viewers = ArchitectureViewer.all().filter((viewer) => viewer.file === file);
+  const existing = viewers.find((viewer) => viewer.panel.viewColumn === options.viewColumn) ?? viewers[0];
+  if (existing) {
+    existing.panel.reveal(existing.panel.viewColumn, options.preserveFocus);
+    if (options.baseline !== undefined) existing.chooseBaseline(options.baseline);
+    else existing.reload();
+    return;
+  }
+  const uri = vscode.Uri.file(file);
+  const key = uri.toString();
+  if (options.baseline !== undefined) pendingBaselines.set(key, options.baseline);
+  try {
+    await vscode.commands.executeCommand("vscode.openWith", uri, VIEW_TYPE, {
+      viewColumn: options.viewColumn,
+      preserveFocus: options.preserveFocus ?? false,
+      preview: false,
+    } satisfies vscode.TextDocumentShowOptions);
+  } finally {
+    pendingBaselines.delete(key);
+  }
+}
+
+/** Opens every `*.sir` file as a read-only diagram (ADR 0033). */
+export class ArchitectureEditorProvider implements vscode.CustomReadonlyEditorProvider {
+  private constructor(private readonly extensionUri: vscode.Uri) {}
+
+  static register(extensionUri: vscode.Uri): vscode.Disposable {
+    return vscode.window.registerCustomEditorProvider(VIEW_TYPE, new ArchitectureEditorProvider(extensionUri), {
+      supportsMultipleEditorsPerDocument: true,
+      webviewOptions: { retainContextWhenHidden: false },
+    });
+  }
+
+  openCustomDocument(uri: vscode.Uri): vscode.CustomDocument {
+    return { uri, dispose: () => {} };
+  }
+
+  resolveCustomEditor(document: vscode.CustomDocument, panel: vscode.WebviewPanel): void {
+    const key = document.uri.toString();
+    const baseline = pendingBaselines.get(key);
+    pendingBaselines.delete(key);
+    new ArchitectureViewer(panel, this.extensionUri, rootOf(document.uri), document.uri.fsPath, baseline);
   }
 }

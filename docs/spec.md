@@ -26,7 +26,7 @@ Diagrams use the Archify JSON v1 format (`schema_version: 1`, `diagram_type: "ar
 
 | ID | Goal |
 |---|---|
-| G1 | Architecture viewer: render an Archify diagram from `.archify/*/candidate.json` in a VS Code webview panel. |
+| G1 | Architecture viewer: render an Archify diagram from `.archify/*/candidate.sir` (or any `*.sir` file) in a read-only VS Code custom editor. |
 | G2 | Clicking a diagram node opens the cited code file at the cited lines in a VS Code editor. |
 | G3 | One agent skill, `sustain-architecture`, lets Claude Code or Codex analyse the codebase and produce a validated diagram. |
 | G4 | The extension installs the skill into the workspace and can launch the agent in an integrated terminal. |
@@ -46,18 +46,18 @@ Diagrams use the Archify JSON v1 format (`schema_version: 1`, `diagram_type: "ar
 
 | Term | Meaning |
 |---|---|
-| Repo root | For a diagram at `<R>/.archify/<run>/candidate.json`, the folder `<R>`. Every `sources[].path` is relative to it. |
+| Repo root | For a diagram at `<R>/.archify/<run>/<name>`, the folder `<R>`; for any other file, its workspace folder, else its own folder. Every `sources[].path` is relative to it. |
 | Run folder | `.archify/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]/` |
 | Draft | `<run folder>/draft.json`, written by the agent, not yet accepted |
-| Candidate | `<run folder>/candidate.json`, a draft the validator accepted |
+| Candidate | `<run folder>/candidate.sir`, a draft the validator accepted (Archify JSON v1; `.sir` = Sustain Intermediate Representation) |
 | Source / citation | One entry of `components[].sources[]`: `{path, line?, end_line?, label?}` |
 | App-owned fields | Fields the validator sets or removes; the agent must not author them (FR-VAL-02) |
-| Previous candidate | The newest `candidate.json` (FR-VIEW-02 order) under `.archify/` whose run folder slug equals the current run's slug, excluding the current run folder (FR-UPD-02). |
+| Previous candidate | The newest `candidate.sir` (FR-VIEW-02 order) under `.archify/` whose run folder slug equals the current run's slug, excluding the current run folder (FR-UPD-02). |
 | Lineage | `<run folder>/lineage.json`, written by `change-map.mjs`: which run this one updates, the commit it was drawn at, and how many updates have happened since the last regeneration (FR-UPD-04). |
 | Update run | A run that patches the previous candidate from a deterministic change map (ADR 0029). |
 | Regeneration run | A run that draws from scratch, then re-attaches previous IDs with `match-ids.mjs` when a previous candidate exists. |
 | Touched file | A path the change map lists as added, modified, deleted or renamed (both paths of a rename), or a path that was uncommitted when the previous candidate was drawn. |
-| Baseline | The `candidate.json` the open diagram is compared with. By default the open run's `lineage.previousRun`; otherwise the user's pick (FR-CMP-06). |
+| Baseline | The `candidate.sir` a viewer tab compares its diagram with. By default the open run's `lineage.previousRun`; otherwise the user's pick (FR-CMP-06). Each tab has its own. |
 | Comparison | The baseline plus the diff of the two diagrams (FR-CMP-03) and its context: warnings, the approximate flag, commits (FR-CMP-04). |
 | Update history | The chain of runs reached from the open run by following `lineage.previousRun`. |
 | Kept component | A component present in both diagrams, unchanged by FR-CMP-03, whose ID is in `changes.json` `touchedComponents`: its cited code changed, but the agent left it as it was. |
@@ -76,10 +76,10 @@ These were settled with the owner. Changing any of them needs owner approval (§
 | Claude pre-approvals | `allowed-tools: Read Grep Glob Bash(node .agents/skills/sustain-architecture/scripts/*)`; writes still prompt |
 | Install layout | Real files in `.agents/skills/sustain-architecture/`; `.claude/skills/sustain-architecture` is a relative symlink to it, copy on symlink failure |
 | Validator runtime | Dependency-free `.mjs` bundles built from the extension's TypeScript, Node ≥ 18 |
-| Publish rule | Validator moves `draft.json` → `candidate.json` on success; failed runs keep `draft.json` |
+| Publish rule | Validator moves `draft.json` → `candidate.sir` on success; failed runs keep `draft.json` |
 | App-owned fields | Validator strips agent-authored geometry/presentation fields with a warning, and sets `meta.repository`/`meta.output` itself |
 | Layout | elkjs in the webview; authored `pos`/`size` used when every component has them |
-| Viewer host | WebviewPanel in an editor column; code opens in the other column |
+| Viewer host | Read-only custom editor on `*.sir`, one tab per file; code opens in the other column (ADR 0033) |
 | Viewer validation | None on load; tolerant parsing (FR-VIEW-03); stale citations reported on click |
 | Data | Archify JSON v1 and the `.archify/` folder layout, unchanged from the prototype |
 | Platform | Desktop VS Code, `.vsix` install, user picks one folder in multi-root workspaces |
@@ -99,7 +99,7 @@ src/model/          pure TS shared by extension, webview and scripts; no `vscode
   runChanges.ts  diagramDiff.ts  comparison.ts
 src/layout/         pure TS: Archify doc → Scene via elkjs
 src/agent/          CLI entry points: validate.ts, repo-facts.ts, change-map.ts, match-ids.ts
-src/extension/      VS Code host: extension.ts, panel.ts, baseline.ts, navigate.ts, install.ts, generate.ts, watcher.ts
+src/extension/      VS Code host: extension.ts, viewer.ts, open.ts, baseline.ts, navigate.ts, install.ts, generate.ts, watcher.ts
 webview/            main.ts, render.ts, viewport.ts, tooltip.ts, changes.ts, styles.css
 skills/sustain-architecture/
   SKILL.md  agents/openai.yaml  references/archify-format.md  references/example.json
@@ -160,7 +160,7 @@ Port of the prototype's Submission profile (`archalign-model/src/{submission,che
 ```json
 {
   "status": "accepted" | "rejected",
-  "candidate": ".archify/<run>/candidate.json",
+  "candidate": ".archify/<run>/candidate.sir",
   "errors":   [{ "pointer": "/components/3/sources/0/end_line", "message": "..." }],
   "warnings": [{ "pointer": "/components/0/pos", "message": "Removed app-owned field" }],
   "hint": "Fix exactly these errors and run the validator again."
@@ -197,7 +197,7 @@ AC: one unit test per rule, asserting the pointer. `[unit]`
 
 AC: a temp repo fixture exercising every rule, including a symlink pointing outside the root. `[unit]`
 
-**FR-VAL-06 Publish.** Steps run in order; schema errors stop before steps 3–4 (they need a typed document). If every step passes, write the step-1 result to `candidate.json` (2-space JSON, trailing newline) via temp file + rename, then delete `draft.json`. If rejected, `draft.json` is left untouched and no `candidate.json` is written. AC: accepted run leaves only `candidate.json`; rejected run leaves only `draft.json` byte-identical. `[unit]`
+**FR-VAL-06 Publish.** Steps run in order; schema errors stop before steps 3–4 (they need a typed document). If every step passes, write the step-1 result to `candidate.sir` (2-space JSON, trailing newline) via temp file + rename, then delete `draft.json`. If rejected, `draft.json` is left untouched and no `candidate.sir` is written. AC: accepted run leaves only `candidate.sir`; rejected run leaves only `draft.json` byte-identical. `[unit]`
 
 ### 7.4 Repo facts (`repo-facts.mjs`)
 
@@ -283,20 +283,20 @@ AC: `[e2e]` with a stub `claude` script on a temp PATH, the created terminal's `
 
 ### 7.7 Viewer
 
-**FR-VIEW-01 Open command.** `Sustain: Open Architecture` (`sustain.openArchitecture`): folder choice, then load the newest candidate (FR-VIEW-02). None found → info "No architecture diagram yet." with a "Generate" button (runs FR-GEN-01). `Sustain: Open Architecture File…` (`sustain.openArchitectureFile`): QuickPick of all candidates in the folder, newest first, labelled by run folder and `meta.title`, plus "Browse…" (file dialog, `*.json`). The repo root for a browsed file outside `.archify/` is the chosen workspace folder. `[e2e]`
+**FR-VIEW-01 Open command.** `Sustain: Open Architecture` (`sustain.openArchitecture`): folder choice, then open the newest candidate (FR-VIEW-02) in its viewer tab (FR-VIEW-04); if that file is already open, its tab is revealed and reloaded. None found → info "No architecture diagram yet." with a "Generate" button (runs FR-GEN-01). Any other `.sir` file opens from the Explorer, Quick Open or the file dialog. `[e2e]`
 
-**FR-VIEW-02 Newest candidate.** Scan `<root>/.archify/*/candidate.json`. Folders matching `^architecture-.+-(\d{8}-\d{6})(-\d+)?$` sort by that timestamp, then by `-N`, descending; non-matching folders sort after all matching ones, by `candidate.json` mtime descending. AC: unit test with mixed names and mtimes. `[unit]`
+**FR-VIEW-02 Newest candidate.** Scan `<root>/.archify/*/candidate.sir`. Folders matching `^architecture-.+-(\d{8}-\d{6})(-\d+)?$` sort by that timestamp, then by `-N`, descending; non-matching folders sort after all matching ones, by `candidate.sir` mtime descending. AC: unit test with mixed names and mtimes. `[unit]`
 
 **FR-VIEW-03 Tolerant parse** (`tolerant.ts`, browser-safe, no schema validation):
 
-- Unparseable JSON, a non-object root, or no non-empty `components` array → error notification "Can't show `<file>`: <reason>", panel shows an empty state with the same text.
+- Unparseable JSON, a non-object root, or no non-empty `components` array → error notification "Can't show `<file>`: <reason>", the viewer shows an empty state with the same text.
 - Components without a string `id` are skipped; duplicates after the first are skipped; missing `label` → use `id`; unknown `type` → `external` styling.
 - Connections whose `from`/`to` don't resolve are skipped; a string `id` is kept (FR-CMP-03). Boundary `wraps` entries that don't resolve are dropped; a boundary left with no members is skipped.
 - `sources` entries without a string `path` are skipped.
 
 AC: unit test per rule; all 24 fixtures parse with no skips. `[unit]`
 
-**FR-VIEW-04 Panel.** One `WebviewPanel` (viewType `sustain.architecture`) per window; re-running the command reveals and reloads it. Title `Architecture: <meta.title>`. Opens in `ViewColumn.Active` when no editor is open, else `ViewColumn.Beside`. `retainContextWhenHidden: false`; the host re-sends the document when the panel becomes visible. Host → webview: `{type: "load", doc, file, compare}` (`compare` since M7, FR-CMP-05), `{type: "empty", message}`. Webview → host: `{type: "ready"}`, `{type: "openSource", componentId, index}`, and since M7 `compareWith`, `openBaseline`, `swap`, `openFile` (FR-CMP-06, FR-CMP-07). `[e2e]`
+**FR-VIEW-04 Viewer.** A read-only custom editor (`customEditors` viewType `sustain.architecture`, "Sustain Architecture", selector `*.sir`, priority `default`, `supportsMultipleEditorsPerDocument: true`); each editor tab is its own viewer. `Sustain: Open Architecture` and the watcher open a file with `vscode.openWith` as a non-preview tab, in `ViewColumn.Active` when no text editor is visible, else `ViewColumn.Beside`, or reveal and reload a tab already showing it. The tab title is the file name (VS Code adds the run folder when names collide). `configurationDefaults` sets `files.associations` `*.sir` → `json`, so "Reopen Editor With… → Text Editor" shows the JSON. `retainContextWhenHidden: false`; the host re-sends the document when the tab becomes visible. Host → webview: `{type: "load", doc, file, compare}` (`compare` since M7, FR-CMP-05), `{type: "empty", message}`. Webview → host: `{type: "ready"}`, `{type: "openSource", componentId, index}`, and since M7 `compareWith`, `openBaseline`, `swap`, `openFile` (FR-CMP-06, FR-CMP-07). `[e2e]`
 
 **FR-LAY-01 Mode.** Authored mode when every kept component has an authored rect: `pos`, or `row`+`col` when root `layout.mode == "grid"`, converted as `origin + (col·(cellW+gapX), row·(cellH+gapY))` with Archify defaults `origin [40,80]`, `cols 4`, `gapX 30`, `gapY 40`, `cellW 130`, `cellH 64`; `pos` wins over a cell; `size` default 120×60. Otherwise auto mode; partial positions are ignored. AC: port the prototype's `archify_repo_grid_fixture_resolves_to_expected_positions` expectations. `[unit]`
 
@@ -328,14 +328,14 @@ Node: rounded rect, 1.5 px stroke in the type colour, fill = type colour at 12 %
 
 **FR-NAV-01 Click.** Clicking a node posts `{type: "openSource", componentId, index: 0}`. When the component has no sources, the host shows a status-bar message "`<label>` has no source references" for 3 s and opens nothing. Click vs drag: pointer movement under 4 px counts as a click. `[dom]` for the posted message and the click/drag threshold, `[e2e]` for the no-sources status message.
 
-**FR-NAV-02 Open.** The host resolves `sources[index]` against the repo root and opens it with `showTextDocument` in a column different from the panel (`panel.viewColumn === 1 ? 2 : 1`, `preserveFocus: false`):
+**FR-NAV-02 Open.** The host resolves `sources[index]` against the repo root and opens it with `showTextDocument` in a column different from the viewer's (`viewColumn === 1 ? 2 : 1`, `preserveFocus: false`):
 
 - `line` and `end_line`: select lines `line..end_line` (whole lines), reveal `InCenterIfOutsideViewport`.
 - `line` only: select that line.
 - Neither: open at the top, no selection.
 - Highlight the selected lines with a whole-line decoration using `editor.rangeHighlightBackground` for 2 s.
 
-AC: `[e2e]` sends `openSource` through the panel's message handler (test hook, FR-TEST-01) for a fixture repo and asserts the active editor's document path, selection and view column.
+AC: `[e2e]` sends `openSource` through the viewer's message handler (test hook, FR-TEST-01) for a fixture repo and asserts the active editor's document path, selection and view column.
 
 **FR-NAV-03 Stale references.** Checked on click, never on load:
 
@@ -348,19 +348,19 @@ The same rules apply to tooltip entries. AC: `[e2e]` one case per rule.
 
 ### 7.9 Watching
 
-**FR-WAT-01 Watch.** A `FileSystemWatcher` on `<root>/.archify/*/candidate.json` for every workspace folder.
+**FR-WAT-01 Watch.** A `FileSystemWatcher` on `<root>/.archify/*/candidate.sir` for every workspace folder. Each change applies to every open viewer tab:
 
-- Change to the file the panel shows → re-send it (viewport kept).
-- A new candidate that is now the newest for its folder → if the panel is open for that folder, load it; otherwise info notification "New architecture diagram: `<run folder>`" with "Open".
-- The panel's file deleted → panel shows the empty state "This diagram was deleted."
+- Change to the file a viewer shows → re-send it (viewport kept).
+- A viewer's file deleted → the tab stays open with the empty state "This diagram was deleted."
+- A new candidate that is now the newest for its folder and that no viewer shows → if a viewer of that folder is open (a visible one first), open the new run in that viewer's editor group with `preserveFocus`, leaving the old tab open; otherwise info notification "New architecture diagram: `<run folder>`" with "Open" (opens it per FR-VIEW-04).
 - Events are debounced 300 ms.
 - The baseline file of the open comparison: FR-CMP-08.
 
-AC: `[e2e]` create and modify a candidate in a temp workspace and assert panel loads (via test hook).
+AC: `[e2e]` create and modify a candidate in a temp workspace and assert the viewer loads (via test hook). `[unit]` `watchLogic.ts` decides the action per viewer and for new runs.
 
 ### 7.10 Test hooks and live runs
 
-**FR-TEST-01 Test hook.** `activate()` returns an object used only by e2e tests: `{ panelState(): {file, open, baseline}, postFromWebview(msg) }` (`baseline` since M7, FR-CMP-05). It is not documented for users. `[e2e]`
+**FR-TEST-01 Test hook.** `activate()` returns an object used only by e2e tests: `{ viewers(): {file, baseline, active, title}[], postFromWebview(file, msg) }`; `postFromWebview` targets a viewer of `file`, the active one first. It is not documented for users. `[e2e]`
 
 **FR-LIVE-01 Claude Code.** In an Extension Development Host opened on `reference/sustain-prototype`: Install Agent Skills → Generate Architecture (Claude Code, empty focus) → the run finishes with `accepted` within 3 repairs → the viewer offers/opens the diagram → clicking 3 different nodes opens the cited ranges. Record date, CLI version, repairs used, component count in `progress.md`. `[live]`
 
@@ -396,7 +396,7 @@ Decision: [ADR 0029](adr/0029-update-the-previous-diagram-incrementally.md); evi
 {
   "mode": "update" | "regenerate",
   "reason": "<one of the reasons in FR-UPD-02>",
-  "previous": ".archify/<run>/candidate.json" | null,
+  "previous": ".archify/<run>/candidate.sir" | null,
   "baseRevision": "<40-hex>" | null,
   "head": "<40-hex>" | null,
   "changeFile": "<runFolder>/change.md" | null,
@@ -453,7 +453,7 @@ Port of `research/change-collection/harness/change-input.mjs` (`buildCIC`, `buil
 }
 ```
 
-`updatesSinceRegeneration` is 0 in regenerate mode and previous value + 1 (previous without lineage counts as 0) in update mode. `dirty` and `dirtyCount` are FR-GIT-01's dirty list (≤ 200 paths) and total; FR-UPD-02's `dirty-baseline` row uses the total. `baseCommit` and `headCommit` are added by M7 (FR-CMP-01). The validator ignores the run files; the viewer reads `lineage.json` and `changes.json` (FR-CMP-05); the watcher reacts only to `candidate.json`. AC: unit tests of the counter across a regenerate → update → update chain and of the `dirtyCount > 200` fallback. `[unit]`
+`updatesSinceRegeneration` is 0 in regenerate mode and previous value + 1 (previous without lineage counts as 0) in update mode. `dirty` and `dirtyCount` are FR-GIT-01's dirty list (≤ 200 paths) and total; FR-UPD-02's `dirty-baseline` row uses the total. `baseCommit` and `headCommit` are added by M7 (FR-CMP-01). The validator ignores the run files; the viewer reads `lineage.json` and `changes.json` (FR-CMP-05); the watcher reacts only to `candidate.sir`. AC: unit tests of the counter across a regenerate → update → update chain and of the `dirtyCount > 200` fallback. `[unit]`
 
 #### Skill
 
@@ -571,39 +571,39 @@ AC: one unit test per warning and per approximate case; a cycle in `previousRun`
 
 #### Extension host
 
-**FR-CMP-05 Baseline and load message.** `ArchitecturePanel` keeps the baseline file and whether the user chose it.
+**FR-CMP-05 Baseline and load message.** Each `ArchitectureViewer` (one per tab, even for the same file in two groups) keeps its baseline file and whether the user chose it.
 
-- When a different file opens (command, Open baseline, Swap, or watcher switch), the choice resets. The baseline becomes `<root>/.archify/<lineage.previousRun>/candidate.json` when the open file is a candidate with a lineage, that previous candidate exists, and it parses with `readDiagram`. Otherwise it is `null`.
+- When a viewer opens a file (command, Explorer, Open baseline, or watcher), its baseline is the default unless one was passed in (Swap). The default is `<root>/.archify/<lineage.previousRun>/candidate.sir` when the file is a candidate with a lineage, that previous candidate exists, and it parses with `readDiagram`. Otherwise it is `null`.
 - A reload of the same file (FR-WAT-01) keeps the baseline.
 - `load` is `{type: "load", doc, file, compare: Compare | null}`. `Compare` carries the baseline doc and file, the FR-CMP-04 context, and the parsed `changes.json` when kept/uncited data is available (otherwise `null`). The webview runs `readDiagram` on both docs and `diffDiagrams` on the results.
 - An unreadable baseline gives `compare: null` and the status bar message "Can't read baseline `<run folder>`" for 3 s.
-- `panelState()` (FR-TEST-01) gains `baseline: string | null`.
+- `viewers()` (FR-TEST-01) reports each viewer's `baseline: string | null`.
 
 AC: `[e2e]` a temp workspace with two runs linked by `previousRun` opens the newer one with `baseline` set to the older; a run without a lineage opens with `baseline: null`. `[unit]` for the default-baseline rule. `[unit]` `[e2e]`
 
 **FR-CMP-06 Compare with… picker.** The webview posts `{type: "compareWith"}`. The host shows a QuickPick (placeholder "Compare with") listing:
 
 1. "No comparison".
-2. Every `candidate.json` from `listCandidates(root)` except the open file, in run order, that parses with `readDiagram`.
+2. Every `candidate.sir` from `listCandidates(root)` except the open file, in run order, that parses with `readDiagram`.
 
 Each candidate item has label `meta.title` (else the run folder), description = run folder, and detail = `<short hash> <subject> · <mode>` from its lineage (else the short `meta.repository.revision`, else nothing). The detail also appends whichever tags apply: `previous` (it is the open run's `previousRun`), `newer`, `different focus`, `outside update history`. Tags use the FR-CMP-04 rules. The current baseline item has `picked: true`. Choosing an item sets the baseline as chosen and re-sends `load`. Escape changes nothing. AC: `[e2e]` with the stub UI used by the FR-UPD-08 tests: the items, their order and tags; choosing "No comparison" sends `compare: null`; choosing an older run sets `baseline`. `[e2e]`
 
 **FR-CMP-07 Actions from the webview.**
 
-- `{type: "openBaseline"}`: opens the baseline as the main diagram, with its own default baseline (FR-CMP-05).
-- `{type: "swap"}`: opens the baseline as the main diagram and sets the previously open file as its chosen baseline.
+- `{type: "openBaseline"}`: opens or reveals the baseline's own viewer tab in the same editor group, with that file's default baseline (FR-CMP-05). The current tab stays.
+- `{type: "swap"}`: as Open baseline, but sets that tab's baseline to the file you came from.
 - `{type: "openFile", path}`: opens a changed file. The host accepts only paths that appear in the `changes.json` it last sent, applies FR-NAV-03's invalid-path and missing-file rules, and opens the file at the top, without a selection, in the column FR-NAV-02 uses. Any other path is ignored and logged.
 
-AC: `[e2e]` per action through `postFromWebview`: Open baseline makes `panelState().file` the old baseline; Swap also sets `baseline` to the old file; `openFile` for a listed path opens it; an unlisted path opens nothing; a deleted listed path shows the FR-NAV-03 stale message. `[e2e]`
+AC: `[e2e]` per action through `postFromWebview`: Open baseline opens a viewer of the old baseline; Swap also sets its `baseline` to the old file; `openFile` for a listed path opens it; an unlisted path opens nothing; a deleted listed path shows the FR-NAV-03 stale message. `[e2e]`
 
 **FR-CMP-08 Watching the baseline** (adds to FR-WAT-01).
 
-- A change to the baseline file re-sends `load` (viewport kept).
-- Deletion of the baseline file sets the baseline to `null`, re-sends `load`, and shows the status bar message "Baseline diagram was deleted; showing no comparison." for 3 s.
-- When the watcher switches the panel to a newer run (FR-WAT-01), that run's default baseline applies (FR-CMP-05).
-- A new `changes.json` or `lineage.json` alone triggers nothing; both are written before `candidate.json` is published.
+- A change to a viewer's baseline file re-sends `load` (viewport kept).
+- Deletion of the baseline file sets that viewer's baseline to `null`, re-sends `load`, and shows the status bar message "Baseline diagram was deleted; showing no comparison." for 3 s (once per change).
+- A new run opened by the watcher (FR-WAT-01) gets its default baseline (FR-CMP-05).
+- A new `changes.json` or `lineage.json` alone triggers nothing; both are written before `candidate.sir` is published.
 
-AC: `[e2e]` modify and then delete the baseline candidate in a temp workspace and assert `panelState().baseline`. `[e2e]`
+AC: `[e2e]` modify and then delete the baseline candidate in a temp workspace and assert `viewers()[i].baseline`. `[e2e]`
 
 #### Webview
 

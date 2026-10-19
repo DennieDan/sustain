@@ -1,6 +1,6 @@
 // The baseline of the change view (FR-CMP-05, FR-CMP-06, ADR 0031): the default baseline, the
 // `compare` part of the load message and the Compare with… items. No `vscode` import, so the
-// rules are unit-tested in Node; panel.ts shows the results.
+// rules are unit-tested in Node; viewer.ts shows the results.
 import { readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { compareRuns, pickerTags, type RunFacts } from "../model/comparison";
@@ -46,7 +46,7 @@ function isRunSegment(name: string): boolean {
   return name !== "" && name !== "." && name !== ".." && !/[/\\]/.test(name);
 }
 
-/** The run folder of `file` when it is `<root>/.archify/<run>/candidate.json`, else `null`. */
+/** The run folder of `file` when it is `<root>/.archify/<run>/candidate.sir`, else `null`. */
 function candidateRun(root: string, file: string): string | null {
   const runDir = dirname(resolve(file));
   const archify = dirname(runDir);
@@ -78,8 +78,8 @@ function lineageReader(root: string): (runFolder: string) => Lineage | null {
 }
 
 /**
- * FR-CMP-05 default baseline: `<root>/.archify/<lineage.previousRun>/candidate.json` when `file`
- * is `<root>/.archify/<run>/candidate.json` with a lineage, that previous candidate is listed by
+ * FR-CMP-05 default baseline: `<root>/.archify/<lineage.previousRun>/candidate.sir` when `file`
+ * is `<root>/.archify/<run>/candidate.sir` with a lineage, that previous candidate is listed by
  * `listCandidates(root)` and it parses with the tolerant parse. Otherwise `null`.
  */
 export function defaultBaseline(root: string, file: string): string | null {

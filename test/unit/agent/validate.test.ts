@@ -37,7 +37,7 @@ function runFiles(root: string): string[] {
 }
 
 function candidate(root: string): Json & { meta: Json; components: Json[]; connections: Json[]; boundaries: Json[] } {
-  return JSON.parse(readFileSync(join(root, ".archify", RUN, "candidate.json"), "utf8"));
+  return JSON.parse(readFileSync(join(root, ".archify", RUN, "candidate.sir"), "utf8"));
 }
 
 describe("FR-VAL-01 CLI exit paths", () => {
@@ -46,7 +46,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
     const run = runScript("validate", [DRAFT], { cwd: root, env: envWithoutGit() });
     expect(run.status).toBe(0);
     expect(run.stderr).toBe("");
-    expect(run.json()).toEqual({ status: "accepted", candidate: `.archify/${RUN}/candidate.json`, errors: [], warnings: [] });
+    expect(run.json()).toEqual({ status: "accepted", candidate: `.archify/${RUN}/candidate.sir`, errors: [], warnings: [] });
   });
 
   test("rejected: exit 1, errors with pointers, the hint, no candidate", () => {
@@ -67,7 +67,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
     const { root, draftPath } = setup(draftDoc());
     const run = runScript("validate", [draftPath], { cwd: tempDir() });
     expect(run.status).toBe(0);
-    expect(runFiles(root)).toEqual(["candidate.json"]);
+    expect(runFiles(root)).toEqual(["candidate.sir"]);
   });
 
   test("malformed JSON is a rejection at pointer \"\"", () => {
@@ -81,7 +81,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
   test.each([
     ["no arguments", [] as string[]],
     ["two arguments", [DRAFT, DRAFT]],
-    ["a path that is not draft.json", [`.archify/${RUN}/candidate.json`]],
+    ["a path that is not draft.json", [`.archify/${RUN}/candidate.sir`]],
     ["a run folder with a non-run name", [".archify/hand-made/draft.json"]],
     ["a missing draft (I/O error)", [`.archify/${RUN.replace("api", "web")}/draft.json`]],
   ])("usage or I/O error (%s): exit 2, message on stderr, nothing on stdout", (_case, args) => {
@@ -101,7 +101,7 @@ describe("FR-VAL-01 CLI exit paths", () => {
       const run = runScript("validate", [DRAFT], { cwd: root });
       expect(run.status).toBe(2);
       expect(run.stdout).toBe("");
-      expect(run.stderr).toMatch(/cannot publish candidate\.json/);
+      expect(run.stderr).toMatch(/cannot publish candidate\.sir/);
     } finally {
       chmodSync(dir, 0o755);
     }
@@ -254,11 +254,11 @@ describe("FR-VAL-03..05 checks through the CLI", () => {
 });
 
 describe("FR-VAL-06 publish", () => {
-  test("an accepted run leaves only candidate.json, written as 2-space JSON with a trailing newline", () => {
+  test("an accepted run leaves only candidate.sir, written as 2-space JSON with a trailing newline", () => {
     const { root } = setup(draftDoc());
     expect(runScript("validate", [DRAFT], { cwd: root, env: envWithoutGit() }).status).toBe(0);
-    expect(runFiles(root)).toEqual(["candidate.json"]);
-    const text = readFileSync(join(root, ".archify", RUN, "candidate.json"), "utf8");
+    expect(runFiles(root)).toEqual(["candidate.sir"]);
+    const text = readFileSync(join(root, ".archify", RUN, "candidate.sir"), "utf8");
     expect(text).toBe(`${JSON.stringify(JSON.parse(text), null, 2)}\n`);
   });
 

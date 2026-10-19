@@ -1,11 +1,11 @@
-// Finding `<root>/.archify/*/candidate.json` and ordering them newest first (FR-VIEW-02).
+// Finding `<root>/.archify/*/candidate.sir` and ordering them newest first (FR-VIEW-02).
 import { readdirSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, join, sep } from "node:path";
 import { ARCHIFY_DIR, CANDIDATE_FILE, parseRunFolderName } from "./runFolder";
 
 /**
  * The repo root for a diagram file: `<R>` when the file is `<R>/.archify/<run>/<name>`,
- * otherwise `fallbackRoot` (the chosen workspace folder; FR-VIEW-01).
+ * otherwise `fallbackRoot` (the file's workspace folder, else its folder; FR-VIEW-04).
  */
 export function repoRootFor(file: string, fallbackRoot: string): string {
   const archify = dirname(dirname(file));
@@ -15,9 +15,9 @@ export function repoRootFor(file: string, fallbackRoot: string): string {
 export interface Candidate {
   /** Run folder name below `.archify/`. */
   runFolder: string;
-  /** Absolute path of `candidate.json`. */
+  /** Absolute path of `candidate.sir`. */
   file: string;
-  /** Modification time of `candidate.json` in ms. */
+  /** Modification time of `candidate.sir` in ms. */
   mtimeMs: number;
 }
 
@@ -41,7 +41,7 @@ export function compareCandidates(a: Candidate, b: Candidate): number {
 }
 
 /**
- * Every `.archify/<folder>/candidate.json` under `root` that is a regular file whose real
+ * Every `.archify/<folder>/candidate.sir` under `root` that is a regular file whose real
  * path stays inside the root, newest first. A missing `.archify` gives `[]`.
  */
 export function listCandidates(root: string): Candidate[] {
@@ -62,7 +62,7 @@ export function listCandidates(root: string): Candidate[] {
       const stat = statSync(real);
       if (stat.isFile()) candidates.push({ runFolder, file, mtimeMs: stat.mtimeMs });
     } catch {
-      // No candidate.json in this folder (a running or failed run): not a diagram.
+      // No candidate.sir in this folder (a running or failed run): not a diagram.
     }
   }
   return candidates.sort(compareCandidates);

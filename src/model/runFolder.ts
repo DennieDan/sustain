@@ -5,7 +5,8 @@ import { basename, dirname, join, resolve, sep } from "node:path";
 
 export const ARCHIFY_DIR = ".archify";
 export const DRAFT_FILE = "draft.json";
-export const CANDIDATE_FILE = "candidate.json";
+/** Accepted diagram: Archify JSON v1 under the `.sir` extension the viewer opens (ADR 0033). */
+export const CANDIDATE_FILE = "candidate.sir";
 /** Longest run-folder slug. */
 export const SLUG_MAX = 40;
 /** `architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]` */
@@ -121,7 +122,7 @@ export function locateDraft(arg: string, cwd: string): DraftLocation {
 }
 
 /**
- * Publishes `content` as `candidate.json` next to `draft`: written to a temp file in the
+ * Publishes `content` as `candidate.sir` next to `draft`: written to a temp file in the
  * same folder, flushed, renamed over the target, then the draft is deleted.
  */
 export function publishCandidate(draft: string, content: string): void {
