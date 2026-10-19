@@ -27,10 +27,10 @@ Chosen option: "Activate on `onStartupFinished`; the rules below", because a rep
 
 Watching (src/extension/watcher.ts, watchLogic.ts):
 
-* One `FileSystemWatcher` per workspace folder on `RelativePattern(folder, ".archify/*/candidate.json")`, added and removed with the folders.
+* One `FileSystemWatcher` per workspace folder on `RelativePattern(folder, ".archify/*/candidate.sir")`, added and removed with the folders.
 * Events are batched per file and flushed 300 ms after the last event; a file counts as created if any batched event was a creation. At flush, existence and the folder's newest candidate (FR-VIEW-02) are read from disk.
-* The panel's file changed → `reload()` (same file, so the webview keeps its viewport); deleted → empty state "This diagram was deleted." without a notification.
-* A created file that is now the folder's newest: if the panel shows a file of that folder, the panel switches to it without being revealed; otherwise "New architecture diagram: `<run folder>`" with "Open" (opens the panel).
+* Since [ADR 0033](0033-custom-editor-for-sir-files.md) each change applies to every open viewer tab: its file changed → `reload()` (same file, so the webview keeps its viewport); deleted → the tab stays with the empty state "This diagram was deleted." without a notification.
+* A created file that is now the folder's newest and that no viewer shows: if a viewer of that folder is open (a visible one first), the new run opens in that viewer's editor group with `preserveFocus`, leaving the old tab open; otherwise "New architecture diagram: `<run folder>`" with "Open". (Before ADR 0033 the single panel switched to it instead.)
 
 Navigation (src/extension/navigate.ts, sourceTarget.ts):
 

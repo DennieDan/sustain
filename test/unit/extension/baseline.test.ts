@@ -48,17 +48,17 @@ const CHANGES = {
  */
 function repo(): { root: string; file: (run: string) => string } {
   const root = join(tempDir(), "repo");
-  const file = (run: string): string => join(root, ".archify", run, "candidate.json");
-  put(root, `.archify/${C}/candidate.json`, diagram({ title: "Shop C" }));
+  const file = (run: string): string => join(root, ".archify", run, "candidate.sir");
+  put(root, `.archify/${C}/candidate.sir`, diagram({ title: "Shop C" }));
   put(root, `.archify/${C}/lineage.json`, lineage({ previousRun: B, baseRevision: HASH_B, revision: HASH_C, headCommit: { subject: "Add cart", committedAt: "2026-10-12T12:00:00+08:00" } }));
   put(root, `.archify/${C}/changes.json`, JSON.stringify(CHANGES));
-  put(root, `.archify/${B}/candidate.json`, diagram({ title: "Shop B" }));
+  put(root, `.archify/${B}/candidate.sir`, diagram({ title: "Shop B" }));
   put(root, `.archify/${B}/lineage.json`, lineage({ mode: "regenerate", previousRun: A, revision: HASH_B, headCommit: { subject: "Split API", committedAt: "2026-10-11T12:00:00+08:00" } }));
-  put(root, `.archify/${A}/candidate.json`, diagram({ title: "Shop A", repository: { url: "https://example.com/shop", revision: HASH_A } }));
-  put(root, `.archify/${X}/candidate.json`, diagram({}, ["queue"]));
-  put(root, `.archify/${D}/candidate.json`, diagram({ title: "Shop D" }));
+  put(root, `.archify/${A}/candidate.sir`, diagram({ title: "Shop A", repository: { url: "https://example.com/shop", revision: HASH_A } }));
+  put(root, `.archify/${X}/candidate.sir`, diagram({}, ["queue"]));
+  put(root, `.archify/${D}/candidate.sir`, diagram({ title: "Shop D" }));
   put(root, `.archify/${D}/lineage.json`, lineage({ mode: "regenerate" }));
-  put(root, `.archify/${BROKEN}/candidate.json`, "{ not json");
+  put(root, `.archify/${BROKEN}/candidate.sir`, "{ not json");
   return { root, file };
 }
 
@@ -88,7 +88,7 @@ describe("FR-CMP-05 default baseline", () => {
 
   test("a file outside .archify has no default baseline", () => {
     const { root } = repo();
-    const browsed = put(root, "docs/candidate.json", diagram({ title: "Browsed" }));
+    const browsed = put(root, "docs/candidate.sir", diagram({ title: "Browsed" }));
     put(root, "docs/lineage.json", lineage({ previousRun: B }));
     expect(defaultBaseline(root, browsed)).toBeNull();
   });
@@ -130,7 +130,7 @@ describe("FR-CMP-05 compare payload", () => {
   test("a missing or unparseable baseline gives null", () => {
     const { root, file } = repo();
     expect(buildCompare(root, file(C), file(BROKEN))).toBeNull();
-    expect(buildCompare(root, file(C), join(root, ".archify", "gone", "candidate.json"))).toBeNull();
+    expect(buildCompare(root, file(C), join(root, ".archify", "gone", "candidate.sir"))).toBeNull();
   });
 
   test("a browsed file outside .archify can be compared with a candidate", () => {

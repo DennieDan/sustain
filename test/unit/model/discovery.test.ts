@@ -6,7 +6,7 @@ import { listCandidates, repoRootFor } from "../../../src/model/discovery";
 import { put, tempDir } from "../support/temp";
 
 function candidate(root: string, folder: string, mtimeSeconds: number): void {
-  const file = put(root, `.archify/${folder}/candidate.json`, "{}");
+  const file = put(root, `.archify/${folder}/candidate.sir`, "{}");
   utimesSync(file, mtimeSeconds, mtimeSeconds);
 }
 
@@ -33,18 +33,18 @@ describe("FR-VIEW-02 newest candidate", () => {
     ]);
   });
 
-  test("folders without candidate.json, stray files and links outside the root are ignored", () => {
+  test("folders without candidate.sir, stray files and links outside the root are ignored", () => {
     const base = tempDir();
     const root = join(base, "repo");
     candidate(root, "architecture-kept-20260101-000000", 1_000);
     put(root, ".archify/architecture-failed-20270101-000000/draft.json", "{}");
     put(root, ".archify/stray.json", "{}");
-    mkdirSync(join(root, ".archify/architecture-dir-20280101-000000/candidate.json"), { recursive: true });
-    put(base, "outside/candidate.json", "{}");
+    mkdirSync(join(root, ".archify/architecture-dir-20280101-000000/candidate.sir"), { recursive: true });
+    put(base, "outside/candidate.sir", "{}");
     symlinkSync(join(base, "outside"), join(root, ".archify/architecture-linked-20990101-000000"));
     const entries = listCandidates(root);
     expect(entries.map((c) => c.runFolder)).toEqual(["architecture-kept-20260101-000000"]);
-    expect(entries[0]!.file).toBe(join(root, ".archify/architecture-kept-20260101-000000/candidate.json"));
+    expect(entries[0]!.file).toBe(join(root, ".archify/architecture-kept-20260101-000000/candidate.sir"));
   });
 
   test("no .archify folder gives an empty list", () => {
@@ -54,11 +54,11 @@ describe("FR-VIEW-02 newest candidate", () => {
 
 describe("FR-VIEW-01 repo root of a browsed file", () => {
   test.each([
-    ["/w/repo/.archify/architecture-x-20260101-000000/candidate.json", "/w/repo"],
+    ["/w/repo/.archify/architecture-x-20260101-000000/candidate.sir", "/w/repo"],
     ["/w/repo/.archify/hand-made/other.json", "/w/repo"],
-    ["/w/other/.archify/run/candidate.json", "/w/other"],
+    ["/w/other/.archify/run/candidate.sir", "/w/other"],
     ["/w/repo/docs/diagram.json", "/w/folder"],
-    ["/w/repo/.archify/candidate.json", "/w/folder"],
+    ["/w/repo/.archify/candidate.sir", "/w/folder"],
   ])("%s → %s", (file, expected) => {
     expect(repoRootFor(file, "/w/folder")).toBe(expected);
   });

@@ -32,7 +32,7 @@ Output: `{root, runFolder, draft, git}`; `root` is the absolute cwd; `runFolder`
 
 * Good, because the agent never computes timestamps or slugs.
 * Good, because concurrent runs get distinct folders.
-* Bad, because an abandoned run leaves an empty folder in `.archify/` (it has no `candidate.json`, so the viewer ignores it).
+* Bad, because an abandoned run leaves an empty folder in `.archify/` (it has no `candidate.sir`, so the viewer ignores it).
 
 ### Confirmation
 

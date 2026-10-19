@@ -85,7 +85,7 @@ describe("FR-VAL-05 citations against a temp repo", () => {
     expect(one(root, { path: "late-nul.txt" })).toEqual([]);
   });
 
-  test.each([[".env"], ["config/.env"], ["certs/server.PEM"], [".git/HEAD"], [".archify/x/candidate.json"]])(
+  test.each([[".env"], ["config/.env"], ["certs/server.PEM"], [".git/HEAD"], [".archify/x/candidate.sir"]])(
     "%s is DeniedCitation",
     (path) => {
       expect(one(repo(), { path })).toEqual([expect.objectContaining({ code: "DeniedCitation", pointer: "/components/0/sources/0/path" })]);

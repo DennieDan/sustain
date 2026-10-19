@@ -2,7 +2,7 @@
 // import, so the policy is unit-tested in Node.
 
 export interface WebviewAssets {
-  /** `webview.cspSource` of the panel. */
+  /** `webview.cspSource` of the viewer's webview. */
   cspSource: string;
   /** Fresh random nonce for the one script tag. */
   nonce: string;

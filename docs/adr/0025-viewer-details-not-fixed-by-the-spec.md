@@ -24,12 +24,12 @@ FR-VIEW-01..07 fix the commands, messages, panel behaviour, zoom range, keys and
 
 Chosen option: "The choices listed below", because none changes a spec string or behaviour, and each is a one-line change if the owner prefers otherwise.
 
-Host (src/extension/panel.ts, open.ts, src/model/discovery.ts):
+Host (src/extension/viewer.ts, open.ts, src/model/discovery.ts):
 
-* `<file>` in "Can't show `<file>`: <reason>" is the path relative to the repo root (`.archify/<run>/candidate.json`), or the base name for files outside it. Reasons: `invalid JSON (<parser message>)`, `the root is not a JSON object`, `it has no components`, `it has no components with an id`, or the read error.
-* Panel title: `Architecture: <meta.title>`, falling back to the file's base name when there is no title or the file cannot be shown.
+* `<file>` in "Can't show `<file>`: <reason>" is the path relative to the repo root (`.archify/<run>/candidate.sir`), or the base name for files outside it. Reasons: `invalid JSON (<parser message>)`, `the root is not a JSON object`, `it has no components`, `it has no components with an id`, or the read error.
+* Tab title: the file name, as VS Code labels custom-editor tabs ([ADR 0033](0033-custom-editor-for-sir-files.md)); this replaced the earlier panel title `Architecture: <meta.title>`.
 * "No editor is open" means `window.visibleTextEditors` is empty.
-* Open Architecture File…: items are labelled with the run folder and described by `meta.title`; placeholder "Architecture diagram"; "Browse…" opens a file dialog filtered to `JSON: json`, starting in the chosen folder. A browsed file under `<R>/.archify/<run>/` uses `<R>` as repo root.
+* Open Architecture File… and its "Browse…" were removed by [ADR 0033](0033-custom-editor-for-sir-files.md): any `.sir` file opens in the viewer from the Explorer or Quick Open. A file under `<R>/.archify/<run>/` uses `<R>` as repo root, else its workspace folder, else its folder.
 * Candidates with equal sort keys (FR-VIEW-02) fall back to the folder name, descending, so the order is total.
 * The webview HTML contains only the CSP, the stylesheet link and the script; `dist/webview.js` builds the DOM. The bundle is minified.
 

@@ -11,29 +11,29 @@ const HIGHLIGHT_MS = 2_000;
 const STATUS_MS = 3_000;
 
 /**
- * Opens `component.sources[index]` from `root` in the editor column that is not the panel's
- * (`panelColumn === 1 ? 2 : 1`), selecting and briefly highlighting the cited lines.
+ * Opens `component.sources[index]` from `root` in the editor column that is not the viewer's
+ * (`viewerColumn === 1 ? 2 : 1`), selecting and briefly highlighting the cited lines.
  */
-export async function openSource(root: string, component: ViewComponent, index: number, panelColumn: vscode.ViewColumn | undefined): Promise<void> {
+export async function openSource(root: string, component: ViewComponent, index: number, viewerColumn: vscode.ViewColumn | undefined): Promise<void> {
   if (component.sources.length === 0) {
     vscode.window.setStatusBarMessage(`\`${component.label}\` has no source references`, STATUS_MS);
     return;
   }
   const source = component.sources[index];
-  if (source) await openSourceRef(root, source, panelColumn);
+  if (source) await openSourceRef(root, source, viewerColumn);
 }
 
 /**
  * Opens `source` from `root` with the FR-NAV-02/03 rules, in the editor column that is not the
- * panel's; a source without lines opens at the top without a selection.
+ * viewer's; a source without lines opens at the top without a selection.
  */
-export async function openSourceRef(root: string, source: SourceRef, panelColumn: vscode.ViewColumn | undefined): Promise<void> {
+export async function openSourceRef(root: string, source: SourceRef, viewerColumn: vscode.ViewColumn | undefined): Promise<void> {
   const target = resolveSource(root, source);
   if (target.kind === "error") {
     void vscode.window.showErrorMessage(target.message);
     return;
   }
-  const viewColumn = panelColumn === vscode.ViewColumn.One ? vscode.ViewColumn.Two : vscode.ViewColumn.One;
+  const viewColumn = viewerColumn === vscode.ViewColumn.One ? vscode.ViewColumn.Two : vscode.ViewColumn.One;
   const document = await vscode.workspace.openTextDocument(vscode.Uri.file(target.file));
   const editor = await vscode.window.showTextDocument(document, { viewColumn, preserveFocus: false });
   if (target.warning) void vscode.window.showErrorMessage(target.warning);

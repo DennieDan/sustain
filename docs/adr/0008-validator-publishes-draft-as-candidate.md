@@ -22,6 +22,8 @@ Chosen option: "The agent writes `draft.json`; `validate.mjs` moves it to `candi
 
 The write is atomic (temp file + rename); the draft is deleted afterwards (FR-VAL-06).
 
+Since [ADR 0033](0033-custom-editor-for-sir-files.md) the published file is named `candidate.sir` (same contents); the rule is unchanged.
+
 ### Consequences
 
 * Good, because the viewer can trust that `candidate.json` passed validation when it was published.

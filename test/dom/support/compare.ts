@@ -71,7 +71,7 @@ export function context(overrides: Partial<ComparisonContext> = {}): ComparisonC
 }
 
 export function compare(overrides: Partial<ComparisonContext> = {}, changes: RunChanges | null = CHANGES): Compare {
-  return { baselineDoc: BASELINE_DOC, baselineFile: "/r/.archify/2026-10-01-1200-orders/candidate.json", context: context(overrides), changes };
+  return { baselineDoc: BASELINE_DOC, baselineFile: "/r/.archify/2026-10-01-1200-orders/candidate.sir", context: context(overrides), changes };
 }
 
 /** "Now" for relative dates: 2026-10-19T12:00:00Z. */

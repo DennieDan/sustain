@@ -7,7 +7,7 @@ import type { RunChanges } from "./runChanges";
 export interface Compare {
   /** Parsed baseline JSON; the webview runs the tolerant parse on it. */
   baselineDoc: unknown;
-  /** Absolute path of the baseline `candidate.json`. */
+  /** Absolute path of the baseline diagram (normally a `candidate.sir`). */
   baselineFile: string;
   context: ComparisonContext;
   /** The open run's `changes.json` when `context.keptAvailable`, else `null`. */

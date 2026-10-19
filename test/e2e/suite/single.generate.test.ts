@@ -124,7 +124,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
   function addCandidate(): void {
     const dir = join(root, ".archify/architecture-x-20260101-000000");
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, "candidate.json"), "{}\n");
+    writeFileSync(join(dir, "candidate.sir"), "{}\n");
   }
 
   test("FR-UPD-08: with a previous diagram, Regenerate from scratch adds `--regenerate`", async () => {

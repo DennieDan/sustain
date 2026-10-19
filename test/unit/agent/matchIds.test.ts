@@ -21,8 +21,8 @@ describe("match-ids.mjs", () => {
   it("rewrites the draft in place and prints the maps", () => {
     const root = tempDir();
     const draftPath = put(root, ".archify/run/draft.json", JSON.stringify(draft));
-    put(root, ".archify/prev/candidate.json", JSON.stringify(previous));
-    const run = runScript("match-ids", [".archify/run/draft.json", "--previous", ".archify/prev/candidate.json"], { cwd: root });
+    put(root, ".archify/prev/candidate.sir", JSON.stringify(previous));
+    const run = runScript("match-ids", [".archify/run/draft.json", "--previous", ".archify/prev/candidate.sir"], { cwd: root });
     expect(run.stderr).toBe("");
     expect(run.status).toBe(0);
     const expected = matchIds(previous, draft);
@@ -38,8 +38,8 @@ describe("match-ids.mjs", () => {
   it("leaves an invalid-JSON draft untouched", () => {
     const root = tempDir();
     const draftPath = put(root, "draft.json", "{ not json");
-    put(root, "candidate.json", JSON.stringify(previous));
-    const run = runScript("match-ids", ["draft.json", "--previous", "candidate.json"], { cwd: root });
+    put(root, "candidate.sir", JSON.stringify(previous));
+    const run = runScript("match-ids", ["draft.json", "--previous", "candidate.sir"], { cwd: root });
     expect(run.status).toBe(2);
     expect(run.stdout).toBe("");
     expect(run.stderr).toMatch(/^match-ids\.mjs: /);
@@ -49,13 +49,13 @@ describe("match-ids.mjs", () => {
   it.each([
     [[]],
     [["draft.json"]],
-    [["draft.json", "candidate.json"]],
-    [["--previous", "candidate.json", "draft.json"]],
-    [["draft.json", "--previous", "candidate.json", "extra"]],
+    [["draft.json", "candidate.sir"]],
+    [["--previous", "candidate.sir", "draft.json"]],
+    [["draft.json", "--previous", "candidate.sir", "extra"]],
   ])("rejects argv %j", (args) => {
     const root = tempDir();
     put(root, "draft.json", JSON.stringify(draft));
-    put(root, "candidate.json", JSON.stringify(previous));
+    put(root, "candidate.sir", JSON.stringify(previous));
     const run = runScript("match-ids", args, { cwd: root });
     expect(run.status).toBe(2);
     expect(run.stdout).toBe("");
@@ -67,8 +67,8 @@ describe("match-ids.mjs", () => {
     put(root, "bad.json", JSON.stringify({ components: {} }));
     put(root, "draft.json", JSON.stringify(draft));
     put(root, "list.json", "[]");
-    put(root, "candidate.json", JSON.stringify(previous));
-    expect(runScript("match-ids", ["bad.json", "--previous", "candidate.json"], { cwd: root }).status).toBe(2);
+    put(root, "candidate.sir", JSON.stringify(previous));
+    expect(runScript("match-ids", ["bad.json", "--previous", "candidate.sir"], { cwd: root }).status).toBe(2);
     expect(runScript("match-ids", ["draft.json", "--previous", "list.json"], { cwd: root }).status).toBe(2);
   });
 

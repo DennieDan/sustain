@@ -19,7 +19,7 @@ describe("FR-VAL-05 deny-list", () => {
   });
 
   test.each([
-    ".git/HEAD", "a/.git/HEAD", "vendor/lib/.git/config", ".archify/architecture-x-20261010-093000/candidate.json",
+    ".git/HEAD", "a/.git/HEAD", "vendor/lib/.git/config", ".archify/architecture-x-20261010-093000/candidate.sir",
     "sub/.archify/x", "config/.env", "apps/web/.env.development", "keys/server.PEM", "a/b/cert.p12",
     "home/.ssh/id_rsa_old", "deploy/id_ed25519.pub", "packages/app/.npmrc", "x/.netrc",
   ])("path %s is denied (any segment)", (path) => {

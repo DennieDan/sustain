@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0033](0033-custom-editor-for-sir-files.md)
 date: 2026-10-10
 decision-makers: owner
 ---

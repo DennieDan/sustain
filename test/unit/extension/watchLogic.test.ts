@@ -1,7 +1,7 @@
-// FR-WAT-01, FR-CMP-08: 300 ms debouncing and the reload / switch / notify / deleted / baseline
-// decisions.
+// FR-WAT-01, FR-CMP-08: 300 ms debouncing, what each open viewer does about a change
+// (reload / deleted / baseline) and what happens to a new newest run (open / notify).
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ChangeBatch, DEBOUNCE_MS, watchAction, type CandidateChange } from "../../../src/extension/watchLogic";
+import { ChangeBatch, DEBOUNCE_MS, newRunAction, viewerAction, type CandidateChange, type ViewerFacts } from "../../../src/extension/watchLogic";
 
 describe("FR-WAT-01 debouncing", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -38,80 +38,100 @@ describe("FR-WAT-01 debouncing", () => {
   });
 });
 
-describe("FR-WAT-01 decisions", () => {
+describe("FR-WAT-01 viewer decisions", () => {
   const change = (overrides: Partial<CandidateChange>): CandidateChange => ({
-    file: "/r/.archify/new/candidate.json",
+    file: "/r/.archify/new/candidate.sir",
     created: true,
     exists: true,
     root: "/r",
-    newest: "/r/.archify/new/candidate.json",
+    newest: "/r/.archify/new/candidate.sir",
     ...overrides,
   });
-  const panel = { root: "/r", file: "/r/.archify/old/candidate.json", baseline: null };
+  const viewer: ViewerFacts = { root: "/r", file: "/r/.archify/old/candidate.sir", baseline: null, visible: true };
 
   test("a change to the shown file reloads it", () => {
-    expect(watchAction(change({ file: panel.file, created: false, newest: "/r/.archify/new/candidate.json" }), panel)).toEqual({ kind: "reload" });
+    expect(viewerAction(change({ file: viewer.file, created: false }), viewer)).toBe("reload");
   });
 
   test("deleting the shown file shows the deleted state", () => {
-    expect(watchAction(change({ file: panel.file, exists: false }), panel)).toEqual({ kind: "deleted" });
+    expect(viewerAction(change({ file: viewer.file, exists: false }), viewer)).toBe("deleted");
   });
 
-  test("a new newest candidate loads into a panel open for its folder", () => {
-    expect(watchAction(change({}), panel)).toEqual({ kind: "switch", root: "/r", file: "/r/.archify/new/candidate.json" });
+  test("another file's change leaves the viewer alone", () => {
+    expect(viewerAction(change({}), viewer)).toBeUndefined();
+  });
+});
+
+describe("FR-WAT-01 new newest run", () => {
+  const NEW = "/r/.archify/new/candidate.sir";
+  const change = (overrides: Partial<CandidateChange>): CandidateChange => ({ file: NEW, created: true, exists: true, root: "/r", newest: NEW, ...overrides });
+  const facts = (overrides: Partial<ViewerFacts>): ViewerFacts => ({ root: "/r", file: "/r/.archify/old/candidate.sir", baseline: null, visible: true, ...overrides });
+
+  test("opens beside a viewer of its folder", () => {
+    expect(newRunAction(change({}), [facts({})])).toEqual({ kind: "open", viewer: 0 });
   });
 
-  test("a new newest candidate is offered when no panel is open or it shows another folder", () => {
-    expect(watchAction(change({}), undefined)).toEqual({ kind: "notify", root: "/r", file: "/r/.archify/new/candidate.json" });
-    expect(watchAction(change({}), { root: "/other", file: "/other/x.json", baseline: null })).toMatchObject({ kind: "notify" });
+  test("prefers a visible viewer of its folder over a hidden one and ignores other folders", () => {
+    const viewers = [facts({ root: "/other", file: "/other/.archify/x/candidate.sir" }), facts({ visible: false }), facts({ file: "/r/.archify/older/candidate.sir" })];
+    expect(newRunAction(change({}), viewers)).toEqual({ kind: "open", viewer: 2 });
+    expect(newRunAction(change({}), viewers.slice(0, 2))).toEqual({ kind: "open", viewer: 1 });
+  });
+
+  test("is announced when no viewer is open or only viewers of other folders", () => {
+    expect(newRunAction(change({}), [])).toEqual({ kind: "notify" });
+    expect(newRunAction(change({}), [facts({ root: "/other", file: "/other/x.sir" })])).toEqual({ kind: "notify" });
+  });
+
+  test("does nothing when a viewer already shows it", () => {
+    expect(newRunAction(change({}), [facts({ file: NEW })])).toBeUndefined();
+  });
+
+  test("a new newest run still opens while the viewer of its folder has a baseline", () => {
+    expect(newRunAction(change({}), [facts({ baseline: "/r/.archify/older/candidate.sir" })])).toEqual({ kind: "open", viewer: 0 });
   });
 
   test.each([
-    ["not the newest", { newest: "/r/.archify/later/candidate.json" }],
+    ["not the newest", { newest: "/r/.archify/later/candidate.sir" }],
     ["only changed, not created", { created: false }],
     ["already deleted again", { exists: false }],
   ])("a candidate that is %s is ignored", (_case, overrides) => {
-    expect(watchAction(change(overrides), panel)).toBeUndefined();
-    expect(watchAction(change(overrides), undefined)).toBeUndefined();
+    expect(newRunAction(change(overrides), [facts({})])).toBeUndefined();
+    expect(newRunAction(change(overrides), [])).toBeUndefined();
   });
 });
 
 describe("FR-CMP-08 watching the baseline", () => {
-  const baseline = "/r/.archify/older/candidate.json";
-  const panel = { root: "/r", file: "/r/.archify/old/candidate.json", baseline };
+  const baseline = "/r/.archify/older/candidate.sir";
+  const viewer: ViewerFacts = { root: "/r", file: "/r/.archify/old/candidate.sir", baseline, visible: true };
   const change = (overrides: Partial<CandidateChange>): CandidateChange => ({
     file: baseline,
     created: false,
     exists: true,
     root: "/r",
-    newest: panel.file,
+    newest: viewer.file,
     ...overrides,
   });
 
   test("a change to the baseline re-sends the comparison", () => {
-    expect(watchAction(change({}), panel)).toEqual({ kind: "baselineChanged" });
+    expect(viewerAction(change({}), viewer)).toBe("baselineChanged");
   });
 
   test("deleting the baseline drops it", () => {
-    expect(watchAction(change({ exists: false }), panel)).toEqual({ kind: "baselineDeleted" });
+    expect(viewerAction(change({ exists: false }), viewer)).toBe("baselineDeleted");
   });
 
   test("a baseline deleted and written again within one batch counts as changed", () => {
-    expect(watchAction(change({ created: true }), panel)).toEqual({ kind: "baselineChanged" });
+    expect(viewerAction(change({ created: true }), viewer)).toBe("baselineChanged");
   });
 
   test("the shown file wins over the baseline rules", () => {
-    expect(watchAction(change({ file: panel.file }), panel)).toEqual({ kind: "reload" });
-    expect(watchAction(change({ file: panel.file, exists: false }), panel)).toEqual({ kind: "deleted" });
+    const self = { ...viewer, baseline: viewer.file };
+    expect(viewerAction(change({ file: viewer.file }), self)).toBe("reload");
+    expect(viewerAction(change({ file: viewer.file, exists: false }), self)).toBe("deleted");
   });
 
   test("without a baseline another candidate's change does nothing", () => {
-    expect(watchAction(change({}), { ...panel, baseline: null })).toBeUndefined();
-    expect(watchAction(change({ exists: false }), { ...panel, baseline: null })).toBeUndefined();
-  });
-
-  test("a new newest candidate still switches the panel while a baseline is set", () => {
-    const file = "/r/.archify/new/candidate.json";
-    expect(watchAction(change({ file, created: true, newest: file }), panel)).toEqual({ kind: "switch", root: "/r", file });
+    expect(viewerAction(change({}), { ...viewer, baseline: null })).toBeUndefined();
+    expect(viewerAction(change({ exists: false }), { ...viewer, baseline: null })).toBeUndefined();
   });
 });

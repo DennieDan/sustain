@@ -46,34 +46,41 @@ export interface CandidateChange {
   newest: string | undefined;
 }
 
-export type WatchAction =
-  | { kind: "reload" }
-  | { kind: "deleted" }
-  | { kind: "baselineChanged" }
-  | { kind: "baselineDeleted" }
-  | { kind: "switch"; root: string; file: string }
-  | { kind: "notify"; root: string; file: string };
+/** What happens to one open viewer when a diagram file changed. */
+export type ViewerAction = "reload" | "deleted" | "baselineChanged" | "baselineDeleted";
 
-/** What the watcher needs to know about the open panel. */
-export interface PanelFacts {
+/** What the watcher needs to know about an open viewer. */
+export interface ViewerFacts {
   root: string;
   file: string;
-  /** The baseline `candidate.json` (FR-CMP-05), or `null` without a comparison. */
+  /** The baseline diagram file (FR-CMP-05), or `null` without a comparison. */
   baseline: string | null;
+  /** The viewer's tab is the visible one of its group. */
+  visible: boolean;
 }
 
 /**
- * What to do for one change, given the panel's state (`undefined` when no panel is open):
- * - the panel's file changed → reload it (viewport kept); deleted → empty state;
- * - the panel's baseline changed → re-send the comparison; deleted → drop the baseline;
- * - a new candidate that is now the newest of its folder → load it into a panel open for that
- *   folder (with its default baseline), otherwise offer it in a notification;
- * - anything else → nothing.
+ * What one viewer does about a change: its file changed → reload it (viewport kept); deleted →
+ * empty state; its baseline changed → re-send the comparison; deleted → drop the baseline.
  */
-export function watchAction(change: CandidateChange, panel: PanelFacts | undefined): WatchAction | undefined {
-  if (panel && change.file === panel.file) return change.exists ? { kind: "reload" } : { kind: "deleted" };
-  if (panel && change.file === panel.baseline) return change.exists ? { kind: "baselineChanged" } : { kind: "baselineDeleted" };
+export function viewerAction(change: CandidateChange, viewer: ViewerFacts): ViewerAction | undefined {
+  if (change.file === viewer.file) return change.exists ? "reload" : "deleted";
+  if (change.file === viewer.baseline) return change.exists ? "baselineChanged" : "baselineDeleted";
+  return undefined;
+}
+
+/** A new newest run: open it in the group of `viewers[viewer]`, or announce it. */
+export type NewRunAction = { kind: "open"; viewer: number } | { kind: "notify" };
+
+/**
+ * What to do about a candidate that was created and is now the newest of its folder (FR-WAT-01):
+ * nothing when a viewer already shows it; open it beside a viewer of the same folder (a visible
+ * one first); otherwise announce it. Anything else → nothing.
+ */
+export function newRunAction(change: CandidateChange, viewers: readonly ViewerFacts[]): NewRunAction | undefined {
   if (!change.exists || !change.created || change.newest !== change.file) return undefined;
-  if (panel && panel.root === change.root) return { kind: "switch", root: change.root, file: change.file };
-  return { kind: "notify", root: change.root, file: change.file };
+  if (viewers.some((viewer) => viewer.file === change.file)) return undefined;
+  const sameRoot = viewers.flatMap((viewer, index) => (viewer.root === change.root ? [{ viewer, index }] : []));
+  const target = sameRoot.find(({ viewer }) => viewer.visible) ?? sameRoot[0];
+  return target ? { kind: "open", viewer: target.index } : { kind: "notify" };
 }
