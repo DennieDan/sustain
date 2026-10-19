@@ -53,17 +53,32 @@ async function buildDist() {
     external: ["vscode"],
   });
 
-  // The webview: one IIFE (elkjs included) loaded by nonce under a strict CSP (NFR-SEC-01).
+  // The webviews: one IIFE each (elkjs included). main.ts runs under the panel's strict
+  // CSP (NFR-SEC-01); browser.ts is inlined into the self-contained snapshot page.
   await esbuild.build({
     ...common,
-    entryPoints: [join(root, "webview/main.ts")],
-    outfile: join(dist, "webview.js"),
+    entryPoints: {
+      webview: join(root, "webview/main.ts"),
+      "browser-viewer": join(root, "webview/browser.ts"),
+    },
+    outdir: dist,
     platform: "browser",
     format: "iife",
     target: "es2022",
     minify: true,
   });
   cpSync(join(root, "webview/styles.css"), join(dist, "webview.css"));
+
+  // `export-viewer`: ESM CLI (deps inlined) that writes the self-contained page.
+  await esbuild.build({
+    ...common,
+    entryPoints: { "export-viewer": join(root, "src/browser/export.ts") },
+    outdir: dist,
+    outExtension: { ".js": ".mjs" },
+    platform: "node",
+    format: "esm",
+    target: "node18",
+  });
 }
 
 async function buildE2e() {
