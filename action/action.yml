@@ -33,5 +33,5 @@ outputs:
   result:
     description: "pass or fail"
 runs:
-  using: node20
+  using: node24
   main: dist/index.js

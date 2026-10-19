@@ -317,7 +317,7 @@ export async function buildAction(outfile = join(root, "action/dist/index.js")) 
     outfile,
     platform: "node",
     format: "cjs",
-    target: "node20",
+    target: "node24",
   });
 }
 
