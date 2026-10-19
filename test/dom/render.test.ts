@@ -1,13 +1,16 @@
-// FR-VIEW-05: the SVG drawn for a scene has one element per node, edge and boundary, with the
-// classes the theme colours hang on, and text placed inside the boxes the layout sized.
+// FR-VIEW-05, FR-CMP-10/11: the SVG drawn for a scene has one element per node, edge and boundary,
+// with the classes the theme colours hang on, text placed inside the boxes the layout sized, and
+// change marks and element boxes addressed by the diagram's array indices.
 import { describe, expect, test } from "vitest";
 import { autoNodeSize } from "../../src/layout/measure";
 import type { Scene } from "../../src/layout/scene";
-import { parseDiagram } from "../../src/model/tolerant";
+import { diffDiagrams, markKept } from "../../src/model/diagramDiff";
+import { parseDiagram, readDiagram } from "../../src/model/tolerant";
 import type { ViewDiagram } from "../../src/model/tolerant";
 import type { BoundaryKind, ComponentType, Variant } from "../../src/model/types";
 import { archifyFixtures } from "../unit/support/fixtures";
-import { renderScene } from "../../webview/render";
+import { applyMarks, elementBox, renderScene } from "../../webview/render";
+import { BASELINE_DOC, CURRENT_DOC } from "./support/compare";
 import { contentGroup, fixedMeasure, gridScene } from "./support/scene";
 
 const TYPES: ComponentType[] = ["frontend", "backend", "database", "cloud", "security", "messagebus", "external"];
@@ -242,5 +245,92 @@ describe("FR-VIEW-05 renderScene", () => {
     expect(first?.querySelector(".edge__head")?.getAttribute("d")).toBe("M40 50 L31 54.5 L31 45.5 Z");
     expect(second?.querySelector(".edge__line")?.getAttribute("d")).toBe("M100 100 L100 9");
     expect(second?.querySelector(".edge__head")?.getAttribute("d")).toBe("M100 0 L104.5 9 L95.5 9 Z");
+  });
+});
+
+describe("FR-CMP-10 applyMarks and FR-CMP-11 elementBox", () => {
+  const current = (() => {
+    const result = readDiagram(CURRENT_DOC);
+    if (!result.ok) throw new Error(result.reason);
+    return result.diagram;
+  })();
+  const baseline = (() => {
+    const result = readDiagram(BASELINE_DOC);
+    if (!result.ok) throw new Error(result.reason);
+    return result.diagram;
+  })();
+  const diff = markKept(diffDiagrams(baseline, current), current, new Set(["api"]));
+
+  function marks(content: SVGGElement): [string | null, string | null, string[]][] {
+    const statusClass = /--(added|changed|renamed|kept)$/;
+    return [...content.querySelectorAll(".node, .edge, .boundary")].map((el) => [
+      el.getAttribute("class")!.split(" ")[0]!,
+      el.getAttribute("data-index"),
+      [...el.classList].filter((c) => statusClass.test(c)),
+    ]);
+  }
+
+  test("status classes per element and badges at the node's top-right and after the boundary label", () => {
+    const content = contentGroup();
+    renderScene(content, current, gridScene(current), fixedMeasure);
+    applyMarks(content, diff, fixedMeasure);
+    expect(marks(content)).toEqual([
+      ["boundary", "0", ["boundary--renamed"]],
+      ["boundary", "1", ["boundary--added"]],
+      ["edge", "0", ["edge--changed"]],
+      ["edge", "1", ["edge--added"]],
+      ["node", "0", ["node--changed"]],
+      ["node", "1", ["node--kept"]],
+      ["node", "2", ["node--added"]],
+    ]);
+    const badges = [...content.querySelectorAll(".status-badge")];
+    expect(badges.map((b) => [b.getAttribute("class"), b.textContent])).toEqual([
+      ["status-badge status-badge--renamed", "RENAMED"],
+      ["status-badge status-badge--added", "NEW"],
+      ["status-badge status-badge--changed", "CHANGED"],
+      ["status-badge status-badge--kept", "KEPT"],
+      ["status-badge status-badge--added", "NEW"],
+    ]);
+    // Node web at (0, 0, 160, 80): the badge ends 8 px left of the right edge, centred on the top edge,
+    // apart from the tag badge.
+    const web = content.querySelector('.node[data-id="web"] .status-badge')!;
+    const box = web.querySelector(".status-badge__box")!;
+    expect(num(box, "x") + num(box, "width")).toBeCloseTo(152);
+    expect(num(web.querySelector(".status-badge__text"), "y")).toBe(0);
+    // Boundary "Application" at (-16, -16): after the label (10 px in, 11 chars × 7.2 px, 6 px gap), on its line.
+    const application = content.querySelector('.boundary[data-index="0"] .status-badge')!;
+    expect(num(application.querySelector(".status-badge__box"), "x")).toBeCloseTo(-16 + 10 + 11 * 7.2 + 6);
+    expect(num(application.querySelector(".status-badge__text"), "y")).toBe(0);
+  });
+
+  test("applyMarks without a diff removes every mark and leaves the geometry", () => {
+    const content = contentGroup();
+    renderScene(content, current, gridScene(current), fixedMeasure);
+    const plain = content.innerHTML;
+    applyMarks(content, diff, fixedMeasure);
+    applyMarks(content, diff, fixedMeasure);
+    expect(content.querySelectorAll(".status-badge").length).toBe(5);
+    applyMarks(content, undefined, fixedMeasure);
+    expect(content.innerHTML).toBe(plain);
+  });
+
+  test("boundaries the layout left out do not shift the statuses of the others", () => {
+    const content = contentGroup();
+    const scene = gridScene(current);
+    scene.boundaries = scene.boundaries.filter((b) => b.index === 1);
+    renderScene(content, current, scene, fixedMeasure);
+    applyMarks(content, diff, fixedMeasure);
+    expect(marks(content).filter(([kind]) => kind === "boundary")).toEqual([["boundary", "1", ["boundary--added"]]]);
+    expect(elementBox(content, "boundary", 0)).toBeUndefined();
+  });
+
+  test("elementBox: a node's box, a connection's endpoint boxes, a boundary's rectangle", () => {
+    const content = contentGroup();
+    renderScene(content, current, gridScene(current), fixedMeasure);
+    expect(elementBox(content, "component", 2)).toEqual({ x: 440, y: 0, w: 160, h: 80 });
+    expect(elementBox(content, "connection", 1)).toEqual({ x: 220, y: 0, w: 380, h: 80 });
+    expect(elementBox(content, "boundary", 1)).toEqual({ x: 424, y: -16, w: 192, h: 112 });
+    expect(elementBox(content, "component", 9)).toBeUndefined();
+    expect(elementBox(content, "connection", 9)).toBeUndefined();
   });
 });

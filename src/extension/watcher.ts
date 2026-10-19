@@ -1,10 +1,14 @@
-// Watches `<folder>/.archify/*/candidate.json` in every workspace folder (FR-WAT-01, ADR 0026).
+// Watches `<folder>/.archify/*/candidate.json` in every workspace folder (FR-WAT-01, FR-CMP-08,
+// ADR 0026).
 import { existsSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import * as vscode from "vscode";
 import { listCandidates } from "../model/discovery";
 import { ArchitecturePanel } from "./panel";
-import { ChangeBatch, DELETED_MESSAGE, watchAction } from "./watchLogic";
+import { BASELINE_DELETED_MESSAGE, ChangeBatch, DELETED_MESSAGE, watchAction } from "./watchLogic";
+
+/** How long the baseline-deleted status bar message stays. */
+const STATUS_MS = 3_000;
 
 export class CandidateWatcher implements vscode.Disposable {
   private readonly watchers = new Map<string, vscode.FileSystemWatcher>();
@@ -41,7 +45,7 @@ export class CandidateWatcher implements vscode.Disposable {
     const panel = ArchitecturePanel.current;
     const action = watchAction(
       { file, created, exists: existsSync(file), root, newest: listCandidates(root)[0]?.file },
-      panel && { root: panel.root, file: panel.file },
+      panel && { root: panel.root, file: panel.file, baseline: panel.baseline },
     );
     switch (action?.kind) {
       case "reload":
@@ -49,6 +53,13 @@ export class CandidateWatcher implements vscode.Disposable {
         return;
       case "deleted":
         panel?.showEmpty(DELETED_MESSAGE);
+        return;
+      case "baselineChanged":
+        panel?.refreshCompare();
+        return;
+      case "baselineDeleted":
+        panel?.clearBaseline();
+        vscode.window.setStatusBarMessage(BASELINE_DELETED_MESSAGE, STATUS_MS);
         return;
       case "switch":
         panel?.showFile(action.root, action.file);

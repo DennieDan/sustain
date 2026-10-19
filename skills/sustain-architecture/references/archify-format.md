@@ -34,7 +34,7 @@ The draft is validated against Archify's JSON Schema. Write only these fields; t
   - `type` is one of `frontend`, `backend`, `database`, `cloud`, `security`, `messagebus`, `external`. Use `external` for third-party services and people, `database` for stores and files, `messagebus` for queues and event buses, `security` for auth and policy, `cloud` for infrastructure or platform, `frontend` for UIs and CLIs facing a user, `backend` for services, workers and libraries.
   - `label`: short (at most about 28 characters). `sublabel`: one short phrase (at most about 40 characters). `tag`: a tiny badge such as a language or `v2` (optional).
   - `sources`: 1 to 3 entries, each `{ "path": "<repo-relative path with />", "line": <1-based>, "end_line": <inclusive> }`, with an optional `label` of at most 48 characters. `path` at most 240 characters. Point at the code that proves the component exists and does what the label says. Prefer focused ranges (5 to 80 lines) over whole files. `end_line` needs `line`.
-- `connections[]`: `from` and `to` (component IDs), optional unique `id`, optional `label`, optional `variant` (`default`, `emphasis` for the main path, `security` for auth or trust crossings, `dashed` for async, optional or background paths).
+- `connections[]`: `id` (required; unique across all connections, same pattern as component IDs), `from` and `to` (component IDs), optional `label`, optional `variant` (`default`, `emphasis` for the main path, `security` for auth or trust crossings, `dashed` for async, optional or background paths).
 - `boundaries[]`: `kind` (`region` or `security-group`), `label`, `wraps` (component IDs, at least one). Boundaries must be separate or strictly nested, never partially overlapping or wrapping the same set.
 - `cards[]`: `dot` (`cyan`, `emerald`, `violet`, `amber`, `rose`, `orange`, `slate`), `title`, `items` (short strings).
 
@@ -46,7 +46,7 @@ Don't write `schema_version`, `diagram_type`, `meta.output`, `meta.locale`, `met
 
 1. **App-owned fields.** It removes the geometry and presentation fields listed above (each reported as a warning, not an error), and sets `schema_version`, `diagram_type`, `meta.locale`, `meta.quality_profile`, `meta.output` and, when git facts are available, `meta.repository`.
 2. **JSON Schema:** field names, enums, lengths, the ID pattern, 1 to 3 sources. Any error here stops validation before steps 3 and 4.
-3. **Semantic checks:** component IDs and connection IDs unique, every `from`/`to`/`wraps` names an existing component, every component has sources, boundaries separate or strictly nested.
+3. **Semantic checks:** component IDs unique, every connection has an `id` and connection IDs are unique, every `from`/`to`/`wraps` names an existing component, every component has sources, boundaries separate or strictly nested.
 4. **Citations:** every `path` is a repository-relative `/` path without `.` or `..` segments, is not on the deny-list, resolves (after symlinks) to a regular text file inside the repository of at most 2 MiB; `line ≥ 1`, `end_line ≥ line`, and both within the file's line count. A trailing newline does not count as an extra line.
 
 Each error carries a JSON pointer such as `/components/3/sources/0/end_line` and a message that starts with the rule's category (for example `BrokenCitation:`). Fix exactly those and write the whole diagram again. On success the validator writes the diagram as `candidate.json` in the same run folder and deletes the draft; `candidate.json` is what the viewer opens.

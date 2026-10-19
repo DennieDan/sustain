@@ -89,7 +89,7 @@ suite("FR-VIEW-01/04 open commands and panel", () => {
     write(root, `.archify/${OLD}/candidate.json`, diagram("Old"));
     const newest = write(root, `.archify/${NEW}/candidate.json`, diagram("New"));
     await vscode.commands.executeCommand("sustain.openArchitecture");
-    assert.deepEqual(hook.panelState(), { file: newest, open: true });
+    assert.deepEqual(hook.panelState(), { file: newest, open: true, baseline: null });
     const tab = await panelTab("Architecture: New");
     assert.equal(tab.group.viewColumn, vscode.ViewColumn.One);
     assert.equal(ui.errors.length, 0);
@@ -159,6 +159,6 @@ suite("FR-VIEW-01/04 open commands and panel", () => {
     await vscode.commands.executeCommand("sustain.openArchitecture");
     assert.equal(hook.panelState().open, true);
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
-    assert.deepEqual(hook.panelState(), { file: undefined, open: false });
+    assert.deepEqual(hook.panelState(), { file: undefined, open: false, baseline: null });
   });
 });

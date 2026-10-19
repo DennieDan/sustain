@@ -32,3 +32,7 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0026](0026-activate-test-hook-and-happy-dom-tests.md) | activate() test hook and happy-dom DOM tests | accepted | 2026-10-11 |
 | [0027](0027-navigation-and-watching-details.md) | Navigation and watching details | accepted | 2026-10-11 |
 | [0028](0028-package-with-vsce-without-license-or-repository.md) | Package with vsce, without LICENSE or repository metadata | accepted | 2026-10-11 |
+| [0029](0029-update-the-previous-diagram-incrementally.md) | Update the previous diagram incrementally instead of regenerating it | accepted | 2026-10-19 |
+| [0030](0030-change-map-details-not-fixed-by-the-spec.md) | Change map and ID matcher details not fixed by the spec | accepted | 2026-10-19 |
+| [0031](0031-compare-the-open-diagram-with-a-chosen-baseline.md) | Compare the open diagram with a chosen baseline in the viewer | accepted | 2026-10-19 |
+| [0032](0032-change-view-details-not-fixed-by-the-spec.md) | Change view details not fixed by the spec | accepted | 2026-10-19 |

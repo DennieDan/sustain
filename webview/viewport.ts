@@ -1,4 +1,4 @@
-// Viewport of the diagram canvas (FR-VIEW-06): pure math plus the DOM wiring for drag, wheel,
+// Viewport of the diagram canvas (FR-VIEW-06, FR-CMP-11 fit-to-element): pure math plus the DOM wiring for drag, wheel,
 // pinch, toolbar buttons and keys. `screen = diagram × scale + (x, y)`, in panel pixels.
 import type { Point, Rect } from "../src/layout/scene";
 
@@ -19,6 +19,8 @@ export const MAX_SCALE = 4;
 export const ZOOM_STEP = 1.25;
 /** Panel pixels kept free around the fitted scene bounds. */
 export const FIT_PADDING = 24;
+/** Panel pixels kept free around one element fitted from the changes panel (FR-CMP-11). */
+export const FOCUS_PADDING = 40;
 /** Zoom per wheel pixel with Ctrl/⌘ or pinch: `factor = exp(-deltaPx × WHEEL_ZOOM_RATE)`. */
 const WHEEL_ZOOM_RATE = 0.005;
 /** One wheel event zooms by at most `exp(±0.5)`. */
@@ -30,10 +32,13 @@ export function clampScale(scale: number): number {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
 
-/** The view that shows `bounds` centred in `size`, at the largest scale that fits within 10–400 %. */
-export function fitView(bounds: Rect, size: Size): ViewState {
-  const availW = Math.max(1, size.width - 2 * FIT_PADDING);
-  const availH = Math.max(1, size.height - 2 * FIT_PADDING);
+/**
+ * The view that shows `bounds` centred in `size`, at the largest scale that fits within 10–400 %
+ * with `padding` panel pixels free on each side.
+ */
+export function fitView(bounds: Rect, size: Size, padding = FIT_PADDING): ViewState {
+  const availW = Math.max(1, size.width - 2 * padding);
+  const availH = Math.max(1, size.height - 2 * padding);
   const scale = bounds.w > 0 && bounds.h > 0 ? clampScale(Math.min(availW / bounds.w, availH / bounds.h)) : 1;
   return {
     x: size.width / 2 - (bounds.x + bounds.w / 2) * scale,
@@ -96,6 +101,18 @@ export class ViewportController {
     return { width: rect.width, height: rect.height };
   }
 
+  /**
+   * Pixels at the right edge covered by an overlay (the expanded changes panel, FR-CMP-11).
+   * Fits keep the scene out of them; pan and zoom ignore them.
+   */
+  rightInset = 0;
+
+  /** The panel area fits use: the panel size without {@link rightInset}. */
+  private fitSize(): Size {
+    const { width, height } = this.size();
+    return { width: Math.max(1, width - this.rightInset), height };
+  }
+
   set(view: ViewState): void {
     this.view = view;
     this.content.setAttribute("transform", `translate(${view.x} ${view.y}) scale(${view.scale})`);
@@ -103,7 +120,12 @@ export class ViewportController {
   }
 
   fit(): void {
-    if (this.bounds) this.set(fitView(this.bounds, this.size()));
+    if (this.bounds) this.set(fitView(this.bounds, this.fitSize()));
+  }
+
+  /** Fits `rect` (diagram coordinates) with {@link FOCUS_PADDING} (FR-CMP-11). */
+  fitRect(rect: Rect): void {
+    this.set(fitView(rect, this.fitSize(), FOCUS_PADDING));
   }
 
   /** Zooms by `factor` around the panel centre. */

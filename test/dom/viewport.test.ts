@@ -1,6 +1,6 @@
 // FR-VIEW-06: viewport math (zoom clamps, zoom around a point, fit) and its DOM wiring.
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { FIT_PADDING, MAX_SCALE, MIN_SCALE, ViewportController, ZOOM_STEP, clampScale, fitView, panBy, zoomAt } from "../../webview/viewport";
+import { FIT_PADDING, FOCUS_PADDING, MAX_SCALE, MIN_SCALE, ViewportController, ZOOM_STEP, clampScale, fitView, panBy, zoomAt } from "../../webview/viewport";
 import type { ViewState } from "../../webview/viewport";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -71,6 +71,17 @@ describe("FR-VIEW-06 viewport math", () => {
       expect(centre.x).toBeCloseTo(cx);
       expect(centre.y).toBeCloseTo(cy);
     }
+  });
+
+  test("fit takes another padding for one element (FR-CMP-11)", () => {
+    const view = fitView({ x: 100, y: 50, w: 200, h: 100 }, { width: 1000, height: 600 }, FOCUS_PADDING);
+    // Height-limited: (600 − 80) / 100 = 5.2, clamped to 4; centred on (200, 100).
+    expect(view.scale).toBe(MAX_SCALE);
+    const centre = diagramAt(view, { x: 500, y: 300 });
+    expect([centre.x, centre.y]).toEqual([200, 100]);
+    const wide = fitView({ x: 0, y: 0, w: 1840, h: 100 }, { width: 1000, height: 600 }, FOCUS_PADDING);
+    expect(wide.scale).toBeCloseTo((1000 - 2 * FOCUS_PADDING) / 1840);
+    expect(wide.x).toBeCloseTo(FOCUS_PADDING);
   });
 
   test("pan moves the view by the given pixels at any scale", () => {
@@ -233,6 +244,12 @@ describe("FR-VIEW-06 viewport wiring", () => {
     nodeRect.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 2, button: 0, clientX: 10, clientY: 10, bubbles: true }));
     svg.dispatchEvent(new PointerEvent("pointermove", { pointerId: 2, clientX: 90, clientY: 90, bubbles: true }));
     expect(viewport.view).toEqual({ x: 50, y: 20, scale: 1 });
+  });
+
+  test("fitRect fits a diagram rectangle with the focus padding", () => {
+    viewport.fitRect({ x: 1000, y: 1000, w: 720, h: 100 });
+    expect(viewport.view).toEqual(fitView({ x: 1000, y: 1000, w: 720, h: 100 }, { width: 800, height: 600 }, FOCUS_PADDING));
+    expect(viewport.view.scale).toBeCloseTo(1);
   });
 
   test("onChange runs after every view change", () => {

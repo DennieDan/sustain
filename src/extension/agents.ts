@@ -1,5 +1,5 @@
-// Agent launch details for `Sustain: Generate Architecture` (FR-GEN-01). No `vscode` import,
-// so the prompt format and PATH lookup are unit-tested in Node.
+// Agent launch details for `Sustain: Generate Architecture` (FR-GEN-01, FR-UPD-08). No `vscode`
+// import, so the prompt format and PATH lookup are unit-tested in Node.
 import { accessSync, constants, statSync } from "node:fs";
 import { delimiter, join } from "node:path";
 
@@ -17,10 +17,15 @@ export const AGENTS: readonly Agent[] = [
   { label: "Codex", cli: "codex", invoke: "$sustain-architecture" },
 ];
 
-/** `/sustain-architecture <focus>` or `$sustain-architecture <focus>`; no trailing space for an empty focus. */
-export function agentPrompt(agent: Agent, focus: string): string {
+/**
+ * `/sustain-architecture <focus>` or `$sustain-architecture <focus>`; no trailing space for an
+ * empty focus. `regenerate` (FR-UPD-08) puts `--regenerate` before the focus, so the skill
+ * draws from scratch instead of updating the previous diagram.
+ */
+export function agentPrompt(agent: Agent, focus: string, regenerate = false): string {
+  const invoke = regenerate ? `${agent.invoke} --regenerate` : agent.invoke;
   const trimmed = focus.trim();
-  return trimmed === "" ? agent.invoke : `${agent.invoke} ${trimmed}`;
+  return trimmed === "" ? invoke : `${invoke} ${trimmed}`;
 }
 
 function isExecutableFile(path: string, platform: NodeJS.Platform): boolean {

@@ -1,7 +1,8 @@
-// FR-VIEW-07: hover delay, contents, stay/hide rules and source clicks of the node tooltip.
+// FR-VIEW-07, FR-CMP-12: hover delay, contents, stay/hide rules, source and changed-file clicks of the node tooltip.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { WebviewMessage } from "../../src/model/messages";
 import type { ViewDiagram } from "../../src/model/tolerant";
+import type { FileChange } from "../../src/model/runChanges";
 import { renderScene } from "../../webview/render";
 import { HIDE_DELAY_MS, SHOW_DELAY_MS, TooltipController, formatSource } from "../../webview/tooltip";
 import { fixedMeasure, gridScene } from "./support/scene";
@@ -202,5 +203,70 @@ describe("FR-VIEW-07 tooltip", () => {
     vi.advanceTimersByTime(1000);
     expect(element.hidden).toBe(true);
     expect(posted).toEqual([]);
+  });
+
+  describe("FR-CMP-12 change lines", () => {
+    const FILES: FileChange[] = [
+      { status: "M", path: "cmd/api/main.go" },
+      { status: "D", path: "internal/gone.go" },
+      { status: "R", path: "internal/new.go", oldPath: "internal/old.go" },
+    ];
+
+    function show(id: string): void {
+      move(null, part(id, ".node__box"));
+      vi.advanceTimersByTime(SHOW_DELAY_MS);
+    }
+
+    test("a changed node lists its changed fields after the type; files follow the sources", () => {
+      tooltip.setChanges({
+        statuses: [
+          { status: "changed", fields: [{ field: "label", before: "API", after: "Orders API" }, { field: "sources" }] },
+          { status: "added", fields: [] },
+        ],
+        files: new Map([["api", FILES]]),
+      });
+      show("api");
+      expect([...element.children].map((c) => c.className)).toEqual([
+        "tooltip__label",
+        "tooltip__sublabel",
+        "tooltip__type",
+        "tooltip__status tooltip__status--changed",
+        "tooltip__sources",
+        "tooltip__files",
+      ]);
+      expect(element.querySelector(".tooltip__status")!.textContent).toBe("Changed: label, sources");
+      expect([...element.querySelectorAll(".tooltip__file")].map((f) => [f.tagName, f.textContent])).toEqual([
+        ["BUTTON", "M cmd/api/main.go"],
+        ["SPAN", "D internal/gone.go"],
+        ["BUTTON", "R internal/old.go \u2192 internal/new.go"],
+      ]);
+      for (const file of element.querySelectorAll<HTMLElement>(".tooltip__file")) file.click();
+      expect(posted).toEqual([
+        { type: "openFile", path: "cmd/api/main.go" },
+        { type: "openFile", path: "internal/new.go" },
+      ]);
+    });
+
+    test("kept and new status lines; no files without changes data", () => {
+      tooltip.setChanges({ statuses: [{ status: "kept", fields: [] }, { status: "added", fields: [] }], files: undefined });
+      show("api");
+      expect(element.querySelector(".tooltip__status")!.textContent).toBe("Kept");
+      expect(element.querySelector(".tooltip__files")).toBeNull();
+      tooltip.hide();
+      show("db");
+      expect(element.querySelector(".tooltip__status")!.textContent).toBe("New");
+    });
+
+    test("unchanged nodes and marks off show no change lines", () => {
+      tooltip.setChanges({ statuses: [{ status: "unchanged", fields: [] }], files: new Map([["api", FILES]]) });
+      show("api");
+      expect(element.querySelector(".tooltip__status")).toBeNull();
+      tooltip.setChanges(undefined);
+      move(part("api", ".node__box"), null);
+      show("api");
+      expect(element.hidden).toBe(false);
+      expect(element.querySelector(".tooltip__status")).toBeNull();
+      expect(element.querySelector(".tooltip__files")).toBeNull();
+    });
   });
 });

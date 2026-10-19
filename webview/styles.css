@@ -1,4 +1,4 @@
-/* Architecture webview (FR-VIEW-05..07). Colours come only from VS Code theme variables. */
+/* Architecture webview (FR-VIEW-05..07, FR-CMP-09..12). Colours come only from VS Code theme variables. */
 
 html,
 body {
@@ -19,8 +19,108 @@ body {
 
 .app {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
+}
+
+/* The canvas fills the panel below the header. */
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Header (FR-CMP-09) */
+
+.header {
+  flex: none;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  line-height: 1.5;
+}
+
+.app--empty .header {
+  display: none;
+}
+
+.header__strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.header__commits {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.header__hash {
+  font-family: var(--vscode-editor-font-family);
+}
+
+.header__date,
+.header__dirty,
+.header__run,
+.header__none {
+  color: var(--vscode-descriptionForeground);
+}
+
+.header__count--added {
+  color: var(--vscode-gitDecoration-addedResourceForeground);
+}
+
+.header__count--removed {
+  color: var(--vscode-gitDecoration-deletedResourceForeground);
+}
+
+.header__count--changed {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
+.header__approximate {
+  padding: 0 6px;
+  border: 1px solid var(--vscode-editorWarning-foreground);
+  border-radius: 8px;
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.header__compare {
+  margin-left: auto;
+}
+
+.header__button {
+  padding: 1px 8px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.header__button:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.header__button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.header__toggle[aria-pressed="true"] {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.header__toggle[aria-pressed="true"]:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.header__warning {
+  color: var(--vscode-editorWarning-foreground);
 }
 
 /* Canvas */
@@ -223,6 +323,70 @@ body {
   fill: var(--node-color);
 }
 
+/* Change marks (FR-CMP-10); unchanged elements keep their FR-VIEW-05 look. */
+
+.node--added,
+.edge--added,
+.boundary--added,
+.status-badge--added {
+  --status-color: var(--vscode-gitDecoration-addedResourceForeground);
+}
+
+.node--changed,
+.edge--changed,
+.boundary--changed,
+.boundary--renamed,
+.status-badge--changed,
+.status-badge--renamed {
+  --status-color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
+.node--kept,
+.status-badge--kept {
+  --status-color: var(--vscode-descriptionForeground);
+}
+
+.node--added .node__box,
+.node--changed .node__box,
+.boundary--added .boundary__box,
+.boundary--changed .boundary__box,
+.boundary--renamed .boundary__box {
+  stroke: var(--status-color);
+  stroke-width: 2.5px;
+}
+
+.boundary--added .boundary__box,
+.boundary--changed .boundary__box,
+.boundary--renamed .boundary__box {
+  stroke-dasharray: none;
+}
+
+.node--kept .node__box {
+  stroke: var(--status-color);
+  stroke-dasharray: 3 3;
+}
+
+.edge--added,
+.edge--changed {
+  --edge-color: var(--status-color);
+}
+
+.edge--added .edge__line,
+.edge--changed .edge__line {
+  stroke-width: 2px;
+}
+
+.status-badge__box {
+  fill: var(--vscode-editor-background);
+  stroke: var(--status-color);
+  stroke-width: 1px;
+}
+
+.status-badge__text {
+  fill: var(--status-color);
+  font-weight: bold;
+}
+
 /* Tooltip */
 
 .tooltip {
@@ -285,4 +449,230 @@ body {
 
 .tooltip__source-label {
   color: var(--vscode-descriptionForeground);
+}
+
+.tooltip__status--added {
+  color: var(--vscode-gitDecoration-addedResourceForeground);
+}
+
+.tooltip__status--changed {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
+.tooltip__status--kept {
+  color: var(--vscode-descriptionForeground);
+}
+
+.tooltip__files {
+  margin: 6px 0 0;
+  padding: 6px 0 0;
+  list-style: none;
+  border-top: 1px solid var(--vscode-editorHoverWidget-border);
+  font-family: var(--vscode-editor-font-family);
+}
+
+.tooltip__file {
+  display: block;
+  width: 100%;
+  padding: 1px 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+button.tooltip__file {
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+}
+
+button.tooltip__file:hover {
+  color: var(--vscode-textLink-activeForeground);
+  text-decoration: underline;
+}
+
+/* Changes panel (FR-CMP-11) */
+
+.changes {
+  position: absolute;
+  top: 44px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  max-width: calc(100% - 16px);
+  box-sizing: border-box;
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow);
+}
+
+.changes--collapsed {
+  bottom: auto;
+}
+
+.changes__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 6px 8px;
+}
+
+.changes__title {
+  font-weight: bold;
+}
+
+.changes__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+.changes__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.changes__swatch {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 2px solid var(--status-color);
+  border-radius: 2px;
+}
+
+.changes__legend-item--added {
+  --status-color: var(--vscode-gitDecoration-addedResourceForeground);
+}
+
+.changes__legend-item--changed {
+  --status-color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
+.changes__legend-item--kept {
+  --status-color: var(--vscode-descriptionForeground);
+}
+
+.changes__legend-item--kept .changes__swatch {
+  border-style: dashed;
+}
+
+.changes__legend-item--removed {
+  --status-color: var(--vscode-gitDecoration-deletedResourceForeground);
+}
+
+.changes__collapse {
+  margin-left: auto;
+  min-width: 24px;
+  border: none;
+  background: none;
+  color: var(--vscode-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.changes__collapse:focus-visible,
+.changes__item:focus-visible,
+.changes__open-baseline:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.changes__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px 8px;
+  border-top: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
+}
+
+.changes__empty,
+.changes__note {
+  margin: 8px 0 0;
+  color: var(--vscode-descriptionForeground);
+}
+
+.changes__heading {
+  margin: 10px 0 4px;
+  font-size: 1em;
+}
+
+.changes__count {
+  color: var(--vscode-descriptionForeground);
+  font-weight: normal;
+}
+
+.changes__section[data-section="added"] .changes__heading {
+  color: var(--vscode-gitDecoration-addedResourceForeground);
+}
+
+.changes__section[data-section="removed"] .changes__heading {
+  color: var(--vscode-gitDecoration-deletedResourceForeground);
+}
+
+.changes__section[data-section="changed"] .changes__heading {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
+.changes__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changes__item {
+  display: block;
+  width: 100%;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 2px;
+  background: none;
+  color: var(--vscode-foreground);
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+button.changes__item {
+  cursor: pointer;
+}
+
+button.changes__item:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.changes__kind,
+.changes__fields {
+  color: var(--vscode-descriptionForeground);
+}
+
+.changes__file {
+  font-family: var(--vscode-editor-font-family);
+}
+
+button.changes__file {
+  color: var(--vscode-textLink-foreground);
+}
+
+.changes__open-baseline {
+  margin-top: 4px;
+  padding: 1px 8px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  font: inherit;
+  cursor: pointer;
 }

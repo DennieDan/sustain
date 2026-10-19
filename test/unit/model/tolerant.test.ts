@@ -128,4 +128,18 @@ describe("FR-VIEW-03 tolerant parse", () => {
     expect(diagram.components[1]).toMatchObject({ row: 1, col: 2 });
     expect(diagram.components[1]!.pos).toBeUndefined();
   });
+
+  test("a connection keeps a string id and drops any other id (FR-CMP-03)", () => {
+    const doc = base();
+    doc.connections = [
+      { id: "c1", from: "a", to: "b" },
+      { id: 7, from: "b", to: "a" },
+    ];
+    const { diagram, skipped } = ok(readDiagram(doc));
+    expect(skipped).toEqual([]);
+    expect(diagram.connections).toEqual([
+      { id: "c1", from: "a", to: "b", variant: "default" },
+      { from: "b", to: "a", variant: "default" },
+    ]);
+  });
 });

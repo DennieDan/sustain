@@ -18,6 +18,17 @@ describe("FR-GEN-01 prompt", () => {
     expect(agentPrompt(agent, focus)).toBe(expected);
   });
 
+  test.each([
+    [claude, "Payment flow", "/sustain-architecture --regenerate Payment flow"],
+    [codex, "Payment flow", "$sustain-architecture --regenerate Payment flow"],
+    [claude, "", "/sustain-architecture --regenerate"],
+    [codex, "", "$sustain-architecture --regenerate"],
+    [claude, "   ", "/sustain-architecture --regenerate"],
+    [codex, "  auth ", "$sustain-architecture --regenerate auth"],
+  ])("FR-UPD-08 regenerate: %o with focus %j → %j", (agent, focus, expected) => {
+    expect(agentPrompt(agent, focus, true)).toBe(expected);
+  });
+
   test("the agents are Claude Code and Codex, in that order", () => {
     expect(AGENTS.map((agent) => [agent.label, agent.cli])).toEqual([
       ["Claude Code", "claude"],

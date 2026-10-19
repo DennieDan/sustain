@@ -1,8 +1,8 @@
-// FR-GIT-01: git facts, ported from the prototype's repo/tests/git.rs. Runs the real `git`.
+// FR-GIT-01: git facts, ported from the prototype's repo/tests/git.rs; FR-CMP-01 commit details. Runs the real `git`.
 import { writeFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { collectGitFacts, GIT_READS, parsePorcelainZ, repositoryFromGit, sanitizeOrigin } from "../../../src/model/git";
-import { git, gitRepo, tempDir } from "../support/temp";
+import { collectGitFacts, commitInfo, GIT_READS, parsePorcelainZ, repositoryFromGit, sanitizeOrigin } from "../../../src/model/git";
+import { git, gitRepo, put, tempDir } from "../support/temp";
 
 const files = { "a.txt": "a\n", "b.txt": "b\n", "sub/c.txt": "c\n" };
 
@@ -115,5 +115,35 @@ describe("FR-GIT-01 git facts", () => {
     ]);
     expect(parsePorcelainZ("")).toEqual([]);
     expect(parsePorcelainZ("X\0")).toEqual([]);
+  });
+});
+
+describe("FR-CMP-01 commit details", () => {
+  const headOf = (root: string): string => git(root, "rev-parse", "HEAD").trim();
+
+  test("subject and committer date are read", () => {
+    const root = gitRepo(files);
+    const date = git(root, "log", "-1", "--format=%cI").trim();
+    expect(commitInfo(root, headOf(root))).toEqual({ subject: "init", committedAt: date });
+    expect(date).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(Z|[+-]\d\d:\d\d)$/);
+  });
+
+  test("only the first line of a multibyte subject is read, intact", () => {
+    const root = gitRepo(files);
+    put(root, "a.txt", "changed\n");
+    git(root, "commit", "-q", "-am", "Ünïcødé 提交 — ✓\n\nBody line");
+    expect(commitInfo(root, headOf(root))?.subject).toBe("Ünïcødé 提交 — ✓");
+  });
+
+  test("an unknown revision, a non-revision and missing git give null", () => {
+    const root = gitRepo(files);
+    expect(commitInfo(root, "0".repeat(40))).toBeNull();
+    expect(commitInfo(root, "HEAD")).toBeNull();
+    expect(commitInfo(tempDir(), "0".repeat(40))).toBeNull();
+    expect(commitInfo(root, headOf(root), "sustain-no-such-git-binary")).toBeNull();
+  });
+
+  test("the argv is fixed", () => {
+    expect(GIT_READS.commitInfo).toEqual(["--no-optional-locks", "log", "-1", "--no-color", "--no-show-signature", "--format=%s%x00%cI"]);
   });
 });

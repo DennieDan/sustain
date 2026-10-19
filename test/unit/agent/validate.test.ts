@@ -229,6 +229,15 @@ describe("FR-VAL-03..05 checks through the CLI", () => {
     ]);
   });
 
+  test("a connection without id is rejected with MissingId (FR-UPD-07)", () => {
+    const doc = draftDoc();
+    doc["connections"] = [{ id: "web-api", from: "web", to: "api" }, { from: "api", to: "web", label: "reply" }];
+    const { root } = setup(doc);
+    const run = runScript("validate", [DRAFT], { cwd: root, env: envWithoutGit() });
+    expect(run.status).toBe(1);
+    expect(run.json().errors).toEqual([{ pointer: "/connections/1/id", message: "MissingId: every connection needs a unique `id`" }]);
+  });
+
   test("a symlink pointing outside the root is a broken citation", () => {
     const base = tempDir();
     put(base, "outside/secret.ts", "s\n");

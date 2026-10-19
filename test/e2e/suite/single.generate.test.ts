@@ -44,6 +44,8 @@ suite("FR-GEN-01 Generate Architecture", () => {
     // Pretend the skill is installed so the flow goes straight to the focus prompt.
     mkdirSync(join(root, ".agents/skills/sustain-architecture"), { recursive: true });
     writeFileSync(join(root, ".agents/skills/sustain-architecture/SKILL.md"), "---\nname: sustain-architecture\n---\n");
+    // No previous diagram unless a test adds one, so the update/regenerate pick is skipped.
+    rmSync(join(root, ".archify"), { recursive: true, force: true });
   });
 
   teardown(() => {
@@ -54,6 +56,7 @@ suite("FR-GEN-01 Generate Architecture", () => {
     for (const dir of cleanup.splice(0)) rmSync(dir, { recursive: true, force: true });
     rmSync(join(root, ".agents"), { recursive: true, force: true });
     rmSync(join(root, ".claude"), { recursive: true, force: true });
+    rmSync(join(root, ".archify"), { recursive: true, force: true });
   });
 
   test("Claude Code: the terminal runs the resolved CLI with the prompt as its argument", async () => {
@@ -114,6 +117,58 @@ suite("FR-GEN-01 Generate Architecture", () => {
     ui.answers.inputBox.push(undefined);
     await vscode.commands.executeCommand("sustain.generateArchitecture");
     assert.equal(ui.quickPicks.length, 0);
+    assert.equal(opened.length, 0);
+  });
+
+  /** Writes a previous diagram candidate so the update/regenerate pick appears (FR-UPD-08). */
+  function addCandidate(): void {
+    const dir = join(root, ".archify/architecture-x-20260101-000000");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "candidate.json"), "{}\n");
+  }
+
+  test("FR-UPD-08: with a previous diagram, Regenerate from scratch adds `--regenerate`", async () => {
+    addCandidate();
+    const bin = stubBin("claude");
+    cleanup.push(bin);
+    process.env["PATH"] = `${bin}:${savedPath}`;
+    ui.answers.inputBox.push("Payment flow");
+    ui.answers.quickPick.push("Regenerate from scratch", "Claude Code");
+    const opened = nextTerminal();
+    await vscode.commands.executeCommand("sustain.generateArchitecture");
+    const terminal = await opened;
+    assert.deepEqual(
+      ui.quickPicks[0]!.map((item) => item.label),
+      ["Update the latest diagram", "Regenerate from scratch"],
+    );
+    const options = terminal.creationOptions as vscode.TerminalOptions;
+    assert.deepEqual(options.shellArgs, ["/sustain-architecture --regenerate Payment flow"]);
+  });
+
+  test("FR-UPD-08: with a previous diagram, Update the latest diagram keeps the prompt", async () => {
+    addCandidate();
+    const bin = stubBin("claude");
+    cleanup.push(bin);
+    process.env["PATH"] = `${bin}:${savedPath}`;
+    ui.answers.inputBox.push("Payment flow");
+    ui.answers.quickPick.push("Update the latest diagram", "Claude Code");
+    const opened = nextTerminal();
+    await vscode.commands.executeCommand("sustain.generateArchitecture");
+    const terminal = await opened;
+    const options = terminal.creationOptions as vscode.TerminalOptions;
+    assert.deepEqual(options.shellArgs, ["/sustain-architecture Payment flow"]);
+  });
+
+  test("FR-UPD-08: dismissing the update/regenerate pick stops before the agent pick", async () => {
+    addCandidate();
+    ui.answers.inputBox.push("Payment flow");
+    ui.answers.quickPick.push(undefined);
+    await vscode.commands.executeCommand("sustain.generateArchitecture");
+    assert.equal(ui.quickPicks.length, 1);
+    assert.deepEqual(
+      ui.quickPicks[0]!.map((item) => item.label),
+      ["Update the latest diagram", "Regenerate from scratch"],
+    );
     assert.equal(opened.length, 0);
   });
 

@@ -27,6 +27,8 @@ export async function buildScripts(outdir) {
     entryPoints: {
       "repo-facts": join(root, "src/agent/repo-facts.ts"),
       validate: join(root, "src/agent/validate.ts"),
+      "change-map": join(root, "src/agent/change-map.ts"),
+      "match-ids": join(root, "src/agent/match-ids.ts"),
     },
     outdir,
     outExtension: { ".js": ".mjs" },
