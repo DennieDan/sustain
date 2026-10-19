@@ -22,6 +22,8 @@ export interface ViewComponent {
 }
 
 export interface ViewConnection {
+  /** The connection's string `id`, when present (FR-CMP-03 key). */
+  id?: string;
   from: string;
   to: string;
   label?: string;
@@ -159,6 +161,8 @@ export function readDiagram(value: unknown): TolerantResult {
       const variant = str(raw["variant"]);
       const connection: ViewConnection = { from, to, variant: VARIANTS.includes(variant as Variant) ? (variant as Variant) : "default" };
       const label = str(raw["label"]);
+      const id = str(raw["id"]);
+      if (id !== undefined) connection.id = id;
       if (label) connection.label = label;
       connections.push(connection);
     });

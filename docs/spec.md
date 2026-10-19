@@ -1,6 +1,6 @@
 # Sustain VS Code extension: build specification
 
-- Status: Accepted, 2026-10-10 (from the design interview with the owner); M6 (§7.11) added 2026-10-19 by ADR 0029
+- Status: Accepted, 2026-10-10 (from the design interview with the owner); M6 (§7.11) added 2026-10-19 by ADR 0029; M7 (§7.12) added 2026-10-19 by ADR 0031
 - Reference implementation: `reference/sustain-prototype/` (Rust "ArchAlign"). It is **read-only** reference material: nothing is imported from it, and the root `.gitignore` excludes it. Files needed from it are copied (vendored) into this repo as listed in §6.
 - Progress: `docs/progress.md` · Structure: `docs/architecture.md` · Decisions: `docs/adr/` (MADR 4.0). All three are created in M0 and maintained throughout (§9).
 
@@ -57,6 +57,11 @@ Diagrams use the Archify JSON v1 format (`schema_version: 1`, `diagram_type: "ar
 | Update run | A run that patches the previous candidate from a deterministic change map (ADR 0029). |
 | Regeneration run | A run that draws from scratch, then re-attaches previous IDs with `match-ids.mjs` when a previous candidate exists. |
 | Touched file | A path the change map lists as added, modified, deleted or renamed (both paths of a rename), or a path that was uncommitted when the previous candidate was drawn. |
+| Baseline | The `candidate.json` the open diagram is compared with. By default the open run's `lineage.previousRun`; otherwise the user's pick (FR-CMP-06). |
+| Comparison | The baseline plus the diff of the two diagrams (FR-CMP-03) and its context: warnings, the approximate flag, commits (FR-CMP-04). |
+| Update history | The chain of runs reached from the open run by following `lineage.previousRun`. |
+| Kept component | A component present in both diagrams, unchanged by FR-CMP-03, whose ID is in `changes.json` `touchedComponents`: its cited code changed, but the agent left it as it was. |
+| Run order | The FR-VIEW-02 newest-first order of run folders. "Newer" and "older" always mean this order. |
 
 ## 5. Decision record
 
@@ -91,10 +96,11 @@ src/model/          pure TS shared by extension, webview and scripts; no `vscode
   schemas/architecture.schema.json  schemas/common.schema.json   (vendored, byte-for-byte)
   types.ts  schema.ts  checks.ts  submission.ts  citations.ts  deny.ts
   git.ts  runFolder.ts  tolerant.ts  discovery.ts  changeMap.ts  matchIds.ts  lineage.ts
+  runChanges.ts  diagramDiff.ts  comparison.ts
 src/layout/         pure TS: Archify doc → Scene via elkjs
 src/agent/          CLI entry points: validate.ts, repo-facts.ts, change-map.ts, match-ids.ts
-src/extension/      VS Code host: extension.ts, panel.ts, navigate.ts, install.ts, generate.ts, watcher.ts
-webview/            main.ts, render.ts, viewport.ts, tooltip.ts, styles.css
+src/extension/      VS Code host: extension.ts, panel.ts, baseline.ts, navigate.ts, install.ts, generate.ts, watcher.ts
+webview/            main.ts, render.ts, viewport.ts, tooltip.ts, changes.ts, styles.css
 skills/sustain-architecture/
   SKILL.md  agents/openai.yaml  references/archify-format.md  references/example.json
 test/unit/  test/dom/  test/e2e/
@@ -131,9 +137,9 @@ dist/skills/sustain-architecture/   static skill files copied from skills/, plus
 
 **NFR-QUAL-02 Dependencies.** Runtime: `elkjs`, `ajv` (bundled, never `require`d at runtime from `node_modules`). Dev: `typescript`, `esbuild`, `vitest`, `happy-dom`, `@types/vscode`, `@types/node`, `@vscode/test-electron`, `mocha` (e2e runner only), `@vscode/vsce`. Exact versions pinned in `package.json`. A new runtime dependency needs an ADR (FR-DOC-03) before it is added; a new dev dependency needs a one-line justification in `docs/progress.md`. AC: `package.json` matches this list plus justified additions. `[manual]`
 
-**NFR-QUAL-03 Boundaries.** `src/model/` and `src/layout/` import neither `vscode` nor Node built-ins other than through injected interfaces where noted (`citations.ts`, `git.ts`, `runFolder.ts`, `discovery.ts` and `lineage.ts` may use `node:fs`/`node:path`/`node:child_process`; `layout`, `tolerant`, `changeMap` and `matchIds` must be browser-safe). AC: a unit test scans imports of `src/layout/**` and `src/model/{types,tolerant,checks,changeMap,matchIds}.ts` and fails on `vscode` or `node:` imports. `[unit]`
+**NFR-QUAL-03 Boundaries.** `src/model/` and `src/layout/` import neither `vscode` nor Node built-ins other than through injected interfaces where noted (`citations.ts`, `git.ts`, `runFolder.ts`, `discovery.ts` and `lineage.ts` may use `node:fs`/`node:path`/`node:child_process`; `layout`, `tolerant`, `changeMap`, `matchIds`, `runChanges`, `diagramDiff` and `comparison` must be browser-safe). AC: a unit test scans imports of `src/layout/**` and `src/model/{types,tolerant,checks,changeMap,matchIds,runChanges,diagramDiff,comparison}.ts` and fails on `vscode` or `node:` imports. `[unit]`
 
-**NFR-SEC-01 Webview.** Strict CSP: `default-src 'none'`; scripts only via nonce from `dist/webview.js`; styles from `dist/webview.css` and `${webview.cspSource}`; no `unsafe-eval`, no remote resources. `localResourceRoots` is `dist/` only. The webview never receives file contents, only the diagram JSON. AC: CSP string asserted in a unit test of the HTML builder; elkjs works under it (`[manual]` check in M3). `[unit]`
+**NFR-SEC-01 Webview.** Strict CSP: `default-src 'none'`; scripts only via nonce from `dist/webview.js`; styles from `dist/webview.css` and `${webview.cspSource}`; no `unsafe-eval`, no remote resources. `localResourceRoots` is `dist/` only. The webview never receives file contents, only the diagram JSON, the baseline diagram JSON and change metadata (paths, git statuses, commit subjects and dates; FR-CMP-05). AC: CSP string asserted in a unit test of the HTML builder; elkjs works under it (`[manual]` check in M3). `[unit]`
 
 **NFR-SEC-02 No network.** Neither the extension nor the scripts make network requests. AC: a unit test scans `src/**` and fails on imports of `http`, `https`, `net`, `tls`, `dgram` (with or without `node:`) and on `fetch(`, `XMLHttpRequest` or `WebSocket` usage. `[unit]`
 
@@ -285,12 +291,12 @@ AC: `[e2e]` with a stub `claude` script on a temp PATH, the created terminal's `
 
 - Unparseable JSON, a non-object root, or no non-empty `components` array → error notification "Can't show `<file>`: <reason>", panel shows an empty state with the same text.
 - Components without a string `id` are skipped; duplicates after the first are skipped; missing `label` → use `id`; unknown `type` → `external` styling.
-- Connections whose `from`/`to` don't resolve are skipped. Boundary `wraps` entries that don't resolve are dropped; a boundary left with no members is skipped.
+- Connections whose `from`/`to` don't resolve are skipped; a string `id` is kept (FR-CMP-03). Boundary `wraps` entries that don't resolve are dropped; a boundary left with no members is skipped.
 - `sources` entries without a string `path` are skipped.
 
 AC: unit test per rule; all 24 fixtures parse with no skips. `[unit]`
 
-**FR-VIEW-04 Panel.** One `WebviewPanel` (viewType `sustain.architecture`) per window; re-running the command reveals and reloads it. Title `Architecture: <meta.title>`. Opens in `ViewColumn.Active` when no editor is open, else `ViewColumn.Beside`. `retainContextWhenHidden: false`; the host re-sends the document when the panel becomes visible. Host → webview: `{type: "load", doc, file}`, `{type: "empty", message}`. Webview → host: `{type: "ready"}`, `{type: "openSource", componentId, index}`. `[e2e]`
+**FR-VIEW-04 Panel.** One `WebviewPanel` (viewType `sustain.architecture`) per window; re-running the command reveals and reloads it. Title `Architecture: <meta.title>`. Opens in `ViewColumn.Active` when no editor is open, else `ViewColumn.Beside`. `retainContextWhenHidden: false`; the host re-sends the document when the panel becomes visible. Host → webview: `{type: "load", doc, file, compare}` (`compare` since M7, FR-CMP-05), `{type: "empty", message}`. Webview → host: `{type: "ready"}`, `{type: "openSource", componentId, index}`, and since M7 `compareWith`, `openBaseline`, `swap`, `openFile` (FR-CMP-06, FR-CMP-07). `[e2e]`
 
 **FR-LAY-01 Mode.** Authored mode when every kept component has an authored rect: `pos`, or `row`+`col` when root `layout.mode == "grid"`, converted as `origin + (col·(cellW+gapX), row·(cellH+gapY))` with Archify defaults `origin [40,80]`, `cols 4`, `gapX 30`, `gapY 40`, `cellW 130`, `cellH 64`; `pos` wins over a cell; `size` default 120×60. Otherwise auto mode; partial positions are ignored. AC: port the prototype's `archify_repo_grid_fixture_resolves_to_expected_positions` expectations. `[unit]`
 
@@ -316,7 +322,7 @@ Node: rounded rect, 1.5 px stroke in the type colour, fill = type colour at 12 %
 
 **FR-VIEW-06 Viewport.** Fit to view on load. Drag on empty canvas pans; wheel/trackpad scroll pans; Ctrl/⌘ + wheel and pinch zoom around the pointer; zoom range 10–400 %. Toolbar: Fit, −, +, 100 %. Keys when the webview is focused: `+`/`=`, `-`, `0` (100 %), `f` (fit). On reload of the same file (FR-WAT-01) the viewport is kept; on a different file it fits. `[dom]` for the math (zoom clamps, zoom-around-point), `[manual]` for feel.
 
-**FR-VIEW-07 Tooltip.** Hovering a node 300 ms shows a tooltip: label, sublabel, type, and every source as `path:line–end_line` (or `path:line`, or `path`) with its `label`. The tooltip stays while the pointer is over the node or the tooltip and hides 200 ms after leaving both. Clicking a source entry posts `openSource` with that index. `[dom]`
+**FR-VIEW-07 Tooltip.** Hovering a node 300 ms shows a tooltip: label, sublabel, type, and every source as `path:line–end_line` (or `path:line`, or `path`) with its `label`. The tooltip stays while the pointer is over the node or the tooltip and hides 200 ms after leaving both. Clicking a source entry posts `openSource` with that index. Since M7 it also shows the change lines of FR-CMP-12. `[dom]`
 
 ### 7.8 Navigation
 
@@ -348,12 +354,13 @@ The same rules apply to tooltip entries. AC: `[e2e]` one case per rule.
 - A new candidate that is now the newest for its folder → if the panel is open for that folder, load it; otherwise info notification "New architecture diagram: `<run folder>`" with "Open".
 - The panel's file deleted → panel shows the empty state "This diagram was deleted."
 - Events are debounced 300 ms.
+- The baseline file of the open comparison: FR-CMP-08.
 
 AC: `[e2e]` create and modify a candidate in a temp workspace and assert panel loads (via test hook).
 
 ### 7.10 Test hooks and live runs
 
-**FR-TEST-01 Test hook.** `activate()` returns an object used only by e2e tests: `{ panelState(): {file, open}, postFromWebview(msg) }`. It is not documented for users. `[e2e]`
+**FR-TEST-01 Test hook.** `activate()` returns an object used only by e2e tests: `{ panelState(): {file, open, baseline}, postFromWebview(msg) }` (`baseline` since M7, FR-CMP-05). It is not documented for users. `[e2e]`
 
 **FR-LIVE-01 Claude Code.** In an Extension Development Host opened on `reference/sustain-prototype`: Install Agent Skills → Generate Architecture (Claude Code, empty focus) → the run finishes with `accepted` within 3 repairs → the viewer offers/opens the diagram → clicking 3 different nodes opens the cited ranges. Record date, CLI version, repairs used, component count in `progress.md`. `[live]`
 
@@ -361,9 +368,9 @@ AC: `[e2e]` create and modify a candidate in a temp workspace and assert panel l
 
 **FR-PKG-01 Package.** `npm run package` produces `sustain-<version>.vsix` with `@vscode/vsce`; installing it into a clean VS Code profile runs all four commands. `[manual]`
 
-**FR-DOC-01 README.** Install from `.vsix`, the four commands, the skill workflow for both agents, Node ≥ 18 requirement, what's in `.archify/`; since M6 also the update mode (FR-UPD-10). `[manual]`
+**FR-DOC-01 README.** Install from `.vsix`, the four commands, the skill workflow for both agents, Node ≥ 18 requirement, what's in `.archify/`; since M6 also the update mode (FR-UPD-10); since M7 the change view (FR-CMP-13). `[manual]`
 
-**FR-DOC-02 Architecture document.** `docs/architecture.md` describes the system as built, not as planned: purpose in two sentences; a component diagram (mermaid) of extension host, webview, `src/model`, `src/layout`, the skill scripts and the external agent; module responsibilities and allowed dependency directions (matching NFR-QUAL-03); the main flows as mermaid sequence diagrams (generate → validate → publish, open → layout → render, click → resolve → open/stale; since M6 also change-map → patch → validate and regenerate → match-ids → validate, FR-UPD-10); the webview message protocol; on-disk layout (`.archify/`, `.agents/skills/`, `.claude/skills/`, `dist/`); trust boundaries (webview CSP, no network, deny-list, repo-root confinement); links to the ADRs behind each part. AC: at the end of every milestone it matches the code (module names, message types, file paths exist); checked in the milestone review. `[manual]`
+**FR-DOC-02 Architecture document.** `docs/architecture.md` describes the system as built, not as planned: purpose in two sentences; a component diagram (mermaid) of extension host, webview, `src/model`, `src/layout`, the skill scripts and the external agent; module responsibilities and allowed dependency directions (matching NFR-QUAL-03); the main flows as mermaid sequence diagrams (generate → validate → publish, open → layout → render, click → resolve → open/stale; since M6 also change-map → patch → validate and regenerate → match-ids → validate, FR-UPD-10; since M7 open → resolve baseline → load → diff → render, FR-CMP-13); the webview message protocol; on-disk layout (`.archify/`, `.agents/skills/`, `.claude/skills/`, `dist/`); trust boundaries (webview CSP, no network, deny-list, repo-root confinement); links to the ADRs behind each part. AC: at the end of every milestone it matches the code (module names, message types, file paths exist); checked in the milestone review. `[manual]`
 
 **FR-DOC-03 Architecture decision records.** `docs/adr/` uses MADR 4.0 (https://adr.github.io/madr/):
 
@@ -379,7 +386,7 @@ AC: `npm run check:docs` (part of `npm run check`) verifies every `docs/adr/NNNN
 
 ### 7.11 Incremental update (M6)
 
-Decision: [ADR 0029](adr/0029-update-the-previous-diagram-incrementally.md); evidence: [change collection report](research/change-collection-report.md) (strategy S4 with change input CI-C). When a previous candidate of the same scope exists, the skill patches it from a deterministic change map instead of drawing a new diagram; after 5 consecutive updates, or on request, it regenerates and re-attaches the previous IDs. Goals: re-running on an unchanged repository yields an empty Archify `compare`; components whose cited code did not change keep `id`, text and citations (hand edits survive); changes to cited files and uncited changed files are re-explored; drift is bounded by the scheduled regeneration; the user can force a regeneration. Non-goals: a diff view in the viewer; detecting boundary moves in the change map; any LLM call, network request or new runtime dependency in the extension or the scripts; a second skill; updating diagrams of other scopes.
+Decision: [ADR 0029](adr/0029-update-the-previous-diagram-incrementally.md); evidence: [change collection report](research/change-collection-report.md) (strategy S4 with change input CI-C). When a previous candidate of the same scope exists, the skill patches it from a deterministic change map instead of drawing a new diagram; after 5 consecutive updates, or on request, it regenerates and re-attaches the previous IDs. Goals: re-running on an unchanged repository yields an empty Archify `compare`; components whose cited code did not change keep `id`, text and citations (hand edits survive); changes to cited files and uncited changed files are re-explored; drift is bounded by the scheduled regeneration; the user can force a regeneration. Non-goals: detecting boundary moves in the change map; any LLM call, network request or new runtime dependency in the extension or the scripts; a second skill; updating diagrams of other scopes. The viewer's change view is M7 (§7.12).
 
 #### Change map (`change-map.mjs`)
 
@@ -425,6 +432,7 @@ The base revision is the previous lineage's `revision`, else the previous candid
 - A hunk touches a component when its old or new path is one of the component's `sources[].path` (file level, as in the study).
 - `change.md` is the study's CI-C format: a title naming base and head; "Changed code by component" with one section per touched component (`### \`<id>\` (<label>)` followed by that component's hunks in a `diff` fence; a hunk under several components appears under each); "Changed files that no component cites" as name-status lines.
 - `mapping.md` is the study's S4 mapping: per touched component the changed files it cites with their hunk headers; the untouched components; the changed files no component cites.
+- `changes.json` (since M7, FR-CMP-02) is the same change map as data, for the viewer.
 
 Port of `research/change-collection/harness/change-input.mjs` (`buildCIC`, `buildS4Mapping`, `mapChanges`) and `lib/diff.mjs` (`splitDiff`), with the three differences above (working tree, untracked and previously dirty files, deny-list). AC: unit tests port `research/change-collection/harness/test/change-input.test.mjs` and add: an untracked new file appears as uncited; a staged-only edit appears; a deny-listed `.env` change appears by name with no content; a rename of a cited file touches its component. `[unit]`
 
@@ -437,13 +445,15 @@ Port of `research/change-collection/harness/change-input.mjs` (`buildCIC`, `buil
   "previousRun": "<run folder name>" | null,
   "baseRevision": "<40-hex>" | null,
   "revision": "<HEAD 40-hex>" | null,
+  "baseCommit": { "subject": "<first line>", "committedAt": "<ISO 8601>" } | null,
+  "headCommit": { "subject": "<first line>", "committedAt": "<ISO 8601>" } | null,
   "dirty": ["<path>"],
   "dirtyCount": 0,
   "updatesSinceRegeneration": 0
 }
 ```
 
-`updatesSinceRegeneration` is 0 in regenerate mode and previous value + 1 (previous without lineage counts as 0) in update mode. `dirty` and `dirtyCount` are FR-GIT-01's dirty list (≤ 200 paths) and total; FR-UPD-02's `dirty-baseline` row uses the total. The validator, the viewer and the watcher ignore `lineage.json`, `change.md` and `mapping.md`. AC: unit tests of the counter across a regenerate → update → update chain and of the `dirtyCount > 200` fallback. `[unit]`
+`updatesSinceRegeneration` is 0 in regenerate mode and previous value + 1 (previous without lineage counts as 0) in update mode. `dirty` and `dirtyCount` are FR-GIT-01's dirty list (≤ 200 paths) and total; FR-UPD-02's `dirty-baseline` row uses the total. `baseCommit` and `headCommit` are added by M7 (FR-CMP-01). The validator ignores the run files; the viewer reads `lineage.json` and `changes.json` (FR-CMP-05); the watcher reacts only to `candidate.json`. AC: unit tests of the counter across a regenerate → update → update chain and of the `dirtyCount > 200` fallback. `[unit]`
 
 #### Skill
 
@@ -500,6 +510,165 @@ Record date, CLI version, mode, touched components, repairs used in `progress.md
 
 **FR-UPD-12 Study re-check (optional).** Point the research harness's frozen skill at the built `dist/skills/sustain-architecture/` and re-run the Stage 2 same-commit pairs and the planted pairs once with the shipped update mode. Expected: same-commit spurious diff entries 0; component, responsibility and connection plants reported (as for S4 × CI-C in the study). Recorded in `progress.md`; a miss is a finding, not a blocker. `[manual]`
 
+### 7.12 Change view (M7)
+
+Decision: [ADR 0031](adr/0031-compare-the-open-diagram-with-a-chosen-baseline.md). The viewer compares the open diagram with a **baseline**: by default the run it updated (`lineage.previousRun`), or any other diagram in `.archify/` the user picks. It shows what the baseline is (commit hash, subject, date, uncommitted files), which components, connections and boundaries were added, removed or changed, which components had code changes the agent kept as they were, and which changed files no component cites. A doubtful comparison is warned about, never blocked. Without a baseline the viewer behaves as before, apart from the header. Non-goals: git calls from the extension host (so no "behind HEAD" indicator and no live ancestry check); file diff editors or a dependency on the built-in Git extension; ghost nodes for removed elements; combining `changes.json` across runs; baselines outside `.archify/` or the open diagram's repo root; changes to the Archify schema, the validator or the skill text; any LLM call, network request or new runtime dependency.
+
+#### Data recorded by `change-map.mjs`
+
+**FR-CMP-01 Commit details.** `src/model/git.ts` gains a fixed read `commitInfo`: argv `--no-optional-locks log -1 --no-color --no-show-signature --format=%s%x00%cI <rev> --`, where `<rev>` passes `isRevision` (40 hex). It returns `{subject, committedAt}`, or `null` on a non-zero exit or unexpected output. `lineage.json` gains `baseCommit` and `headCommit` (FR-UPD-04), written in both modes: `baseCommit` describes `baseRevision` and `headCommit` describes `revision`; each is `null` when its revision is `null` or the read fails. `readLineage` treats missing or malformed values as `null`, so lineages written by M6 still load. AC: unit tests with a temp git repo: subject and date read; a multibyte (non-ASCII) subject reads intact; an unknown revision gives `null`; an M6 lineage without the fields reads with both `null`. `[unit]`
+
+**FR-CMP-02 `changes.json`.** In update mode, `change-map.mjs` writes `<runFolder>/changes.json` (2-space JSON) next to `change.md`:
+
+```json
+{
+  "baseRevision": "<40-hex>",
+  "revision": "<40-hex>" | null,
+  "touchedComponents": [
+    { "id": "<component id>", "files": [{ "status": "A" | "M" | "D" | "R", "path": "<path>", "oldPath": "<path>" }] }
+  ],
+  "uncited": [{ "status": "A" | "M" | "D" | "R", "path": "<path>", "oldPath": "<path>" }]
+}
+```
+
+The content equals the `ChangeMap` `change.md` and `mapping.md` are rendered from (FR-UPD-03): same touched components in the same order, and for each the changed files it cites, including previously dirty paths. `oldPath` is present only for `R`. Deny-listed and binary files appear by path like any other. No hunks or file contents. Regenerate mode writes no `changes.json`. AC: unit tests: an edit to a cited file lists the component and the file; a rename of a cited file lists `R` with `oldPath`; an untracked file appears in `uncited` as `A`; regenerate mode leaves no `changes.json`. `[unit]`
+
+#### Diff and comparison model
+
+**FR-CMP-03 Diagram diff** (`src/model/diagramDiff.ts`, browser-safe, pure). `diffDiagrams(baseline: ViewDiagram, current: ViewDiagram): DiagramDiff`. `readDiagram` (FR-VIEW-03) parses both first, so its skip rules apply to both sides; it also keeps a connection's string `id`.
+
+| Element | Key | Changed when |
+|---|---|---|
+| Component | `id` | `label`, `sublabel`, `tag` or `type` differs; the set of `sources[].path` differs; or the set of boundary keys whose `wraps` contain it differs |
+| Connection | `id`. A connection without `id`: `~<from>→<to>`. A repeated key after the first: suffix `#2`, `#3`… in document order | `label` or `variant` differs. Different `from` or `to` under the same key counts as one removal plus one addition |
+| Boundary | `label`, with the same `#2`, `#3`… suffix for repeated labels | `kind` differs, or its member set differs. An unmatched baseline boundary and an unmatched current boundary with equal member sets are paired, in document order, as **renamed** |
+
+- Each changed element lists the fields that changed. For a component, those are `label`, `sublabel`, `tag`, `type`, `sources` and `boundary`; text fields carry their old and new values. Citation line numbers and source labels are not compared, because updates shift them without changing what the component is.
+- Statuses: `added`, `removed`, `changed`, `renamed` (boundaries only), `unchanged`; `markKept` turns unchanged components whose ID is in `changes.json` `touchedComponents` into `kept`. Layout fields (`pos`, `row`, `col`, `size`, root `layout`) never count.
+- `DiagramDiff` holds the per-element statuses for the current diagram (for drawing), the removed baseline elements (for the panel), and counts of added, removed and changed elements over all three element kinds. A renamed boundary counts as changed; kept components are not counted.
+
+AC: one unit test per table row and rule, including an id-less legacy pair, duplicate connection keys, an endpoint move, a boundary rename, a line-only citation change (unchanged), and two equal documents with different layouts (all unchanged, counts 0). `[unit]`
+
+**FR-CMP-04 Comparison context** (`src/model/comparison.ts`, browser-safe, pure; facts injected by the host). Input: for the open run and the baseline run, the run folder name and slug, the run order index, the parsed `lineage.json` or `null`, `meta.repository` or `null`, and the component IDs; plus a lookup `runFolder → lineage | null` for walking the update history. Output:
+
+- **Warnings**, in this order, each with a fixed message:
+
+  | Code | When | Message |
+  |---|---|---|
+  | `different-focus` | Both folders match `RUN_FOLDER_PATTERN` and their slugs differ | "Different focus: `<baseline slug>` vs `<open slug>`." |
+  | `unrelated` | Shared component IDs ÷ all component IDs < 0.3 | "Probably unrelated: only N of M components match." |
+  | `different-repository` | Both `meta.repository.url` present and different | "Different repository: `<url>`." |
+  | `outside-history` | Both runs have a lineage, and the baseline is not in the open run's update history | "Not in this diagram's update history." |
+  | `reversed` | The baseline is newer than the open run in run order | "Baseline is newer than this diagram; changes are shown in reverse." |
+
+- **Approximate** is true when the baseline is in the update history and any run from the open run (inclusive) down to the baseline (exclusive) has `mode: "regenerate"`, or when `outside-history` fired.
+- **Kept and uncited available** (`keptAvailable`) is true only when the baseline is the open run's `previousRun`, the open run's lineage `mode` is `update`, and its `changes.json` parses.
+- **Kept note** (`keptNote`) is true when kept/uncited data is not available, except when the open run is a regenerate run compared with its own `previousRun`. The webview shows the FR-CMP-11 note exactly when it is true.
+- **Commits** for the header: each side's `revision` and `headCommit` from its own lineage, and its `dirtyCount`. If that side has no lineage, `meta.repository.revision` with no subject or date. Otherwise `null` ("unknown revision").
+- The history walk stops at a run already visited, a missing lineage, or after 1000 steps.
+
+AC: one unit test per warning and per approximate case; a cycle in `previousRun` terminates; with no lineages, only `different-focus`, `unrelated`, `different-repository` and `reversed` can fire. `[unit]`
+
+#### Extension host
+
+**FR-CMP-05 Baseline and load message.** `ArchitecturePanel` keeps the baseline file and whether the user chose it.
+
+- When a different file opens (command, Open baseline, Swap, or watcher switch), the choice resets. The baseline becomes `<root>/.archify/<lineage.previousRun>/candidate.json` when the open file is a candidate with a lineage, that previous candidate exists, and it parses with `readDiagram`. Otherwise it is `null`.
+- A reload of the same file (FR-WAT-01) keeps the baseline.
+- `load` is `{type: "load", doc, file, compare: Compare | null}`. `Compare` carries the baseline doc and file, the FR-CMP-04 context, and the parsed `changes.json` when kept/uncited data is available (otherwise `null`). The webview runs `readDiagram` on both docs and `diffDiagrams` on the results.
+- An unreadable baseline gives `compare: null` and the status bar message "Can't read baseline `<run folder>`" for 3 s.
+- `panelState()` (FR-TEST-01) gains `baseline: string | null`.
+
+AC: `[e2e]` a temp workspace with two runs linked by `previousRun` opens the newer one with `baseline` set to the older; a run without a lineage opens with `baseline: null`. `[unit]` for the default-baseline rule. `[unit]` `[e2e]`
+
+**FR-CMP-06 Compare with… picker.** The webview posts `{type: "compareWith"}`. The host shows a QuickPick (placeholder "Compare with") listing:
+
+1. "No comparison".
+2. Every `candidate.json` from `listCandidates(root)` except the open file, in run order, that parses with `readDiagram`.
+
+Each candidate item has label `meta.title` (else the run folder), description = run folder, and detail = `<short hash> <subject> · <mode>` from its lineage (else the short `meta.repository.revision`, else nothing). The detail also appends whichever tags apply: `previous` (it is the open run's `previousRun`), `newer`, `different focus`, `outside update history`. Tags use the FR-CMP-04 rules. The current baseline item has `picked: true`. Choosing an item sets the baseline as chosen and re-sends `load`. Escape changes nothing. AC: `[e2e]` with the stub UI used by the FR-UPD-08 tests: the items, their order and tags; choosing "No comparison" sends `compare: null`; choosing an older run sets `baseline`. `[e2e]`
+
+**FR-CMP-07 Actions from the webview.**
+
+- `{type: "openBaseline"}`: opens the baseline as the main diagram, with its own default baseline (FR-CMP-05).
+- `{type: "swap"}`: opens the baseline as the main diagram and sets the previously open file as its chosen baseline.
+- `{type: "openFile", path}`: opens a changed file. The host accepts only paths that appear in the `changes.json` it last sent, applies FR-NAV-03's invalid-path and missing-file rules, and opens the file at the top, without a selection, in the column FR-NAV-02 uses. Any other path is ignored and logged.
+
+AC: `[e2e]` per action through `postFromWebview`: Open baseline makes `panelState().file` the old baseline; Swap also sets `baseline` to the old file; `openFile` for a listed path opens it; an unlisted path opens nothing; a deleted listed path shows the FR-NAV-03 stale message. `[e2e]`
+
+**FR-CMP-08 Watching the baseline** (adds to FR-WAT-01).
+
+- A change to the baseline file re-sends `load` (viewport kept).
+- Deletion of the baseline file sets the baseline to `null`, re-sends `load`, and shows the status bar message "Baseline diagram was deleted; showing no comparison." for 3 s.
+- When the watcher switches the panel to a newer run (FR-WAT-01), that run's default baseline applies (FR-CMP-05).
+- A new `changes.json` or `lineage.json` alone triggers nothing; both are written before `candidate.json` is published.
+
+AC: `[e2e]` modify and then delete the baseline candidate in a temp workspace and assert `panelState().baseline`. `[e2e]`
+
+#### Webview
+
+All text that comes from the repository (labels, paths, commit subjects, run folder names) is inserted with `textContent` or as SVG text, never as HTML. AC: `[dom]` a commit subject `<img src=x onerror=alert(1)>` renders as literal text and adds no element.
+
+**FR-CMP-09 Header.** A strip above the canvas, always shown.
+
+- With a comparison: "Compared with `<short hash>` "<subject>" · <relative date>", then "→ `<short hash>` "<subject>"" for the open diagram. Missing subject or date parts are omitted, and a missing commit shows "unknown revision". Then "+ N uncommitted files" when the baseline's `dirtyCount` > 0, the baseline run folder, the counts `+A −R ~C`, the label "approximate" when FR-CMP-04 says so, the **Compare with…** button and the **Changes** toggle.
+- Relative dates: "just now" (< 1 min), "N minutes/hours/days ago", and the ISO date beyond 30 days. The full ISO timestamp is the element's `title`.
+- Warnings appear as one line each below the strip, in the warning colour (`--vscode-editorWarning-foreground`). The `reversed` line ends with a **Swap** button.
+- Without a comparison: "No comparison" and the **Compare with…** button only.
+
+AC: `[dom]` header text for a full comparison, a comparison with missing commits, a reversed comparison with its Swap button, and no comparison. Clicking the buttons posts `compareWith` and `swap`. `[dom]`
+
+**FR-CMP-10 Marks on the diagram** (when the Changes toggle is on).
+
+| Status | Node / boundary | Edge |
+|---|---|---|
+| added | stroke `--vscode-gitDecoration-addedResourceForeground` 2.5 px, badge `NEW` | stroke in the same colour, 2 px |
+| changed / renamed | stroke `--vscode-gitDecoration-modifiedResourceForeground` 2.5 px, badge `CHANGED` (`RENAMED` for boundaries) | stroke in the same colour, 2 px |
+| kept | dashed stroke `--vscode-descriptionForeground` (dasharray `3 3`), badge `KEPT` | — |
+| unchanged | as FR-VIEW-05 | as FR-VIEW-05 |
+| removed | not drawn | not drawn |
+
+- Badges sit at the node's top-right corner, apart from the FR-VIEW-05 `tag` badge, and on the boundary label line. The status colour fills the badge text.
+- The status is a class (`node--added`, `edge--changed`, `boundary--renamed`, …). Colours live in `styles.css` only, as in FR-VIEW-05.
+- Unchanged elements are not dimmed.
+- Toggling the marks never re-runs layout and never moves the viewport.
+
+AC: `[dom]` a fixture pair renders the expected classes and badge texts per status; toggling off removes them and leaves the viewport transform unchanged. `[dom]`
+
+**FR-CMP-11 Changes panel.** Docked right, overlaying the canvas, collapsible, shown when the Changes toggle is on and a comparison exists.
+
+- Header: title "Changes", a legend (the four status colours with their names), and a collapse control.
+- Sections, in order, each with a count and hidden when empty: **Added**, **Removed**, **Changed**, **Code changed, kept**, **Not in any component**.
+  - **Added**, **Removed**, **Changed**: one row per element, prefixed with its kind (component, connection, boundary). Connections show as `<from label> → <to label>`, with the label when present. Changed rows list the changed fields; text fields show `old → new`.
+  - **Code changed, kept**: kept components with the count of their changed files.
+  - **Not in any component**: each `uncited` entry as `<status> <path>`, renames as `R <oldPath> → <path>`.
+- When `keptNote` is true, the two kept/uncited sections are replaced by one note: "Code changed, kept and Not in any component are available only when comparing with the previous run."
+- With zero diagram differences: the text "No diagram changes since the baseline" above any kept and uncited sections.
+- Clicking an added, changed or kept row fits the viewport to that element's box: a node's box, a connection's endpoint boxes, or a boundary's rectangle, with 40 px padding. Removed rows are not clickable. The Removed section ends with an **Open baseline** button (posts `openBaseline`).
+- Clicking an A, M or R entry in **Not in any component** posts `openFile` with `path`. D entries are plain text.
+
+AC: `[dom]` panel sections, counts, row texts, the note, the empty-diff text, fit-on-click (viewport transform changes to contain the element), and the posted `openBaseline` and `openFile` messages. `[dom]`
+
+**FR-CMP-12 Toggle, state and tooltip.**
+
+- The Changes toggle is on by default and is offered only when a comparison exists. Its state and the panel's collapsed state persist per panel through `vscode.setState` / `getState`, so they survive hiding the panel (FR-VIEW-04 `retainContextWhenHidden: false`) and reloads.
+- With the toggle on, the FR-VIEW-07 tooltip gains a status line (`New`, `Changed: label, sources`, `Kept`) and, when kept/uncited data is available, the component's changed files from `changes.json` (`<status> <path>`). Clicking an A, M or R file posts `openFile`.
+
+AC: `[dom]` state restored from a stubbed `getState`; tooltip lines for changed and kept nodes; clicking a file posts `openFile`. `[dom]`
+
+#### Docs and checks
+
+**FR-CMP-13 Docs.** README: the change view, the baseline default and the picker, the warnings and "approximate", and `changes.json` in the run folder list. `docs/architecture.md`: the protocol additions, a mermaid sequence for open → resolve baseline → load → diff → render, the new modules in the module table and dependency rules, `changes.json` in the on-disk layout, and a link to ADR 0031. `[manual]`
+
+**FR-CMP-14 Manual check.** In an Extension Development Host on a repository with at least three runs from FR-UPD-11 (fresh, update, regenerate):
+
+1. Open the update run → the baseline is the fresh run, the header shows both commits, and kept/uncited sections appear when the change map had any.
+2. Compare with the fresh run from the regenerate run → "approximate" appears.
+3. From the fresh run, compare with the newest run → `reversed` warning; Swap works.
+4. Theme switch (light, dark, high contrast) keeps every status distinguishable, and badges remain readable.
+
+Record the results in `progress.md`. `[manual]`
+
 ## 8. Milestones
 
 | Milestone | Scope | Requirements |
@@ -511,6 +680,7 @@ Record date, CLI version, mode, touched components, repairs used in `progress.md
 | M4 Navigation and watching | click-to-open, stale handling, watcher, test hook | FR-NAV-*, FR-WAT-01, FR-TEST-01 |
 | M5 Finish | packaging, README, final architecture.md pass, live runs | FR-PKG-01, FR-DOC-01, FR-DOC-02, FR-LIVE-01, FR-LIVE-02 |
 | M6 Incremental update | change map, lineage, ID matcher, validator rule, skill text, Generate choice, docs, live runs | FR-UPD-01..12 |
+| M7 Change view | commit details and `changes.json`, diagram diff, comparison context, baseline and picker, marks, header, Changes panel, docs, manual check | FR-CMP-01..14 |
 
 ## 9. Process
 
@@ -550,3 +720,7 @@ Record date, CLI version, mode, touched components, repairs used in `progress.md
 | Previous run drawn from a dirty tree | Its dirty paths count as touched (FR-UPD-03); more than 200 dirty paths forces a regeneration (FR-UPD-02 `dirty-baseline`) |
 | History rewritten (rebase, force-push) | `base-unreachable` → regeneration (FR-UPD-02) |
 | Legacy candidates without connection IDs | Update mode works from them; the validator makes the agent add IDs before acceptance (FR-UPD-07) |
+| Regenerate runs re-ID components, so renames show up as an added/removed pair in the change view | "approximate" label (FR-CMP-04); `match-ids.mjs` re-attaches IDs where cited files overlap |
+| Boundaries have no `id`, so a relabelled boundary with different members shows up as removed + added | Equal-member renames are detected (FR-CMP-03); the rest is visible in the Changes panel |
+| Commit subjects are repository-controlled text shown in the webview | `textContent` only (§7.12 webview rule) |
+| The webview asks the host to open arbitrary paths | `openFile` accepts only paths from the last `changes.json` sent, inside the repo root (FR-CMP-07) |

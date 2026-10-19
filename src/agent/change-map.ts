@@ -1,7 +1,7 @@
 // `node .agents/skills/sustain-architecture/scripts/change-map.mjs --run-folder <runFolder> [--regenerate]`,
-// run with cwd = repo root after repo-facts.mjs (FR-UPD-01..04): decides between updating the
-// previous diagram of the same scope and regenerating, writes `lineage.json` and, in update
-// mode, `change.md` and `mapping.md` into the run folder, and prints one JSON object.
+// run with cwd = repo root after repo-facts.mjs (FR-UPD-01..04, FR-CMP-01, FR-CMP-02): decides between
+// updating the previous diagram of the same scope and regenerating, writes `lineage.json` and, in
+// update mode, `change.md`, `mapping.md` and `changes.json` into the run folder, and prints one JSON object.
 import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import {
@@ -17,8 +17,9 @@ import {
 } from "../model/changeMap";
 import { citationPathOk, probeFile } from "../model/citations";
 import { listCandidates, type Candidate } from "../model/discovery";
-import { baseReachable, collectGitFacts, readChanges } from "../model/git";
-import { readLineage, writeLineage, type Lineage } from "../model/lineage";
+import { baseReachable, collectGitFacts, commitInfo, readChanges } from "../model/git";
+import { readLineage, writeLineage, writeRunChanges, type Lineage } from "../model/lineage";
+import { buildRunChanges } from "../model/runChanges";
 import { ARCHIFY_DIR, CANDIDATE_FILE, parseRunFolderName } from "../model/runFolder";
 
 const CHANGE_FILE = "change.md";
@@ -128,6 +129,7 @@ function main(args: string[]): number {
       } else {
         writeFileSync(join(runDir, CHANGE_FILE), change);
         writeFileSync(join(runDir, MAPPING_FILE), renderMapping(decision.base, git.head, map));
+        writeRunChanges(runDir, buildRunChanges(map, decision.base, git.head));
         Object.assign(report, {
           changeFile: `${ARCHIFY_DIR}/${run}/${CHANGE_FILE}`,
           mappingFile: `${ARCHIFY_DIR}/${run}/${MAPPING_FILE}`,
@@ -144,6 +146,8 @@ function main(args: string[]): number {
       previousRun: previous?.candidate.runFolder ?? null,
       baseRevision: decision.base,
       revision: git?.head ?? null,
+      baseCommit: git && decision.base !== null ? commitInfo(root, decision.base) : null,
+      headCommit: git ? commitInfo(root, git.head) : null,
       dirty: git?.dirty ?? [],
       dirtyCount: git?.dirtyCount ?? 0,
       updatesSinceRegeneration: decision.mode === "update" ? (previousLineage?.updatesSinceRegeneration ?? 0) + 1 : 0,

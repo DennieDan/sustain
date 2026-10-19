@@ -1,8 +1,9 @@
-// FR-UPD-01..04 against the built change-map.mjs on temporary git repositories.
+// FR-UPD-01..04, FR-CMP-01 and FR-CMP-02 against the built change-map.mjs on temporary git repositories.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import type { Lineage } from "../../../src/model/lineage";
+import type { CommitInfo, Lineage } from "../../../src/model/lineage";
+import type { RunChanges } from "../../../src/model/runChanges";
 import { envWithoutGit, git, gitRepo, put, runScript, tempDir, type ChangeMapReport } from "../support/temp";
 
 const SLUG = "demo";
@@ -39,6 +40,8 @@ function lineage(overrides: Partial<Lineage>): Lineage {
     previousRun: null,
     baseRevision: null,
     revision: null,
+    baseCommit: null,
+    headCommit: null,
     dirty: [],
     dirtyCount: 0,
     updatesSinceRegeneration: 0,
@@ -56,6 +59,12 @@ function seedPrevious(root: string, options: { doc?: unknown; lineage?: Lineage;
 
 const head = (root: string): string => git(root, "rev-parse", "HEAD").trim();
 
+/** What `commitInfo` should read for `rev`, taken from git directly. */
+function commitOf(root: string, rev = "HEAD"): CommitInfo {
+  const [subject, committedAt] = git(root, "log", "-1", "--format=%s%x00%cI", rev).replace(/\n$/, "").split("\0");
+  return { subject: subject!, committedAt: committedAt! };
+}
+
 /** Runs repo-facts.mjs then change-map.mjs, as the skill does. */
 function changeMap(root: string, extra: string[] = [], env?: NodeJS.ProcessEnv): { report: ChangeMapReport; runDir: string; runFolder: string } {
   const facts = runScript("repo-facts", ["--focus", SLUG], { cwd: root, env }).json();
@@ -66,6 +75,7 @@ function changeMap(root: string, extra: string[] = [], env?: NodeJS.ProcessEnv):
 }
 
 const readLineageFile = (runDir: string): Lineage => JSON.parse(readFileSync(join(runDir, "lineage.json"), "utf8"));
+const readChangesFile = (runDir: string): RunChanges => JSON.parse(readFileSync(join(runDir, "changes.json"), "utf8"));
 
 /** A repo with one commit and a previous candidate drawn at it (lineage revision = HEAD). */
 function updatableRepo(lineageOverrides: Partial<Lineage> = {}): string {
@@ -91,7 +101,8 @@ describe("FR-UPD-01/02 mode decision", () => {
       uncitedFiles: [],
     });
     // The run folder is still empty, so git status does not list `.archify/` yet.
-    expect(readLineageFile(runDir)).toEqual(lineage({ revision: head(root) }));
+    expect(readLineageFile(runDir)).toEqual(lineage({ revision: head(root), headCommit: commitOf(root) }));
+    expect(readLineageFile(runDir).headCommit).toEqual({ subject: "init", committedAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT/) });
     expect(existsSync(join(runDir, "change.md"))).toBe(false);
     expect(readFileSync(join(runDir, "lineage.json"), "utf8")).toMatch(/^\{\n {2}"mode"/);
   });
@@ -114,7 +125,7 @@ describe("FR-UPD-01/02 mode decision", () => {
     seedPrevious(root, { doc: candidate("a".repeat(40)) });
     const { report, runDir } = changeMap(root, [], envWithoutGit());
     expect(report).toMatchObject({ mode: "regenerate", reason: "no-git", head: null, previous: `.archify/${OLD_RUN}/candidate.json` });
-    expect(readLineageFile(runDir)).toMatchObject({ revision: null, dirty: [], dirtyCount: 0 });
+    expect(readLineageFile(runDir)).toMatchObject({ revision: null, baseCommit: null, headCommit: null, dirty: [], dirtyCount: 0 });
   });
 
   test("no lineage and no meta.repository.revision → no-base-revision", () => {
@@ -314,5 +325,59 @@ describe("FR-UPD-04 lineage", () => {
     rmSync(join(root, "scratch"), { recursive: true, force: true });
     git(root, "add", "-A");
     expect(changeMap(root).report).toMatchObject({ mode: "regenerate", reason: "dirty-baseline" });
+  });
+});
+
+describe("FR-CMP-01 commit details in the lineage", () => {
+  test("update mode records the base and head commits", () => {
+    const root = updatableRepo();
+    const base = commitOf(root);
+    put(root, "src/api.ts", "export const api = 2;\n");
+    git(root, "commit", "-q", "-am", "Änderung: API 修正");
+    const { runDir } = changeMap(root);
+    const recorded = readLineageFile(runDir);
+    expect(recorded.baseCommit).toEqual(base);
+    expect(recorded.headCommit).toEqual(commitOf(root));
+    expect(recorded.headCommit?.subject).toBe("Änderung: API 修正");
+  });
+});
+
+describe("FR-CMP-02 changes.json", () => {
+  test("an edit to a cited file lists the component and the file", () => {
+    const root = updatableRepo();
+    const base = head(root);
+    put(root, "src/api.ts", "export const api = 2;\n");
+    git(root, "commit", "-q", "-am", "edit");
+    const { runDir } = changeMap(root);
+    expect(readChangesFile(runDir)).toEqual({
+      baseRevision: base,
+      revision: head(root),
+      touchedComponents: [{ id: "api", files: [{ status: "M", path: "src/api.ts" }] }],
+      uncited: [],
+    });
+    expect(readFileSync(join(runDir, "changes.json"), "utf8")).toMatch(/^\{\n {2}"baseRevision"/);
+  });
+
+  test("a rename of a cited file lists R with oldPath", () => {
+    const root = updatableRepo();
+    git(root, "mv", "src/web.ts", "src/frontend.ts");
+    git(root, "commit", "-q", "-m", "rename");
+    const { runDir } = changeMap(root);
+    expect(readChangesFile(runDir).touchedComponents).toEqual([{ id: "web", files: [{ status: "R", path: "src/frontend.ts", oldPath: "src/web.ts" }] }]);
+  });
+
+  test("an untracked file appears in uncited as A", () => {
+    const root = updatableRepo();
+    put(root, "src/queue.ts", "export const queue = 1;\n");
+    const { runDir } = changeMap(root);
+    expect(readChangesFile(runDir)).toMatchObject({ touchedComponents: [], uncited: [{ status: "A", path: "src/queue.ts" }] });
+  });
+
+  test("regenerate mode leaves no changes.json", () => {
+    const root = updatableRepo();
+    put(root, "src/api.ts", "export const api = 2;\n");
+    const { report, runDir } = changeMap(root, ["--regenerate"]);
+    expect(report.mode).toBe("regenerate");
+    expect(existsSync(join(runDir, "changes.json"))).toBe(false);
   });
 });

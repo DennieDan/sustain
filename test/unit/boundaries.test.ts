@@ -1,6 +1,7 @@
 // NFR-QUAL-03: src/model and src/layout stay free of `vscode`; the browser-safe modules
-// (all of src/layout, model types/tolerant/checks/changeMap/matchIds) use no Node built-ins at
-// all; only the listed model modules may touch the file system, paths or child processes.
+// (all of src/layout, model types/tolerant/checks/changeMap/matchIds/diagramDiff/comparison/
+// runChanges) use no Node built-ins at all; only the listed model modules may touch the file
+// system, paths or child processes.
 import { builtinModules } from "node:module";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -13,6 +14,9 @@ const BROWSER_SAFE_MODEL: Record<string, true> = {
   "src/model/checks.ts": true,
   "src/model/changeMap.ts": true,
   "src/model/matchIds.ts": true,
+  "src/model/diagramDiff.ts": true,
+  "src/model/comparison.ts": true,
+  "src/model/runChanges.ts": true,
 };
 const NODE_MODEL: Record<string, true> = {
   "src/model/citations.ts": true,

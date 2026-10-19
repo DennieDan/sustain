@@ -66,14 +66,25 @@ Updates miss changes that touch no cited file, such as moving code into new pack
 - References are checked when you click them. A file that no longer exists, or lines beyond the end of a file, are reported as stale references. Line moves within a file are not detected.
 - The panel follows changes: editing or regenerating the shown diagram reloads it.
 
+### Seeing what changed
+
+When a diagram was made by updating an earlier one, the viewer compares the two. The header above the diagram says what it is compared with: the earlier diagram's commit (short hash, message, how long ago) and how many files were uncommitted at that time, then the commit of the diagram you are looking at, and the number of added, removed and changed elements.
+
+- On the diagram, new boxes, connections and boundaries are marked `NEW` and drawn in your theme's "added" colour; changed ones are marked `CHANGED` (`RENAMED` for a relabelled boundary) in the "modified" colour. Removed elements are not drawn.
+- The **Changes** panel on the right lists every addition, removal and change, with what changed (for example a new label). Click an entry to zoom to it. **Open baseline** opens the earlier diagram.
+- After an update, the panel also lists **Code changed, kept**: boxes whose cited code changed but which the agent left as they were (marked `KEPT` on the diagram), and **Not in any component**: changed files that no box cites. Click a file to open it.
+- The **Changes** button hides or shows the marks and the panel; the choice is remembered for the panel.
+- **Compare with…** lets you compare with any other diagram in `.archify/`, or with none. Sustain warns, without refusing, when a comparison is doubtful: a different focus, few shared components, a different repository, a diagram that is not in this one's update history, or a baseline that is newer than the open diagram (with a **Swap** button). When a regeneration lies between the two diagrams, the comparison is labelled "approximate", because regenerated elements may have new IDs and show up as removed plus added.
+
 ## What is in `.archify/`
 
 Each generation is a run folder: `.archify/architecture-<slug>-<YYYYMMDD-HHMMSS>/` (with `-2`, `-3`, … if two runs start in the same second). It contains:
 
 - `draft.json` while the agent is working, or after a run that ended without passing validation;
 - `candidate.json` once the validator accepted the diagram. This is the file Sustain opens;
-- `lineage.json`: whether the run updated or regenerated, why, which run it continued and at which commit, and how many updates have happened since the last regeneration;
-- `change.md` and `mapping.md` in update runs: the code change grouped by component, and the list of changed, unchanged and uncited parts the agent worked from.
+- `lineage.json`: whether the run updated or regenerated, why, which run it continued, and the commits involved (hash, message and date), and how many updates have happened since the last regeneration;
+- `change.md` and `mapping.md` in update runs: the code change grouped by component, and the list of changed, unchanged and uncited parts the agent worked from;
+- `changes.json` in update runs: the same change as data, which the viewer uses for "Code changed, kept" and "Not in any component".
 
 Validation checks the Archify JSON Schema, that every connection has an ID, that IDs and references are consistent, and that every cited file exists inside the repository with the cited lines. It removes layout and presentation fields (Sustain computes the layout) and fills in `meta.repository` from git when the repository has an `origin` remote. Secrets are never cited: `.env` files, keys, credential files, `.git/` and `.archify/` are rejected.
 

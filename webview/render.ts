@@ -1,8 +1,10 @@
-// Draws a laid-out Scene as SVG (FR-VIEW-05). Colours, stroke widths and dash patterns come from
-// webview/styles.css (VS Code theme variables); this module sets geometry, classes and data
-// attributes only. Text sizes are the ones the layout measured node boxes with.
+// Draws a laid-out Scene as SVG (FR-VIEW-05) and the change marks on it (FR-CMP-10). Colours,
+// stroke widths and dash patterns come from webview/styles.css (VS Code theme variables); this
+// module sets geometry, classes and data attributes only. Text sizes are the ones the layout
+// measured node boxes with.
 import { LABEL_PX, SUBLABEL_PX, TAG_PX } from "../src/layout/measure";
-import type { MeasureText, Point, Scene, SceneEdge } from "../src/layout/scene";
+import type { MeasureText, Point, Rect, Scene, SceneEdge } from "../src/layout/scene";
+import type { DiagramDiff, ElementStatus } from "../src/model/diagramDiff";
 import type { ViewDiagram } from "../src/model/tolerant";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -19,6 +21,11 @@ const ARROW_LENGTH = 9;
 const ARROW_HALF_WIDTH = 4.5;
 /** Horizontal padding inside the tag badge on each side of the text. */
 const TAG_BADGE_PAD_X = 4;
+/** Status badge (FR-CMP-10): text size, horizontal padding, gaps from the node corner and boundary label. */
+const STATUS_BADGE_PX = 9;
+const STATUS_BADGE_PAD_X = 4;
+const STATUS_BADGE_INSET = 8;
+const STATUS_BADGE_LABEL_GAP = 6;
 
 function svgEl<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
   const el = document.createElementNS(SVG_NS, tag);
@@ -125,4 +132,100 @@ export function renderScene(content: SVGGElement, diagram: ViewDiagram, scene: S
   }
 
   content.replaceChildren(boundaries, edges, edgeLabels, nodes);
+}
+
+/** The diagram element kinds, as the changes panel names them. */
+export type ElementKind = "component" | "connection" | "boundary";
+
+/** Statuses drawn per element kind (FR-CMP-10); any other status is drawn as unchanged. */
+const MARKED: Record<"node" | "edge" | "boundary", readonly ElementStatus[]> = {
+  node: ["added", "changed", "kept"],
+  edge: ["added", "changed"],
+  boundary: ["added", "changed", "renamed"],
+};
+
+const BADGE_TEXT: Record<ElementStatus, string> = { added: "NEW", changed: "CHANGED", renamed: "RENAMED", kept: "KEPT", unchanged: "" };
+
+function numAttr(el: Element, name: string): number {
+  return Number(el.getAttribute(name));
+}
+
+function rectOf(el: Element | null): Rect | undefined {
+  if (!el) return undefined;
+  return { x: numAttr(el, "x"), y: numAttr(el, "y"), w: numAttr(el, "width"), h: numAttr(el, "height") };
+}
+
+/** `g.status-badge.status-badge--<status>` > `rect.status-badge__box`, `text.status-badge__text`, vertically centred on `cy`. */
+function statusBadge(status: ElementStatus, x: number, cy: number, measure: MeasureText, anchor: "start" | "end"): SVGGElement {
+  const text = BADGE_TEXT[status];
+  const size = measure(text, STATUS_BADGE_PX, true);
+  const w = size.width + 2 * STATUS_BADGE_PAD_X;
+  const left = anchor === "start" ? x : x - w;
+  const g = svgEl("g", { class: `status-badge status-badge--${status}` });
+  g.append(
+    svgEl("rect", { class: "status-badge__box", x: left, y: cy - size.height / 2, width: w, height: size.height, rx: size.height / 2 }),
+    textEl("status-badge__text", text, left + w / 2, cy, STATUS_BADGE_PX, "middle"),
+  );
+  return g;
+}
+
+/**
+ * Replaces the change marks on a scene drawn by {@link renderScene} (FR-CMP-10): removes every
+ * status class and badge, then, when `diff` is given (aligned with the drawn diagram's arrays by
+ * `data-index`), adds `node--added|changed|kept`, `edge--added|changed` and
+ * `boundary--added|changed|renamed`, with a `g.status-badge` at a node's top-right corner and
+ * after a boundary's label. Geometry and the viewport are left as they are.
+ */
+export function applyMarks(content: SVGGElement, diff: DiagramDiff | undefined, measure: MeasureText): void {
+  for (const badge of content.querySelectorAll(".status-badge")) badge.remove();
+  for (const [prefix, statuses] of Object.entries(MARKED)) {
+    for (const el of content.querySelectorAll(`.${prefix}`)) el.classList.remove(...statuses.map((status) => `${prefix}--${status}`));
+  }
+  if (!diff) return;
+  const statusOf = (el: Element, list: DiagramDiff["components"], prefix: keyof typeof MARKED): ElementStatus | undefined => {
+    const status = list[numAttr(el, "data-index")]?.status;
+    if (status === undefined || !MARKED[prefix].includes(status)) return undefined;
+    el.classList.add(`${prefix}--${status}`);
+    return status;
+  };
+  for (const node of content.querySelectorAll(".node[data-index]")) {
+    const status = statusOf(node, diff.components, "node");
+    const box = rectOf(node.querySelector(".node__box"));
+    if (status && box) node.append(statusBadge(status, box.x + box.w - STATUS_BADGE_INSET, box.y, measure, "end"));
+  }
+  for (const edge of content.querySelectorAll(".edge[data-index]")) statusOf(edge, diff.connections, "edge");
+  for (const boundary of content.querySelectorAll(".boundary[data-index]")) {
+    const status = statusOf(boundary, diff.boundaries, "boundary");
+    const box = rectOf(boundary.querySelector(".boundary__box"));
+    if (!status || !box) continue;
+    const label = boundary.querySelector(".boundary__label")?.textContent ?? "";
+    const labelW = label ? measure(label, BOUNDARY_LABEL_PX, true).width + STATUS_BADGE_LABEL_GAP : 0;
+    boundary.append(statusBadge(status, box.x + BOUNDARY_LABEL_DX + labelW, box.y + BOUNDARY_LABEL_DY, measure, "start"));
+  }
+}
+
+/**
+ * The drawn box of an element of the diagram (FR-CMP-11), in diagram coordinates: a node's box,
+ * the union of a connection's endpoint boxes, or a boundary's rectangle. `index` is into the
+ * diagram's array of that kind; `undefined` when the element is not drawn.
+ */
+export function elementBox(content: SVGGElement, kind: ElementKind, index: number): Rect | undefined {
+  switch (kind) {
+    case "component":
+      return rectOf(content.querySelector(`.node[data-index="${index}"] .node__box`));
+    case "boundary":
+      return rectOf(content.querySelector(`.boundary[data-index="${index}"] .boundary__box`));
+    case "connection": {
+      const edge = content.querySelector(`.edge[data-index="${index}"]`);
+      if (!edge) return undefined;
+      const ends = [edge.getAttribute("data-from"), edge.getAttribute("data-to")];
+      const boxes = [...content.querySelectorAll(".node[data-id]")]
+        .filter((node) => ends.includes(node.getAttribute("data-id")))
+        .flatMap((node) => rectOf(node.querySelector(".node__box")) ?? []);
+      if (boxes.length === 0) return undefined;
+      const x = Math.min(...boxes.map((r) => r.x));
+      const y = Math.min(...boxes.map((r) => r.y));
+      return { x, y, w: Math.max(...boxes.map((r) => r.x + r.w)) - x, h: Math.max(...boxes.map((r) => r.y + r.h)) - y };
+    }
+  }
 }

@@ -1,7 +1,11 @@
-// Node tooltip (FR-VIEW-07): shown after hovering a node for 300 ms, kept while the pointer is over
-// the node or the tooltip, hidden 200 ms after leaving both. Source entries post `openSource`.
+// Node tooltip (FR-VIEW-07, FR-CMP-12): shown after hovering a node for 300 ms, kept while the
+// pointer is over the node or the tooltip, hidden 200 ms after leaving both. Source entries post
+// `openSource`; with change marks on, a status line and the component's changed files (A/M/R
+// post `openFile`).
+import type { ElementDiff } from "../src/model/diagramDiff";
 import type { ViewDiagram } from "../src/model/tolerant";
 import type { WebviewMessage } from "../src/model/messages";
+import type { FileChange } from "../src/model/runChanges";
 import type { SourceRef } from "../src/model/types";
 
 export const SHOW_DELAY_MS = 300;
@@ -16,6 +20,19 @@ export function formatSource(source: SourceRef): string {
   return `${source.path}:${source.line}\u2013${source.end_line}`;
 }
 
+/** `<status> <path>`, renames as `R <oldPath> → <path>` (FR-CMP-11, FR-CMP-12). */
+export function formatFileChange(file: FileChange): string {
+  return file.status === "R" && file.oldPath !== undefined ? `R ${file.oldPath} \u2192 ${file.path}` : `${file.status} ${file.path}`;
+}
+
+/** What the tooltip shows about changes while the marks are on (FR-CMP-12). */
+export interface TooltipChanges {
+  /** Aligned with the diagram's components. */
+  statuses: readonly ElementDiff[];
+  /** Changed files per component ID from `changes.json`; `undefined` when not available. */
+  files: ReadonlyMap<string, readonly FileChange[]> | undefined;
+}
+
 function div(className: string, text: string): HTMLDivElement {
   const el = document.createElement("div");
   el.className = className;
@@ -26,12 +43,15 @@ function div(className: string, text: string): HTMLDivElement {
 /**
  * Hover tooltip for the `.node[data-index]` elements under `canvas`, drawn into `element`
  * (an empty, initially `hidden` HTML element). Content:
- * `div.tooltip__label`, optional `div.tooltip__sublabel`, `div.tooltip__type`, and when the
- * component has sources `ul.tooltip__sources` > `li` > `button.tooltip__source[data-index]` >
- * `span.tooltip__path` + optional `span.tooltip__source-label`.
+ * `div.tooltip__label`, optional `div.tooltip__sublabel`, `div.tooltip__type`, with changes set
+ * an optional `div.tooltip__status.tooltip__status--<status>`, when the component has sources
+ * `ul.tooltip__sources` > `li` > `button.tooltip__source[data-index]` > `span.tooltip__path` +
+ * optional `span.tooltip__source-label`, and with changed files `ul.tooltip__files` > `li` >
+ * `button.tooltip__file[data-path]` (A/M/R) or `span.tooltip__file` (D).
  */
 export class TooltipController {
   private diagram: ViewDiagram | undefined;
+  private changes: TooltipChanges | undefined;
   /** The node element under the pointer. */
   private hovered: Element | undefined;
   private overTooltip = false;
@@ -62,6 +82,12 @@ export class TooltipController {
   setDiagram(diagram: ViewDiagram | undefined): void {
     this.diagram = diagram;
     this.hovered = undefined;
+    this.hide();
+  }
+
+  /** Sets the change lines to show, or `undefined` for none (marks off), and hides the tooltip. */
+  setChanges(changes: TooltipChanges | undefined): void {
+    this.changes = changes;
     this.hide();
   }
 
@@ -126,6 +152,11 @@ export class TooltipController {
     const children: HTMLElement[] = [div("tooltip__label", component.label)];
     if (component.sublabel) children.push(div("tooltip__sublabel", component.sublabel));
     children.push(div("tooltip__type", component.type));
+    const diff = this.changes?.statuses[index];
+    if (diff && (diff.status === "added" || diff.status === "changed" || diff.status === "kept")) {
+      const text = diff.status === "added" ? "New" : diff.status === "kept" ? "Kept" : `Changed: ${diff.fields.map((f) => f.field).join(", ")}`;
+      children.push(div(`tooltip__status tooltip__status--${diff.status}`, text));
+    }
     if (component.sources.length > 0) {
       const list = document.createElement("ul");
       list.className = "tooltip__sources";
@@ -150,6 +181,24 @@ export class TooltipController {
       });
       children.push(list);
     }
+    const files = this.changes?.files?.get(component.id) ?? [];
+    if (files.length > 0) {
+      const list = document.createElement("ul");
+      list.className = "tooltip__files";
+      for (const file of files) {
+        const entry = document.createElement(file.status === "D" ? "span" : "button");
+        entry.className = "tooltip__file";
+        if (entry instanceof HTMLButtonElement) {
+          entry.type = "button";
+          entry.setAttribute("data-path", file.path);
+        }
+        entry.textContent = formatFileChange(file);
+        const item = document.createElement("li");
+        item.append(entry);
+        list.append(item);
+      }
+      children.push(list);
+    }
     this.element.replaceChildren(...children);
     this.element.setAttribute("data-id", component.id);
     this.element.hidden = false;
@@ -168,7 +217,13 @@ export class TooltipController {
   }
 
   private onClick(event: Event): void {
-    const button = event.target instanceof Element ? event.target.closest(".tooltip__source[data-index]") : null;
+    const target = event.target instanceof Element ? event.target : null;
+    const file = target?.closest("button.tooltip__file[data-path]");
+    if (file) {
+      this.post({ type: "openFile", path: file.getAttribute("data-path")! });
+      return;
+    }
+    const button = target?.closest(".tooltip__source[data-index]");
     const componentId = this.element.getAttribute("data-id");
     if (!button || componentId === null) return;
     this.post({ type: "openSource", componentId, index: Number(button.getAttribute("data-index")) });

@@ -14,12 +14,12 @@ flowchart LR
     val["scripts/validate.mjs"]
   end
   subgraph ext["Extension host: src/extension/"]
-    host["install, generate, open, panel,<br/>navigate, watcher"]
+    host["install, generate, open, panel,<br/>baseline, navigate, watcher"]
   end
-  web["Webview: webview/<br/>render, viewport, tooltip"]
+  web["Webview: webview/<br/>render, viewport, tooltip, changes"]
   model["src/model/"]
   layout["src/layout/<br/>ViewDiagram → Scene (elkjs)"]
-  disk[(".archify/&lt;run&gt;/<br/>lineage.json, change.md, mapping.md,<br/>draft.json → candidate.json")]
+  disk[(".archify/&lt;run&gt;/<br/>lineage.json, change.md, mapping.md, changes.json,<br/>draft.json → candidate.json")]
 
   agent -- "runs" --> rf
   agent -- "runs" --> cm
@@ -58,16 +58,19 @@ Pure TypeScript shared by the scripts, the extension host and the webview. No `v
 | `tolerant.ts` | `readDiagram(value)` / `parseDiagram(text)` → `ViewDiagram` (FR-VIEW-03): skips components without a string id and duplicates, label falls back to id, unknown type → `external`, drops unresolved connections and boundary members, skips emptied boundaries and sources without a string path; reports skips as `<pointer>: <reason>`. | none (browser-safe) |
 | `discovery.ts` | `listCandidates(root)`: `.archify/*/candidate.json` inside the root, newest first (`compareCandidates`, FR-VIEW-02); `repoRootFor(file, folder)`. | `node:fs`, `node:path` |
 | `changeMap.ts` | `decideMode(facts)` (FR-UPD-02 rows), `diagramComponents`, `splitDiff`/`parseNameStatusZ`/`unquotePath`, `collectChanges` (untracked as added, previously dirty as modified/deleted, deny-listed and binary files name-only, repo-root `.archify/` left out), `mapChanges`, `renderChange` (`change.md`) and `renderMapping` (`mapping.md`) (FR-UPD-03, [ADR 0030](adr/0030-change-map-details-not-fixed-by-the-spec.md)). | none (browser-safe; git output and file reads injected) |
-| `lineage.ts` | `readLineage(runDir)` (tolerant: malformed → `null`) and `writeLineage` for `<run>/lineage.json` (FR-UPD-04). | `node:fs`, `node:path` |
+| `runChanges.ts` | `RunChanges` (`changes.json`: touched components with their changed files, uncited files, statuses A/M/D/R), `buildRunChanges(map, base, head)` from a `ChangeMap`, tolerant `parseRunChanges` (FR-CMP-02). | none (browser-safe) |
+| `diagramDiff.ts` | `diffDiagrams(baseline, current)`: by-ID diff of two `ViewDiagram`s (component `id`; connection `id` or `~from→to`; boundary label, equal-member leftovers paired as renamed) with per-element status and changed fields, removed baseline elements and counts; `markKept(diff, current, touched)` (FR-CMP-03, [ADR 0032](adr/0032-change-view-details-not-fixed-by-the-spec.md)). | none (browser-safe) |
+| `comparison.ts` | `compareRuns(current, baseline, lineageOf, changesParsed)`: warnings (different focus, unrelated, different repository, outside update history, reversed), `approximate`, `keptAvailable`/`keptNote`, header commits; `pickerTags` (FR-CMP-04). All facts injected. | none (browser-safe) |
+| `lineage.ts` | `readLineage(runDir)` (tolerant: malformed → `null`; `baseCommit`/`headCommit` default to `null`) and `writeLineage` for `<run>/lineage.json` (FR-UPD-04, FR-CMP-01); `readRunChanges`/`writeRunChanges` for `<run>/changes.json` (FR-CMP-02). | `node:fs`, `node:path` |
 | `matchIds.ts` | `matchIds(previous, draft, 0.3)`: one-to-one Jaccard matching of cited file sets, previous IDs for matched components and for connections whose mapped endpoints equal a previous connection's, `<id>-n<k>` for colliding new elements (FR-UPD-09). | none (browser-safe) |
-| `messages.ts` | `HostMessage` / `WebviewMessage` types (protocol below). | none |
+| `messages.ts` | `HostMessage` / `WebviewMessage` / `Compare` types (protocol below). | none |
 
 ### `src/agent/`
 
 CLI entry points bundled by `esbuild.mjs` into `dist/skills/sustain-architecture/scripts/*.mjs` (ESM, platform node, target node18, Ajv and schemas inlined; [ADR 0007](adr/0007-validator-as-dependency-free-node-bundles.md)).
 
 * `repo-facts.ts` → `repo-facts.mjs [--focus <text>]`: creates the run folder, prints `{root, runFolder, draft, git}` ([ADR 0018](adr/0018-repo-facts-creates-the-run-folder.md)).
-* `change-map.ts` → `change-map.mjs --run-folder <runFolder> [--regenerate]`: finds the previous candidate of the same slug, decides the mode (`decideMode`, then the 2 MiB `change.md` limit), writes `lineage.json` and in update mode `change.md`/`mapping.md`, prints `{mode, reason, previous, baseRevision, head, changeFile, mappingFile, touchedComponents, untouchedComponents, uncitedFiles}` ([ADR 0029](adr/0029-update-the-previous-diagram-incrementally.md), [ADR 0030](adr/0030-change-map-details-not-fixed-by-the-spec.md)).
+* `change-map.ts` → `change-map.mjs --run-folder <runFolder> [--regenerate]`: finds the previous candidate of the same slug, decides the mode (`decideMode`, then the 2 MiB `change.md` limit), writes `lineage.json` (with the subject and date of the base and head commits from `commitInfo`) and in update mode `change.md`/`mapping.md`/`changes.json`, prints `{mode, reason, previous, baseRevision, head, changeFile, mappingFile, touchedComponents, untouchedComponents, uncitedFiles}` ([ADR 0029](adr/0029-update-the-previous-diagram-incrementally.md), [ADR 0030](adr/0030-change-map-details-not-fixed-by-the-spec.md)).
 * `match-ids.ts` → `match-ids.mjs <draft> --previous <candidate>`: rewrites a regenerated draft in place with `matchIds`, prints `{componentMap, connectionMap, renamed}`.
 * `validate.ts` → `validate.mjs <draft>`: locate draft → parse → git facts → `checkSubmission` → publish or report ([ADR 0017](adr/0017-validator-output-contract-and-exit-codes.md), [ADR 0019](adr/0019-validator-deviations-from-the-prototype-gate.md)).
 
@@ -84,19 +87,20 @@ The static skill, copied as-is to `dist/skills/sustain-architecture/` next to th
 
 | File | Responsibility |
 |---|---|
-| `extension.ts` | `activate()` (on `onStartupFinished` and on the four contributed commands) starts the `CandidateWatcher`, registers the commands and returns the e2e test hook `{panelState(), postFromWebview(msg)}` (FR-TEST-01, [ADR 0026](adr/0026-activate-test-hook-and-happy-dom-tests.md)). |
+| `extension.ts` | `activate()` (on `onStartupFinished` and on the four contributed commands) starts the `CandidateWatcher`, registers the commands and returns the e2e test hook `{panelState(), postFromWebview(msg)}`, `panelState()` being `{file, open, baseline}` (FR-TEST-01, [ADR 0026](adr/0026-activate-test-hook-and-happy-dom-tests.md)). |
 | `folders.ts` | `pickRepoRoot()`: the only folder, a QuickPick of folders, or "Open a folder first." (FR-WS-01). |
 | `skillFiles.ts` | No `vscode`: target paths, `skillInstalled`, `writeSkill` (remove both targets, copy to `.agents`, relative `dir`/`junction` link from `.claude`, copy on link failure) ([ADR 0006](adr/0006-install-skill-into-agents-with-claude-symlink.md)). |
 | `install.ts` | `installSkill()`: modal overwrite question, `writeSkill`, success notification (FR-INS-01). |
 | `agents.ts` | No `vscode`: the two agents, `agentPrompt(agent, focus, regenerate)` (`/sustain-architecture [--regenerate] …`, `$sustain-architecture [--regenerate] …`), `findOnPath` (PATH, PATHEXT). |
 | `generate.ts` | FR-GEN-01 flow: folder → install offer → focus → "Update the latest diagram" / "Regenerate from scratch" when `listCandidates` is not empty (FR-UPD-08) → agent → terminal with `shellPath`/`shellArgs` or the "not found" warning with "Copy prompt" ([ADR 0020](adr/0020-launch-agent-terminal-with-shellpath-and-shellargs.md), [ADR 0021](adr/0021-command-ui-details-not-fixed-by-the-spec.md)). |
 | `open.ts` | `Open Architecture` (newest candidate, or "No architecture diagram yet." with "Generate") and `Open Architecture File…` (candidates + "Browse…") (FR-VIEW-01). |
-| `panel.ts` | `ArchitecturePanel`: one `WebviewPanel` (`sustain.architecture`) per window, `ViewColumn.Active` without visible editors else `Beside`, `retainContextWhenHidden: false`; reads the file, tolerant-parses it, sets the title, posts `load`/`empty`; re-sends on `ready` and when visible (FR-VIEW-04, [ADR 0011](adr/0011-webview-panel-viewer-with-code-beside.md), [ADR 0025](adr/0025-viewer-details-not-fixed-by-the-spec.md)). |
+| `panel.ts` | `ArchitecturePanel`: one `WebviewPanel` (`sustain.architecture`) per window, `ViewColumn.Active` without visible editors else `Beside`, `retainContextWhenHidden: false`; reads the file, tolerant-parses it, sets the title, posts `load` (with `compare`) / `empty`; re-sends on `ready` and when visible (FR-VIEW-04, [ADR 0011](adr/0011-webview-panel-viewer-with-code-beside.md), [ADR 0025](adr/0025-viewer-details-not-fixed-by-the-spec.md)). Keeps the baseline (default or chosen, FR-CMP-05) and handles `compareWith` (QuickPick "Compare with"), `openBaseline`, `swap` and `openFile` (only paths from the `changes` it last sent) (FR-CMP-06/07, [ADR 0032](adr/0032-change-view-details-not-fixed-by-the-spec.md)). |
+| `baseline.ts` | No `vscode`: `defaultBaseline(root, file)` (the lineage's `previousRun` candidate), `buildCompare(root, file, baseline)` (reads both runs' facts, `compareRuns`, `changes.json` when it applies), `pickerItems` (FR-CMP-05/06, [ADR 0031](adr/0031-compare-the-open-diagram-with-a-chosen-baseline.md)). |
 | `html.ts` | No `vscode`: `webviewCsp`, `webviewHtml` (CSP meta, stylesheet link, one nonce'd script) (NFR-SEC-01). |
 | `sourceTarget.ts` | No `vscode`: `resolveSource(root, source)` → open with lines, open with a stale-line warning, or "Invalid source path" / "Stale reference … no longer exists" (FR-NAV-03). |
-| `navigate.ts` | `openSource`: "no source references" status message, error or open in the other column (`panel === 1 ? 2 : 1`), select whole lines, reveal, 2 s `editor.rangeHighlightBackground` highlight (FR-NAV-01/02, [ADR 0027](adr/0027-navigation-and-watching-details.md)). |
-| `watchLogic.ts` | No `vscode`: `ChangeBatch` (300 ms debounce, per-file merge) and `watchAction` (reload / deleted / switch / notify). |
-| `watcher.ts` | `CandidateWatcher`: one `FileSystemWatcher` per workspace folder on `.archify/*/candidate.json`, applying `watchAction` to the panel or a "New architecture diagram" notification (FR-WAT-01). |
+| `navigate.ts` | `openSource`: "no source references" status message, then `openSourceRef(root, source, column)`: error or open in the other column (`panel === 1 ? 2 : 1`), select whole lines, reveal, 2 s `editor.rangeHighlightBackground` highlight (FR-NAV-01/02, [ADR 0027](adr/0027-navigation-and-watching-details.md)). `openFile` (FR-CMP-07) reuses `openSourceRef` with a bare `{path}`. |
+| `watchLogic.ts` | No `vscode`: `ChangeBatch` (300 ms debounce, per-file merge) and `watchAction` (reload / deleted / baselineChanged / baselineDeleted / switch / notify). |
+| `watcher.ts` | `CandidateWatcher`: one `FileSystemWatcher` per workspace folder on `.archify/*/candidate.json`, applying `watchAction` to the panel, its baseline (FR-CMP-08) or a "New architecture diagram" notification (FR-WAT-01). |
 
 ### `src/layout/`
 
@@ -118,18 +122,19 @@ Bundled into `dist/webview.js` (IIFE, browser, minified, elkjs included) and `di
 
 | File | Responsibility |
 |---|---|
-| `main.ts` | Builds the DOM (`div.app` > `svg.canvas` > `g.viewport`, toolbar, empty state, tooltip), posts `ready`, handles `load` (tolerant parse → canvas text measurement in `--vscode-font-family` → `layoutDiagram` at the panel size → render → fit unless the same file is reloaded) and `empty`. |
-| `render.ts` | `renderScene`: boundaries, edges with arrowheads, edge labels with halo, nodes with label/sublabel/tag (FR-VIEW-05, [ADR 0024](adr/0024-theme-colour-mapping-and-svg-styling.md)). |
-| `viewport.ts` | Pure math (`fitView`, `zoomAt`, `panBy`, 10–400 % clamp) and `ViewportController` (drag, wheel, pinch, toolbar Fit/−/+/100 %, keys `+ = - 0 f`) (FR-VIEW-06). |
-| `tooltip.ts` | `TooltipController`: 300 ms show, 200 ms hide, sources as `path:line–end_line` buttons posting `openSource` (FR-VIEW-07). |
+| `main.ts` | Builds the DOM (`div.app` > `div.header` and `div.stage` > `svg.canvas` > `g.viewport`, toolbar, `aside.changes`, empty state; tooltip), posts `ready`, handles `load` (tolerant parse → `compareDiagrams` when `compare` is set → canvas text measurement in `--vscode-font-family` → `layoutDiagram` at the canvas size → render → marks → fit unless the same file is reloaded, keeping clear of the expanded Changes panel) and `empty`; persists the Changes toggle and collapse state with `getState`/`setState` (FR-CMP-12). |
+| `changes.ts` | `compareDiagrams` (tolerant parse of the baseline, `diffDiagrams`, `markKept`), `ChangesView`: the header (commits, relative dates, uncommitted files, counts, "approximate", Compare with…, Changes toggle, warnings with Swap) and the Changes panel (Added, Removed, Changed, Code changed kept, Not in any component, note, Open baseline; rows fit the viewport or post `openFile`) (FR-CMP-09/11, [ADR 0032](adr/0032-change-view-details-not-fixed-by-the-spec.md)). |
+| `render.ts` | `renderScene`: boundaries, edges with arrowheads, edge labels with halo, nodes with label/sublabel/tag (FR-VIEW-05, [ADR 0024](adr/0024-theme-colour-mapping-and-svg-styling.md)); `applyMarks` adds or removes status classes and `NEW`/`CHANGED`/`RENAMED`/`KEPT` badges without re-running layout, `elementBox` for fit-to-element (FR-CMP-10). |
+| `viewport.ts` | Pure math (`fitView`, `zoomAt`, `panBy`, 10–400 % clamp) and `ViewportController` (drag, wheel, pinch, toolbar Fit/−/+/100 %, keys `+ = - 0 f`, `fitRect` with 40 px padding, `rightInset` for the panel overlay) (FR-VIEW-06, FR-CMP-11). |
+| `tooltip.ts` | `TooltipController`: 300 ms show, 200 ms hide, sources as `path:line–end_line` buttons posting `openSource` (FR-VIEW-07); with marks on, a status line and the component's changed files posting `openFile` (FR-CMP-12). |
 | `click.ts` | `NodeClicks`: press and release on the same node within 4 px posts `openSource` with index 0 (FR-NAV-01). |
-| `styles.css` | Theme-variable styling only. |
+| `styles.css` | Theme-variable styling only; change statuses use the `--vscode-gitDecoration-*` colours. |
 
 ### Dependency rules
 
 Enforced by `test/unit/boundaries.test.ts` (NFR-QUAL-03):
 
-* `src/model/` imports no `vscode` and nothing outside `src/model/` (plus `ajv` in `schema.ts`). Only `citations.ts`, `git.ts`, `runFolder.ts`, `discovery.ts`, `lineage.ts` may import `node:fs`, `node:path`, `node:child_process`; `types.ts`, `tolerant.ts`, `checks.ts`, `changeMap.ts`, `matchIds.ts` import no Node built-in.
+* `src/model/` imports no `vscode` and nothing outside `src/model/` (plus `ajv` in `schema.ts`). Only `citations.ts`, `git.ts`, `runFolder.ts`, `discovery.ts`, `lineage.ts` may import `node:fs`, `node:path`, `node:child_process`; `types.ts`, `tolerant.ts`, `checks.ts`, `changeMap.ts`, `matchIds.ts`, `runChanges.ts`, `diagramDiff.ts`, `comparison.ts` import no Node built-in (the last three run in the webview or take injected facts).
 * `src/layout/` is browser-safe and may import only `src/model/` and elkjs.
 * `src/agent/`, `src/extension/` and `webview/` sit on top of `model` and `layout`. No module makes network requests (`test/unit/noNetwork.test.ts`, NFR-SEC-02).
 
@@ -226,11 +231,35 @@ sequenceDiagram
     H-->>U: error "Can't show `<file>`: <reason>"
     H->>W: {type: empty, message}
   else diagram
-    H->>W: create panel (CSP html) and {type: load, doc, file}
+    H->>W: create panel (CSP html) and {type: load, doc, file, compare}
   end
   W->>H: {type: ready}
-  H->>W: {type: load, doc, file} (again)
+  H->>W: {type: load, doc, file, compare} (again)
   W->>W: readDiagram → measure (canvas) → layoutDiagram (ELK RIGHT and DOWN) → renderScene → fit
+```
+
+### Open → resolve baseline → load → diff → render (change view)
+
+Every `load` carries the comparison the host resolved ([ADR 0031](adr/0031-compare-the-open-diagram-with-a-chosen-baseline.md), [ADR 0032](adr/0032-change-view-details-not-fixed-by-the-spec.md)):
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant H as Extension host (panel, baseline)
+  participant FS as <repo>/.archify/
+  participant W as Webview (main, changes, render)
+  U->>H: open a diagram (command, watcher switch, Open baseline, Swap)
+  H->>FS: <run>/lineage.json → previousRun candidate (default baseline)
+  H->>FS: both candidates, both runs' lineage, walk previousRun chain, <run>/changes.json
+  H->>H: compareRuns → warnings, approximate, keptAvailable/keptNote, commits
+  H->>W: {type: load, doc, file, compare: {baselineDoc, baselineFile, context, changes}}
+  W->>W: readDiagram(both) → diffDiagrams → markKept (changes) → layout the open diagram only
+  W->>W: renderScene → applyMarks → header + Changes panel
+  U->>W: Compare with…
+  W->>H: {type: compareWith}
+  H->>U: QuickPick: No comparison + other candidates with tags
+  U->>H: pick
+  H->>W: {type: load, …, compare'} (same file: viewport kept)
 ```
 
 ### Click → resolve → open / stale
@@ -262,22 +291,25 @@ sequenceDiagram
 
 ### Watching
 
-A `FileSystemWatcher` per workspace folder feeds a 300 ms debounce; each changed `candidate.json` then reloads the panel (its file changed), empties it ("This diagram was deleted."), switches it to a newer candidate of the same folder, or announces the new candidate with "Open" ([ADR 0027](adr/0027-navigation-and-watching-details.md)). The watcher and the viewer only look at `candidate.json` and the validator only at `draft.json`, so `lineage.json`, `change.md` and `mapping.md` never trigger anything.
+A `FileSystemWatcher` per workspace folder feeds a 300 ms debounce; each changed `candidate.json` then reloads the panel (its file changed), empties it ("This diagram was deleted."), re-sends the comparison (its baseline changed) or drops the baseline with "Baseline diagram was deleted; showing no comparison.", switches it to a newer candidate of the same folder (with that run's default baseline), or announces the new candidate with "Open" ([ADR 0027](adr/0027-navigation-and-watching-details.md), FR-CMP-08). The watcher only looks at `candidate.json` and the validator only at `draft.json`, so `lineage.json`, `changes.json`, `change.md` and `mapping.md` never trigger anything; they are written before the candidate is published.
 
 ### Webview message protocol
 
 | Direction | Message | Meaning |
 |---|---|---|
-| host → webview | `{type: "load", doc, file}` | Draw the parsed diagram JSON `doc` from absolute path `file`; same `file` as before keeps the viewport. |
+| host → webview | `{type: "load", doc, file, compare}` | Draw the parsed diagram JSON `doc` from absolute path `file`; same `file` as before keeps the viewport. `compare` is `null` or `{baselineDoc, baselineFile, context, changes}`: the baseline JSON, the comparison context (`ComparisonContext`) and the open run's `changes.json` when it applies. |
 | host → webview | `{type: "empty", message}` | Clear the drawing and show `message`. |
 | webview → host | `{type: "ready"}` | The page started; the host (re)sends the current state. |
 | webview → host | `{type: "openSource", componentId, index}` | Open `sources[index]` of that component (node click: index 0; tooltip entry: its index). |
+| webview → host | `{type: "compareWith"}` | Show the "Compare with" QuickPick. |
+| webview → host | `{type: "openBaseline"}` / `{type: "swap"}` | Open the baseline as the main diagram, with its own default baseline / with the previously open file as baseline. |
+| webview → host | `{type: "openFile", path}` | Open a changed file; only paths in the `changes` last sent are accepted. |
 
 ## On-disk layout
 
 | Path | Contents |
 |---|---|
-| `<repo>/.archify/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]/` | One run: `draft.json` while unvalidated or after a failed run; `candidate.json` once accepted ([ADR 0008](adr/0008-validator-publishes-draft-as-candidate.md), [ADR 0013](adr/0013-archify-json-v1-and-archify-folder-layout.md)); `lineage.json` (mode, reason, previous run, base and HEAD revisions, dirty paths, updates since the last regeneration) and, in update runs, `change.md` and `mapping.md` ([ADR 0029](adr/0029-update-the-previous-diagram-incrementally.md)). |
+| `<repo>/.archify/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]/` | One run: `draft.json` while unvalidated or after a failed run; `candidate.json` once accepted ([ADR 0008](adr/0008-validator-publishes-draft-as-candidate.md), [ADR 0013](adr/0013-archify-json-v1-and-archify-folder-layout.md)); `lineage.json` (mode, reason, previous run, base and HEAD revisions with commit subject and date, dirty paths, updates since the last regeneration) and, in update runs, `change.md`, `mapping.md` and `changes.json` ([ADR 0029](adr/0029-update-the-previous-diagram-incrementally.md), [ADR 0031](adr/0031-compare-the-open-diagram-with-a-chosen-baseline.md)). |
 | `<repo>/.agents/skills/sustain-architecture/` | Installed skill: real files copied from `dist/skills/sustain-architecture/` ([ADR 0006](adr/0006-install-skill-into-agents-with-claude-symlink.md)). |
 | `<repo>/.claude/skills/sustain-architecture` | Relative symlink `../../.agents/skills/sustain-architecture` (`junction` on Windows); a copy if the link cannot be created. |
 | `dist/extension.js` | Extension host bundle (CJS, `vscode` external). |
@@ -293,7 +325,7 @@ A `FileSystemWatcher` per workspace folder feeds a 300 ms debounce; each changed
 * **Deny-list:** `.git`, `.archify`, credential rc files, `.env*` (except examples), SSH key names and key/cert extensions can never be cited (`deny.ts`). The change map lists changed deny-listed and binary files by name only, never their content or blob hashes; the skill lets the agent read only the previous candidate, `mapping.md` and `change.md` under `.archify/`, and FR-VAL-05 still rejects any citation of them.
 * **Git:** fixed argv, no shell, no terminal prompts, stdin closed; HTTP(S) credentials are stripped from the origin before it is written anywhere (`git.ts`). The change-map reads take only a validated 40-hex base revision as an extra argument and never write to the repository.
 * **Agent launch:** the prompt is a single argv element of the resolved CLI, never parsed by a shell ([ADR 0020](adr/0020-launch-agent-terminal-with-shellpath-and-shellargs.md)). Writes by the agent still need approval in Claude Code ([ADR 0005](adr/0005-manual-invocation-and-claude-pre-approvals.md)).
-* **Webview CSP:** `default-src 'none'; script-src 'nonce-…'; style-src <cspSource>`; `localResourceRoots` is `dist/`; the webview receives the diagram JSON only, never file contents (`html.ts`, `panel.ts`, NFR-SEC-01).
+* **Webview CSP:** `default-src 'none'; script-src 'nonce-…'; style-src <cspSource>`; `localResourceRoots` is `dist/`; the webview receives the diagram JSON, the baseline diagram JSON and change metadata (paths, git statuses, commit subjects and dates) only, never file contents (`html.ts`, `panel.ts`, NFR-SEC-01). Repository text is inserted as text, never as HTML. `openFile` from the webview opens only paths the host itself sent, after the repo-root and stale checks of `sourceTarget.ts`.
 
 ## Decisions
 

@@ -2,6 +2,7 @@
 // `archalign-repo/src/git.rs`. Git runs with a fixed argv, never through a shell.
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
+import type { CommitInfo } from "./lineage";
 import type { Repository } from "./types";
 
 /** Most dirty paths reported; `dirtyCount` carries the total. */
@@ -44,6 +45,8 @@ export const GIT_READS = {
   ],
   /** Untracked, not ignored files, NUL-separated (FR-UPD-03). */
   untracked: ["--no-optional-locks", "ls-files", "-z", "--others", "--exclude-standard"],
+  /** `+ <rev> --`: subject and committer date, NUL-separated (FR-CMP-01). */
+  commitInfo: ["--no-optional-locks", "log", "-1", "--no-color", "--no-show-signature", "--format=%s%x00%cI"],
 } as const;
 
 /** stdout of a successful run; `null` when git cannot start (not on PATH) or exits non-zero. */
@@ -160,4 +163,16 @@ export function readChanges(root: string, base: string, program = "git"): Change
   const untracked = run(program, root, GIT_READS.untracked);
   if (nameStatus === null || diff === null || untracked === null) return null;
   return { nameStatus, diff, untracked };
+}
+
+/**
+ * Subject and committer date of `revision` (FR-CMP-01), or `null` when it is not a full commit
+ * name, git fails (unknown commit, no git) or the output is not `subject\0date\n`.
+ */
+export function commitInfo(root: string, revision: string, program = "git"): CommitInfo | null {
+  if (!isRevision(revision)) return null;
+  const output = run(program, root, [...GIT_READS.commitInfo, revision, "--"]);
+  const match = output === null ? null : /^([^\0\n]*)\0([^\0\n]+)\n?$/.exec(output);
+  if (!match) return null;
+  return { subject: match[1]!, committedAt: match[2]! };
 }

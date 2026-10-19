@@ -1,6 +1,8 @@
-// Opening the code behind a diagram node (FR-NAV-01..03, ADR 0011).
+// Opening the code behind a diagram node (FR-NAV-01..03, ADR 0011) and a changed file from the
+// Changes panel (FR-CMP-07).
 import * as vscode from "vscode";
 import type { ViewComponent } from "../model/tolerant";
+import type { SourceRef } from "../model/types";
 import { resolveSource } from "./sourceTarget";
 
 /** How long the opened lines stay highlighted. */
@@ -18,7 +20,14 @@ export async function openSource(root: string, component: ViewComponent, index: 
     return;
   }
   const source = component.sources[index];
-  if (!source) return;
+  if (source) await openSourceRef(root, source, panelColumn);
+}
+
+/**
+ * Opens `source` from `root` with the FR-NAV-02/03 rules, in the editor column that is not the
+ * panel's; a source without lines opens at the top without a selection.
+ */
+export async function openSourceRef(root: string, source: SourceRef, panelColumn: vscode.ViewColumn | undefined): Promise<void> {
   const target = resolveSource(root, source);
   if (target.kind === "error") {
     void vscode.window.showErrorMessage(target.message);

@@ -255,6 +255,8 @@ describe("FR-UPD-02 mode decision", () => {
     previousRun: null,
     baseRevision: null,
     revision: rev,
+    baseCommit: null,
+    headCommit: null,
     dirty: [],
     dirtyCount: 0,
     updatesSinceRegeneration: 1,
