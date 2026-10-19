@@ -1,7 +1,9 @@
 name: CI
 
+# A pull request's pushes run once, as the pull request. Pushes to main run for main itself.
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
