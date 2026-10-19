@@ -15,7 +15,7 @@ export function boundaryRelation(a: ReadonlySet<string>, b: ReadonlySet<string>)
   return "partialOverlap";
 }
 
-/** Duplicate IDs, unresolved references, components without sources, overlapping boundaries. */
+/** Duplicate and missing connection IDs, duplicate component IDs, unresolved references, components without sources, overlapping boundaries. */
 export function semanticChecks(doc: ArchifyDoc): Issue[] {
   const issues: Issue[] = [];
 
@@ -34,7 +34,9 @@ export function semanticChecks(doc: ArchifyDoc): Issue[] {
 
   const firstConnection = new Map<string, number>();
   (doc.connections ?? []).forEach((connection, i) => {
-    if (connection.id !== undefined) {
+    if (connection.id === undefined) {
+      issues.push({ code: "MissingId", pointer: `/connections/${i}/id`, message: "every connection needs a unique `id`" });
+    } else {
       const first = firstConnection.get(connection.id);
       if (first === undefined) firstConnection.set(connection.id, i);
       else {

@@ -1,6 +1,6 @@
 # Sustain VS Code extension: build specification
 
-- Status: Accepted, 2026-10-10 (from the design interview with the owner)
+- Status: Accepted, 2026-10-10 (from the design interview with the owner); M6 (§7.11) added 2026-10-19 by ADR 0029
 - Reference implementation: `reference/sustain-prototype/` (Rust "ArchAlign"). It is **read-only** reference material: nothing is imported from it, and the root `.gitignore` excludes it. Files needed from it are copied (vendored) into this repo as listed in §6.
 - Progress: `docs/progress.md` · Structure: `docs/architecture.md` · Decisions: `docs/adr/` (MADR 4.0). All three are created in M0 and maintained throughout (§9).
 
@@ -37,7 +37,6 @@ Diagrams use the Archify JSON v1 format (`schema_version: 1`, `diagram_type: "ar
 - Tree pane, built-in source viewer, citation badges, Problems list, upstream/downstream reach, node finder, history browser, Re-layout, cards, legend, guided views, icons, brand marks, exports, editing diagrams.
 - Validation of a diagram when the viewer opens it (only the agent-side validator validates).
 - Detecting lines that moved but are still in range (no content hashes in Archify v1).
-- A `sustain-architecture-refresh` skill. Re-run the skill instead.
 - Agents other than Claude Code and Codex; skill directories other than `.claude/skills` and `.agents/skills`.
 - VS Code for the Web, remote-only or virtual workspaces. Marketplace publishing (install from `.vsix`).
 - Editing `.gitignore` in user repositories.
@@ -53,6 +52,11 @@ Diagrams use the Archify JSON v1 format (`schema_version: 1`, `diagram_type: "ar
 | Candidate | `<run folder>/candidate.json`, a draft the validator accepted |
 | Source / citation | One entry of `components[].sources[]`: `{path, line?, end_line?, label?}` |
 | App-owned fields | Fields the validator sets or removes; the agent must not author them (FR-VAL-02) |
+| Previous candidate | The newest `candidate.json` (FR-VIEW-02 order) under `.archify/` whose run folder slug equals the current run's slug, excluding the current run folder (FR-UPD-02). |
+| Lineage | `<run folder>/lineage.json`, written by `change-map.mjs`: which run this one updates, the commit it was drawn at, and how many updates have happened since the last regeneration (FR-UPD-04). |
+| Update run | A run that patches the previous candidate from a deterministic change map (ADR 0029). |
+| Regeneration run | A run that draws from scratch, then re-attaches previous IDs with `match-ids.mjs` when a previous candidate exists. |
+| Touched file | A path the change map lists as added, modified, deleted or renamed (both paths of a rename), or a path that was uncommitted when the previous candidate was drawn. |
 
 ## 5. Decision record
 
@@ -62,7 +66,7 @@ These were settled with the owner. Changing any of them needs owner approval (§
 |---|---|
 | Agent runtime | External coding agent driven by a skill. No agent loop in the extension. |
 | Target agents | Claude Code (`.claude/skills/`), Codex (`.agents/skills/`) |
-| Skill set | One skill, `sustain-architecture`, with bundled `repo-facts.mjs` and `validate.mjs` |
+| Skill set | One skill, `sustain-architecture`, with bundled `repo-facts.mjs`, `change-map.mjs`, `match-ids.mjs` and `validate.mjs`; it updates the previous diagram of the same scope (ADR 0029) |
 | Invocation | Manual only: Claude `disable-model-invocation: true`; Codex `policy.allow_implicit_invocation: false` |
 | Claude pre-approvals | `allowed-tools: Read Grep Glob Bash(node .agents/skills/sustain-architecture/scripts/*)`; writes still prompt |
 | Install layout | Real files in `.agents/skills/sustain-architecture/`; `.claude/skills/sustain-architecture` is a relative symlink to it, copy on symlink failure |
@@ -86,9 +90,9 @@ docs/adr/README.md  docs/adr/template.md  docs/adr/NNNN-<kebab-title>.md
 src/model/          pure TS shared by extension, webview and scripts; no `vscode` import
   schemas/architecture.schema.json  schemas/common.schema.json   (vendored, byte-for-byte)
   types.ts  schema.ts  checks.ts  submission.ts  citations.ts  deny.ts
-  git.ts  runFolder.ts  tolerant.ts  discovery.ts
+  git.ts  runFolder.ts  tolerant.ts  discovery.ts  changeMap.ts  matchIds.ts  lineage.ts
 src/layout/         pure TS: Archify doc → Scene via elkjs
-src/agent/          CLI entry points: validate.ts, repo-facts.ts
+src/agent/          CLI entry points: validate.ts, repo-facts.ts, change-map.ts, match-ids.ts
 src/extension/      VS Code host: extension.ts, panel.ts, navigate.ts, install.ts, generate.ts, watcher.ts
 webview/            main.ts, render.ts, viewport.ts, tooltip.ts, styles.css
 skills/sustain-architecture/
@@ -113,7 +117,8 @@ dist/extension.js          extension host bundle (CJS, external: vscode)
 dist/webview.js            webview bundle (IIFE, includes elkjs)
 dist/webview.css
 dist/skills/sustain-architecture/   static skill files copied from skills/, plus
-  scripts/repo-facts.mjs   scripts/validate.mjs   (ESM, platform node, target node18, all deps inlined)
+  scripts/repo-facts.mjs   scripts/change-map.mjs   scripts/match-ids.mjs   scripts/validate.mjs
+                           (ESM, platform node, target node18, all deps inlined)
 ```
 
 `.vscodeignore` ships only `dist/**`, `package.json`, `README.md`, `THIRD_PARTY_NOTICES.md`, `LICENSE` if present.
@@ -126,7 +131,7 @@ dist/skills/sustain-architecture/   static skill files copied from skills/, plus
 
 **NFR-QUAL-02 Dependencies.** Runtime: `elkjs`, `ajv` (bundled, never `require`d at runtime from `node_modules`). Dev: `typescript`, `esbuild`, `vitest`, `happy-dom`, `@types/vscode`, `@types/node`, `@vscode/test-electron`, `mocha` (e2e runner only), `@vscode/vsce`. Exact versions pinned in `package.json`. A new runtime dependency needs an ADR (FR-DOC-03) before it is added; a new dev dependency needs a one-line justification in `docs/progress.md`. AC: `package.json` matches this list plus justified additions. `[manual]`
 
-**NFR-QUAL-03 Boundaries.** `src/model/` and `src/layout/` import neither `vscode` nor Node built-ins other than through injected interfaces where noted (`citations.ts`, `git.ts`, `runFolder.ts` and `discovery.ts` may use `node:fs`/`node:path`/`node:child_process`; `layout` and `tolerant` must be browser-safe). AC: a unit test scans imports of `src/layout/**` and `src/model/{types,tolerant,checks}.ts` and fails on `vscode` or `node:` imports. `[unit]`
+**NFR-QUAL-03 Boundaries.** `src/model/` and `src/layout/` import neither `vscode` nor Node built-ins other than through injected interfaces where noted (`citations.ts`, `git.ts`, `runFolder.ts`, `discovery.ts` and `lineage.ts` may use `node:fs`/`node:path`/`node:child_process`; `layout`, `tolerant`, `changeMap` and `matchIds` must be browser-safe). AC: a unit test scans imports of `src/layout/**` and `src/model/{types,tolerant,checks,changeMap,matchIds}.ts` and fails on `vscode` or `node:` imports. `[unit]`
 
 **NFR-SEC-01 Webview.** Strict CSP: `default-src 'none'`; scripts only via nonce from `dist/webview.js`; styles from `dist/webview.css` and `${webview.cspSource}`; no `unsafe-eval`, no remote resources. `localResourceRoots` is `dist/` only. The webview never receives file contents, only the diagram JSON. AC: CSP string asserted in a unit test of the HTML builder; elkjs works under it (`[manual]` check in M3). `[unit]`
 
@@ -170,7 +175,7 @@ Removals are not rejections. AC: a draft with every removable field set is accep
 
 **FR-VAL-04 Step 3: semantic checks** (all errors), ported from `checks.rs`:
 
-- Duplicate component `id` → `/components/i/id`; duplicate connection `id` → `/connections/i/id`.
+- Duplicate component `id` → `/components/i/id`; duplicate connection `id` → `/connections/i/id`; connection without `id` → `/connections/i/id` (`MissingId: every connection needs a unique \`id\``, FR-UPD-07).
 - Connection `from`/`to` naming an unknown component → `/connections/i/from|to`; boundary `wraps` naming an unknown component → `/boundaries/i/wraps/j`.
 - Component without sources → `/components/i` (`MissingSources`).
 - Two boundaries with partially overlapping or equal member sets → `/boundaries/j`.
@@ -230,7 +235,7 @@ policy:
 
 AC: unit test parses both files and asserts these fields. Codex accepting the Claude-only frontmatter key is verified in FR-LIVE-02. `[unit]`
 
-**FR-SKL-02 Body.** Imperative steps, every script referenced by repo-root path:
+**FR-SKL-02 Body.** Replaced by FR-UPD-05 (M6, ADR 0029); kept here as the original seven steps, which FR-UPD-05 refers to. Imperative steps, every script referenced by repo-root path:
 
 1. Focus: Claude Code substitutes `$ARGUMENTS`; in Codex the focus is the text after the skill mention. Empty means a whole-system overview.
 2. From the repo root run `node .agents/skills/sustain-architecture/scripts/repo-facts.mjs --focus "<focus>"` (omit `--focus` when empty). Use `runFolder`, `draft` and `git` from its output.
@@ -242,7 +247,7 @@ AC: unit test parses both files and asserts these fields. Codex accepting the Cl
 
 AC: `[live]` runs (FR-LIVE-*) follow these steps without extra user instruction.
 
-**FR-SKL-03 Format reference.** `references/archify-format.md` is adapted from the prototype's `crates/archalign-agent/prompts/system.md`: keep "How you work" ordering (map the slice, trace ownership, record evidence, name uncertainty, stop), Composition and Schema rules; remove every mention of the prototype's tools (`list_dir`, `read_file`, `grep`, `repo_meta`, `submit_diagram`) and of "the app"; describe validation as the `validate.mjs` steps of FR-VAL-02…05; keep the Archify attribution line. AC: unit test asserts none of those five tool names appear. `[unit]`
+**FR-SKL-03 Format reference.** `references/archify-format.md` is adapted from the prototype's `crates/archalign-agent/prompts/system.md`: keep "How you work" ordering (map the slice, trace ownership, record evidence, name uncertainty, stop), Composition and Schema rules; remove every mention of the prototype's tools (`list_dir`, `read_file`, `grep`, `repo_meta`, `submit_diagram`) and of "the app"; describe validation as the `validate.mjs` steps of FR-VAL-02…05; keep the Archify attribution line. Connection `id` is required (FR-UPD-06). AC: unit test asserts none of those five tool names appear. `[unit]`
 
 ### 7.6 Install and generate commands
 
@@ -262,10 +267,11 @@ AC: `[e2e]` fresh install creates both, the `.claude` entry is a symlink; overwr
 1. Folder choice (FR-WS-01).
 2. If `<root>/.agents/skills/sustain-architecture/SKILL.md` is missing, ask "Install the sustain-architecture skill first?" (Install / Cancel) and run FR-INS-01.
 3. InputBox "Focus (optional)".
-4. QuickPick: Claude Code, Codex.
-5. Prompt string: Claude `/sustain-architecture <focus>`, Codex `$sustain-architecture <focus>` (no trailing space when focus is empty).
-6. Look up `claude` / `codex` on the extension host's `PATH` (plus `PATHEXT` on Windows). Found → `window.createTerminal({ name: "Sustain: <Agent>", cwd: root, shellPath: <resolved binary>, shellArgs: [prompt] })` and show it. Passing the prompt as an argument, not via `sendText`, avoids shell quoting and `$` expansion.
-7. Not found → warning "`<cli>` was not found on PATH." with a "Copy prompt" button that copies the prompt string.
+4. If the folder already has candidates, the update/regenerate QuickPick of FR-UPD-08.
+5. QuickPick: Claude Code, Codex.
+6. Prompt string: Claude `/sustain-architecture <focus>`, Codex `$sustain-architecture <focus>` (no trailing space when focus is empty); with "Regenerate from scratch" the focus is prefixed with `--regenerate` (FR-UPD-08).
+7. Look up `claude` / `codex` on the extension host's `PATH` (plus `PATHEXT` on Windows). Found → `window.createTerminal({ name: "Sustain: <Agent>", cwd: root, shellPath: <resolved binary>, shellArgs: [prompt] })` and show it. Passing the prompt as an argument, not via `sendText`, avoids shell quoting and `$` expansion.
+8. Not found → warning "`<cli>` was not found on PATH." with a "Copy prompt" button that copies the prompt string.
 
 AC: `[e2e]` with a stub `claude` script on a temp PATH, the created terminal's `creationOptions` carry the expected `shellPath`, `cwd` and `shellArgs`; missing CLI shows the warning; prompt formats unit-tested. `[e2e]` `[unit]`
 
@@ -355,9 +361,9 @@ AC: `[e2e]` create and modify a candidate in a temp workspace and assert panel l
 
 **FR-PKG-01 Package.** `npm run package` produces `sustain-<version>.vsix` with `@vscode/vsce`; installing it into a clean VS Code profile runs all four commands. `[manual]`
 
-**FR-DOC-01 README.** Install from `.vsix`, the four commands, the skill workflow for both agents, Node ≥ 18 requirement, what's in `.archify/`. `[manual]`
+**FR-DOC-01 README.** Install from `.vsix`, the four commands, the skill workflow for both agents, Node ≥ 18 requirement, what's in `.archify/`; since M6 also the update mode (FR-UPD-10). `[manual]`
 
-**FR-DOC-02 Architecture document.** `docs/architecture.md` describes the system as built, not as planned: purpose in two sentences; a component diagram (mermaid) of extension host, webview, `src/model`, `src/layout`, the skill scripts and the external agent; module responsibilities and allowed dependency directions (matching NFR-QUAL-03); the three main flows as mermaid sequence diagrams (generate → validate → publish, open → layout → render, click → resolve → open/stale); the webview message protocol; on-disk layout (`.archify/`, `.agents/skills/`, `.claude/skills/`, `dist/`); trust boundaries (webview CSP, no network, deny-list, repo-root confinement); links to the ADRs behind each part. AC: at the end of every milestone it matches the code (module names, message types, file paths exist); checked in the milestone review. `[manual]`
+**FR-DOC-02 Architecture document.** `docs/architecture.md` describes the system as built, not as planned: purpose in two sentences; a component diagram (mermaid) of extension host, webview, `src/model`, `src/layout`, the skill scripts and the external agent; module responsibilities and allowed dependency directions (matching NFR-QUAL-03); the main flows as mermaid sequence diagrams (generate → validate → publish, open → layout → render, click → resolve → open/stale; since M6 also change-map → patch → validate and regenerate → match-ids → validate, FR-UPD-10); the webview message protocol; on-disk layout (`.archify/`, `.agents/skills/`, `.claude/skills/`, `dist/`); trust boundaries (webview CSP, no network, deny-list, repo-root confinement); links to the ADRs behind each part. AC: at the end of every milestone it matches the code (module names, message types, file paths exist); checked in the milestone review. `[manual]`
 
 **FR-DOC-03 Architecture decision records.** `docs/adr/` uses MADR 4.0 (https://adr.github.io/madr/):
 
@@ -371,6 +377,129 @@ AC: `[e2e]` create and modify a candidate in a temp workspace and assert panel l
 
 AC: `npm run check:docs` (part of `npm run check`) verifies every `docs/adr/NNNN-*.md` has the front matter fields and required sections, numbers are contiguous, the index lists every file with matching status, and every relative link in `docs/**/*.md` resolves. Content quality: `[manual]` in the milestone review. `[unit]` `[manual]`
 
+### 7.11 Incremental update (M6)
+
+Decision: [ADR 0029](adr/0029-update-the-previous-diagram-incrementally.md); evidence: [change collection report](research/change-collection-report.md) (strategy S4 with change input CI-C). When a previous candidate of the same scope exists, the skill patches it from a deterministic change map instead of drawing a new diagram; after 5 consecutive updates, or on request, it regenerates and re-attaches the previous IDs. Goals: re-running on an unchanged repository yields an empty Archify `compare`; components whose cited code did not change keep `id`, text and citations (hand edits survive); changes to cited files and uncited changed files are re-explored; drift is bounded by the scheduled regeneration; the user can force a regeneration. Non-goals: a diff view in the viewer; detecting boundary moves in the change map; any LLM call, network request or new runtime dependency in the extension or the scripts; a second skill; updating diagrams of other scopes.
+
+#### Change map (`change-map.mjs`)
+
+**FR-UPD-01 CLI.** `node <skill>/scripts/change-map.mjs --run-folder <runFolder> [--regenerate]`, run with cwd = repo root after `repo-facts.mjs` (FR-RF-01) created `<runFolder>`. It decides the mode, writes its files into `<runFolder>`, and prints one JSON object:
+
+```json
+{
+  "mode": "update" | "regenerate",
+  "reason": "<one of the reasons in FR-UPD-02>",
+  "previous": ".archify/<run>/candidate.json" | null,
+  "baseRevision": "<40-hex>" | null,
+  "head": "<40-hex>" | null,
+  "changeFile": "<runFolder>/change.md" | null,
+  "mappingFile": "<runFolder>/mapping.md" | null,
+  "touchedComponents": ["<id>"],
+  "untouchedComponents": ["<id>"],
+  "uncitedFiles": ["<path>"]
+}
+```
+
+Exit 0 on success (either mode), 2 on usage errors (message on stderr), matching ADR 0017. AC: unit tests for each mode and reason below; usage error test. `[unit]`
+
+**FR-UPD-02 Mode decision.** In this order, the first matching row decides:
+
+| Condition | Mode | `reason` |
+|---|---|---|
+| `--regenerate` given | regenerate | `requested` |
+| No previous candidate | regenerate | `no-previous` |
+| No git facts now (FR-GIT-01 returns null) | regenerate | `no-git` |
+| Previous run has no lineage and its candidate has no `meta.repository.revision` | regenerate | `no-base-revision` |
+| Previous lineage has `dirtyCount > 200` (its dirty list is incomplete, so the baseline is unknown) | regenerate | `dirty-baseline` |
+| Base revision not in the object store, or not an ancestor of HEAD | regenerate | `base-unreachable` |
+| Previous lineage has `updatesSinceRegeneration ≥ 5` | regenerate | `scheduled` |
+| `change.md` would exceed 2 MiB | regenerate | `change-too-large` |
+| Otherwise | update | `update` |
+
+The base revision is the previous lineage's `revision`, else the previous candidate's `meta.repository.revision`. In regenerate mode `changeFile`, `mappingFile` and the component lists are `null`/empty, but `previous` is still reported when one exists (FR-UPD-04 uses it). AC: one unit test per row with temp git repos (product spec FR-GIT-01 style), including a history rewrite (base not an ancestor) and the 5-update limit. `[unit]`
+
+**FR-UPD-03 Change files.** In update mode:
+
+- Changes are `git diff --find-renames --no-color --no-ext-diff --unified=3 <base>` against the **working tree** (staged and unstaged edits included), plus untracked files from `git ls-files --others --exclude-standard` as added files, plus every path in the previous lineage's `dirty` list as modified (its content at the previous run is unknown).
+- Paths on the citation deny-list (`src/model/deny.ts`) are listed by name only; their hunks are never written. Binary files are listed by name only.
+- A hunk touches a component when its old or new path is one of the component's `sources[].path` (file level, as in the study).
+- `change.md` is the study's CI-C format: a title naming base and head; "Changed code by component" with one section per touched component (`### \`<id>\` (<label>)` followed by that component's hunks in a `diff` fence; a hunk under several components appears under each); "Changed files that no component cites" as name-status lines.
+- `mapping.md` is the study's S4 mapping: per touched component the changed files it cites with their hunk headers; the untouched components; the changed files no component cites.
+
+Port of `research/change-collection/harness/change-input.mjs` (`buildCIC`, `buildS4Mapping`, `mapChanges`) and `lib/diff.mjs` (`splitDiff`), with the three differences above (working tree, untracked and previously dirty files, deny-list). AC: unit tests port `research/change-collection/harness/test/change-input.test.mjs` and add: an untracked new file appears as uncited; a staged-only edit appears; a deny-listed `.env` change appears by name with no content; a rename of a cited file touches its component. `[unit]`
+
+**FR-UPD-04 Lineage.** `change-map.mjs` writes `<runFolder>/lineage.json` (2-space JSON) in both modes:
+
+```json
+{
+  "mode": "update" | "regenerate",
+  "reason": "<FR-UPD-02 reason>",
+  "previousRun": "<run folder name>" | null,
+  "baseRevision": "<40-hex>" | null,
+  "revision": "<HEAD 40-hex>" | null,
+  "dirty": ["<path>"],
+  "dirtyCount": 0,
+  "updatesSinceRegeneration": 0
+}
+```
+
+`updatesSinceRegeneration` is 0 in regenerate mode and previous value + 1 (previous without lineage counts as 0) in update mode. `dirty` and `dirtyCount` are FR-GIT-01's dirty list (≤ 200 paths) and total; FR-UPD-02's `dirty-baseline` row uses the total. The validator, the viewer and the watcher ignore `lineage.json`, `change.md` and `mapping.md`. AC: unit tests of the counter across a regenerate → update → update chain and of the `dirtyCount > 200` fallback. `[unit]`
+
+#### Skill
+
+**FR-UPD-05 Skill body** (replaces FR-SKL-02). Imperative steps, every script referenced by repo-root path:
+
+1. Focus as in FR-SKL-02 step 1. If the focus starts with the token `--regenerate`, remove it and remember to pass `--regenerate` in step 3.
+2. Run `repo-facts.mjs` as in FR-SKL-02 step 2.
+3. Run `node .agents/skills/sustain-architecture/scripts/change-map.mjs --run-folder <runFolder>` (plus `--regenerate` when asked). Keep its output.
+4. Read `references/archify-format.md`; `references/example.json` is a shape example only.
+5. **Update mode** (`mode: "update"`), from the study's frozen S4 addendum (`research/change-collection/frozen/prompts/s4-addendum.md`) with paths adapted:
+   - Read the previous candidate, `mapping.md` and `change.md`. They are the only files under `.archify/` the agent may open; it never cites them.
+   - Re-read the current code of the components listed as touched, and of each changed file no component cites; decide for each such file whether it belongs to an existing component, needs a new component, or is not architectural. Do not re-explore the other components.
+   - Write the draft: start from the previous candidate; update touched components (type, label, sublabel, citations); add, remove, split or merge components where the changed code requires it; update their connections and boundary membership. Keep every untouched component exactly as it is (`id`, text, citations) unless a changed file creates a new relationship with it, then add only that connection. Keep the IDs of everything kept; new elements get new unique IDs; never reuse an ID for an element with a different responsibility; every connection has a unique `id`.
+6. **Regenerate mode**: explore and write the draft as in FR-SKL-02 steps 4–5. If `previous` is not null, then run `node .agents/skills/sustain-architecture/scripts/match-ids.mjs <draft> --previous <previous>` (FR-UPD-09) before validating.
+7. Validate and repair as in FR-SKL-02 step 6.
+8. Report as in FR-SKL-02 step 7, adding the mode and, in update mode, the number of touched components.
+
+The deny-list paragraph keeps `.archify/` denied for reading and citing, with the one exception in step 5. `SKILL.md` frontmatter `description` becomes "Generate or update an Archify architecture diagram of this repository for the Sustain VS Code viewer. Invoke manually with an optional focus." (FR-SKL-01's other fields unchanged; `allowed-tools` already covers the new scripts). AC: unit test asserts the step order, the three script paths and the `.archify/` exception sentence; `[live]` runs FR-UPD-11. `[unit]` `[live]`
+
+**FR-UPD-06 Format reference.** `references/archify-format.md` states for `connections[]`: "`id` (required; unique across all connections, same pattern as component IDs)", as the study's frozen skill did. AC: unit test asserts the sentence. `[unit]`
+
+#### Validator
+
+**FR-UPD-07 Connection IDs** (adds to FR-VAL-04). A connection without `id` is an error: pointer `/connections/<i>/id`, message starting `MissingId:` ("every connection needs a unique `id`"). Duplicate connection IDs stay an error as today. The viewer still loads old candidates without connection IDs (FR-VIEW-03 unchanged). AC: unit test with a fixture missing one connection `id`; the 24 vendored fixtures are re-checked and any that now fail are listed in `progress.md` (they are viewer fixtures, not validator inputs). `[unit]`
+
+#### ID matching after a regeneration
+
+**FR-UPD-09 `match-ids.mjs`.** `node <skill>/scripts/match-ids.mjs <draft> --previous <candidate>`, cwd = repo root. Port of `research/change-collection/harness/s3-match.mjs` with the study's threshold **0.3**:
+
+- Components are matched one-to-one by Jaccard similarity of their cited file sets, highest first, ties by equal `label`, then by previous `id`, then by draft `id`; pairs below 0.3 stay unmatched.
+- Matched draft components take the previous `id`; an unmatched draft component whose `id` equals a previous `id` gets `<id>-n<k>`.
+- A draft connection takes a previous connection's `id` when both endpoints were matched and the mapped endpoints equal that previous connection's; otherwise it keeps its `id`, renamed to `<id>-n<k>` if it collides with a previous connection `id`.
+- Boundary `wraps` and connection endpoints follow the renames.
+- The draft is rewritten in place (2-space JSON); stdout is one JSON object `{ "componentMap": {...}, "connectionMap": {...}, "renamed": {...} }`. Exit 2 on usage errors or unreadable files; a draft that is not valid JSON is left untouched with exit 2 (the validator then reports it).
+
+AC: unit tests port `research/change-collection/harness/test/s3-match.test.mjs` (4 cases) plus an in-place rewrite test. `[unit]`
+
+#### Generate command
+
+**FR-UPD-08 Update or regenerate** (adds to FR-GEN-01). After the focus InputBox, if `listCandidates(root)` is not empty, a QuickPick offers "Update the latest diagram" (default) and "Regenerate from scratch". Regenerate prefixes the prompt's focus with `--regenerate`: Claude `/sustain-architecture --regenerate <focus>`, Codex `$sustain-architecture --regenerate <focus>` (no trailing space when the focus is empty). Escape cancels the command. With no candidates the QuickPick is skipped and the prompt is unchanged. AC: `[unit]` prompt formats; `[e2e]` with a stub `claude`, a temp workspace with one candidate, and the regenerate pick: the terminal's `shellArgs` carry the `--regenerate` prompt. `[unit]` `[e2e]`
+
+#### Docs and live runs
+
+**FR-UPD-10 Docs.** README: the update mode, when it regenerates, the Generate command choice, the new files in each run folder (`lineage.json`, `change.md`, `mapping.md`). `docs/architecture.md`: the generate flow gains the change-map → patch → validate path and the regenerate → match-ids → validate path as mermaid sequence diagrams; on-disk layout lists the new files; links ADR 0029. `[manual]`
+
+**FR-UPD-11 Live update runs.** For Claude Code and for Codex, on `reference/sustain-prototype` (or another repository with history):
+
+1. Generate (fresh) → accepted.
+2. Generate again without code changes → `mode: "update"`; `compare` of the two candidates (or the study scorer's diff entries) is empty.
+3. Edit one cited file so a component's role changes, commit, Generate → the touched component changes, the others keep `id`, text and citations.
+4. Generate with "Regenerate from scratch" → `mode: "regenerate"`, `match-ids.mjs` ran, at least one previous component `id` reappears.
+
+Record date, CLI version, mode, touched components, repairs used in `progress.md`. `[live]`
+
+**FR-UPD-12 Study re-check (optional).** Point the research harness's frozen skill at the built `dist/skills/sustain-architecture/` and re-run the Stage 2 same-commit pairs and the planted pairs once with the shipped update mode. Expected: same-commit spurious diff entries 0; component, responsibility and connection plants reported (as for S4 × CI-C in the study). Recorded in `progress.md`; a miss is a finding, not a blocker. `[manual]`
+
 ## 8. Milestones
 
 | Milestone | Scope | Requirements |
@@ -381,6 +510,7 @@ AC: `npm run check:docs` (part of `npm run check`) verifies every `docs/adr/NNNN
 | M3 Viewer | layout, panel, rendering, viewport, tooltip | FR-VIEW-01..07, FR-LAY-*, NFR-SEC-01, NFR-PERF-01 |
 | M4 Navigation and watching | click-to-open, stale handling, watcher, test hook | FR-NAV-*, FR-WAT-01, FR-TEST-01 |
 | M5 Finish | packaging, README, final architecture.md pass, live runs | FR-PKG-01, FR-DOC-01, FR-DOC-02, FR-LIVE-01, FR-LIVE-02 |
+| M6 Incremental update | change map, lineage, ID matcher, validator rule, skill text, Generate choice, docs, live runs | FR-UPD-01..12 |
 
 ## 9. Process
 
@@ -411,5 +541,12 @@ AC: `npm run check:docs` (part of `npm run check`) verifies every `docs/adr/NNNN
 |---|---|
 | Codex may reject or warn on the Claude-only `disable-model-invocation` key | FR-LIVE-02 checks it; fallback needs owner approval (§10) |
 | elkjs under the webview CSP (no `unsafe-eval`) | Verified in M3; if it fails, run layout in the extension host and send the Scene to the webview, recorded as an ADR |
-| Agent writes outside the run folder or skips the validator | Skill wording (FR-SKL-02); writes still need approval in Claude Code |
+| Agent writes outside the run folder or skips the validator | Skill wording (FR-SKL-02, FR-UPD-05); writes still need approval in Claude Code |
 | Extension host `PATH` lacks the user's shell PATH when VS Code starts from the Dock | VS Code resolves the login shell environment on macOS; if lookup still fails, the "Copy prompt" fallback covers it |
+| Patches miss changes outside cited files (package moves, new subsystems) | Uncited changed files are listed for re-exploration; scheduled regeneration after 5 updates (FR-UPD-02); user-forced regeneration (FR-UPD-08) |
+| Diagrams grow over updates (study: 15 → 19 components in 10 steps) | Same scheduled regeneration; `match-ids.mjs` keeps identities across it |
+| Stale claims accumulate unnoticed | Not measurable with the study's judges; FR-UPD-11 step 3 checks one case by hand |
+| Agent cites `change.md` or the previous candidate | `.archify/` stays on the citation deny-list (FR-VAL-05 rejects it) |
+| Previous run drawn from a dirty tree | Its dirty paths count as touched (FR-UPD-03); more than 200 dirty paths forces a regeneration (FR-UPD-02 `dirty-baseline`) |
+| History rewritten (rebase, force-push) | `base-unreachable` → regeneration (FR-UPD-02) |
+| Legacy candidates without connection IDs | Update mode works from them; the validator makes the agent add IDs before acceptance (FR-UPD-07) |

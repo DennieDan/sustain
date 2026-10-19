@@ -1,4 +1,5 @@
-// FR-SKL-01 (frontmatter, openai.yaml) and FR-SKL-03 (format reference) on the shipped files.
+// FR-SKL-01 (frontmatter, openai.yaml), FR-SKL-03 / FR-UPD-06 (format reference) and FR-UPD-05
+// (skill body) on the shipped files.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
@@ -34,7 +35,7 @@ describe("FR-SKL-01 skill frontmatter", () => {
     expect(parsed?.fields).toEqual({
       name: "sustain-architecture",
       description:
-        "Generate an Archify architecture diagram of this repository for the Sustain VS Code viewer. Invoke manually with an optional focus.",
+        "Generate or update an Archify architecture diagram of this repository for the Sustain VS Code viewer. Invoke manually with an optional focus.",
       "disable-model-invocation": "true",
       "allowed-tools": "Read Grep Glob Bash(node .agents/skills/sustain-architecture/scripts/*)",
     });
@@ -61,5 +62,49 @@ describe("FR-SKL-03 format reference", () => {
 
   test("keeps the Archify attribution", () => {
     expect(reference).toContain("github.com/tt-a1i/archify, MIT");
+  });
+
+  test("FR-UPD-06: connection ids are required", () => {
+    expect(reference).toContain("`id` (required; unique across all connections, same pattern as component IDs)");
+  });
+});
+
+describe("FR-UPD-05 skill body", () => {
+  const body = read("SKILL.md");
+
+  test("the eight steps come in order", () => {
+    expect([...body.matchAll(/^## (\d)\. (.+)$/gm)].map((match) => `${match[1]}. ${match[2]}`)).toEqual([
+      "1. Read the focus",
+      "2. Create the run folder",
+      "3. Choose update or regenerate",
+      "4. Read the format reference",
+      "5. Update mode (`mode` is `update`)",
+      "6. Regenerate mode (`mode` is `regenerate`)",
+      "7. Validate and repair",
+      "8. Report",
+    ]);
+  });
+
+  test("scripts run by repo-root path in the order repo-facts → change-map → match-ids → validate", () => {
+    const commands = [...body.matchAll(/^\s*node (\S+)/gm)].map((match) => match[1]);
+    expect(commands).toEqual([
+      ".agents/skills/sustain-architecture/scripts/repo-facts.mjs",
+      ".agents/skills/sustain-architecture/scripts/change-map.mjs",
+      ".agents/skills/sustain-architecture/scripts/match-ids.mjs",
+      ".agents/skills/sustain-architecture/scripts/validate.mjs",
+    ]);
+  });
+
+  test("the --regenerate token is passed on to change-map.mjs", () => {
+    expect(body).toContain(
+      "If the focus starts with the token `--regenerate`, remove that token from the focus and remember to pass `--regenerate` in step 3.",
+    );
+  });
+
+  test(".archify/ stays denied except for the three update inputs, which are never cited", () => {
+    expect(body).toContain("- `.git/` and `.archify/`");
+    expect(body).toContain(
+      "The one exception is step 5: in update mode you read the previous candidate, `mapping.md` and `change.md` named by `change-map.mjs`, and no other file under `.archify/`; you never cite them.",
+    );
   });
 });

@@ -86,6 +86,7 @@ export type IssueCode =
   | "Json"
   | "Schema"
   | "DuplicateId"
+  | "MissingId"
   | "UnknownReference"
   | "MissingSources"
   | "BoundaryOverlap"

@@ -1,9 +1,9 @@
 # Change collection research: report
 
-- Status: for owner review at Gate 3, 2026-10-19
+- Status: reviewed at Gate 3; decision accepted 2026-10-19
 - Specification: [change-collection-spec.md](change-collection-spec.md)
 - Evidence: [progress log](../../research/change-collection/progress.md), [run ledger](../../research/change-collection/results/ledger.jsonl), [metric tables](../../research/change-collection/results/metrics/), [frozen manifest](../../research/change-collection/frozen/manifest.json)
-- Draft decision: [adr-draft-incremental-diagram-update.md](adr-draft-incremental-diagram-update.md)
+- Decision: [ADR 0029](../adr/0029-update-the-previous-diagram-incrementally.md), accepted by the owner on 2026-10-19
 
 ## 1. Verdict on H1
 
@@ -163,7 +163,7 @@ No frozen artifact changed after Gate 1 (`node harness/manifest.mjs check` print
 2. **Pair it with a periodic fresh regeneration**, because the patch strategies miss changes that do not touch cited files (every planted boundary move) and grow the diagram over a chain. A full S0 run every N updates, or when the uncited-files list is large, bounds both.
 3. **Do not rely on the J2/J3 judges** for future evaluation; they need either stronger prompts or a different calibration design before they can measure role drift or staleness.
 
-This reverses the product spec's non-goal "A `sustain-architecture-refresh` skill. Re-run the skill instead." The draft ADR proposes the change for owner approval under the product spec's §10.
+This reverses the product spec's non-goal "A `sustain-architecture-refresh` skill. Re-run the skill instead." The owner accepted the change as [ADR 0029](../adr/0029-update-the-previous-diagram-incrementally.md).
 
 ## 11. Out of bounds and future work
 

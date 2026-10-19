@@ -24,6 +24,26 @@ export const GIT_READS = {
   head: ["--no-optional-locks", "rev-parse", "--verify", "--quiet", "HEAD"],
   origin: ["--no-optional-locks", "config", "--get", "remote.origin.url"],
   status: ["--no-optional-locks", "status", "--porcelain=v1", "-z"],
+  /** `+ <base>^{commit}`: exits 0 when the commit is in the object store (FR-UPD-02). */
+  commitExists: ["--no-optional-locks", "cat-file", "-e"],
+  /** `+ <base> HEAD`: exits 0 when base is an ancestor of HEAD (FR-UPD-02). */
+  isAncestor: ["--no-optional-locks", "merge-base", "--is-ancestor"],
+  /** `+ <base> --`: base against the working tree, paths verbatim (FR-UPD-03). */
+  nameStatus: ["--no-optional-locks", "diff", "--name-status", "-z", "--find-renames", "--no-color", "--no-ext-diff"],
+  /** `+ <base> --`: unified diff of base against the working tree (FR-UPD-03). */
+  diff: [
+    "--no-optional-locks",
+    "diff",
+    "--find-renames",
+    "--no-color",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--unified=3",
+    "--src-prefix=a/",
+    "--dst-prefix=b/",
+  ],
+  /** Untracked, not ignored files, NUL-separated (FR-UPD-03). */
+  untracked: ["--no-optional-locks", "ls-files", "-z", "--others", "--exclude-standard"],
 } as const;
 
 /** stdout of a successful run; `null` when git cannot start (not on PATH) or exits non-zero. */
@@ -106,4 +126,38 @@ export function repositoryFromGit(facts: GitFacts): Repository | null {
   if (host === "github.com") return { url: facts.origin, revision: facts.head, provider: "github" };
   if (host === "gitee.com") return { url: facts.origin, revision: facts.head, provider: "gitee" };
   return { url: facts.origin, revision: facts.head, link_mode: "local-only" };
+}
+
+/** A full commit name: 40 lowercase hex characters. */
+export function isRevision(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{40}$/.test(value);
+}
+
+/** Whether `base` is a commit in the object store and an ancestor of (or equal to) HEAD. */
+export function baseReachable(root: string, base: string, program = "git"): boolean {
+  if (!isRevision(base)) return false;
+  return (
+    run(program, root, [...GIT_READS.commitExists, `${base}^{commit}`]) !== null &&
+    run(program, root, [...GIT_READS.isAncestor, base, "HEAD"]) !== null
+  );
+}
+
+/** Raw git output describing the change from a base commit to the working tree. */
+export interface ChangeReads {
+  /** `git diff --name-status -z` output. */
+  nameStatus: string;
+  /** Unified diff with `a/`/`b/` prefixes. */
+  diff: string;
+  /** `git ls-files -z --others --exclude-standard` output. */
+  untracked: string;
+}
+
+/** The three reads of FR-UPD-03, or `null` when any of them fails (or outgrows the 64 MiB buffer). */
+export function readChanges(root: string, base: string, program = "git"): ChangeReads | null {
+  if (!isRevision(base)) return null;
+  const nameStatus = run(program, root, [...GIT_READS.nameStatus, base, "--"]);
+  const diff = run(program, root, [...GIT_READS.diff, base, "--"]);
+  const untracked = run(program, root, GIT_READS.untracked);
+  if (nameStatus === null || diff === null || untracked === null) return null;
+  return { nameStatus, diff, untracked };
 }

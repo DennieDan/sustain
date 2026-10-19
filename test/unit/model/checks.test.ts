@@ -38,13 +38,24 @@ describe("FR-VAL-04 semantic checks", () => {
     expect(semanticChecks(doc)).toEqual([expect.objectContaining({ code: "DuplicateId", pointer: "/connections/1/id" })]);
   });
 
-  test("connections without ids are never duplicates", () => {
+  test("a connection without id → MissingId at /connections/i/id (FR-UPD-07)", () => {
+    const doc = base();
+    doc.connections = [{ id: "ab", from: "a", to: "b" }, { from: "b", to: "c" }];
+    expect(semanticChecks(doc)).toEqual([
+      { code: "MissingId", pointer: "/connections/1/id", message: "every connection needs a unique `id`" },
+    ]);
+  });
+
+  test("id-less connections are each missing an id, never duplicates", () => {
     const doc = base();
     doc.connections = [
       { from: "a", to: "b" },
       { from: "a", to: "b" },
     ];
-    expect(semanticChecks(doc)).toEqual([]);
+    expect(semanticChecks(doc).map((issue) => [issue.code, issue.pointer])).toEqual([
+      ["MissingId", "/connections/0/id"],
+      ["MissingId", "/connections/1/id"],
+    ]);
   });
 
   test("unknown connection from → /connections/i/from", () => {

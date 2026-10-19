@@ -64,6 +64,29 @@ export interface RepoFacts {
   git: { head: string; origin: string | null; dirtyCount: number; dirty: string[] } | null;
 }
 
+/** change-map.mjs stdout (FR-UPD-01). */
+export interface ChangeMapReport {
+  mode: "update" | "regenerate";
+  reason: string;
+  previous: string | null;
+  baseRevision: string | null;
+  head: string | null;
+  changeFile: string | null;
+  mappingFile: string | null;
+  touchedComponents: string[];
+  untouchedComponents: string[];
+  uncitedFiles: string[];
+}
+
+/** match-ids.mjs stdout (FR-UPD-09). */
+export interface MatchIdsReport {
+  componentMap: Record<string, string>;
+  connectionMap: Record<string, string>;
+  renamed: Record<string, string>;
+}
+
+type Outputs = { validate: ValidateReport; "repo-facts": RepoFacts; "change-map": ChangeMapReport; "match-ids": MatchIdsReport };
+
 export interface ScriptRun<Output> {
   status: number | null;
   stdout: string;
@@ -78,9 +101,7 @@ interface RunOptions {
 }
 
 /** Runs a built skill script with `node`, as the agent does. */
-export function runScript(script: "validate", args: string[], options: RunOptions): ScriptRun<ValidateReport>;
-export function runScript(script: "repo-facts", args: string[], options: RunOptions): ScriptRun<RepoFacts>;
-export function runScript(script: "validate" | "repo-facts", args: string[], options: RunOptions): ScriptRun<ValidateReport | RepoFacts> {
+export function runScript<S extends keyof Outputs>(script: S, args: string[], options: RunOptions): ScriptRun<Outputs[S]> {
   const result = spawnSync(process.execPath, [join(SCRIPTS_DIR, `${script}.mjs`), ...args], {
     cwd: options.cwd,
     encoding: "utf8",
@@ -91,7 +112,7 @@ export function runScript(script: "validate" | "repo-facts", args: string[], opt
     stdout: result.stdout,
     stderr: result.stderr,
     // Names the documented output contract; the tests assert every field they read.
-    json: () => JSON.parse(result.stdout) as ValidateReport | RepoFacts,
+    json: () => JSON.parse(result.stdout) as Outputs[S],
   };
 }
 

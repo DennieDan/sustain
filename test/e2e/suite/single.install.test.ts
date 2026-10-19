@@ -23,7 +23,7 @@ suite("FR-INS-01 Install Agent Skills", () => {
 
   test("a fresh install copies the skill and links .claude to it", async () => {
     await vscode.commands.executeCommand("sustain.installSkills");
-    for (const file of ["SKILL.md", "agents/openai.yaml", "references/archify-format.md", "references/example.json", "scripts/validate.mjs", "scripts/repo-facts.mjs"]) {
+    for (const file of ["SKILL.md", "agents/openai.yaml", "references/archify-format.md", "references/example.json", "scripts/validate.mjs", "scripts/repo-facts.mjs", "scripts/change-map.mjs", "scripts/match-ids.mjs"]) {
       assert.ok(existsSync(join(root, ".agents/skills/sustain-architecture", file)), file);
     }
     const link = join(root, ".claude/skills/sustain-architecture");
