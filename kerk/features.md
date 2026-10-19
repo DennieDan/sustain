@@ -1,6 +1,6 @@
 # Features
 
-What v0.3 built, by milestone, as of 2026-10-19 on `kerk` ([pull request #4](https://github.com/xplus2g4/sustain/pull/4)). [progress-v0.3.md](progress-v0.3.md) has each feature's tests and evidence, and [spec-v0.3.md](spec-v0.3.md) has the full requirements. [dogfood.md](dogfood.md) says how to try it.
+What v0.3 built, by milestone, as of 2026-10-19 on `kerk` ([pull request #4](https://github.com/xplus2g4/sustain/pull/4)). [progress-v0.3.md](../docs/progress-v0.3.md) has each feature's tests and evidence, and [spec-v0.3.md](../docs/spec-v0.3.md) has the full requirements. [dogfood.md](dogfood.md) says how to try it.
 
 - ✅ 69 built and tested.
 - 🟡 13 built, and waiting on a CI result or a smoke run with a real agent. The Waiting section of progress lists the steps.
