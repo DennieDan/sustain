@@ -27,6 +27,7 @@ export async function buildScripts(outdir) {
     entryPoints: {
       "repo-facts": join(root, "src/agent/repo-facts.ts"),
       validate: join(root, "src/agent/validate.ts"),
+      "export-viewer": join(root, "src/browser/export.ts"),
     },
     outdir,
     outExtension: { ".js": ".mjs" },
@@ -42,7 +43,6 @@ async function buildDist() {
   // Static skill files (SKILL.md, agents/, references/) ship as-is. The scripts are built
   // into the committed tree too, so the folder can be fetched directly (e.g. npx degit).
   await buildScripts(join(root, "skills/sustain-architecture/scripts"));
-  cpSync(join(root, "skills"), join(dist, "skills"), { recursive: true });
 
   await esbuild.build({
     ...common,
@@ -70,16 +70,17 @@ async function buildDist() {
   });
   cpSync(join(root, "webview/styles.css"), join(dist, "webview.css"));
 
-  // `export-viewer`: ESM CLI (deps inlined) that writes the self-contained page.
-  await esbuild.build({
-    ...common,
-    entryPoints: { "export-viewer": join(root, "src/browser/export.ts") },
-    outdir: dist,
-    outExtension: { ".js": ".mjs" },
-    platform: "node",
-    format: "esm",
-    target: "node18",
-  });
+  // The skill ships the standalone viewer too, so `sustain-architecture` can end with the
+  // page open beside the chat (SKILL.md step 7). The same files sit at the dist root.
+  const skillScripts = join(root, "skills/sustain-architecture/scripts");
+  cpSync(join(dist, "browser-viewer.js"), join(skillScripts, "browser-viewer.js"));
+  cpSync(join(root, "webview/styles.css"), join(skillScripts, "webview.css"));
+  for (const name of ["export-viewer.mjs", "browser-viewer.js", "webview.css"]) {
+    cpSync(join(skillScripts, name), join(dist, name));
+  }
+
+  // Static skill files ship as-is; copied last so dist/skills gets the generated files too.
+  cpSync(join(root, "skills"), join(dist, "skills"), { recursive: true });
 }
 
 async function buildE2e() {

@@ -30,7 +30,7 @@ mkdir -p .agents/skills
 curl -sL https://github.com/xplus2g4/sustain/releases/latest/download/sustain-architecture-skill.tar.gz | tar -xz -C .agents/skills
 ```
 
-Then, in a Codex chat in that repository: `$sustain-architecture` with an optional focus, e.g. `$sustain-architecture payment flow`.
+Then, in a Codex chat in that repository: `$sustain-architecture` with an optional focus, e.g. `$sustain-architecture payment flow`. The agent generates the diagram, validates it, and opens a self-contained HTML page with the diagram and the cited code beside it.
 
 To let the agent install the skill on demand, add this to the repository's `AGENTS.md` (Codex reads it automatically):
 
@@ -41,15 +41,13 @@ missing, run `mkdir -p .agents/skills && curl -sL https://github.com/xplus2g4/su
 then invoke the sustain-architecture skill with the request as the focus.
 ```
 
-To view the diagram without VS Code, download the viewer bundle and export the candidate to a self-contained page:
+To reopen a finished diagram, run the exporter the skill carries and open the `page` it prints:
 
 ```sh
-mkdir -p ~/sustain-viewer
-curl -sL https://github.com/xplus2g4/sustain/releases/latest/download/sustain-viewer.tar.gz | tar -xz -C ~/sustain-viewer
-node ~/sustain-viewer/export-viewer.mjs /path/to/repo/.archify/<run>/candidate.json --root /path/to/repo
+node .agents/skills/sustain-architecture/scripts/export-viewer.mjs .archify/<run>/candidate.json
 ```
 
-The page embeds the diagram and the cited code beside it; open it in a browser and click a box to see its source. The same files are produced by `npm run build` in this repository (`dist/export-viewer.mjs`), and the skill folder can also be fetched from source: `npx degit xplus2g4/sustain/skills/sustain-architecture .agents/skills/sustain-architecture`.
+The page embeds the diagram and the cited code beside it; click a box to see its source. The same exporter ships standalone as `sustain-viewer.tar.gz` on the releases page and is produced by `npm run build` (`dist/export-viewer.mjs`). The skill folder can also be fetched from source: `npx degit xplus2g4/sustain/skills/sustain-architecture .agents/skills/sustain-architecture`.
 
 ## Commands
 
