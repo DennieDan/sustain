@@ -1,11 +1,19 @@
 // `node .agents/skills/sustain-architecture/scripts/validate.mjs <repo>/.archify/<run>/draft.json`
 // (FR-VAL-01..06). Contract and exit codes: ADR 0017. Bundled to a dependency-free ESM file.
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { checkCitations } from "../model/citations";
+import { assertWritable } from "../model/confine";
+import { checkEvidence, EVIDENCE_FILE, type Evidence } from "../model/evidence";
+import { fingerprint, writeFingerprints } from "../model/fingerprints";
+import { importLanguage, importLinks } from "../model/evidence/graph";
+import { fileReader, isTestPath, listFiles } from "../model/repoSize";
 import { collectGitFacts, repositoryFromGit } from "../model/git";
 import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftLocation } from "../model/runFolder";
+import { newRunRecord, readRunRecord, RUN_FILE, updateRunRecord, type RunRecord } from "../model/runRecord";
+import { writeJson } from "../model/session";
 import { checkSubmission, REMOVED_FIELD_MESSAGE } from "../model/submission";
-import { stringifyDocument, type Issue } from "../model/types";
+import { stringifyDocument, type ArchifyDoc, type Issue } from "../model/types";
 
 const MAX_LISTED_ERRORS = 50;
 const HINT = "Fix exactly these errors and run the validator again.";
@@ -15,6 +23,8 @@ interface Report {
   candidate?: string;
   errors: { pointer: string; message: string }[];
   warnings: { pointer: string; message: string }[];
+  /** ACC-01: what to review once after acceptance; only on an accepted report. */
+  evidence?: Evidence["findings"];
   hint?: string;
 }
 
@@ -24,6 +34,14 @@ function listErrors(errors: Issue[]): Report["errors"] {
     listed.push({ pointer: "", message: `${errors.length - MAX_LISTED_ERRORS} more errors not shown` });
   }
   return listed;
+}
+
+/** The skill version, filled in by the build. */
+const SKILL_VERSION = process.env.SUSTAIN_VERSION ?? "unknown";
+
+/** Merges `patch` into the run's run.json, creating it for runs that predate run records (CST-04). */
+function record(location: DraftLocation, patch: Partial<RunRecord>): void {
+  updateRunRecord(location.root, dirname(location.draft), patch, () => newRunRecord({ focus: "", skillVersion: SKILL_VERSION }));
 }
 
 function usageError(message: string): number {
@@ -43,6 +61,12 @@ function main(args: string[]): number {
   } catch (error) {
     return usageError((error as Error).message);
   }
+  try {
+    const attempts = (readRunRecord(dirname(location.draft))?.attempts ?? 0) + 1;
+    record(location, { phase: "validating", attempts });
+  } catch (error) {
+    return usageError(`cannot write ${RUN_FILE}: ${(error as Error).message}`);
+  }
 
   let value: unknown;
   try {
@@ -54,6 +78,7 @@ function main(args: string[]): number {
       warnings: [],
       hint: HINT,
     };
+    record(location, { phase: "rejected" });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return 1;
   }
@@ -71,11 +96,23 @@ function main(args: string[]): number {
 
   if (errors.length > 0) {
     const report: Report = { status: "rejected", errors: listErrors(errors), warnings, hint: HINT };
+    record(location, { phase: "rejected" });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return 1;
   }
+  const doc = value as ArchifyDoc;
+  const read = fileReader(location.root);
+  const readText = (path: string): string | null => read(path)?.toString("utf8") ?? null;
+  const sources = listFiles(location.root).files.filter((path) => importLanguage(path) !== null && !isTestPath(path));
+  const evidence = checkEvidence(doc.components, readText, { connections: doc.connections ?? [], links: importLinks(sources, readText) });
   try {
+    const runDir = dirname(location.draft);
+    assertWritable(location.root, join(runDir, CANDIDATE_FILE));
     publishCandidate(location.draft, stringifyDocument(value));
+    writeFingerprints(location.root, runDir, fingerprint(doc, location.root, git?.head ?? null));
+    assertWritable(location.root, join(runDir, EVIDENCE_FILE));
+    writeJson(join(runDir, EVIDENCE_FILE), evidence);
+    record(location, { phase: "accepted", finishedAt: new Date().toISOString() });
   } catch (error) {
     return usageError(`cannot publish ${CANDIDATE_FILE}: ${(error as Error).message}`);
   }
@@ -84,6 +121,7 @@ function main(args: string[]): number {
     candidate: `${ARCHIFY_DIR}/${location.run}/${CANDIDATE_FILE}`,
     errors: [],
     warnings,
+    evidence: evidence.findings,
   };
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   return 0;

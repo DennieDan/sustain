@@ -1,5 +1,6 @@
-// `npm run check:docs` (FR-DOC-03): validates docs/adr against MADR 4.0 as profiled by the spec
-// and checks that every relative link in docs/**/*.md resolves. Dependency-free Node ESM.
+// `npm run check:docs` (FR-DOC-03): validates docs/adr against MADR 4.0 as profiled by the spec,
+// checks that every relative link in docs/**/*.md outside docs/research/ resolves, and traces the v0.3 spec's IDs to the
+// progress checklist (ENG-03). Dependency-free Node ESM.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +9,8 @@ const ADR_FILE = /^(\d{4})-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 const SUPERSEDED = /^superseded by \[ADR-(\d{4})\]\((\d{4}-[a-z0-9-]+\.md)\)$/;
 const PLAIN_STATUSES = ["proposed", "accepted", "rejected", "deprecated"];
 const REQUIRED_SECTIONS = ["## Context and Problem Statement", "## Considered Options", "## Decision Outcome", "### Consequences"];
+/** Research reports link to data that stays on the researcher's machine, so their links go unchecked. */
+const UNCHECKED_LINKS = "research";
 
 /**
  * Splits `---`-delimited YAML front matter into flat `key: value` pairs (quotes stripped).
@@ -143,6 +146,50 @@ function markdownFiles(dir) {
   return out;
 }
 
+/** A requirement-shaped ID, such as `SAF-06` or `NFR-SEC-01`. */
+const REQUIREMENT_ID = /\b(?:[A-Z]{2,4}-)+\d{2}\b/g;
+
+/**
+ * ENG-03: the IDs the v0.3 spec defines, each the first cell of a feature table's row.
+ * @param {string} spec
+ * @returns {string[]}
+ */
+export function specIds(spec) {
+  return [...spec.matchAll(/^\| ((?:[A-Z]{2,4}-)+\d{2}) \|/gm)].map((match) => match[1] ?? "");
+}
+
+/**
+ * ENG-03: the ID each checklist line of progress is for, as in `- [x] **SAF-06 Hook lifecycle**`.
+ * @param {string} progress
+ * @returns {string[]}
+ */
+export function checklistIds(progress) {
+  return [...progress.matchAll(/^- \[[ x]\] \*\*((?:[A-Z]{2,4}-)+\d{2})\b/gm)].map((match) => match[1] ?? "");
+}
+
+/**
+ * ENG-03: every ID the v0.3 spec defines is on exactly one checklist line of progress, and every
+ * requirement-shaped ID progress names is in the v0.3 spec or the v0.1 spec.
+ * @param {string} specV03
+ * @param {string} specV01
+ * @param {string} progress
+ * @returns {string[]}
+ */
+export function checkTraceability(specV03, specV01, progress) {
+  /** @type {string[]} */
+  const problems = [];
+  const lines = checklistIds(progress);
+  for (const id of new Set(specIds(specV03))) {
+    const count = lines.filter((line) => line === id).length;
+    if (count !== 1) problems.push(`progress-v0.3.md: ${id} is on ${count} checklist lines; it needs exactly one`);
+  }
+  const known = new Set([...specV03.matchAll(REQUIREMENT_ID), ...specV01.matchAll(REQUIREMENT_ID)].map((match) => match[0]));
+  for (const id of new Set([...progress.matchAll(REQUIREMENT_ID)].map((match) => match[0]))) {
+    if (!known.has(id)) problems.push(`progress-v0.3.md: ${id} is defined in neither spec`);
+  }
+  return problems;
+}
+
 /**
  * All problems under `docsDir` (expects `docsDir/adr/`).
  * @param {string} docsDir
@@ -192,7 +239,8 @@ export function checkDocs(docsDir) {
   if (!existsSync(join(adrDir, "template.md"))) problems.push("adr/template.md: missing MADR template");
 
   let linkCount = 0;
-  for (const file of markdownFiles(docsDir)) {
+  const unchecked = join(docsDir, UNCHECKED_LINKS) + sep;
+  for (const file of markdownFiles(docsDir).filter((path) => !path.startsWith(unchecked))) {
     for (const link of relativeLinks(readFileSync(file, "utf8"))) {
       linkCount += 1;
       const target = decodeURI(link.split("#")[0] ?? "");
@@ -201,6 +249,10 @@ export function checkDocs(docsDir) {
       }
     }
   }
+  /** @param {string} name */
+  const read = (name) => (existsSync(join(docsDir, name)) ? readFileSync(join(docsDir, name), "utf8") : null);
+  const [specV03, specV01, progress] = [read("spec-v0.3.md"), read("spec.md"), read("progress-v0.3.md")];
+  if (specV03 !== null && progress !== null) problems.push(...checkTraceability(specV03, specV01 ?? "", progress));
   return { problems, adrCount: names.length, linkCount };
 }
 

@@ -27,7 +27,8 @@ function overlappingPairs(scene: Scene): string[] {
 }
 
 describe("FR-LAY-02 fixtures", () => {
-  test("there are 24 fixtures, each in both modes", async () => {
+  // Lays out all 48 diagrams at once, which takes several seconds when the whole suite runs in parallel.
+  test("there are 24 fixtures, each in both modes", { timeout: 30_000 }, async () => {
     expect(parsed).toHaveLength(24);
     const modes = await Promise.all(fixtures.map(async ([name, diagram]) => [name, (await lay(diagram)).mode]));
     for (const [name, mode] of modes) if (name!.endsWith("(auto)")) expect(mode, name).toBe("auto");

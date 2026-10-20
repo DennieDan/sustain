@@ -1,5 +1,6 @@
 // FR-GIT-01: git facts, ported from the prototype's repo/tests/git.rs; FR-CMP-01 commit details. Runs the real `git`.
-import { writeFileSync } from "node:fs";
+import { chmodSync, existsSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { collectGitFacts, commitInfo, GIT_READS, parsePorcelainZ, repositoryFromGit, sanitizeOrigin } from "../../../src/model/git";
 import { git, gitRepo, put, tempDir } from "../support/temp";
@@ -77,9 +78,33 @@ describe("FR-GIT-01 git facts", () => {
     expect(collectGitFacts(root)).toBeNull();
   });
 
-  test("git missing from PATH gives no git facts and no error", () => {
+  test("SAF-07 git missing from PATH gives no git facts and no error", () => {
     const root = gitRepo(files);
-    expect(collectGitFacts(root, "sustain-no-such-git-binary")).toBeNull();
+    expect(collectGitFacts(root, { PATH: tempDir() })).toBeNull();
+  });
+
+  test("SAF-07 a git found only on a relative PATH entry is never run", () => {
+    const root = gitRepo(files);
+    const fake = put(root, "bin/git", "#!/bin/sh\necho fake > ran.txt\n");
+    chmodSync(fake, 0o755);
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      expect(collectGitFacts(root, { PATH: "bin" })).toBeNull();
+    } finally {
+      process.chdir(cwd);
+    }
+    expect(existsSync(join(root, "ran.txt"))).toBe(false);
+  });
+
+  test("SAF-07 a repository's core.fsmonitor program never runs", () => {
+    const root = gitRepo(files);
+    const marker = join(tempDir(), "fsmonitor-ran");
+    const hook = put(tempDir(), "fsmonitor.sh", `#!/bin/sh\ntouch "${marker}"\nexit 1\n`);
+    chmodSync(hook, 0o755);
+    git(root, "config", "core.fsmonitor", hook);
+    expect(collectGitFacts(root)).not.toBeNull();
+    expect(existsSync(marker)).toBe(false);
   });
 
   test.each([
@@ -97,12 +122,12 @@ describe("FR-GIT-01 git facts", () => {
     expect(sanitizeOrigin(input)).toBe(expected);
   });
 
-  test("read commands are fixed argv starting with --no-optional-locks", () => {
+  test("SAF-07 read commands are fixed argv starting with the fsmonitor-off prefix", () => {
     for (const argv of Object.values<readonly string[]>(GIT_READS)) {
-      expect(argv[0]).toBe("--no-optional-locks");
-      expect(argv.some((arg) => arg === "sh" || arg === "-c" || arg.includes(" "))).toBe(false);
+      expect(argv.slice(0, 3)).toEqual(["-c", "core.fsmonitor=false", "--no-optional-locks"]);
+      expect(argv.slice(3).some((arg) => arg === "sh" || arg === "-c" || arg.includes(" "))).toBe(false);
     }
-    expect(GIT_READS.status).toEqual(["--no-optional-locks", "status", "--porcelain=v1", "-z"]);
+    expect(GIT_READS.status).toEqual(["-c", "core.fsmonitor=false", "--no-optional-locks", "status", "--porcelain=v1", "-z"]);
   });
 
   test("porcelain -z parsing takes the new path of renames and copies", () => {

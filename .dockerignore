@@ -1,0 +1,11 @@
+# What the cloud's image never needs (CLD-10).
+.git
+node_modules
+cloud/node_modules
+cloud/.next
+dist
+out
+release
+.vscode-test
+bench/results
+*.vsix

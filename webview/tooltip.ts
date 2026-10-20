@@ -44,7 +44,8 @@ function div(className: string, text: string): HTMLDivElement {
  * Hover tooltip for the `.node[data-index]` elements under `canvas`, drawn into `element`
  * (an empty, initially `hidden` HTML element). Content:
  * `div.tooltip__label`, optional `div.tooltip__sublabel`, `div.tooltip__type`, with changes set
- * an optional `div.tooltip__status.tooltip__status--<status>`, when the component has sources
+ * an optional `div.tooltip__status.tooltip__status--<status>`, an optional `div.tooltip__note`
+ * with why the box is doubtful (ACC-03), and when the component has sources
  * `ul.tooltip__sources` > `li` > `button.tooltip__source[data-index]` > `span.tooltip__path` +
  * optional `span.tooltip__source-label`, and with changed files `ul.tooltip__files` > `li` >
  * `button.tooltip__file[data-path]` (A/M/R) or `span.tooltip__file` (D).
@@ -52,6 +53,8 @@ function div(className: string, text: string): HTMLDivElement {
 export class TooltipController {
   private diagram: ViewDiagram | undefined;
   private changes: TooltipChanges | undefined;
+  /** Notes shown under a box's type, by source (ACC-03's checks, ARC-03's hotspots), each by box id. */
+  private readonly notes = new Map<string, Record<string, string>>();
   /** The node element under the pointer. */
   private hovered: Element | undefined;
   private overTooltip = false;
@@ -89,6 +92,11 @@ export class TooltipController {
   setChanges(changes: TooltipChanges | undefined): void {
     this.changes = changes;
     this.hide();
+  }
+
+  /** Sets `source`'s notes for boxes, by id. */
+  setNotes(source: string, notes: Record<string, string>): void {
+    this.notes.set(source, notes);
   }
 
   /** Hides the tooltip now and cancels pending show and hide delays. */
@@ -156,6 +164,10 @@ export class TooltipController {
     if (diff && (diff.status === "added" || diff.status === "changed" || diff.status === "kept")) {
       const text = diff.status === "added" ? "New" : diff.status === "kept" ? "Kept" : `Changed: ${diff.fields.map((f) => f.field).join(", ")}`;
       children.push(div(`tooltip__status tooltip__status--${diff.status}`, text));
+    }
+    for (const notes of this.notes.values()) {
+      const note = notes[component.id];
+      if (note !== undefined) children.push(div("tooltip__note", note));
     }
     if (component.sources.length > 0) {
       const list = document.createElement("ul");

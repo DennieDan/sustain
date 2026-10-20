@@ -1,7 +1,8 @@
 import * as assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
+import { hashTree, type SkillHashes } from "../../../src/model/integrity";
 import { suite, test } from "../tdd";
 
 const EXTENSION_ID = "sustain.sustain";
@@ -19,6 +20,14 @@ suite("smoke", () => {
     assert.ok(extension);
     const example = join(extension.extensionPath, "dist/skills/sustain-architecture/references/example.json");
     assert.ok(existsSync(example), `missing ${example}`);
+  });
+
+  test("SAF-01 the shipped skill hashes match the shipped skill files", () => {
+    const extension = vscode.extensions.getExtension(EXTENSION_ID)!;
+    const shipped = JSON.parse(readFileSync(join(extension.extensionPath, "dist/skill-hashes.json"), "utf8")) as SkillHashes;
+    for (const name of ["sustain-architecture", "sustain-bugfix"]) {
+      assert.deepEqual(hashTree(join(extension.extensionPath, "dist/skills", name)), shipped.skills[name], name);
+    }
   });
 
   test("a workspace folder is open", () => {

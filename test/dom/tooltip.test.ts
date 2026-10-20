@@ -133,6 +133,19 @@ describe("FR-VIEW-07 tooltip", () => {
     expect(element.querySelector(".tooltip__sources")).toBeNull();
   });
 
+  test("ACC-03 a doubtful box's tooltip says why, under its type", () => {
+    tooltip.setNotes("checks", { api: "The audit found it partial: no request handling is cited." });
+    move(null, part("api", ".node__box"));
+    vi.advanceTimersByTime(SHOW_DELAY_MS);
+    expect([...element.children].map((child) => child.className).slice(0, 4)).toEqual(["tooltip__label", "tooltip__sublabel", "tooltip__type", "tooltip__note"]);
+    expect(element.querySelector(".tooltip__note")?.textContent).toBe("The audit found it partial: no request handling is cited.");
+    move(part("api", ".node__box"), null);
+    vi.advanceTimersByTime(1000);
+    move(null, part("db", ".node__box"));
+    vi.advanceTimersByTime(SHOW_DELAY_MS);
+    expect(element.querySelector(".tooltip__note")).toBeNull();
+  });
+
   test("hides 200 ms after leaving the node", () => {
     move(null, part("api", ".node__box"));
     vi.advanceTimersByTime(SHOW_DELAY_MS);

@@ -2,6 +2,7 @@
 // host, lays out, renders and fits each loaded diagram, and shows its comparison with the
 // baseline (header, marks, changes panel). Bundled as dist/webview.js; the host's HTML only links
 // dist/webview.css and this script.
+import { runInThread } from "../src/layout/elkInThread";
 import { layoutDiagram } from "../src/layout/layout";
 import type { MeasureText } from "../src/layout/scene";
 import type { Compare, HostMessage, WebviewMessage } from "../src/model/messages";
@@ -155,7 +156,7 @@ async function load(doc: unknown, file: string, compare: Compare | null, current
   emptyState.hidden = true;
   app.classList.remove("app--empty");
   changes.show(result.diagram, comparison);
-  const scene = await layoutDiagram(result.diagram, { measure, viewport: viewport.size() });
+  const scene = await layoutDiagram(result.diagram, { measure, viewport: viewport.size(), run: runInThread });
   if (current !== generation) return;
   renderScene(content, result.diagram, scene, measure);
   tooltip.setDiagram(result.diagram);
@@ -176,7 +177,7 @@ window.addEventListener("message", (event: MessageEvent<HostMessage>) => {
     showEmpty(message.message);
     return;
   }
-  load(message.doc, message.file, message.compare, current).catch((error: unknown) => {
+  load(message.doc, message.file, message.compare ?? null, current).catch((error: unknown) => {
     if (current === generation) showEmpty(`Can't show \`${message.file}\`: ${error instanceof Error ? error.message : String(error)}`);
   });
 });

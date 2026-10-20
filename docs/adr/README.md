@@ -6,10 +6,10 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 |---|---|---|---|
 | [0001](0001-record-architecture-decisions-with-madr.md) | Record architecture decisions with MADR | accepted | 2026-10-10 |
 | [0002](0002-external-coding-agent-generates-diagrams.md) | External coding agent generates diagrams through a skill | accepted | 2026-10-10 |
-| [0003](0003-target-claude-code-and-codex.md) | Target Claude Code and Codex | accepted | 2026-10-10 |
-| [0004](0004-one-skill-with-bundled-scripts.md) | One skill with bundled repo-facts and validate scripts | accepted | 2026-10-10 |
+| [0003](0003-target-claude-code-and-codex.md) | Target Claude Code and Codex | superseded by [ADR-0065](0065-devin-joins-the-composer-and-other-agents-get-copied-prompts.md) | 2026-10-10 |
+| [0004](0004-one-skill-with-bundled-scripts.md) | One skill with bundled repo-facts and validate scripts | superseded by [ADR-0049](0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md) | 2026-10-10 |
 | [0005](0005-manual-invocation-and-claude-pre-approvals.md) | Manual skill invocation and Claude tool pre-approvals | accepted | 2026-10-10 |
-| [0006](0006-install-skill-into-agents-with-claude-symlink.md) | Install the skill into .agents/skills with a .claude symlink | accepted | 2026-10-10 |
+| [0006](0006-install-skill-into-agents-with-claude-symlink.md) | Install the skill into .agents/skills with a .claude symlink | superseded by [ADR-0044](0044-skills-install-per-user-by-default.md) | 2026-10-10 |
 | [0007](0007-validator-as-dependency-free-node-bundles.md) | Validator and repo facts as dependency-free Node bundles | accepted | 2026-10-10 |
 | [0008](0008-validator-publishes-draft-as-candidate.md) | Validator publishes draft.json as candidate.json | accepted | 2026-10-10 |
 | [0009](0009-validator-owns-geometry-and-meta-fields.md) | Validator owns geometry, presentation and repository metadata | accepted | 2026-10-10 |
@@ -17,7 +17,7 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0011](0011-webview-panel-viewer-with-code-beside.md) | WebviewPanel viewer with code in the other column | superseded by [ADR-0033](0033-custom-editor-for-sir-files.md) | 2026-10-10 |
 | [0012](0012-no-validation-on-load-tolerant-parsing.md) | No validation on load; tolerant parsing; stale citations reported on click | accepted | 2026-10-10 |
 | [0013](0013-archify-json-v1-and-archify-folder-layout.md) | Archify JSON v1 and the .archify folder layout | accepted | 2026-10-10 |
-| [0014](0014-desktop-vscode-vsix-single-folder.md) | Desktop VS Code, .vsix install, one chosen folder | accepted | 2026-10-10 |
+| [0014](0014-desktop-vscode-vsix-single-folder.md) | Desktop VS Code, .vsix install, one chosen folder | superseded by [ADR-0057](0057-release-from-tags-to-github-and-the-stores.md) | 2026-10-10 |
 | [0015](0015-typescript-esbuild-vitest-plain-svg-webview.md) | TypeScript, npm, esbuild, vitest; plain TypeScript SVG webview | accepted | 2026-10-10 |
 | [0016](0016-build-test-and-docs-check-harness.md) | Build, test and docs-check harness | accepted | 2026-10-10 |
 | [0017](0017-validator-output-contract-and-exit-codes.md) | Validator output contract and exit codes | accepted | 2026-10-11 |
@@ -27,13 +27,50 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0021](0021-command-ui-details-not-fixed-by-the-spec.md) | Command UI details not fixed by the spec | accepted | 2026-10-11 |
 | [0022](0022-authored-straight-edges-and-overlay-boundaries.md) | Straight clipped edges in authored mode; overlay rectangles for overlapping boundaries | accepted | 2026-10-11 |
 | [0023](0023-auto-layout-direction-by-fit-scale.md) | Auto layout direction chosen by fit scale | accepted | 2026-10-11 |
-| [0024](0024-theme-colour-mapping-and-svg-styling.md) | Theme colour mapping and SVG styling | accepted | 2026-10-11 |
+| [0024](0024-theme-colour-mapping-and-svg-styling.md) | Theme colour mapping and SVG styling | superseded by [ADR-0047](0047-the-viewer-reaches-its-host-through-a-bridge.md) | 2026-10-11 |
 | [0025](0025-viewer-details-not-fixed-by-the-spec.md) | Viewer details not fixed by the spec | accepted | 2026-10-11 |
 | [0026](0026-activate-test-hook-and-happy-dom-tests.md) | activate() test hook and happy-dom DOM tests | accepted | 2026-10-11 |
 | [0027](0027-navigation-and-watching-details.md) | Navigation and watching details | accepted | 2026-10-11 |
-| [0028](0028-package-with-vsce-without-license-or-repository.md) | Package with vsce, without LICENSE or repository metadata | accepted | 2026-10-11 |
+| [0028](0028-package-with-vsce-without-license-or-repository.md) | Package with vsce, without LICENSE or repository metadata | superseded by [ADR-0057](0057-release-from-tags-to-github-and-the-stores.md) | 2026-10-11 |
 | [0029](0029-update-the-previous-diagram-incrementally.md) | Update the previous diagram incrementally instead of regenerating it | accepted | 2026-10-19 |
 | [0030](0030-change-map-details-not-fixed-by-the-spec.md) | Change map and ID matcher details not fixed by the spec | accepted | 2026-10-19 |
 | [0031](0031-compare-the-open-diagram-with-a-chosen-baseline.md) | Compare the open diagram with a chosen baseline in the viewer | accepted | 2026-10-19 |
 | [0032](0032-change-view-details-not-fixed-by-the-spec.md) | Change view details not fixed by the spec | accepted | 2026-10-19 |
 | [0033](0033-custom-editor-for-sir-files.md) | Read-only custom editor for .sir files | accepted | 2026-10-19 |
+| [0029](0029-learning-modes-in-one-agent-session.md) | Learning modes run in one agent session in the user's repository | accepted | 2026-10-14 |
+| [0030](0030-session-state-machine-as-bundled-scripts.md) | Session state machine as bundled scripts, not an MCP server | accepted | 2026-10-14 |
+| [0031](0031-mutation-engine-seeds-the-bugs.md) | A mutation engine seeds the bugs; the agent only chooses where | accepted | 2026-10-14 |
+| [0032](0032-hunt-phase-enforcement-via-devin-hooks.md) | Hunt-phase enforcement via Devin lifecycle hooks | accepted | 2026-10-14 |
+| [0033](0033-session-lifecycle-lock-pause-abandon-complete.md) | Session lifecycle: lock, pause, resume, abandon, complete | accepted | 2026-10-14 |
+| [0034](0034-sustain-folder-layout-and-session-state-files.md) | .sustain run-folder layout and session state files | accepted | 2026-10-14 |
+| [0035](0035-mode-verification-hints-and-scoring.md) | Mode verification contracts, hints and scoring | accepted | 2026-10-14 |
+| [0036](0036-session-install-skills-and-managed-hooks.md) | Session install: skills into .agents, managed hooks per agent config | superseded by [ADR-0042](0042-session-hooks-live-only-while-a-session-runs.md) | 2026-10-14 |
+| [0037](0037-session-command-contract-and-scoring.md) | session.mjs v1 command contract, phases and scoring weights | accepted | 2026-10-14 |
+| [0038](0038-mutation-engine-v1-rule-tables.md) | Mutation engine v1: three kinds as ordered rewrite tables on one line | accepted | 2026-10-14 |
+| [0039](0039-lifecycle-commands-and-hook-contract.md) | Lifecycle command contract and the session-hook wire format | accepted | 2026-10-14 |
+| [0040](0040-hooks-merge-panel-read-side-and-devin-detection.md) | Hooks-merge mechanics, session-panel read side and Devin CLI detection | accepted | 2026-10-15 |
+| [0041](0041-pre-approved-skill-commands-run-no-caller-named-program.md) | Pre-approved skill commands run no caller-named program | accepted | 2026-10-18 |
+| [0042](0042-session-hooks-live-only-while-a-session-runs.md) | Session hooks live only while a session runs | accepted | 2026-10-18 |
+| [0043](0043-skills-are-checked-against-the-shipped-copy-before-launch.md) | Skills are checked against the shipped copy before launch | accepted | 2026-10-18 |
+| [0044](0044-skills-install-per-user-by-default.md) | Skills install per user by default | accepted | 2026-10-18 |
+| [0045](0045-run-json-records-each-run.md) | run.json records each run | accepted | 2026-10-18 |
+| [0046](0046-generate-streams-headless-runs-into-the-sidebar.md) | Generate streams headless runs into the sidebar | accepted | 2026-10-18 |
+| [0047](0047-the-viewer-reaches-its-host-through-a-bridge.md) | The viewer reaches its host through a bridge and colours itself from tokens | accepted | 2026-10-18 |
+| [0048](0048-maps-show-staleness-from-fingerprints.md) | Maps show staleness from fingerprints on load and on change | accepted | 2026-10-18 |
+| [0049](0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md) | A refresh skill updates a map from its fingerprints | accepted | 2026-10-18 |
+| [0050](0050-the-validator-reports-evidence-on-acceptance.md) | The validator reports evidence on acceptance | accepted | 2026-10-18 |
+| [0051](0051-the-diagram-page-is-one-offline-html-file.md) | The diagram page is one offline HTML file | accepted | 2026-10-18 |
+| [0052](0052-a-core-cli-shares-the-model-with-every-host.md) | A core CLI shares the model with every host | accepted | 2026-10-18 |
+| [0053](0053-the-check-runs-as-a-javascript-action.md) | The pull request check runs as a JavaScript Action | superseded by [ADR-0058](0058-the-action-updates-the-map-only-when-asked.md) | 2026-10-18 |
+| [0054](0054-the-cloud-accepts-maps-never-code.md) | The cloud accepts maps, never code | accepted | 2026-10-18 |
+| [0055](0055-only-the-cloud-client-sends-and-only-when-asked.md) | Only the cloud client sends, and only when asked | accepted | 2026-10-18 |
+| [0056](0056-skills-ship-with-their-built-scripts.md) | Skills ship with their built scripts | accepted | 2026-10-18 |
+| [0057](0057-release-from-tags-to-github-and-the-stores.md) | Release from tags to GitHub and the stores | accepted | 2026-10-18 |
+| [0058](0058-the-action-updates-the-map-only-when-asked.md) | The Action updates the map only when asked | accepted | 2026-10-19 |
+| [0059](0059-explain-back-keeps-answer-keys-in-the-extension-host.md) | Explain-back keeps answer keys in the extension host | accepted | 2026-10-19 |
+| [0060](0060-tours-are-a-sidecar-the-viewer-plays.md) | Tours are a sidecar the viewer plays | accepted | 2026-10-19 |
+| [0061](0061-sessions-enforce-the-hunt-in-each-agents-own-hooks.md) | Sessions enforce the hunt in each agent's own hooks | accepted | 2026-10-19 |
+| [0062](0062-bug-kinds-per-language.md) | Bug kinds per language | accepted | 2026-10-19 |
+| [0063](0063-plans-are-enforced-on-the-server-and-billed-through-stripes-api.md) | Plans are enforced on the server and billed through Stripe's API | accepted | 2026-10-19 |
+| [0064](0064-layout-runs-in-web-workers-from-blob-urls.md) | Layout runs in Web Workers from Blob URLs | accepted | 2026-10-19 |
+| [0065](0065-devin-joins-the-composer-and-other-agents-get-copied-prompts.md) | Devin joins the composer, and other agents get copied prompts | accepted | 2026-10-19 |

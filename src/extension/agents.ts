@@ -1,13 +1,13 @@
 // Agent launch details for `Sustain: Generate Architecture` (FR-GEN-01, FR-UPD-08). No `vscode`
-// import, so the prompt format and PATH lookup are unit-tested in Node.
-import { accessSync, constants, statSync } from "node:fs";
-import { delimiter, join } from "node:path";
+// import, so the prompt format is unit-tested in Node. The PATH lookup lives in `src/model/which.ts`.
+import type { ComposerCli } from "../model/messages";
+export { findOnPath } from "../model/which";
 
 export interface Agent {
   /** QuickPick label and terminal name suffix. */
-  label: "Claude Code" | "Codex";
-  /** Executable looked up on PATH. */
-  cli: "claude" | "codex";
+  label: "Claude Code" | "Codex" | "Devin";
+  /** Executable looked up on PATH, or where Devin installs. */
+  cli: ComposerCli;
   /** Skill invocation prefix. */
   invoke: "/sustain-architecture" | "$sustain-architecture";
 }
@@ -15,7 +15,53 @@ export interface Agent {
 export const AGENTS: readonly Agent[] = [
   { label: "Claude Code", cli: "claude", invoke: "/sustain-architecture" },
   { label: "Codex", cli: "codex", invoke: "$sustain-architecture" },
+  // RCH-04: Devin runs in a terminal only.
+  { label: "Devin", cli: "devin", invoke: "/sustain-architecture" },
 ];
+
+/** The terminal's argument vector: the prompt alone, never a permission flag (SAF-04). */
+export function agentLaunchArgs(prompt: string): string[] {
+  return [prompt];
+}
+
+/** The skills a run launches (FR-GEN-01). */
+export type SkillName = "sustain-architecture";
+
+/** The scripts each skill runs, which its Bash rules name exactly. */
+export const SKILL_SCRIPTS: Readonly<Record<SkillName, readonly string[]>> = {
+  "sustain-architecture": ["repo-facts.mjs", "validate.mjs", "change-map.mjs", "match-ids.mjs"],
+};
+
+export interface HeadlessOptions {
+  /** The skill folder the agent loads, for the exact script rules. */
+  skillDir: string;
+  /** The scripts the run may start; the architecture skill's by default. */
+  scripts?: readonly string[];
+  /** A question run: read and search tools only (UI-06). */
+  readOnly?: boolean;
+  /** Claude Code session to continue a follow-up question in. */
+  resume?: string;
+}
+
+/**
+ * The argument vector for a headless run (UI-02, UI-06). Claude Code may use only the tools the
+ * run needs and is refused anything else without a prompt (`dontAsk`); Codex runs in a sandbox.
+ * No vector skips the agent's permission checks (SAF-04).
+ */
+export function headlessArgs(cli: "claude" | "codex", prompt: string, options: HeadlessOptions): string[] {
+  if (cli === "codex") return ["exec", "--json", "--sandbox", options.readOnly ? "read-only" : "workspace-write", prompt];
+  const tools = options.readOnly
+    ? ["Read", "Grep", "Glob"]
+    : [
+        "Read",
+        "Grep",
+        "Glob",
+        ...(options.scripts ?? SKILL_SCRIPTS["sustain-architecture"]).map((script) => `Bash(node ${options.skillDir}/scripts/${script} *)`),
+        "Edit(./.archify/**)",
+      ];
+  const resume = options.resume === undefined ? [] : ["--resume", options.resume];
+  return ["-p", prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk", ...resume, "--allowedTools", ...tools];
+}
 
 /**
  * `/sustain-architecture <focus>` or `$sustain-architecture <focus>`; no trailing space for an
@@ -23,34 +69,34 @@ export const AGENTS: readonly Agent[] = [
  * draws from scratch instead of updating the previous diagram.
  */
 export function agentPrompt(agent: Agent, focus: string, regenerate = false): string {
-  const invoke = regenerate ? `${agent.invoke} --regenerate` : agent.invoke;
-  const trimmed = focus.trim();
+  return skillPrompt(agent.cli, "sustain-architecture", regenerate ? `--regenerate ${focus}` : focus);
+}
+
+/** `/<skill> <args>` for Claude Code and Devin, or `$<skill> <args>` for Codex; no trailing space without arguments. */
+export function skillPrompt(cli: ComposerCli, skill: SkillName, args: string): string {
+  const invoke = `${cli === "codex" ? "$" : "/"}${skill}`;
+  const trimmed = args.trim();
   return trimmed === "" ? invoke : `${invoke} ${trimmed}`;
 }
 
-function isExecutableFile(path: string, platform: NodeJS.Platform): boolean {
-  try {
-    if (!statSync(path).isFile()) return false;
-    if (platform !== "win32") accessSync(path, constants.X_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
+/** RCH-04: agents Sustain does not launch, whose prompt it copies instead. */
+export const PROMPT_TARGETS = [
+  { id: "copilot", label: "GitHub Copilot agent mode" },
+  { id: "cursor", label: "Cursor's agent" },
+  { id: "gemini", label: "Gemini CLI" },
+  { id: "opencode", label: "OpenCode" },
+  { id: "devin-desktop", label: "Devin Desktop" },
+] as const;
+
+export type PromptTarget = (typeof PROMPT_TARGETS)[number]["id"];
 
 /**
- * The first executable `cli` on `env.PATH` (with each `env.PATHEXT` extension on Windows),
- * or `undefined`.
+ * The prompt to paste into `target` to run `skill` with `args`: `@<skill> <args>` for Devin Desktop,
+ * which mentions skills by name, and elsewhere a request to follow the skill's SKILL.md in `skillDir`.
  */
-export function findOnPath(cli: string, env: NodeJS.ProcessEnv, platform: NodeJS.Platform = process.platform): string | undefined {
-  const pathValue = env["PATH"] ?? env["Path"] ?? "";
-  const extensions = platform === "win32" ? ["", ...(env["PATHEXT"] ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean)] : [""];
-  for (const dir of pathValue.split(platform === "win32" ? ";" : delimiter)) {
-    if (dir === "") continue;
-    for (const extension of extensions) {
-      const candidate = join(dir, cli + extension);
-      if (isExecutableFile(candidate, platform)) return candidate;
-    }
-  }
-  return undefined;
+export function copiedPrompt(target: PromptTarget, skill: SkillName, args: string, skillDir: string): string {
+  const trimmed = args.trim();
+  if (target === "devin-desktop") return trimmed === "" ? `@${skill}` : `@${skill} ${trimmed}`;
+  const follow = `Follow the ${skill} skill in ${skillDir}/SKILL.md, and run its scripts from that folder.`;
+  return trimmed === "" ? follow : `${follow} Its arguments are: ${trimmed}`;
 }

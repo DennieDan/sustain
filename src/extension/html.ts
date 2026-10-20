@@ -6,15 +6,17 @@ export interface WebviewAssets {
   cspSource: string;
   /** Fresh random nonce for the one script tag. */
   nonce: string;
-  /** `asWebviewUri` of `dist/webview.js`. */
+  /** `asWebviewUri` of the bundled webview script. */
   scriptUri: string;
   /** `asWebviewUri` of `dist/webview.css`. */
   styleUri: string;
+  /** The `<title>`; defaults to "Architecture". */
+  title?: string;
 }
 
-/** `default-src 'none'`; the nonce'd script and the extension's own stylesheet only. */
+/** `default-src 'none'`; the nonce'd script, the extension's own stylesheet, and workers from Blob URLs for the layout (VWR-02) only. */
 export function webviewCsp(cspSource: string, nonce: string): string {
-  return `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${cspSource}`;
+  return `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${cspSource}; worker-src blob:`;
 }
 
 function attr(value: string): string {
@@ -31,7 +33,7 @@ export function webviewHtml(assets: WebviewAssets): string {
     `<meta http-equiv="Content-Security-Policy" content="${attr(webviewCsp(assets.cspSource, assets.nonce))}">`,
     '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
     `<link rel="stylesheet" href="${attr(assets.styleUri)}">`,
-    "<title>Architecture</title>",
+    `<title>${attr(assets.title ?? "Architecture")}</title>`,
     "</head>",
     "<body>",
     `<script nonce="${attr(assets.nonce)}" src="${attr(assets.scriptUri)}"></script>`,

@@ -2,6 +2,7 @@
 // `archalign-repo/src/citations.rs` and `archalign-repo/src/text.rs`. Deviations: ADR 0019.
 import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
+import { citationPathOk, MAX_PATH_LENGTH } from "./citationPath";
 import { isDenied } from "./deny";
 import type { ArchifyDoc, Issue, SourceRef } from "./types";
 
@@ -9,18 +10,7 @@ import type { ArchifyDoc, Issue, SourceRef } from "./types";
 export const MAX_CITED_BYTES = 2 * 1024 * 1024;
 /** Leading bytes searched for a NUL byte. */
 export const BINARY_SNIFF_BYTES = 8 * 1024;
-export const MAX_PATH_LENGTH = 240;
-
-/**
- * The path-syntax rule: non-empty, at most 240 characters, relative (no leading `/`, no
- * `C:` drive prefix), `/` separators only, no NUL, and no empty, `.` or `..` segment.
- */
-export function citationPathOk(path: string): boolean {
-  if (path.length === 0 || path.length > MAX_PATH_LENGTH) return false;
-  if (path.includes("\0") || path.includes("\\") || path.startsWith("/")) return false;
-  if (/^[A-Za-z]:/.test(path)) return false;
-  return path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
-}
+export { citationPathOk, MAX_PATH_LENGTH } from "./citationPath";
 
 /** Lines in `bytes`; a trailing newline does not start an extra line (`""` 0, `"a\n"` 1, `"a\nb"` 2). */
 export function countLines(bytes: Uint8Array): number {
@@ -79,6 +69,14 @@ export function probeFile(rootReal: string, path: string): FileProbe {
   } finally {
     if (fd !== undefined) closeSync(fd);
   }
+}
+
+/**
+ * Whether an answer may link to `path` (UI-06): the same path rule, deny-list and confinement as
+ * a map citation, and a readable text file.
+ */
+export function citable(rootReal: string, path: string): boolean {
+  return citationPathOk(path) && !isDenied(path) && probeFile(rootReal, path).kind === "text";
 }
 
 function lines(count: number): string {

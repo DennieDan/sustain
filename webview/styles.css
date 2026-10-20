@@ -1,4 +1,4 @@
-/* Architecture webview (FR-VIEW-05..07, FR-CMP-09..12). Colours come only from VS Code theme variables. */
+/* The map viewer (FR-VIEW-05..07, FR-CMP-09..12). Colours and fonts come only from the --sustain-* tokens its host sets (VWR-01). */
 
 html,
 body {
@@ -7,10 +7,10 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--vscode-editor-background);
-  color: var(--vscode-foreground);
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
+  background: var(--sustain-background);
+  color: var(--sustain-foreground);
+  font-family: var(--sustain-font-family);
+  font-size: var(--sustain-font-size);
 }
 
 [hidden] {
@@ -132,7 +132,7 @@ body {
   cursor: grab;
   user-select: none;
   touch-action: none;
-  font-family: var(--vscode-font-family);
+  font-family: var(--sustain-font-family);
 }
 
 .canvas--panning {
@@ -153,10 +153,10 @@ body {
   display: flex;
   gap: 2px;
   padding: 2px;
-  background: var(--vscode-editorWidget-background);
-  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
   border-radius: 4px;
-  box-shadow: 0 2px 8px var(--vscode-widget-shadow);
+  box-shadow: 0 2px 8px var(--sustain-shadow);
 }
 
 .toolbar__button {
@@ -166,34 +166,323 @@ body {
   border: none;
   border-radius: 3px;
   background: none;
-  color: var(--vscode-foreground);
+  color: var(--sustain-foreground);
   font: inherit;
   cursor: pointer;
 }
 
 .toolbar__button:hover {
-  background: var(--vscode-toolbar-hoverBackground);
+  background: var(--sustain-hover);
 }
 
 .toolbar__button:active {
-  background: var(--vscode-toolbar-activeBackground, var(--vscode-toolbar-hoverBackground));
+  background: var(--sustain-active);
 }
 
 .toolbar__button:focus-visible {
-  outline: 1px solid var(--vscode-focusBorder);
+  outline: 1px solid var(--sustain-accent);
   outline-offset: -1px;
+}
+
+/* Highlight bar (UI-03): which boxes cite the active file, and Follow editor */
+
+.highlight {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 2px 2px 10px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.highlight[hidden],
+.app--empty .highlight {
+  display: none;
+}
+
+.highlight__follow--on {
+  background: var(--sustain-toggle-background);
+  color: var(--sustain-toggle-foreground);
+}
+
+.app--highlighting .node:not(.node--highlight),
+.app--highlighting .edge,
+.app--highlighting .edge-label {
+  opacity: 0.35;
+}
+
+.node--highlight .node__box {
+  stroke: var(--sustain-accent);
+  stroke-width: 3px;
+}
+
+/* Freshness (FRS-03): changed and missing boxes, and the header */
+
+.freshness {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 4px 10px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.app--empty .freshness {
+  display: none;
+}
+
+/* Compare (FRS-07): added boxes and arrows outlined, the older map's removed ones see-through, the summary on top */
+
+.node--added .node__box {
+  stroke: var(--sustain-green);
+  stroke-width: 3px;
+}
+
+.node--removed .node__box {
+  fill: none;
+  stroke: var(--sustain-muted);
+  stroke-dasharray: 6 4;
+}
+
+.node--removed .node__label,
+.node--removed .node__sublabel {
+  fill: var(--sustain-muted);
+}
+
+.edge--added .edge__line {
+  stroke: var(--sustain-green);
+}
+
+.edge--added .edge__head {
+  fill: var(--sustain-green);
+}
+
+.edge--removed .edge__line {
+  stroke: var(--sustain-muted);
+}
+
+.edge--removed .edge__head,
+.edge-label.edge--removed {
+  fill: var(--sustain-muted);
+}
+
+.compare {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 60%;
+  padding: 4px 4px 4px 10px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.app--empty .compare {
+  display: none;
+}
+
+/* Hotspots (ARC-03): boxes tinted by how often their code changes, four steps */
+
+.node--heat-1 .node__box {
+  fill: color-mix(in srgb, var(--sustain-orange) 15%, transparent);
+}
+
+.node--heat-2 .node__box {
+  fill: color-mix(in srgb, var(--sustain-orange) 28%, transparent);
+}
+
+.node--heat-3 .node__box {
+  fill: color-mix(in srgb, var(--sustain-orange) 42%, transparent);
+}
+
+.node--heat-4 .node__box {
+  fill: color-mix(in srgb, var(--sustain-orange) 55%, transparent);
+  stroke: var(--sustain-orange);
+}
+
+/* Rule violations (ARC-01): red arrows labelled with the rules */
+
+.edge--violation .edge__line {
+  stroke: var(--sustain-red);
+}
+
+.edge--violation .edge__head,
+.edge-label.edge--violation {
+  fill: var(--sustain-red);
+}
+
+/* Uncertainty (ACC-03): doubtful boxes dotted, unbacked arrows grey and dashed, and the legend */
+
+.node--doubtful .node__box {
+  stroke-dasharray: 2 3;
+}
+
+.edge--unsupported .edge__line {
+  stroke: var(--sustain-muted);
+}
+
+.edge--unsupported .edge__head,
+.edge-label.edge--unsupported {
+  fill: var(--sustain-muted);
+}
+
+.checks-legend {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  max-width: 260px;
+  padding: 4px 10px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+  color: var(--sustain-muted);
+  font-size: 0.9em;
+}
+
+.app--empty .checks-legend {
+  display: none;
+}
+
+/* The changes bar takes the bottom right, so the legend moves under the toolbar. */
+.changes:not([hidden]) ~ .checks-legend {
+  top: 48px;
+  bottom: auto;
+}
+
+.node--edited .node__box {
+  stroke: var(--sustain-orange);
+  stroke-dasharray: 6 3;
+}
+
+.node--missing .node__box {
+  stroke: var(--sustain-red);
+  stroke-dasharray: 2 3;
+}
+
+.node__badge {
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--sustain-background);
+  stroke-width: 3px;
+}
+
+.node--edited .node__badge {
+  fill: var(--sustain-orange);
+}
+
+.node--missing .node__badge {
+  fill: var(--sustain-red);
+}
+
+/* Change overlay (FRS-04) */
+
+.changes {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  max-width: 50%;
+  max-height: 40%;
+  overflow: auto;
+  padding: 4px 4px 4px 10px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.app--empty .changes {
+  display: none;
+}
+
+.changes__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.changes__uncovered summary {
+  cursor: pointer;
+  color: var(--sustain-muted);
+}
+
+.changes__uncovered ul {
+  margin: 4px 0;
+  padding-left: 18px;
+  font-family: var(--sustain-mono-font-family);
+}
+
+.node--change-strong .node__box {
+  fill: color-mix(in srgb, var(--sustain-accent) 30%, transparent);
+  stroke: var(--sustain-accent);
+  stroke-width: 3px;
+}
+
+.node--change-weak .node__box {
+  stroke: var(--sustain-accent);
+  stroke-dasharray: 3 3;
+}
+
+/* New box candidates (PRC-02): dashed, see-through and view-only */
+
+.node--ghost .node__box {
+  fill: none;
+  stroke: var(--sustain-muted);
+  stroke-dasharray: 6 4;
+}
+
+.node--ghost .node__label,
+.node--ghost .node__sublabel {
+  fill: var(--sustain-muted);
+}
+
+/* New arrow candidates (PRC-06): dashed and muted, after the map's own arrows */
+
+.edge--ghost .edge__line {
+  stroke: var(--sustain-muted);
+}
+
+.edge--ghost .edge__head,
+.edge-label.edge--ghost {
+  fill: var(--sustain-muted);
 }
 
 /* Empty state */
 
+.empty-state__action {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 2px;
+  background: var(--sustain-button-background);
+  color: var(--sustain-button-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.empty-state__action:hover {
+  background: var(--sustain-button-hover);
+}
+
 .empty-state {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
   align-items: center;
   justify-content: center;
   height: 100%;
   padding: 24px;
   box-sizing: border-box;
-  color: var(--vscode-descriptionForeground);
+  color: var(--sustain-muted);
   text-align: center;
   white-space: pre-wrap;
 }
@@ -202,28 +491,28 @@ body {
 
 .boundary__box {
   fill: none;
-  stroke: var(--vscode-panel-border);
+  stroke: var(--sustain-border);
   stroke-width: 1.25px;
   stroke-dasharray: 6 4;
 }
 
 .boundary__label {
-  fill: var(--vscode-descriptionForeground);
+  fill: var(--sustain-muted);
   font-weight: 600;
 }
 
 .boundary--security-group .boundary__box {
-  stroke: var(--vscode-charts-red);
+  stroke: var(--sustain-red);
 }
 
 .boundary--security-group .boundary__label {
-  fill: var(--vscode-charts-red);
+  fill: var(--sustain-red);
 }
 
 /* Edges */
 
 .edge {
-  --edge-color: var(--vscode-foreground);
+  --edge-color: var(--sustain-foreground);
 }
 
 .edge__line {
@@ -238,7 +527,7 @@ body {
 }
 
 .edge--emphasis {
-  --edge-color: var(--vscode-focusBorder);
+  --edge-color: var(--sustain-accent);
 }
 
 .edge--emphasis .edge__line {
@@ -246,7 +535,7 @@ body {
 }
 
 .edge--security {
-  --edge-color: var(--vscode-charts-red);
+  --edge-color: var(--sustain-red);
 }
 
 .edge--security .edge__line {
@@ -258,8 +547,8 @@ body {
 }
 
 .edge-label {
-  fill: var(--vscode-foreground);
-  stroke: var(--vscode-editor-background);
+  fill: var(--sustain-foreground);
+  stroke: var(--sustain-background);
   stroke-width: 4px;
   stroke-linejoin: round;
   paint-order: stroke;
@@ -268,35 +557,35 @@ body {
 /* Nodes */
 
 .node {
-  --node-color: var(--vscode-descriptionForeground);
+  --node-color: var(--sustain-muted);
 }
 
 .node--frontend {
-  --node-color: var(--vscode-charts-blue);
+  --node-color: var(--sustain-blue);
 }
 
 .node--backend {
-  --node-color: var(--vscode-charts-green);
+  --node-color: var(--sustain-green);
 }
 
 .node--database {
-  --node-color: var(--vscode-charts-purple);
+  --node-color: var(--sustain-purple);
 }
 
 .node--cloud {
-  --node-color: var(--vscode-charts-yellow);
+  --node-color: var(--sustain-yellow);
 }
 
 .node--security {
-  --node-color: var(--vscode-charts-red);
+  --node-color: var(--sustain-red);
 }
 
 .node--messagebus {
-  --node-color: var(--vscode-charts-orange);
+  --node-color: var(--sustain-orange);
 }
 
 .node--external {
-  --node-color: var(--vscode-descriptionForeground);
+  --node-color: var(--sustain-muted);
 }
 
 /* FR-VIEW-05: fill = type colour at 12 % opacity. */
@@ -307,16 +596,16 @@ body {
 }
 
 .node__label {
-  fill: var(--vscode-foreground);
+  fill: var(--sustain-foreground);
   font-weight: bold;
 }
 
 .node__sublabel {
-  fill: var(--vscode-descriptionForeground);
+  fill: var(--sustain-muted);
 }
 
 .node__tag-badge {
-  fill: color-mix(in srgb, var(--node-color) 22%, var(--vscode-editor-background));
+  fill: color-mix(in srgb, var(--node-color) 22%, var(--sustain-background));
 }
 
 .node__tag {
@@ -395,11 +684,11 @@ body {
   max-width: 480px;
   padding: 6px 10px;
   box-sizing: border-box;
-  background: var(--vscode-editorHoverWidget-background);
-  color: var(--vscode-editorHoverWidget-foreground);
-  border: 1px solid var(--vscode-editorHoverWidget-border);
+  background: var(--sustain-tooltip-background);
+  color: var(--sustain-tooltip-foreground);
+  border: 1px solid var(--sustain-tooltip-border);
   border-radius: 4px;
-  box-shadow: 0 2px 8px var(--vscode-widget-shadow);
+  box-shadow: 0 2px 8px var(--sustain-shadow);
   line-height: 1.4;
 }
 
@@ -409,14 +698,19 @@ body {
 
 .tooltip__sublabel,
 .tooltip__type {
-  color: var(--vscode-descriptionForeground);
+  color: var(--sustain-muted);
+}
+
+.tooltip__note {
+  margin-top: 4px;
+  font-style: italic;
 }
 
 .tooltip__sources {
   margin: 6px 0 0;
   padding: 6px 0 0;
   list-style: none;
-  border-top: 1px solid var(--vscode-editorHoverWidget-border);
+  border-top: 1px solid var(--sustain-tooltip-border);
 }
 
 .tooltip__source {
@@ -427,28 +721,193 @@ body {
   padding: 1px 0;
   border: none;
   background: none;
-  color: var(--vscode-textLink-foreground);
+  color: var(--sustain-link);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
 .tooltip__source:hover .tooltip__path {
-  color: var(--vscode-textLink-activeForeground);
+  color: var(--sustain-link-active);
   text-decoration: underline;
 }
 
 .tooltip__source:focus-visible {
-  outline: 1px solid var(--vscode-focusBorder);
+  outline: 1px solid var(--sustain-accent);
 }
 
 .tooltip__path {
-  font-family: var(--vscode-editor-font-family);
+  font-family: var(--sustain-mono-font-family);
   overflow-wrap: anywhere;
 }
 
 .tooltip__source-label {
-  color: var(--vscode-descriptionForeground);
+  color: var(--sustain-muted);
+}
+
+/* Tours (SKL-02): the stop's box outlined, the start button under the toolbar, and the stop's card */
+
+.node--tour .node__box {
+  stroke: var(--sustain-purple);
+  stroke-width: 3px;
+}
+
+.tour__start {
+  position: absolute;
+  top: 44px;
+  right: 8px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.tour {
+  position: absolute;
+  left: 8px;
+  bottom: 48px;
+  max-width: min(360px, calc(100% - 32px));
+  max-height: 60%;
+  overflow: auto;
+  padding: 8px 12px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+  overflow-wrap: anywhere;
+}
+
+.tour[hidden],
+.tour__start[hidden],
+.app--empty .tour,
+.app--empty .tour__start {
+  display: none;
+}
+
+.tour__step {
+  color: var(--sustain-muted);
+}
+
+.tour__title {
+  margin: 4px 0;
+  font-size: 1.1em;
+}
+
+.tour__explanation,
+.tour__question,
+.tour__answer {
+  margin: 6px 0;
+}
+
+.tour__answer {
+  padding: 4px 8px;
+  border-left: 3px solid var(--sustain-purple);
+}
+
+.tour__nav {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.tour__code {
+  padding: 0;
+  font-family: var(--sustain-mono-font-family, monospace);
+  color: var(--sustain-link);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.tour__code:hover {
+  text-decoration: underline;
+}
+
+/* Finder (VWR-03): the search bar under the toolbar, matches outlined, the rest dimmed */
+
+.finder {
+  position: absolute;
+  top: 44px;
+  right: 72px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px 2px 6px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.finder[hidden],
+.app--empty .finder {
+  display: none;
+}
+
+.finder__input {
+  width: 200px;
+  font: inherit;
+  color: var(--sustain-foreground);
+  background: var(--sustain-background);
+  border: 1px solid var(--sustain-widget-border);
+  border-radius: 2px;
+}
+
+.finder__count {
+  min-width: 56px;
+  color: var(--sustain-muted);
+}
+
+.app--finding .node:not(.node--found) {
+  opacity: 0.3;
+}
+
+.node--found .node__box {
+  stroke: var(--sustain-accent);
+  stroke-width: 2px;
+}
+
+.node--found-current .node__box {
+  stroke-width: 4px;
+}
+
+/* Keyboard and screen readers (VWR-04): a focus ring on the box in focus, and text only screen readers read */
+
+.node:focus {
+  outline: none;
+}
+
+.node:focus-visible .node__box {
+  stroke: var(--sustain-accent);
+  stroke-width: 3px;
+  stroke-dasharray: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Drill-down (VWR-05): the way back to the overview, at the bottom right */
+
+.overview {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  background: var(--sustain-widget-background);
+  border: 1px solid var(--sustain-widget-border);
+  box-shadow: 0 2px 8px var(--sustain-shadow);
+}
+
+.overview[hidden],
+.app--empty .overview {
+  display: none;
 }
 
 .tooltip__status--added {

@@ -1,27 +1,58 @@
 // FR-RF-01 (and FR-GIT-01 through the CLI) against the built repo-facts.mjs.
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { describe, expect, test } from "vitest";
+import { skillEstimates } from "../../../src/model/estimate";
+import { sizeFacts } from "../../../src/model/repoSize";
 import { runTimestamp } from "../../../src/model/runFolder";
 import { envWithoutGit, git, gitRepo, put, runScript, tempDir } from "../support/temp";
 
 const RUN_NAME = /^architecture-([a-z0-9-]+)-(\d{8}-\d{6})(-\d+)?$/;
 
 describe("FR-RF-01 repo-facts CLI", () => {
-  test("creates the run folder and prints root, runFolder, draft and git", () => {
+  test("CST-04 CST-01 CST-03 CST-05 creates the run folder with run.json and prints root, runFolder, draft, git, size, estimate and budget", () => {
     const root = tempDir();
     const run = runScript("repo-facts", ["--focus", "Payment service: retries & queues"], { cwd: root, env: envWithoutGit() });
     expect(run.status).toBe(0);
     expect(run.stderr).toBe("");
     const facts = run.json();
-    expect(Object.keys(facts)).toEqual(["root", "runFolder", "draft", "git"]);
+    expect(Object.keys(facts)).toEqual(["root", "runFolder", "draft", "git", "size", "estimate", "budget"]);
     expect(facts.root).toBe(root);
     const name = facts.runFolder.replace(/^\.archify\//, "");
     expect(name).toMatch(RUN_NAME);
     expect(RUN_NAME.exec(name)![1]).toBe("payment-service-retries-queues");
     expect(facts.draft).toBe(`${facts.runFolder}/draft.json`);
-    expect(readdirSync(join(root, facts.runFolder))).toEqual([]);
+    expect(readdirSync(join(root, facts.runFolder))).toEqual(["run.json"]);
+    expect(JSON.parse(readFileSync(join(root, facts.runFolder, "run.json"), "utf8"))).toMatchObject({
+      schema: 1,
+      kind: "full",
+      focus: "Payment service: retries & queues",
+      paths: [],
+      base: null,
+      parent: null,
+      phase: "created",
+      attempts: 0,
+    });
     expect(facts.git).toBeNull();
+  });
+
+  test("CST-01 prints the repository's size, leaving the new run folder out", () => {
+    const root = gitRepo({ "src/app.ts": "a\nb\nc\n", "src/app.test.ts": "t\n" });
+    const facts = runScript("repo-facts", [], { cwd: root }).json();
+    expect(facts.size).toMatchObject({ listing: "git", files: 2, lines: { total: 4, test: 1, nonTest: 3 }, tier: "S" });
+  });
+
+  test("CST-03 prints each agent's estimate for a full run, as the sidebar states it", () => {
+    const facts = runScript("repo-facts", [], { cwd: gitRepo({ "src/app.ts": "a\n".repeat(30) }) }).json();
+    expect(facts.estimate).toEqual(skillEstimates(sizeFacts(facts.size), "full"));
+    expect(facts.estimate.claude.text).toMatch(/^About \d+k–\d+k tokens \(about \$\d+\.\d\d–\$\d+\.\d\d at API prices; on a subscription it uses part of your plan's limit\)$/);
+  });
+
+  test("CST-05 prints the tier's read budget", () => {
+    const small = runScript("repo-facts", [], { cwd: gitRepo({ "src/app.ts": "a\n" }) }).json();
+    expect([small.size.tier, small.budget]).toEqual(["S", 25]);
+    const medium = runScript("repo-facts", [], { cwd: gitRepo({ "src/app.ts": "a\n".repeat(20_000) }) }).json();
+    expect([medium.size.tier, medium.budget]).toEqual(["M", 45]);
   });
 
   test("without --focus the slug comes from the repo folder name", () => {
@@ -50,7 +81,7 @@ describe("FR-RF-01 repo-facts CLI", () => {
     expect(existsSync(join(root, ".archify", name))).toBe(true);
   });
 
-  test("git facts come from the repo root", () => {
+  test("CST-04 git facts come from the repo root and exclude the new run folder", () => {
     const root = gitRepo({ "a.txt": "a\n" });
     git(root, "remote", "add", "origin", "https://user:pw@github.com/acme/widget.git");
     writeFileSync(join(root, "a.txt"), "changed\n");

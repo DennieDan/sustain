@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustain.dev/schemas/upload.schema.json",
+  "title": "Sustain Cloud upload",
+  "description": "What Sustain Cloud accepts: an Archify map with its sidecars, or a check result, and metadata. Never code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["repo", "commit", "branch", "kind", "meta"],
+  "properties": {
+    "repo": { "type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$" },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "branch": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "kind": { "enum": ["map", "check"] },
+    "map": { "type": "object", "description": "An Archify map, checked against the vendored Archify schemas." },
+    "sidecars": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "run": { "$ref": "#/$defs/run" },
+        "fingerprints": { "$ref": "#/$defs/fingerprints" },
+        "evidence": { "$ref": "#/$defs/evidence" },
+        "tour": { "$ref": "#/$defs/tour" }
+      }
+    },
+    "check": { "$ref": "#/$defs/check" },
+    "meta": { "$ref": "#/$defs/meta" }
+  },
+  "allOf": [
+    { "if": { "properties": { "kind": { "const": "map" } } }, "then": { "required": ["map"], "not": { "required": ["check"] } } },
+    { "if": { "properties": { "kind": { "const": "check" } } }, "then": { "required": ["check"], "not": { "required": ["sidecars"] } } }
+  ],
+  "$defs": {
+    "shortText": { "type": "string", "maxLength": 200 },
+    "path": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "box": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": { "id": { "$ref": "#/$defs/shortText" }, "label": { "$ref": "#/$defs/shortText" } }
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "output", "cacheRead", "cacheWrite"],
+      "properties": {
+        "input": { "$ref": "#/$defs/count" },
+        "output": { "$ref": "#/$defs/count" },
+        "cacheRead": { "$ref": "#/$defs/count" },
+        "cacheWrite": { "$ref": "#/$defs/count" }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "run": { "type": "string", "pattern": "^[a-z0-9]+-[A-Za-z0-9._-]{1,120}$" },
+        "focus": { "$ref": "#/$defs/shortText" },
+        "agent": { "type": "string", "maxLength": 40 },
+        "tokens": { "$ref": "#/$defs/tokens" },
+        "costUsd": { "type": "number", "minimum": 0 },
+        "skillVersion": { "type": "string", "maxLength": 40 },
+        "pull": { "type": "integer", "minimum": 1 },
+        "defaultBranch": { "type": "string", "minLength": 1, "maxLength": 255 }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "kind", "focus", "paths", "base", "parent", "createdAt", "skillVersion", "phase", "attempts"],
+      "properties": {
+        "schema": { "const": 1 },
+        "kind": { "enum": ["full", "refresh", "drill"] },
+        "focus": { "$ref": "#/$defs/shortText" },
+        "paths": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/shortText" } },
+        "base": { "type": ["string", "null"], "maxLength": 200 },
+        "parent": { "type": ["string", "null"], "maxLength": 200 },
+        "createdAt": { "type": "string", "format": "date-time", "maxLength": 40 },
+        "skillVersion": { "type": "string", "maxLength": 40 },
+        "phase": { "enum": ["created", "validating", "accepted", "rejected"] },
+        "attempts": { "$ref": "#/$defs/count" },
+        "finishedAt": { "type": "string", "maxLength": 40 },
+        "agent": { "type": "string", "maxLength": 40 },
+        "mode": { "enum": ["sidebar", "terminal"] },
+        "tokens": { "$ref": "#/$defs/tokens" },
+        "costUsd": { "type": "number", "minimum": 0 },
+        "estimate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["low", "high", "basis", "model"],
+          "properties": {
+            "low": { "$ref": "#/$defs/count" },
+            "high": { "$ref": "#/$defs/count" },
+            "basis": { "enum": ["provisional", "fitted"] },
+            "model": { "type": ["string", "null"], "maxLength": 60 }
+          }
+        }
+      }
+    },
+    "fingerprints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "revision", "createdAt", "citations"],
+      "properties": {
+        "schema": { "const": 1 },
+        "revision": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40,64}$" },
+        "createdAt": { "type": "string", "maxLength": 40 },
+        "citations": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["component", "index", "path", "blob"],
+            "properties": {
+              "component": { "$ref": "#/$defs/shortText" },
+              "index": { "$ref": "#/$defs/count" },
+              "path": { "$ref": "#/$defs/path" },
+              "line": { "type": "integer", "minimum": 1 },
+              "end_line": { "type": "integer", "minimum": 1 },
+              "blob": { "$ref": "#/$defs/hash" },
+              "range": { "$ref": "#/$defs/hash" },
+              "loose": { "$ref": "#/$defs/hash" }
+            }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "findings"],
+      "properties": {
+        "schema": { "const": 1 },
+        "findings": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "pointer", "message"],
+            "properties": {
+              "code": { "enum": ["DeclarationOnly", "UnsupportedEdge", "MissingEdge", "Isolated", "NotChecked"] },
+              "pointer": { "type": "string", "maxLength": 100 },
+              "component": { "$ref": "#/$defs/shortText" },
+              "connection": { "$ref": "#/$defs/shortText" },
+              "between": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/$defs/shortText" } },
+              "links": { "$ref": "#/$defs/count" },
+              "message": { "type": "string", "maxLength": 700 }
+            }
+          }
+        }
+      }
+    },
+    "tour": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "createdAt", "stops"],
+      "properties": {
+        "schema": { "const": 1 },
+        "createdAt": { "type": "string", "maxLength": 40 },
+        "stops": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["component", "title", "explanation", "question", "answer", "citation"],
+            "properties": {
+              "component": { "$ref": "#/$defs/shortText" },
+              "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+              "explanation": { "type": "string", "minLength": 1, "maxLength": 400 },
+              "question": { "type": "string", "minLength": 1, "maxLength": 300 },
+              "answer": { "type": "string", "minLength": 1, "maxLength": 400 },
+              "citation": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path", "line"],
+                "properties": {
+                  "path": { "$ref": "#/$defs/path" },
+                  "line": { "type": "integer", "minimum": 1 },
+                  "end_line": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["map", "base", "head", "mergeBase", "touched", "stale", "uncovered", "candidates", "gone", "result", "reasons"],
+      "properties": {
+        "map": { "type": "string", "maxLength": 200 },
+        "base": { "type": "string", "maxLength": 255 },
+        "head": { "type": ["string", "null"], "maxLength": 255 },
+        "mergeBase": { "$ref": "#/$defs/hash" },
+        "touched": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["strong", "weak"],
+          "properties": {
+            "strong": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/box" } },
+            "weak": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/box" } }
+          }
+        },
+        "stale": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "state"],
+            "properties": { "id": { "$ref": "#/$defs/shortText" }, "label": { "$ref": "#/$defs/shortText" }, "state": { "enum": ["edited", "missing"] } }
+          }
+        },
+        "uncovered": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/path" } },
+        "candidates": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["dir", "files", "lines", "label"],
+            "properties": {
+              "dir": { "$ref": "#/$defs/path" },
+              "files": {
+                "type": "array",
+                "maxItems": 500,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["path", "added"],
+                  "properties": { "path": { "$ref": "#/$defs/path" }, "added": { "$ref": "#/$defs/count" } }
+                }
+              },
+              "lines": { "$ref": "#/$defs/count" },
+              "label": { "$ref": "#/$defs/shortText" }
+            }
+          }
+        },
+        "gone": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/box" } },
+        "arrows": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to", "links"],
+            "properties": {
+              "from": { "$ref": "#/$defs/box" },
+              "to": { "$ref": "#/$defs/box" },
+              "links": {
+                "type": "array",
+                "maxItems": 200,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["from", "to"],
+                  "properties": { "from": { "$ref": "#/$defs/path" }, "to": { "$ref": "#/$defs/path" } }
+                }
+              }
+            }
+          }
+        },
+        "violations": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rule", "kind", "reason", "file", "line", "imported"],
+            "properties": {
+              "rule": { "$ref": "#/$defs/shortText" },
+              "kind": { "enum": ["forbid", "only-via", "isolated"] },
+              "reason": { "type": "string", "maxLength": 400 },
+              "file": { "$ref": "#/$defs/path" },
+              "line": { "type": "integer", "minimum": 1 },
+              "imported": { "$ref": "#/$defs/path" }
+            }
+          }
+        },
+        "result": { "enum": ["pass", "fail"] },
+        "reasons": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/shortText" } }
+      }
+    }
+  }
+}
