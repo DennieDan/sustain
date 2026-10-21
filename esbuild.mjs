@@ -202,7 +202,7 @@ export async function buildAction(outfile = join(root, "action/dist/index.js")) 
   await esbuild.build({
     ...common,
     metafile: false,
-    entryPoints: [join(root, "action/src/index.ts")],
+    entryPoints: [join(root, "src/action/index.ts")],
     outfile,
     platform: "node",
     format: "cjs",

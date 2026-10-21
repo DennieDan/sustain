@@ -4,8 +4,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { TEST_DIST } from "./support/buildScripts";
-import { git, gitRepo, put, runScript, tempDir } from "./support/temp";
+import { TEST_DIST } from "../support/buildScripts";
+import { git, gitRepo, put, runScript, tempDir } from "../support/temp";
 
 const CLI = join(TEST_DIST, "cli/sustain.mjs");
 const HANDLER = ["export function handle(req) {", "  const body = parse(req);", "  return save(body);", "}", ""].join("\n");

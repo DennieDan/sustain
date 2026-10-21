@@ -3,12 +3,12 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { buildAction } from "../../esbuild.mjs";
-import type { Comment, GitHubClient } from "../../action/src/github";
-import { runAction } from "../../action/src/main";
-import { COMMENT_MARKER } from "../../src/core-node/deltaMarkdown";
-import { repoRoot } from "./support/sourceScan";
-import { git, gitRepo, put, runScript } from "./support/temp";
+import { buildAction } from "../../../esbuild.mjs";
+import type { Comment, GitHubClient } from "../../../src/action/github";
+import { runAction } from "../../../src/action/main";
+import { COMMENT_MARKER } from "../../../src/core-node/deltaMarkdown";
+import { repoRoot } from "../support/sourceScan";
+import { git, gitRepo, put, runScript } from "../support/temp";
 
 const EVENT: unknown = JSON.parse(readFileSync(join(repoRoot, "test/fixtures/action/pull_request.json"), "utf8"));
 const HANDLER = ["export function handle(req) {", "  return save(req);", "}", ""].join("\n");

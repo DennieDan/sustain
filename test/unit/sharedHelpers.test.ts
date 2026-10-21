@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { repoRoot, sourceFiles } from "./support/sourceScan";
 
-const FILES = [...sourceFiles("src"), ...sourceFiles("webview"), ...sourceFiles("action/src"), "esbuild.mjs"];
+const FILES = [...sourceFiles("src"), ...sourceFiles("webview"), "esbuild.mjs"];
 const SOURCES = FILES.map((file) => ({ file, source: readFileSync(join(repoRoot, file), "utf8") }));
 
 /** The files that define `name`, once per definition: a function with a body, or a `const`, `let` or `var`. */

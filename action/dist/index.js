@@ -1,9 +1,9 @@
 "use strict";
 
-// action/src/index.ts
+// src/action/index.ts
 var import_node_fs7 = require("node:fs");
 
-// action/src/github.ts
+// src/action/github.ts
 function restClient(api, repository, token) {
   const headers = { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json" };
   const call = async (method, path2, body) => {
@@ -1418,7 +1418,7 @@ function deltaMermaid(report, diagram) {
   return lines.join("\n");
 }
 
-// action/src/main.ts
+// src/action/main.ts
 var COMMENT_ITEMS = 30;
 function input(env, name) {
   return (env[`INPUT_${name.toUpperCase()}`] ?? "").trim();
@@ -1459,7 +1459,7 @@ async function runAction(context) {
   return { exitCode: report.result === "pass" ? 0 : 1, result: report.result, comment: body };
 }
 
-// action/src/index.ts
+// src/action/index.ts
 async function main() {
   const env = process.env;
   const event = JSON.parse((0, import_node_fs7.readFileSync)(env["GITHUB_EVENT_PATH"] ?? "", "utf8"));
