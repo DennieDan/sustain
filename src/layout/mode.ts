@@ -1,6 +1,6 @@
 // Layout mode selection and Archify grid conversion (FR-LAY-01).
-import type { ViewComponent, ViewDiagram } from "../model/tolerant";
-import type { GridLayout } from "../model/types";
+import type { ViewComponent, ViewDiagram } from "../core/tolerant";
+import type { GridLayout } from "../core/types";
 import type { Rect } from "./scene";
 
 /** Archify's grid defaults (`cols` only matters to Archify's own placement, not to the conversion). */

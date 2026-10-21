@@ -2,9 +2,9 @@
 // `archalign-repo/src/citations.rs` and `archalign-repo/src/text.rs`. Deviations: ADR 0019.
 import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
-import { citationPathOk, MAX_PATH_LENGTH } from "./citationPath";
-import { isDenied } from "./deny";
-import type { ArchifyDoc, Issue, SourceRef } from "./types";
+import { citationPathOk, MAX_PATH_LENGTH } from "../core/citationPath";
+import { isDenied } from "../core/deny";
+import type { ArchifyDoc, Issue, SourceRef } from "../core/types";
 
 /** Largest citable file: 2 MiB. */
 export const MAX_CITED_BYTES = 2 * 1024 * 1024;

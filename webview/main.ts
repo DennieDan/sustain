@@ -6,7 +6,7 @@ import { runInThread } from "../src/layout/elkInThread";
 import { layoutDiagram } from "../src/layout/layout";
 import type { MeasureText } from "../src/layout/scene";
 import type { Compare, HostMessage, WebviewMessage } from "../src/model/messages";
-import { readDiagram } from "../src/model/tolerant";
+import { readDiagram } from "../src/core/tolerant";
 import { ChangesView, compareDiagrams, readChangesState } from "./changes";
 import type { ChangesState, Comparison } from "./changes";
 import { NodeClicks } from "./click";

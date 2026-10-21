@@ -1,8 +1,8 @@
 // FR-LAY-02: every fixture lays out, boxes do not overlap, output is deterministic.
 import { describe, expect, test } from "vitest";
 import type { Scene } from "../../../src/layout/scene";
-import { readDiagram } from "../../../src/model/tolerant";
-import type { ViewDiagram } from "../../../src/model/tolerant";
+import { readDiagram } from "../../../src/core/tolerant";
+import type { ViewDiagram } from "../../../src/core/tolerant";
 import { archifyFixtures } from "../support/fixtures";
 import { contains, lay, onBorder, overlaps } from "./helpers";
 

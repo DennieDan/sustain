@@ -6,7 +6,7 @@ import { basename, dirname, relative, sep } from "node:path";
 import * as vscode from "vscode";
 import { repoRootFor } from "../model/discovery";
 import type { Compare, HostMessage, WebviewMessage } from "../model/messages";
-import { parseDiagram, type ViewDiagram } from "../model/tolerant";
+import { parseDiagram, type ViewDiagram } from "../core/tolerant";
 import { buildCompare, defaultBaseline, pickerItems, runFolderOf } from "./baseline";
 import { webviewHtml } from "./html";
 import { openSource, openSourceRef } from "./navigate";

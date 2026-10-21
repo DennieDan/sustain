@@ -4,7 +4,7 @@
 // are left out: lock files, minified files, and what `.gitattributes` marks for GitHub's statistics.
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isDenied } from "./deny";
+import { isDenied } from "../core/deny";
 import type { SizeFacts } from "./estimate";
 import { generatedFiles, trackedFiles } from "./git";
 

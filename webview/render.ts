@@ -4,8 +4,8 @@
 // measured node boxes with.
 import { LABEL_PX, SUBLABEL_PX, TAG_PX } from "../src/layout/measure";
 import type { MeasureText, Point, Rect, Scene, SceneEdge } from "../src/layout/scene";
-import type { DiagramDiff, ElementStatus } from "../src/model/diagramDiff";
-import type { ViewDiagram } from "../src/model/tolerant";
+import type { DiagramDiff, ElementStatus } from "../src/core/diagramDiff";
+import type { ViewDiagram } from "../src/core/tolerant";
 import { boxName } from "./a11y";
 
 const SVG_NS = "http://www.w3.org/2000/svg";

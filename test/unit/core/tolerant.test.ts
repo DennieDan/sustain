@@ -1,6 +1,6 @@
 // FR-VIEW-03: tolerant parsing, one test per rule; every fixture parses with no skips.
 import { describe, expect, test } from "vitest";
-import { parseDiagram, readDiagram, type TolerantResult } from "../../../src/model/tolerant";
+import { parseDiagram, readDiagram, type TolerantResult } from "../../../src/core/tolerant";
 import { archifyFixtures } from "../support/fixtures";
 
 function ok(result: TolerantResult): Extract<TolerantResult, { ok: true }> {

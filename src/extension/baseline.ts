@@ -3,13 +3,13 @@
 // rules are unit-tested in Node; viewer.ts shows the results.
 import { readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { compareRuns, pickerTags, type RunFacts } from "../model/comparison";
+import { compareRuns, pickerTags, type RunFacts } from "../core/comparison";
 import { listCandidates, type Candidate } from "../model/discovery";
 import { readLineage, readRunChanges, type Lineage } from "../model/lineage";
 import type { Compare } from "../model/messages";
 import { ARCHIFY_DIR, CANDIDATE_FILE, parseRunFolderName } from "../model/runFolder";
-import { parseDiagram, type ViewDiagram } from "../model/tolerant";
-import { isRecord, type Repository } from "../model/types";
+import { parseDiagram, type ViewDiagram } from "../core/tolerant";
+import { isRecord, type Repository } from "../core/types";
 
 /** Characters of a revision shown in the picker. */
 const SHORT_HASH = 7;

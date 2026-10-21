@@ -1,7 +1,7 @@
 // Helpers for the webview DOM tests: a fixed-advance measurer and a hand-built Scene, so these
 // tests don't depend on the ELK layout.
 import type { MeasureText, Point, Rect, Scene } from "../../../src/layout/scene";
-import type { ViewDiagram } from "../../../src/model/tolerant";
+import type { ViewDiagram } from "../../../src/core/tolerant";
 
 /** Every character advances 0.6 em; a line is 1.32 em tall. */
 export const fixedMeasure: MeasureText = (text, sizePx) => ({ width: text.length * 0.6 * sizePx, height: 1.32 * sizePx });

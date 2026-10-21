@@ -1,6 +1,6 @@
 // FR-VAL-05 deny-list, ported from the prototype's deny.rs unit tests and tests/deny.rs.
 import { describe, expect, test } from "vitest";
-import { isDenied, segmentDenied } from "../../../src/model/deny";
+import { isDenied, segmentDenied } from "../../../src/core/deny";
 
 describe("FR-VAL-05 deny-list", () => {
   test.each([

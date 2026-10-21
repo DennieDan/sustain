@@ -1,7 +1,7 @@
 // The Sustain sidebar's DOM (UI-01): header, composer, run card, maps, setup and learning
 // session. Built from the HomeState the host sends; every string goes in as text. The composer's
 // text box persists across states, so typing survives updates.
-import { relativeAge } from "../src/model/dates";
+import { relativeAge } from "../src/core/dates";
 import { mapStatus, runFigures } from "../src/model/home";
 import type { HomeState, HomeWebviewMessage, MapItem, RunCard } from "../src/model/messages";
 import type { Check } from "../src/model/preflight";

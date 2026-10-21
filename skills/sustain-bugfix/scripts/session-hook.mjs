@@ -9,7 +9,7 @@ import { join } from "node:path";
 // src/model/jsonFile.ts
 import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 
-// src/model/types.ts
+// src/core/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

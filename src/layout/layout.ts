@@ -1,6 +1,6 @@
 // Scene construction (FR-LAY-01..04): authored geometry as stored, or ELK auto layout in the
 // better-fitting direction, plus boundary rectangles and edge polylines.
-import type { ViewDiagram } from "../model/tolerant";
+import type { ViewDiagram } from "../core/tolerant";
 import { authoredBoundaryRects, hierarchy, memberSets, overlayRect } from "./boundaries";
 import { labelAnchor, selfLoop, straightEdge } from "./edges";
 import type { Direction, ElkInput } from "./elk";

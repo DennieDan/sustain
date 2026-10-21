@@ -1,8 +1,8 @@
 // FR-UPD-09: match-ids.mjs rewrites a regenerated draft in place with the previous diagram's IDs.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { matchIds } from "../../../src/model/matchIds";
-import { stringifyDocument } from "../../../src/model/types";
+import { matchIds } from "../../../src/core/matchIds";
+import { stringifyDocument } from "../../../src/core/types";
 import { put, runScript, tempDir } from "../support/temp";
 
 const comp = (id: string, files: string[]) => ({ id, type: "backend", label: id, sources: files.map((path) => ({ path, line: 1, end_line: 2 })) });

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { assertWritable } from "./confine";
 import { ARCHIFY_DIR } from "./runFolder";
 import { writeJson } from "./jsonFile";
-import { isRecord } from "./types";
+import { isRecord } from "../core/types";
 
 export const RUN_FILE = "run.json";
 

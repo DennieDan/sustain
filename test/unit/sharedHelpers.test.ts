@@ -28,7 +28,7 @@ describe("RFX-04 one copy of each shared helper", () => {
   });
 
   test("one expression tells a plain object from null and arrays", () => {
-    expect(matches(/typeof (\w+) === "object" && \1 !== null && !Array\.isArray\(\1\)/g)).toEqual(["src/model/types.ts"]);
+    expect(matches(/typeof (\w+) === "object" && \1 !== null && !Array\.isArray\(\1\)/g)).toEqual(["src/core/types.ts"]);
   });
 
   test("one write renames a temp file over its target", () => {

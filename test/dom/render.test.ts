@@ -4,10 +4,10 @@
 import { describe, expect, test } from "vitest";
 import { autoNodeSize } from "../../src/layout/measure";
 import type { Scene } from "../../src/layout/scene";
-import { diffDiagrams, markKept } from "../../src/model/diagramDiff";
-import { parseDiagram, readDiagram } from "../../src/model/tolerant";
-import type { ViewDiagram } from "../../src/model/tolerant";
-import type { BoundaryKind, ComponentType, Variant } from "../../src/model/types";
+import { diffDiagrams, markKept } from "../../src/core/diagramDiff";
+import { parseDiagram, readDiagram } from "../../src/core/tolerant";
+import type { ViewDiagram } from "../../src/core/tolerant";
+import type { BoundaryKind, ComponentType, Variant } from "../../src/core/types";
 import { archifyFixtures } from "../unit/support/fixtures";
 import { applyMarks, elementBox, renderScene } from "../../webview/render";
 import { BASELINE_DOC, CURRENT_DOC } from "./support/compare";

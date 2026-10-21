@@ -14,13 +14,13 @@ import {
   renderChange,
   renderMapping,
   type ModeDecision,
-} from "../model/changeMap";
-import { citationPathOk } from "../model/citationPath";
+} from "../core/changeMap";
+import { citationPathOk } from "../core/citationPath";
 import { probeFile } from "../model/citations";
 import { listCandidates, type Candidate } from "../model/discovery";
 import { baseReachable, collectGitFacts, commitInfo, readChanges } from "../model/git";
 import { readLineage, writeLineage, writeRunChanges, type Lineage } from "../model/lineage";
-import { buildRunChanges } from "../model/runChanges";
+import { buildRunChanges } from "../core/runChanges";
 import { ARCHIFY_DIR, CANDIDATE_FILE, parseRunFolderName } from "../model/runFolder";
 import { parseArgs, usageError } from "../model/scriptArgs";
 

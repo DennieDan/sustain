@@ -4,8 +4,8 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { readJson } from "./jsonFile";
-import { parseRunChanges, type RunChanges } from "./runChanges";
-import { isRecord, stringifyDocument } from "./types";
+import { parseRunChanges, type RunChanges } from "../core/runChanges";
+import { isRecord, stringifyDocument } from "../core/types";
 
 export const LINEAGE_FILE = "lineage.json";
 export const CHANGES_FILE = "changes.json";

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import type { CommitInfo, Lineage } from "../../../src/model/lineage";
-import type { RunChanges } from "../../../src/model/runChanges";
+import type { RunChanges } from "../../../src/core/runChanges";
 import { envWithoutGit, git, gitRepo, put, runScript, tempDir, type ChangeMapReport } from "../support/temp";
 
 const SLUG = "demo";

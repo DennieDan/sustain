@@ -2,9 +2,9 @@
 // is unit-tested in Node. Checked on click only, never on load (ADR 0012).
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
-import { citationPathOk } from "../model/citationPath";
+import { citationPathOk } from "../core/citationPath";
 import { probeFile } from "../model/citations";
-import type { SourceRef } from "../model/types";
+import type { SourceRef } from "../core/types";
 
 /** 1-based inclusive line range to select. */
 export interface LineRange {

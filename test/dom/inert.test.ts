@@ -1,6 +1,6 @@
 // SAF-03: every diagram string reaches the map and its tooltip as text, never as markup.
 import { afterEach, expect, test, vi } from "vitest";
-import type { ViewDiagram } from "../../src/model/tolerant";
+import type { ViewDiagram } from "../../src/core/tolerant";
 import { renderScene } from "../../webview/render";
 import { SHOW_DELAY_MS, TooltipController } from "../../webview/tooltip";
 import { fixedMeasure, gridScene } from "./support/scene";

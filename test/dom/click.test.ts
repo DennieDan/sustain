@@ -1,7 +1,7 @@
 // FR-NAV-01: clicking a node posts openSource for its first source; a drag does not.
 import { beforeEach, describe, expect, test } from "vitest";
 import type { WebviewMessage } from "../../src/model/messages";
-import type { ViewDiagram } from "../../src/model/tolerant";
+import type { ViewDiagram } from "../../src/core/tolerant";
 import { NodeClicks } from "../../webview/click";
 import { renderScene } from "../../webview/render";
 import { fixedMeasure, gridScene } from "./support/scene";

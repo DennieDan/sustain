@@ -8,7 +8,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync }
 import { dirname, join } from "node:path";
 import { assertWritable } from "../model/confine";
 import { writeJson } from "../model/jsonFile";
-import { isRecord } from "../model/types";
+import { isRecord } from "../core/types";
 
 export const DEVIN_HOOKS_FILE = join(".devin", "hooks.v1.json");
 /** LRN-01: the files whose `hooks` object holds Claude Code's and Codex's hunt hook, relative to the repository. */

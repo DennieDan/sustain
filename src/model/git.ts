@@ -3,9 +3,9 @@
 // shell, and with the repository's fsmonitor hook switched off (SAF-07).
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
-import { isRevision, parseNameStatusZ, parsePorcelainZ } from "./gitFormat";
+import { isRevision, parseNameStatusZ, parsePorcelainZ } from "../core/gitFormat";
 import type { CommitInfo } from "./lineage";
-import type { Repository } from "./types";
+import type { Repository } from "../core/types";
 import { findOnPath } from "./which";
 
 /** Most dirty paths reported; `dirtyCount` carries the total. */

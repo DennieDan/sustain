@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { FINGERPRINTS_FILE, gitBlobId, hashLines, looseLines, normalizedLines, type CitationPrint, type Fingerprints } from "./fingerprints";
-import { isRecord } from "./types";
+import { isRecord } from "../core/types";
 
 export type Freshness = "fresh" | "moved" | "edited" | "missing" | "unknown";
 

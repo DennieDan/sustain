@@ -33,7 +33,7 @@ function restClient(api, repository, token) {
 var import_node_fs6 = require("node:fs");
 var import_node_path6 = require("node:path");
 
-// src/model/gitFormat.ts
+// src/core/gitFormat.ts
 var COMMIT = /^[0-9a-f]{40}$/;
 var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
 function isRevision(value, kind) {
@@ -259,7 +259,7 @@ function globToRegExp(glob) {
   return new RegExp(`^${pattern}(?:/.*)?$`);
 }
 
-// src/model/types.ts
+// src/core/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -911,7 +911,7 @@ function filesAt(root, revision, dir, env = process.env) {
 var import_node_fs3 = require("node:fs");
 var import_node_path3 = require("node:path");
 
-// src/model/deny.ts
+// src/core/deny.ts
 var DENIED_NAMES = [".git", ".archify", ".npmrc", ".pypirc", ".netrc"];
 var ENV_EXCEPTIONS = [".env.example", ".env.sample"];
 var DENIED_PREFIXES = ["id_rsa", "id_ed25519"];
@@ -1073,7 +1073,7 @@ function fileReader(root) {
   };
 }
 
-// src/model/tolerant.ts
+// src/core/tolerant.ts
 var COMPONENT_TYPES = ["frontend", "backend", "database", "cloud", "security", "messagebus", "external"];
 var VARIANTS = ["default", "emphasis", "security", "dashed"];
 function str(value) {

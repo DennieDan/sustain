@@ -13,8 +13,8 @@ import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftL
 import { newRunRecord, readRunRecord, RUN_FILE, updateRunRecord, type RunRecord } from "../model/runRecord";
 import { writeJson } from "../model/jsonFile";
 import { parseArgs, usageError } from "../model/scriptArgs";
-import { checkSubmission, REMOVED_FIELD_MESSAGE } from "../model/submission";
-import { stringifyDocument, type ArchifyDoc, type Issue } from "../model/types";
+import { checkSubmission, REMOVED_FIELD_MESSAGE } from "../core/submission";
+import { stringifyDocument, type ArchifyDoc, type Issue } from "../core/types";
 
 const MAX_LISTED_ERRORS = 50;
 const HINT = "Fix exactly these errors and run the validator again.";

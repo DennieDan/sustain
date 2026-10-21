@@ -3,7 +3,7 @@ import { chmodSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { collectGitFacts, commitInfo, GIT_READS, repositoryFromGit, sanitizeOrigin } from "../../../src/model/git";
-import { parsePorcelainZ } from "../../../src/model/gitFormat";
+import { parsePorcelainZ } from "../../../src/core/gitFormat";
 import { git, gitRepo, put, tempDir } from "../support/temp";
 
 const files = { "a.txt": "a\n", "b.txt": "b\n", "sub/c.txt": "c\n" };

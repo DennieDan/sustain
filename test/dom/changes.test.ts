@@ -2,9 +2,9 @@
 // baseline/open pair; repository text goes in as text only.
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { WebviewMessage } from "../../src/model/messages";
-import { readDiagram } from "../../src/model/tolerant";
-import type { ViewDiagram } from "../../src/model/tolerant";
-import { relativeAge } from "../../src/model/dates";
+import { readDiagram } from "../../src/core/tolerant";
+import type { ViewDiagram } from "../../src/core/tolerant";
+import { relativeAge } from "../../src/core/dates";
 import { ChangesView, KEPT_NOTE, NO_DIFF_TEXT, compareDiagrams, readChangesState } from "../../webview/changes";
 import type { ChangesState } from "../../webview/changes";
 import type { ElementKind } from "../../webview/render";

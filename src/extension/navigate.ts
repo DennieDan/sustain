@@ -1,8 +1,8 @@
 // Opening the code behind a diagram node (FR-NAV-01..03, ADR 0011) and a changed file from the
 // Changes panel (FR-CMP-07).
 import * as vscode from "vscode";
-import type { ViewComponent } from "../model/tolerant";
-import type { SourceRef } from "../model/types";
+import type { ViewComponent } from "../core/tolerant";
+import type { SourceRef } from "../core/types";
 import { onAction } from "./notify";
 import { resolveSource } from "./sourceTarget";
 

@@ -1,6 +1,6 @@
 // FR-UPD-09: post-hoc ID matching of a regenerated draft against the previous diagram.
 import { describe, expect, it } from "vitest";
-import { matchIds } from "../../../src/model/matchIds";
+import { matchIds } from "../../../src/core/matchIds";
 
 const comp = (id: string, files: string[], label = id) => ({
   id,

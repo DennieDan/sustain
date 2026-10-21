@@ -1,5 +1,5 @@
 // UI-02: Claude Code's `--output-format stream-json` lines as feed items.
-import { isRecord } from "../types";
+import { isRecord } from "../../core/types";
 import { clip, commandItem, NO_USAGE, validatorItem, type FeedItem, type StreamParser, type StreamUpdate, type StreamUsage } from "./feed";
 
 type Json = Record<string, unknown>;

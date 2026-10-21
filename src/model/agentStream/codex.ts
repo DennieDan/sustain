@@ -1,6 +1,6 @@
 // UI-02: `codex exec --json` events as feed items. Codex reports no final result line, so the
 // runner judges success by the exit code.
-import { isRecord } from "../types";
+import { isRecord } from "../../core/types";
 import { clip, commandItem, NO_USAGE, validatorItem, type FeedItem, type StreamParser, type StreamUpdate, type StreamUsage } from "./feed";
 
 type Json = Record<string, unknown>;

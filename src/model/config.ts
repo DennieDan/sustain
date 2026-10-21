@@ -1,7 +1,7 @@
 // PRC-01: `sustain.config.json` at the repository root, committed with the code. Browser-safe;
 // callers read the file.
 import { readRules } from "./rules";
-import { isRecord } from "./types";
+import { isRecord } from "../core/types";
 
 export const CONFIG_FILE = "sustain.config.json";
 

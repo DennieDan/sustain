@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { parseRunName } from "./runFolder";
 import { assertNotLink } from "./confine";
 import { readJson, writeJson } from "./jsonFile";
-import { isRecord } from "./types";
+import { isRecord } from "../core/types";
 
 export const SUSTAIN_DIR = ".sustain";
 /** Names the live run folder; missing means no active session (ADR 0033). */

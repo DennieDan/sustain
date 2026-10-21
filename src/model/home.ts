@@ -1,5 +1,5 @@
 // UI-01, UI-04: wording shared by the sidebar and the status bar. Browser-safe.
-import { relativeAge } from "./dates";
+import { relativeAge } from "../core/dates";
 import type { MapItem, RunCard } from "./messages";
 
 /** The header's map status: "Map from 2 days ago · 16 boxes", or "No map yet". */

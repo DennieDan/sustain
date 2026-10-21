@@ -1,6 +1,6 @@
 // SAF-03: the secret scan rejects credential-shaped strings and leaves real maps alone.
 import { describe, expect, test } from "vitest";
-import { findSecrets, secretKind } from "../../../src/model/secrets";
+import { findSecrets, secretKind } from "../../../src/core/secrets";
 import { archifyFixtures } from "../support/fixtures";
 
 describe("SAF-03 secret scan", () => {

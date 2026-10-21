@@ -7,7 +7,7 @@ import { basename as basename3, join as join6, relative as relative2, resolve as
 import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
 
-// src/model/deny.ts
+// src/core/deny.ts
 var DENIED_NAMES = [".git", ".archify", ".npmrc", ".pypirc", ".netrc"];
 var ENV_EXCEPTIONS = [".env.example", ".env.sample"];
 var DENIED_PREFIXES = ["id_rsa", "id_ed25519"];
@@ -104,7 +104,7 @@ function assertWritable(root2, path) {
 import { spawnSync } from "node:child_process";
 import { realpathSync as realpathSync3 } from "node:fs";
 
-// src/model/gitFormat.ts
+// src/core/gitFormat.ts
 var COMMIT = /^[0-9a-f]{40}$/;
 var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
 function isRevision(value, kind) {
@@ -226,7 +226,7 @@ import { basename as basename2, dirname as dirname3, join as join4, resolve, sep
 import { closeSync as closeSync2, fsyncSync, openSync as openSync2, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 import { basename, dirname as dirname2, join as join3 } from "node:path";
 
-// src/model/types.ts
+// src/core/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

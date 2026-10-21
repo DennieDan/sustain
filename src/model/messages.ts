@@ -6,8 +6,8 @@ import type { RunStatus } from "./agentStream/tracker";
 import type { LeaderboardEntry } from "./leaderboard";
 import type { Check, CheckId } from "./preflight";
 import type { RunPhase } from "./runRecord";
-import type { ComparisonContext } from "./comparison";
-import type { RunChanges } from "./runChanges";
+import type { ComparisonContext } from "../core/comparison";
+import type { RunChanges } from "../core/runChanges";
 
 /** The baseline the open diagram is compared with, and what the host knows about the pair (FR-CMP-05). */
 export interface Compare {

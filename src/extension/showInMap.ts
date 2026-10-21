@@ -51,7 +51,7 @@ export async function openBoxCodeCommand(context?: BoxContext): Promise<void> {
   const file = root === undefined ? undefined : listCandidates(root)[0]?.file;
   if (root === undefined || file === undefined) return;
   const { readFileSync } = await import("node:fs");
-  const { readDiagram } = await import("../model/tolerant");
+  const { readDiagram } = await import("../core/tolerant");
   const { openSource } = await import("./navigate");
   const result = readDiagram(JSON.parse(readFileSync(file, "utf8")));
   if (!result.ok) return;

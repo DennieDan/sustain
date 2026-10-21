@@ -1,9 +1,9 @@
 // FR-CMP-02: changes.json built from a change map, parsed tolerantly, and read/written in a run folder.
 import { readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import type { ChangeMap, FileDiff } from "../../../src/model/changeMap";
+import type { ChangeMap, FileDiff } from "../../../src/core/changeMap";
 import { CHANGES_FILE, readRunChanges, writeRunChanges } from "../../../src/model/lineage";
-import { buildRunChanges, parseRunChanges, type RunChanges } from "../../../src/model/runChanges";
+import { buildRunChanges, parseRunChanges, type RunChanges } from "../../../src/core/runChanges";
 import { tempDir } from "../support/temp";
 
 const base = "a".repeat(40);

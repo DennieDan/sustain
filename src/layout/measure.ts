@@ -1,5 +1,5 @@
 // Auto-layout node sizing (FR-LAY-02): stacked label, sublabel and tag lines plus padding.
-import type { ViewComponent } from "../model/tolerant";
+import type { ViewComponent } from "../core/tolerant";
 import type { MeasureText } from "./scene";
 
 export const LABEL_PX = 14;

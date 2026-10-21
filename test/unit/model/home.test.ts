@@ -2,7 +2,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { relativeAge } from "../../../src/model/dates";
+import { relativeAge } from "../../../src/core/dates";
 import { clock, mapStatus, runFigures, statusText, tokenCount } from "../../../src/model/home";
 import { listMaps } from "../../../src/model/maps";
 import type { MapItem, RunCard } from "../../../src/model/messages";

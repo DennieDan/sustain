@@ -9,7 +9,7 @@ import { existsSync, readFileSync, realpathSync, unlinkSync, writeFileSync } fro
 import { basename, join, relative, resolve, sep } from "node:path";
 import { probeFile } from "../model/citations";
 import { assertWritable, isWithin } from "../model/confine";
-import { isDenied } from "../model/deny";
+import { isDenied } from "../core/deny";
 import { collectGitFacts } from "../model/git";
 import { createRunFolder, runTimestamp, slugify } from "../model/runFolder";
 import {

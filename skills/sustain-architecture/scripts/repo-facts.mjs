@@ -5,7 +5,7 @@ import { basename as basename3, join as join6 } from "node:path";
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 
-// src/model/gitFormat.ts
+// src/core/gitFormat.ts
 var COMMIT = /^[0-9a-f]{40}$/;
 var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
 function isRevision(value, kind) {
@@ -248,7 +248,7 @@ function skillEstimates(size, kind) {
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join as join2 } from "node:path";
 
-// src/model/deny.ts
+// src/core/deny.ts
 var DENIED_NAMES = [".git", ".archify", ".npmrc", ".pypirc", ".netrc"];
 var ENV_EXCEPTIONS = [".env.example", ".env.sample"];
 var DENIED_PREFIXES = ["id_rsa", "id_ed25519"];
@@ -462,7 +462,7 @@ import { basename as basename2, dirname as dirname2, join as join4, resolve, sep
 import { closeSync, fsyncSync, openSync, readFileSync as readFileSync2, renameSync, rmSync, writeSync } from "node:fs";
 import { basename, dirname, join as join3 } from "node:path";
 
-// src/model/types.ts
+// src/core/types.ts
 function stringifyDocument(value) {
   return `${JSON.stringify(value, null, 2)}
 `;

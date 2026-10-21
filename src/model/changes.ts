@@ -1,6 +1,6 @@
 // FRS-04, shared with PRC-01: what a diff touched, and which boxes it touched. Browser-safe.
 // Hunks are compared on the old side, where the map's citations point.
-import { isRevision, parseDiffSections } from "./gitFormat";
+import { isRevision, parseDiffSections } from "../core/gitFormat";
 
 /** `from..to` split into its revisions, or `null`. */
 export function rangeOf(value: string): { from: string; to: string } | null {

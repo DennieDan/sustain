@@ -11,7 +11,7 @@ import { isTestPath, listFiles, skipped } from "../model/repoSize";
 import { checkRules, readRules, type Violation } from "../model/rules";
 import { ARCHIFY_DIR, CANDIDATE_FILE } from "../model/runFolder";
 import { fileReader } from "../model/repoSize";
-import { readDiagram } from "../model/tolerant";
+import { readDiagram } from "../core/tolerant";
 
 /** Wait after the last save before checking again. */
 export const RULES_DEBOUNCE_MS = 300;

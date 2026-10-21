@@ -2,7 +2,7 @@
 import { existsSync, readFileSync as readFileSync2, realpathSync as realpathSync4, statSync as statSync4, writeFileSync as writeFileSync2 } from "node:fs";
 import { basename as basename2, dirname as dirname2, join as join5, resolve } from "node:path";
 
-// src/model/deny.ts
+// src/core/deny.ts
 var DENIED_NAMES = [".git", ".archify", ".npmrc", ".pypirc", ".netrc"];
 var ENV_EXCEPTIONS = [".env.example", ".env.sample"];
 var DENIED_PREFIXES = ["id_rsa", "id_ed25519"];
@@ -19,7 +19,7 @@ function isDenied(path) {
   return path.split("/").some(segmentDenied);
 }
 
-// src/model/gitFormat.ts
+// src/core/gitFormat.ts
 var COMMIT = /^[0-9a-f]{40}$/;
 var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
 function isRevision(value, kind) {
@@ -154,7 +154,7 @@ function parseDiffSections(diff) {
   return sections;
 }
 
-// src/model/types.ts
+// src/core/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -163,7 +163,7 @@ function stringifyDocument(value) {
 `;
 }
 
-// src/model/changeMap.ts
+// src/core/changeMap.ts
 var MAX_UPDATES = 5;
 var MAX_CHANGE_BYTES = 2 * 1024 * 1024;
 var MAX_BASELINE_DIRTY = 200;
@@ -346,7 +346,7 @@ function renderMapping(base, head, map) {
 `;
 }
 
-// src/model/citationPath.ts
+// src/core/citationPath.ts
 var MAX_PATH_LENGTH = 240;
 function citationPathOk(path) {
   if (path.length === 0 || path.length > MAX_PATH_LENGTH) return false;
@@ -587,7 +587,7 @@ function commitInfo(root, revision, program = gitProgram()) {
 import { writeFileSync } from "node:fs";
 import { join as join4 } from "node:path";
 
-// src/model/runChanges.ts
+// src/core/runChanges.ts
 function fromDiff(diff) {
   if (diff.oldPath === null) return { status: "A", path: diff.newPath ?? "" };
   if (diff.newPath === null) return { status: "D", path: diff.oldPath };

@@ -7460,7 +7460,7 @@ import { dirname as dirname4, join as join8 } from "node:path";
 import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
 
-// src/model/citationPath.ts
+// src/core/citationPath.ts
 var MAX_PATH_LENGTH = 240;
 function citationPathOk(path) {
   if (path.length === 0 || path.length > MAX_PATH_LENGTH) return false;
@@ -7469,7 +7469,7 @@ function citationPathOk(path) {
   return path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
 }
 
-// src/model/deny.ts
+// src/core/deny.ts
 var DENIED_NAMES = [".git", ".archify", ".npmrc", ".pypirc", ".netrc"];
 var ENV_EXCEPTIONS = [".env.example", ".env.sample"];
 var DENIED_PREFIXES = ["id_rsa", "id_ed25519"];
@@ -8060,7 +8060,7 @@ import { join as join3 } from "node:path";
 import { closeSync as closeSync2, fsyncSync, openSync as openSync2, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 import { basename, dirname as dirname2, join as join2 } from "node:path";
 
-// src/model/types.ts
+// src/core/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -8145,7 +8145,7 @@ import { join as join5 } from "node:path";
 import { spawnSync } from "node:child_process";
 import { realpathSync as realpathSync3 } from "node:fs";
 
-// src/model/gitFormat.ts
+// src/core/gitFormat.ts
 var COMMIT = /^[0-9a-f]{40}$/;
 var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
 function isRevision(value, kind) {
@@ -8448,7 +8448,7 @@ function usageError(script, message) {
   return 2;
 }
 
-// src/model/checks.ts
+// src/core/checks.ts
 function boundaryRelation(a, b) {
   let shared = 0;
   for (const id of a) if (b.has(id)) shared += 1;
@@ -8541,10 +8541,10 @@ function semanticChecks(doc) {
   return issues;
 }
 
-// src/model/schema.ts
+// src/core/schema.ts
 var import__ = __toESM(require__());
 
-// src/model/schemas/architecture.schema.json
+// src/core/schemas/architecture.schema.json
 var architecture_schema_default = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "https://github.com/tt-a1i/archify/schemas/architecture.schema.json",
@@ -8698,7 +8698,7 @@ var architecture_schema_default = {
   }
 };
 
-// src/model/schemas/common.schema.json
+// src/core/schemas/common.schema.json
 var common_schema_default = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "https://github.com/tt-a1i/archify/schemas/common.schema.json",
@@ -8881,7 +8881,7 @@ var common_schema_default = {
   }
 };
 
-// src/model/schema.ts
+// src/core/schema.ts
 var compiled;
 function validator() {
   if (!compiled) {
@@ -8912,7 +8912,7 @@ function validateArchitecture(value) {
   return validate(value) ? [] : (validate.errors ?? []).map(toIssue);
 }
 
-// src/model/secrets.ts
+// src/core/secrets.ts
 var PATTERNS = [
   { kind: "private key", pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
   { kind: "GitHub token", pattern: /\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/ },
@@ -8954,7 +8954,7 @@ function findSecrets(value, pointer = "") {
   return [];
 }
 
-// src/model/submission.ts
+// src/core/submission.ts
 var META_DROPS = ["viewBox", "views", "animation", "translations", "visual_preset", "engineering_profile"];
 var COMPONENT_DROPS = ["pos", "size", "row", "col", "icon", "brand"];
 var CONNECTION_DROPS = ["fromSide", "toSide", "route", "via", "labelAt", "labelDx", "labelDy", "labelSegment", "width"];

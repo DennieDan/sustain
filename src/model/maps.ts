@@ -4,7 +4,7 @@ import { dirname } from "node:path";
 import { listCandidates } from "./discovery";
 import type { MapItem } from "./messages";
 import { readRunRecord } from "./runRecord";
-import { parseDiagram } from "./tolerant";
+import { parseDiagram } from "../core/tolerant";
 
 /** Every candidate in `root`, newest first, described for the maps list. */
 export function listMaps(root: string): MapItem[] {

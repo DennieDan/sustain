@@ -4,9 +4,9 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { readJson } from "../model/jsonFile";
-import { matchIds } from "../model/matchIds";
+import { matchIds } from "../core/matchIds";
 import { parseArgs, usageError } from "../model/scriptArgs";
-import { isRecord, stringifyDocument } from "../model/types";
+import { isRecord, stringifyDocument } from "../core/types";
 
 const SCRIPT = "match-ids.mjs";
 

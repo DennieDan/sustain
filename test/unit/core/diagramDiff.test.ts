@@ -1,7 +1,7 @@
 // FR-CMP-03: diagram diff, one test per key and rule; markKept.
 import { describe, expect, test } from "vitest";
-import { diffDiagrams, markKept } from "../../../src/model/diagramDiff";
-import { readDiagram, type ViewDiagram } from "../../../src/model/tolerant";
+import { diffDiagrams, markKept } from "../../../src/core/diagramDiff";
+import { readDiagram, type ViewDiagram } from "../../../src/core/tolerant";
 
 interface RawDoc {
   components: Record<string, unknown>[];

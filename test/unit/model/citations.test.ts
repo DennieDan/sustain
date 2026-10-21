@@ -2,9 +2,9 @@
 // prototype's model/tests/citations.rs, repo/tests/citations.rs and repo/tests/text.rs).
 import { symlinkSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { citationPathOk } from "../../../src/model/citationPath";
+import { citationPathOk } from "../../../src/core/citationPath";
 import { checkCitations, countLines, MAX_CITED_BYTES } from "../../../src/model/citations";
-import type { ArchifyDoc, SourceRef } from "../../../src/model/types";
+import type { ArchifyDoc, SourceRef } from "../../../src/core/types";
 import { put, tempDir } from "../support/temp";
 
 function doc(sources: SourceRef[]): ArchifyDoc {

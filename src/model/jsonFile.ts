@@ -2,7 +2,7 @@
 // readers only ever see whole files.
 import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { stringifyDocument } from "./types";
+import { stringifyDocument } from "../core/types";
 
 /** The parsed JSON in `path`. Throws when the file cannot be read, and throws a `SyntaxError` when it holds no JSON. */
 export function readJson(path: string): unknown {

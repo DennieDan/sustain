@@ -1,7 +1,7 @@
 // FR-VAL-04: one test per semantic rule, asserting the pointer (ported from validation.rs).
 import { describe, expect, test } from "vitest";
-import { boundaryRelation, semanticChecks } from "../../../src/model/checks";
-import type { ArchifyDoc } from "../../../src/model/types";
+import { boundaryRelation, semanticChecks } from "../../../src/core/checks";
+import type { ArchifyDoc } from "../../../src/core/types";
 
 function base(): ArchifyDoc {
   return {

@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 // src/model/jsonFile.ts
 import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 
-// src/model/types.ts
+// src/core/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -19,7 +19,7 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-// src/model/matchIds.ts
+// src/core/matchIds.ts
 var MATCH_THRESHOLD = 0.3;
 function objects(value) {
   return Array.isArray(value) ? value.filter(isRecord) : [];

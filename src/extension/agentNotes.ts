@@ -7,7 +7,7 @@ import { claudeNeedsNotes, mergeNotes, notesBlock } from "../model/agentNotes";
 import { loadConfig } from "../model/check";
 import { readRules } from "../model/rules";
 import { ARCHIFY_DIR, CANDIDATE_FILE } from "../model/runFolder";
-import { readDiagram } from "../model/tolerant";
+import { readDiagram } from "../core/tolerant";
 import { pickRepoRoot } from "./folders";
 import { confirmWrite } from "./previewWrite";
 import { rulesMap } from "./rules";

@@ -9,7 +9,7 @@ import { deltaReport, isSourceFile, verdict, type DeltaReport } from "./delta";
 import { listCandidates } from "./discovery";
 import { importLanguage, importResolver } from "./evidence/graph";
 import { diffBetween, existsAt, fileAt, filesAt, mergeBase, renamesSince, untrackedFiles } from "./git";
-import { isRevision } from "./gitFormat";
+import { isRevision } from "../core/gitFormat";
 import { globToRegExp } from "./glob";
 import { isTestPath, listFiles } from "./repoSize";
 import { checkRules, readRules, type Violation } from "./rules";
@@ -17,7 +17,7 @@ import type { ImportRef } from "./evidence/paths";
 import { ARCHIFY_DIR, CANDIDATE_FILE } from "./runFolder";
 import { readRunRecord } from "./runRecord";
 import { fileReader, mapFreshness, readFingerprints } from "./staleness";
-import { readDiagram, type ViewDiagram } from "./tolerant";
+import { readDiagram, type ViewDiagram } from "../core/tolerant";
 
 export interface CheckOptions {
   root: string;
