@@ -1,0 +1,47 @@
+// `node <skill>/scripts/repo-facts.mjs [--focus <text>]`, run with cwd = repo root (FR-RF-01):
+// creates the run folder with its run.json (CST-04) and prints where the draft goes (ADR 0018), with
+// the repository's size (CST-01), the estimate for each agent (CST-03) and the read budget for its
+// tier (CST-05).
+import { basename, join } from "node:path";
+import { collectGitFacts } from "../core-node/git";
+import { skillEstimates } from "../core-node/estimate";
+import { READ_BUDGET, repoSize, sizeFacts } from "../core-node/repoSize";
+import { ARCHIFY_DIR, createRunFolder, DRAFT_FILE, runTimestamp, slugify } from "../core-node/runFolder";
+import { newRunRecord, writeRunRecord } from "../core-node/runRecord";
+import { parseArgs, usageError } from "../core-node/scriptArgs";
+
+/** The skill version, filled in by the build. */
+const SKILL_VERSION = process.env.SUSTAIN_VERSION ?? "unknown";
+
+const SCRIPT = "repo-facts.mjs";
+
+function main(args: string[]): number {
+  const parsed = parseArgs(args, { options: ["focus"], repeatable: true });
+  if (!parsed) return usageError(SCRIPT, "usage: node repo-facts.mjs [--focus <text>]");
+  const focus = parsed.options["focus"] ?? "";
+  const root = process.cwd();
+  // Git facts come first, so the new run folder is not among the dirty paths.
+  const git = collectGitFacts(root);
+  let run: string;
+  try {
+    run = createRunFolder(root, slugify(focus, basename(root)), runTimestamp(new Date()));
+    writeRunRecord(root, join(root, ARCHIFY_DIR, run), newRunRecord({ focus, skillVersion: SKILL_VERSION }));
+  } catch (error) {
+    return usageError(SCRIPT, (error as Error).message);
+  }
+  const size = repoSize(root);
+  const facts = {
+    root,
+    runFolder: `${ARCHIFY_DIR}/${run}`,
+    draft: `${ARCHIFY_DIR}/${run}/${DRAFT_FILE}`,
+    git: git && { head: git.head, origin: git.origin, dirtyCount: git.dirtyCount, dirty: git.dirty },
+    size,
+    estimate: skillEstimates(sizeFacts(size), "full"),
+    budget: READ_BUDGET[size.tier],
+  };
+  process.stdout.write(`${JSON.stringify(facts, null, 2)}\n`);
+  return 0;
+}
+
+// Set the code instead of calling process.exit(): stdout to a pipe is asynchronous on macOS.
+process.exitCode = main(process.argv.slice(2));

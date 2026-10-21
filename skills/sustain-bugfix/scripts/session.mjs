@@ -3,11 +3,11 @@ import { spawnSync as spawnSync2 } from "node:child_process";
 import { existsSync as existsSync2, readFileSync as readFileSync4, realpathSync as realpathSync5, unlinkSync as unlinkSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { basename as basename3, join as join6, relative as relative2, resolve as resolve2, sep as sep3 } from "node:path";
 
-// src/model/citations.ts
+// src/core-node/citations.ts
 import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
 
-// src/model/deny.ts
+// src/core/deny.ts
 var DENIED_NAMES = [".git", ".archify", ".npmrc", ".pypirc", ".netrc"];
 var ENV_EXCEPTIONS = [".env.example", ".env.sample"];
 var DENIED_PREFIXES = ["id_rsa", "id_ed25519"];
@@ -24,7 +24,7 @@ function isDenied(path) {
   return path.split("/").some(segmentDenied);
 }
 
-// src/model/citations.ts
+// src/core-node/citations.ts
 var MAX_CITED_BYTES = 2 * 1024 * 1024;
 var BINARY_SNIFF_BYTES = 8 * 1024;
 function countLines(bytes) {
@@ -69,7 +69,7 @@ function probeFile(rootReal, path) {
   }
 }
 
-// src/model/confine.ts
+// src/core-node/confine.ts
 import { lstatSync, realpathSync as realpathSync2 } from "node:fs";
 import { dirname, isAbsolute, relative } from "node:path";
 function isWithin(parentReal, childReal) {
@@ -100,11 +100,11 @@ function assertWritable(root2, path) {
   assertNotLink(path);
 }
 
-// src/model/git.ts
+// src/core-node/git.ts
 import { spawnSync } from "node:child_process";
 import { realpathSync as realpathSync3 } from "node:fs";
 
-// src/model/gitFormat.ts
+// src/core/gitFormat.ts
 var COMMIT = /^[0-9a-f]{40}$/;
 var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
 function isRevision(value, kind) {
@@ -122,7 +122,7 @@ function parsePorcelainZ(output) {
   return paths;
 }
 
-// src/model/which.ts
+// src/core-node/which.ts
 import { accessSync, constants, statSync as statSync2 } from "node:fs";
 import { delimiter, join as join2, posix, win32 } from "node:path";
 function isExecutableFile(path, platform) {
@@ -148,7 +148,7 @@ function findOnPath(cli, env, platform = process.platform) {
   return void 0;
 }
 
-// src/model/git.ts
+// src/core-node/git.ts
 var MAX_DIRTY_PATHS = 200;
 var GIT_PREFIX = ["-c", "core.fsmonitor=false", "--no-optional-locks"];
 var GIT_READS = {
@@ -218,15 +218,15 @@ function collectGitFacts(root2, env = process.env) {
   };
 }
 
-// src/model/runFolder.ts
+// src/core-node/runFolder.ts
 import { mkdirSync, realpathSync as realpathSync4, statSync as statSync3, unlinkSync } from "node:fs";
 import { basename as basename2, dirname as dirname3, join as join4, resolve, sep as sep2 } from "node:path";
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 import { closeSync as closeSync2, fsyncSync, openSync as openSync2, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 import { basename, dirname as dirname2, join as join3 } from "node:path";
 
-// src/model/types.ts
+// src/core/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -235,7 +235,7 @@ function stringifyDocument(value) {
 `;
 }
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
@@ -259,7 +259,7 @@ function writeJson(path, value) {
   writeAtomic(path, stringifyDocument(value));
 }
 
-// src/model/runFolder.ts
+// src/core-node/runFolder.ts
 var ARCHIFY_DIR = ".archify";
 var SLUG_MAX = 40;
 var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
@@ -462,7 +462,7 @@ function runExists(root2, run2) {
   return existsSync(join5(root2, SUSTAIN_DIR, run2));
 }
 
-// src/model/scriptArgs.ts
+// src/core-node/scriptArgs.ts
 function parseArgs(args, spec) {
   const count = spec.positionals ?? 0;
   if (args.length < count) return null;

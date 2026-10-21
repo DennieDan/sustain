@@ -2,9 +2,9 @@
 // folder it was opened for — public `session.json` fields and the leaderboard only.
 import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
-import type { SessionHostMessage, SessionView, SessionWebviewMessage } from "../model/messages";
+import type { SessionHostMessage, SessionView, SessionWebviewMessage } from "../learn/protocol";
 import { isSessionStale } from "../model/session";
-import { webviewHtml } from "./html";
+import { webviewHtml } from "../vscode/html";
 import { readSessionSnapshot } from "./sessionFiles";
 
 export const SESSION_VIEW_TYPE = "sustain.session";

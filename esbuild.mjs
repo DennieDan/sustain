@@ -6,7 +6,7 @@ import * as esbuild from "esbuild";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { hashTree } from "./src/model/hashTree.mts";
+import { hashTree } from "./src/core-node/hashTree.mts";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, "dist");
@@ -22,10 +22,10 @@ const common = {
 
 /** The script entry points, emitted as `<name>.mjs`. @type {Record<string, string>} */
 const SCRIPT_ENTRIES = {
-  "repo-facts": "src/agent/repo-facts.ts",
-  validate: "src/agent/validate.ts",
-  "change-map": "src/agent/change-map.ts",
-  "match-ids": "src/agent/match-ids.ts",
+  "repo-facts": "src/skills/repo-facts.ts",
+  validate: "src/skills/validate.ts",
+  "change-map": "src/skills/change-map.ts",
+  "match-ids": "src/skills/match-ids.ts",
   session: "src/agent/session.ts",
   "session-hook": "src/agent/session-hook.ts",
 };
@@ -132,7 +132,7 @@ async function buildDist() {
 
   results.push(await esbuild.build({
     ...common,
-    entryPoints: [join(root, "src/extension/extension.ts")],
+    entryPoints: [join(root, "src/vscode/extension.ts")],
     outfile: join(dist, "extension.js"),
     platform: "node",
     format: "cjs",
@@ -144,7 +144,7 @@ async function buildDist() {
   // carries elkjs, which lays the map out in the page's own thread (VWR-02).
   results.push(await esbuild.build({
     ...common,
-    entryPoints: [join(root, "webview/main.ts")],
+    entryPoints: [join(root, "src/viewer/main.ts")],
     outfile: join(dist, "webview.js"),
     platform: "browser",
     format: "iife",
@@ -162,16 +162,16 @@ async function buildDist() {
   }));
   results.push(await esbuild.build({
     ...common,
-    entryPoints: [join(root, "webview/sidebar.ts")],
+    entryPoints: [join(root, "src/vscode/sidebar/sidebar.ts")],
     outfile: join(dist, "sidebar.js"),
     platform: "browser",
     format: "iife",
     target: "es2022",
     minify: true,
   }));
-  cpSync(join(root, "webview/styles.css"), join(dist, "webview.css"));
+  cpSync(join(root, "src/viewer/styles.css"), join(dist, "webview.css"));
   cpSync(join(root, "webview/session.css"), join(dist, "session-webview.css"));
-  cpSync(join(root, "webview/sidebar.css"), join(dist, "sidebar.css"));
+  cpSync(join(root, "src/vscode/sidebar/sidebar.css"), join(dist, "sidebar.css"));
   writeBundleInputs(results.flatMap((result) => (result.metafile ? [result.metafile] : [])));
 }
 
@@ -202,7 +202,7 @@ export async function buildAction(outfile = join(root, "action/dist/index.js")) 
   await esbuild.build({
     ...common,
     metafile: false,
-    entryPoints: [join(root, "action/src/index.ts")],
+    entryPoints: [join(root, "src/action/index.ts")],
     outfile,
     platform: "node",
     format: "cjs",

@@ -7,11 +7,11 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve, sep } from "node:path";
-import { probeFile } from "../model/citations";
-import { assertWritable, isWithin } from "../model/confine";
-import { isDenied } from "../model/deny";
-import { collectGitFacts } from "../model/git";
-import { createRunFolder, runTimestamp, slugify } from "../model/runFolder";
+import { probeFile } from "../core-node/citations";
+import { assertWritable, isWithin } from "../core-node/confine";
+import { isDenied } from "../core/deny";
+import { collectGitFacts } from "../core-node/git";
+import { createRunFolder, runTimestamp, slugify } from "../core-node/runFolder";
 import {
   ACTIVE_FILE,
   activeRun,
@@ -43,7 +43,7 @@ import {
   type SessionState,
   type SessionStep,
 } from "../model/session";
-import { parseArgs, usageError } from "../model/scriptArgs";
+import { parseArgs, usageError } from "../core-node/scriptArgs";
 import { bugStillPresent, hunkCount, mutateFile, restoreHunk, type MutationResult } from "./modes/bugfix/mutations";
 
 const SCRIPT = "session.mjs";

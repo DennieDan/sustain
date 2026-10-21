@@ -6,20 +6,20 @@ import { dirname, join as join2 } from "node:path";
 import { appendFileSync, existsSync, mkdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { join } from "node:path";
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 
-// src/model/types.ts
+// src/core/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-// src/model/runFolder.ts
+// src/core-node/runFolder.ts
 var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
 function parseRunName(name) {
   const match = RUN_NAME_PATTERN.exec(name);

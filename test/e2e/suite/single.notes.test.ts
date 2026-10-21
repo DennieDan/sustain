@@ -4,7 +4,7 @@ import * as assert from "node:assert/strict";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import * as vscode from "vscode";
-import { NOTES_END, NOTES_START } from "../../../src/model/agentNotes";
+import { NOTES_END, NOTES_START } from "../../../src/vscode/notesBlock";
 import { stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
 

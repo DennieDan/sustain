@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { SIDEBAR_ACTIONS } from "../../src/model/home";
+import { SIDEBAR_ACTIONS } from "../../src/vscode/sidebar/wording";
 import { repoRoot } from "./support/sourceScan";
 
 test("SAF-07 Sustain declares no support for untrusted workspaces", () => {
@@ -45,7 +45,7 @@ test("UI-01 every command is reachable from a menu, a title bar or the sidebar",
 });
 
 test("UI-01 each sidebar action is a button the sidebar renders", () => {
-  const sidebar = readFileSync(join(repoRoot, "webview/home.ts"), "utf8");
+  const sidebar = readFileSync(join(repoRoot, "src/vscode/sidebar/home.ts"), "utf8");
   for (const type of Object.keys(SIDEBAR_ACTIONS)) expect(sidebar).toContain(`type: "${type}"`);
 });
 

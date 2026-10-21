@@ -1,11 +1,11 @@
-// src/agent/match-ids.ts
+// src/skills/match-ids.ts
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 
-// src/model/types.ts
+// src/core/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -14,12 +14,12 @@ function stringifyDocument(value) {
 `;
 }
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-// src/model/matchIds.ts
+// src/core/matchIds.ts
 var MATCH_THRESHOLD = 0.3;
 function objects(value) {
   return Array.isArray(value) ? value.filter(isRecord) : [];
@@ -143,7 +143,7 @@ function matchIds(previous, draft, threshold = MATCH_THRESHOLD) {
   return { diagram, componentMap: Object.fromEntries(componentMap), connectionMap, renamed };
 }
 
-// src/model/scriptArgs.ts
+// src/core-node/scriptArgs.ts
 function parseArgs(args, spec) {
   const count = spec.positionals ?? 0;
   if (args.length < count) return null;
@@ -173,7 +173,7 @@ function usageError(script, message) {
   return 2;
 }
 
-// src/agent/match-ids.ts
+// src/skills/match-ids.ts
 var SCRIPT = "match-ids.mjs";
 function readInput(path, what) {
   try {

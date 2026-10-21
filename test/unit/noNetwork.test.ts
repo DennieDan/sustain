@@ -21,16 +21,16 @@ function networkViolations(file: string, source: string): string[] {
 }
 
 describe("NFR-SEC-02 no network", () => {
-  test("src/** and webview/** contain no network imports or APIs", () => {
-    const files = [...sourceFiles("src"), ...sourceFiles("webview")];
+  test("src/** outside src/action and webview/** contain no network imports or APIs", () => {
+    const files = [...sourceFiles("src"), ...sourceFiles("webview")].filter((file) => !file.startsWith("src/action/"));
     const violations = files.flatMap((file) => networkViolations(file, readFileSync(join(repoRoot, file), "utf8")));
     expect(violations).toEqual([]);
   });
 
   test("PRC-04 in the Action only the GitHub client uses the network, and no file starts a program", () => {
-    const files = sourceFiles("action/src");
-    expect(files).toContain("action/src/github.ts");
-    const violations = files.filter((file) => file !== "action/src/github.ts").flatMap((file) => networkViolations(file, readFileSync(join(repoRoot, file), "utf8")));
+    const files = sourceFiles("src/action");
+    expect(files).toContain("src/action/github.ts");
+    const violations = files.filter((file) => file !== "src/action/github.ts").flatMap((file) => networkViolations(file, readFileSync(join(repoRoot, file), "utf8")));
     expect(violations).toEqual([]);
     for (const file of files) expect(readFileSync(join(repoRoot, file), "utf8")).not.toMatch(/child_process|\bspawn|\bexec(File)?(Sync)?\(/);
   });

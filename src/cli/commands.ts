@@ -4,12 +4,12 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { runCheck } from "../model/check";
-import { FAIL_ON, type FailOn } from "../model/config";
-import { deltaMarkdown, escapeMarkdown } from "../model/deltaMarkdown";
-import { checkSkill, diffSize, type AgentId, type SkillHashes } from "../model/integrity";
-import { runPreflight } from "../model/preflight";
-import { SKILL_NAMES, skillBase, skillTargets, writeSkill } from "../extension/skillFiles";
+import { runCheck } from "../core-node/check";
+import { FAIL_ON, type FailOn } from "../core-node/config";
+import { deltaMarkdown, escapeMarkdown } from "../core-node/deltaMarkdown";
+import { checkSkill, diffSize, type AgentId, type SkillHashes } from "../core-node/integrity";
+import { runPreflight } from "../core-node/preflight";
+import { SKILL_NAMES, skillBase, skillTargets, writeSkill } from "../core-node/skillFiles";
 
 export interface CommandResult {
   exitCode: 0 | 1 | 2;

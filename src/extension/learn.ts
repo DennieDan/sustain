@@ -5,13 +5,13 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
-import { pickRepoRoot } from "./folders";
-import { ensureSessionAssets, installSkill } from "./install";
-import { ensureSkillIntact } from "./integrity";
+import { pickRepoRoot } from "../vscode/folders";
+import { ensureSessionAssets, installSkill } from "../vscode/install";
+import { ensureSkillIntact } from "../vscode/integrity";
 import { SessionPanel } from "./sessionPanel";
-import { configuredScope } from "./scope";
+import { configuredScope } from "../vscode/scope";
 import { sessionAgents, sessionArgs, sessionPrompt } from "./sessionAgents";
-import { agentsSkillDir, skillBase } from "./skillFiles";
+import { agentsSkillDir, skillBase } from "../core-node/skillFiles";
 
 interface LearningMode {
   label: string;

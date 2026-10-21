@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0066](0066-units-with-one-way-import-rules.md)
 date: 2026-10-19
 decision-makers: implementer
 ---

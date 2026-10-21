@@ -19,8 +19,8 @@ export function importSpecifiers(source: string): string[] {
   return found;
 }
 
-/** All `.ts`/`.mts`/`.js`/`.mjs` files under `dir` (repo-relative, `/`-separated); empty if `dir` is absent. */
-export function sourceFiles(dir: string): string[] {
+/** All `.ts`/`.mts`/`.js`/`.mjs` files under `dir`, or the files `pattern` matches (repo-relative, `/`-separated); empty if `dir` is absent. */
+export function sourceFiles(dir: string, pattern = /\.(m?ts|m?js)$/): string[] {
   const abs = join(repoRoot, dir);
   if (!existsSync(abs)) return [];
   const out: string[] = [];
@@ -28,7 +28,7 @@ export function sourceFiles(dir: string): string[] {
     for (const name of readdirSync(current).sort()) {
       const path = join(current, name);
       if (statSync(path).isDirectory()) walk(path);
-      else if (/\.(m?ts|m?js)$/.test(name) && !name.endsWith(".d.ts")) {
+      else if (pattern.test(name) && !name.endsWith(".d.ts")) {
         out.push(relative(repoRoot, path).split(sep).join("/"));
       }
     }

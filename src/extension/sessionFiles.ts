@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { leaderboardEntry, parseLedger, rankLeaderboard, type LeaderboardEntry, type LedgerEvent } from "../model/leaderboard";
-import { parseRunName, type RunName } from "../model/runFolder";
+import { parseRunName, type RunName } from "../core-node/runFolder";
 import { ACTIVE_FILE, activeRun, checkSession, EVENTS_FILE, SESSION_FILE, SUSTAIN_DIR, type SessionState } from "../model/session";
 
 /** `.sustain` run folders holding a `session.json`, newest timestamp (then `-N`) first. */

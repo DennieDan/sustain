@@ -1,8 +1,8 @@
-// src/agent/change-map.ts
+// src/skills/change-map.ts
 import { existsSync, readFileSync as readFileSync2, realpathSync as realpathSync4, statSync as statSync4, writeFileSync as writeFileSync2 } from "node:fs";
 import { basename as basename2, dirname as dirname2, join as join5, resolve } from "node:path";
 
-// src/model/deny.ts
+// src/core/deny.ts
 var DENIED_NAMES = [".git", ".archify", ".npmrc", ".pypirc", ".netrc"];
 var ENV_EXCEPTIONS = [".env.example", ".env.sample"];
 var DENIED_PREFIXES = ["id_rsa", "id_ed25519"];
@@ -19,7 +19,7 @@ function isDenied(path) {
   return path.split("/").some(segmentDenied);
 }
 
-// src/model/gitFormat.ts
+// src/core/gitFormat.ts
 var COMMIT = /^[0-9a-f]{40}$/;
 var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
 function isRevision(value, kind) {
@@ -154,7 +154,7 @@ function parseDiffSections(diff) {
   return sections;
 }
 
-// src/model/types.ts
+// src/core/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -163,7 +163,7 @@ function stringifyDocument(value) {
 `;
 }
 
-// src/model/changeMap.ts
+// src/core/changeMap.ts
 var MAX_UPDATES = 5;
 var MAX_CHANGE_BYTES = 2 * 1024 * 1024;
 var MAX_BASELINE_DIRTY = 200;
@@ -346,7 +346,7 @@ function renderMapping(base, head, map) {
 `;
 }
 
-// src/model/citationPath.ts
+// src/core/citationPath.ts
 var MAX_PATH_LENGTH = 240;
 function citationPathOk(path) {
   if (path.length === 0 || path.length > MAX_PATH_LENGTH) return false;
@@ -355,7 +355,7 @@ function citationPathOk(path) {
   return path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
 }
 
-// src/model/citations.ts
+// src/core-node/citations.ts
 import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
 var MAX_CITED_BYTES = 2 * 1024 * 1024;
@@ -402,17 +402,17 @@ function probeFile(rootReal, path) {
   }
 }
 
-// src/model/discovery.ts
+// src/core-node/discovery.ts
 import { readdirSync, realpathSync as realpathSync2, statSync as statSync2 } from "node:fs";
 import { basename, dirname, join as join2, sep as sep2 } from "node:path";
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 import { closeSync as closeSync2, fsyncSync, openSync as openSync2, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-// src/model/runFolder.ts
+// src/core-node/runFolder.ts
 var ARCHIFY_DIR = ".archify";
 var CANDIDATE_FILE = "candidate.sir";
 var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
@@ -427,7 +427,7 @@ function parseRunFolderName(name) {
   return { slug: parsed.slug, timestamp: parsed.timestamp, n: parsed.n };
 }
 
-// src/model/discovery.ts
+// src/core-node/discovery.ts
 function compareCandidates(a, b) {
   const ra = parseRunFolderName(a.runFolder);
   const rb = parseRunFolderName(b.runFolder);
@@ -464,11 +464,11 @@ function listCandidates(root) {
   return candidates.sort(compareCandidates);
 }
 
-// src/model/git.ts
+// src/core-node/git.ts
 import { spawnSync } from "node:child_process";
 import { realpathSync as realpathSync3 } from "node:fs";
 
-// src/model/which.ts
+// src/core-node/which.ts
 import { accessSync, constants, statSync as statSync3 } from "node:fs";
 import { delimiter, join as join3, posix, win32 } from "node:path";
 function isExecutableFile(path, platform) {
@@ -494,7 +494,7 @@ function findOnPath(cli, env, platform = process.platform) {
   return void 0;
 }
 
-// src/model/git.ts
+// src/core-node/git.ts
 var MAX_DIRTY_PATHS = 200;
 var GIT_PREFIX = ["-c", "core.fsmonitor=false", "--no-optional-locks"];
 var GIT_READS = {
@@ -583,11 +583,11 @@ function commitInfo(root, revision, program = gitProgram()) {
   return { subject: match[1], committedAt: match[2] };
 }
 
-// src/model/lineage.ts
+// src/core-node/lineage.ts
 import { writeFileSync } from "node:fs";
 import { join as join4 } from "node:path";
 
-// src/model/runChanges.ts
+// src/core/runChanges.ts
 function fromDiff(diff) {
   if (diff.oldPath === null) return { status: "A", path: diff.newPath ?? "" };
   if (diff.newPath === null) return { status: "D", path: diff.oldPath };
@@ -609,7 +609,7 @@ function buildRunChanges(map, baseRevision, revision) {
   };
 }
 
-// src/model/lineage.ts
+// src/core-node/lineage.ts
 var LINEAGE_FILE = "lineage.json";
 var CHANGES_FILE = "changes.json";
 var isCount = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
@@ -654,7 +654,7 @@ function writeRunChanges(runDir, changes) {
   writeFileSync(join4(runDir, CHANGES_FILE), stringifyDocument(changes));
 }
 
-// src/model/scriptArgs.ts
+// src/core-node/scriptArgs.ts
 function parseArgs(args, spec) {
   const count = spec.positionals ?? 0;
   if (args.length < count) return null;
@@ -684,7 +684,7 @@ function usageError(script, message) {
   return 2;
 }
 
-// src/agent/change-map.ts
+// src/skills/change-map.ts
 var CHANGE_FILE = "change.md";
 var MAPPING_FILE = "mapping.md";
 var SCRIPT = "change-map.mjs";

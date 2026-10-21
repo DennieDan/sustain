@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as vscode from "vscode";
-import type { TestHook } from "../../../src/extension/extension";
+import type { TestHook } from "../../../src/vscode/extension";
 import { stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
 

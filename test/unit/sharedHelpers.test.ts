@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { repoRoot, sourceFiles } from "./support/sourceScan";
 
-const FILES = [...sourceFiles("src"), ...sourceFiles("webview"), ...sourceFiles("action/src"), "esbuild.mjs"];
+const FILES = [...sourceFiles("src"), ...sourceFiles("webview"), "esbuild.mjs"];
 const SOURCES = FILES.map((file) => ({ file, source: readFileSync(join(repoRoot, file), "utf8") }));
 
 /** The files that define `name`, once per definition: a function with a body, or a `const`, `let` or `var`. */
@@ -28,10 +28,10 @@ describe("RFX-04 one copy of each shared helper", () => {
   });
 
   test("one expression tells a plain object from null and arrays", () => {
-    expect(matches(/typeof (\w+) === "object" && \1 !== null && !Array\.isArray\(\1\)/g)).toEqual(["src/model/types.ts"]);
+    expect(matches(/typeof (\w+) === "object" && \1 !== null && !Array\.isArray\(\1\)/g)).toEqual(["src/core/types.ts"]);
   });
 
   test("one write renames a temp file over its target", () => {
-    expect(matches(/\brenameSync\(/g)).toEqual(["src/model/jsonFile.ts"]);
+    expect(matches(/\brenameSync\(/g)).toEqual(["src/core-node/jsonFile.ts"]);
   });
 });

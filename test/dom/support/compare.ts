@@ -3,9 +3,9 @@
 // components web changed (label), api kept (touched, unchanged), db added; connections c1 changed
 // (label), c2 added; boundaries "Application" renamed (from "App"), "Data" added. Removed:
 // component "Old", connection API → Old, boundary "Legacy".
-import type { ComparisonContext } from "../../../src/model/comparison";
-import type { Compare } from "../../../src/model/messages";
-import type { RunChanges } from "../../../src/model/runChanges";
+import type { ComparisonContext } from "../../../src/core/comparison";
+import type { Compare } from "../../../src/viewer/protocol";
+import type { RunChanges } from "../../../src/core/runChanges";
 
 export const BASELINE_DOC = {
   components: [
