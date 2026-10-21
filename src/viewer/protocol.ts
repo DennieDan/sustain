@@ -1,8 +1,8 @@
 // Messages between the extension host and the webviews (FR-VIEW-04, FR-CMP-05, FR-CMP-07).
 // Types only.
-import type { HealthItem, HealthKind } from "../model/health";
-import type { FeedItem, StreamUsage } from "../model/agentStream/feed";
-import type { RunStatus } from "../model/agentStream/tracker";
+import type { HealthItem, HealthKind } from "../vscode/sidebar/health";
+import type { FeedItem, StreamUsage } from "../vscode/agentStream/feed";
+import type { RunStatus } from "../vscode/agentStream/tracker";
 import type { LeaderboardEntry } from "../model/leaderboard";
 import type { Check, CheckId } from "../core-node/preflight";
 import type { RunPhase } from "../core-node/runRecord";

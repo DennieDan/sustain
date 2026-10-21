@@ -4,7 +4,7 @@ import * as assert from "node:assert/strict";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import * as vscode from "vscode";
-import type { TestHook, ViewerState } from "../../../src/extension/extension";
+import type { TestHook, ViewerState } from "../../../src/vscode/extension";
 import type { WebviewMessage } from "../../../src/viewer/protocol";
 import { stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";

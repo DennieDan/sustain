@@ -5,9 +5,9 @@
 import { basename } from "node:path";
 import * as vscode from "vscode";
 import { removeHooksWhenIdle } from "./hooksFiles";
-import { onAction } from "./notify";
+import { onAction } from "../vscode/notify";
 import { SessionPanel } from "./sessionPanel";
-import { ChangeBatch } from "./watchLogic";
+import { ChangeBatch } from "../vscode/watchLogic";
 
 export class SessionWatcher implements vscode.Disposable {
   private readonly watchers = new Map<string, vscode.FileSystemWatcher[]>();

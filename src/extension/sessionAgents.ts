@@ -2,7 +2,7 @@
 // No `vscode` import, so detection and argv are unit-tested in Node.
 import { existsSync } from "node:fs";
 import { findOnPath } from "../core-node/which";
-import { devinPromptArgs, findDevinCli } from "./devin";
+import { devinPromptArgs, findDevinCli } from "../vscode/devin";
 import type { SessionAgent } from "./hooksFiles";
 
 export interface SessionLauncher {

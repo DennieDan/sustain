@@ -17,7 +17,7 @@ const BROWSER_SAFE_MODEL: Record<string, true> = {
   "src/core/diagramDiff.ts": true,
   "src/core/comparison.ts": true,
   "src/core/runChanges.ts": true,
-  "src/model/home.ts": true,
+  "src/vscode/sidebar/wording.ts": true,
   "src/core-node/changes.ts": true,
   "src/core-node/evidence.ts": true,
   "src/core/citationPath.ts": true,
@@ -41,7 +41,7 @@ const NODE_MODEL: Record<string, true> = {
   "src/core-node/integrity.ts": true,
   "src/core-node/runRecord.ts": true,
   "src/core-node/preflight.ts": true,
-  "src/model/maps.ts": true,
+  "src/vscode/maps.ts": true,
   "src/core-node/check.ts": true,
   "src/core-node/repoSize.ts": true,
   "src/core-node/fingerprints.ts": true,
@@ -74,7 +74,7 @@ function boundaryViolations(file: string, source: string): string[] {
       else if (!NODE_ALLOWED[specifier]) violations.push(`${file}: imports ${specifier}; only fs, path, child_process, crypto are allowed`);
     } else if (specifier.startsWith(".")) {
       const target = join(file, "..", specifier).split("\\").join("/");
-      const model = ["src/model/", "src/core/", "src/core-node/", "src/viewer/protocol"];
+      const model = ["src/model/", "src/core/", "src/core-node/", ...MOVED_FROM_MODEL.map((moved) => moved.replace(/\.ts$/, ""))];
       const allowedPrefixes = file.startsWith("src/viewer/layout/") ? ["src/viewer/layout/", ...model] : model;
       if (!allowedPrefixes.some((prefix) => target.startsWith(prefix))) {
         violations.push(`${file}: imports ${specifier} outside its allowed layers`);
@@ -84,10 +84,27 @@ function boundaryViolations(file: string, source: string): string[] {
   return violations;
 }
 
+/** Files that came from src/model into another unit. This test keeps checking them. */
+const MOVED_FROM_MODEL = [
+  "src/viewer/protocol.ts",
+  "src/vscode/agentStream/claude.ts",
+  "src/vscode/agentStream/codex.ts",
+  "src/vscode/agentStream/feed.ts",
+  "src/vscode/agentStream/summary.ts",
+  "src/vscode/agentStream/tracker.ts",
+  "src/vscode/notesBlock.ts",
+  "src/vscode/boxHotspots.ts",
+  "src/vscode/usageCounts.ts",
+  "src/vscode/ruleEdits.ts",
+  "src/vscode/maps.ts",
+  "src/vscode/sidebar/wording.ts",
+  "src/vscode/sidebar/health.ts",
+];
+
 describe("NFR-QUAL-03 module boundaries", () => {
   test("src/model and src/layout respect the boundaries", () => {
-    // skillFiles.ts came from src/extension, which this test does not scan. protocol.ts came from src/model.
-    const files = [...sourceFiles("src/model"), ...sourceFiles("src/core"), ...sourceFiles("src/core-node"), ...sourceFiles("src/viewer/layout"), "src/viewer/protocol.ts"].filter((file) => file !== "src/core-node/skillFiles.ts");
+    // skillFiles.ts came from src/extension, which this test does not scan.
+    const files = [...sourceFiles("src/model"), ...sourceFiles("src/core"), ...sourceFiles("src/core-node"), ...sourceFiles("src/viewer/layout"), ...MOVED_FROM_MODEL].filter((file) => file !== "src/core-node/skillFiles.ts");
     const violations = files.flatMap((file) => boundaryViolations(file, readFileSync(join(repoRoot, file), "utf8")));
     expect(violations).toEqual([]);
   });

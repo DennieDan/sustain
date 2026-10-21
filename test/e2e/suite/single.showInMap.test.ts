@@ -5,7 +5,7 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:f
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import * as vscode from "vscode";
-import type { TestHook } from "../../../src/extension/extension";
+import type { TestHook } from "../../../src/vscode/extension";
 import { skillTargets, writeSkill } from "../../../src/core-node/skillFiles";
 import { prompts, stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";

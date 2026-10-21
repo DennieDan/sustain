@@ -132,7 +132,7 @@ async function buildDist() {
 
   results.push(await esbuild.build({
     ...common,
-    entryPoints: [join(root, "src/extension/extension.ts")],
+    entryPoints: [join(root, "src/vscode/extension.ts")],
     outfile: join(dist, "extension.js"),
     platform: "node",
     format: "cjs",
@@ -162,7 +162,7 @@ async function buildDist() {
   }));
   results.push(await esbuild.build({
     ...common,
-    entryPoints: [join(root, "webview/sidebar.ts")],
+    entryPoints: [join(root, "src/vscode/sidebar/sidebar.ts")],
     outfile: join(dist, "sidebar.js"),
     platform: "browser",
     format: "iife",
@@ -171,7 +171,7 @@ async function buildDist() {
   }));
   cpSync(join(root, "src/viewer/styles.css"), join(dist, "webview.css"));
   cpSync(join(root, "webview/session.css"), join(dist, "session-webview.css"));
-  cpSync(join(root, "webview/sidebar.css"), join(dist, "sidebar.css"));
+  cpSync(join(root, "src/vscode/sidebar/sidebar.css"), join(dist, "sidebar.css"));
   writeBundleInputs(results.flatMap((result) => (result.metafile ? [result.metafile] : [])));
 }
 
