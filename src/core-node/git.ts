@@ -4,7 +4,7 @@
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { isRevision, parseNameStatusZ, parsePorcelainZ } from "../core/gitFormat";
-import type { CommitInfo } from "./lineage";
+import type { CommitInfo } from "../core/lineage";
 import type { Repository } from "../core/types";
 import { findOnPath } from "./which";
 

@@ -2,7 +2,8 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { LINEAGE_FILE, readLineage, writeLineage, type Lineage } from "../../../src/core-node/lineage";
+import type { Lineage } from "../../../src/core/lineage";
+import { LINEAGE_FILE, readLineage, writeLineage } from "../../../src/core-node/lineage";
 import { tempDir } from "../support/temp";
 
 const rev = "c".repeat(40);

@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import type { CommitInfo, Lineage } from "../../../src/core-node/lineage";
+import type { CommitInfo, Lineage } from "../../../src/core/lineage";
 import type { RunChanges } from "../../../src/core/runChanges";
 import { envWithoutGit, git, gitRepo, put, runScript, tempDir, type ChangeMapReport } from "../support/temp";
 

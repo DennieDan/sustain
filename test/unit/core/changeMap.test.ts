@@ -15,7 +15,7 @@ import {
   type ModeFacts,
 } from "../../../src/core/changeMap";
 import { parseNameStatusZ, unquotePath } from "../../../src/core/gitFormat";
-import type { Lineage } from "../../../src/core-node/lineage";
+import type { Lineage } from "../../../src/core/lineage";
 
 const raw = `diff --git a/src/Parser.java b/src/Parser.java
 index 1111111..2222222 100644

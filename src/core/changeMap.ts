@@ -4,7 +4,7 @@
 // `harness/lib/diff.mjs`. Pure: git output and file reads come in as strings or callbacks.
 import { isDenied } from "./deny";
 import { parseDiffSections, parseNameStatusZ, type DiffHunk, type NameStatus } from "./gitFormat";
-import type { Lineage } from "../core-node/lineage";
+import type { Lineage } from "./lineage";
 import { isRecord } from "./types";
 
 /** Updates allowed before the next run regenerates (U4, ADR 0029). */

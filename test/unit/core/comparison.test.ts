@@ -1,7 +1,7 @@
 // FR-CMP-04: comparison context, one test per warning and approximate case; picker tags (FR-CMP-06).
 import { describe, expect, test } from "vitest";
 import { compareRuns, MAX_HISTORY_STEPS, pickerTags, type RunFacts } from "../../../src/core/comparison";
-import type { Lineage, RunMode } from "../../../src/core-node/lineage";
+import type { Lineage, RunMode } from "../../../src/core/lineage";
 
 const REV_A = "a".repeat(40);
 const REV_B = "b".repeat(40);
