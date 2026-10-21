@@ -1,5 +1,4 @@
 // src/agent/repo-facts.ts
-import { existsSync as existsSync2 } from "node:fs";
 import { basename as basename2, join as join6 } from "node:path";
 
 // src/model/git.ts
@@ -453,7 +452,6 @@ import { closeSync, fsyncSync, mkdirSync, openSync, realpathSync as realpathSync
 import { basename, dirname, join as join3, resolve, sep } from "node:path";
 var ARCHIFY_DIR = ".archify";
 var DRAFT_FILE = "draft.json";
-var CANDIDATE_FILE = "candidate.sir";
 var SLUG_MAX = 40;
 var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
 var MAX_COLLISIONS = 1e3;
@@ -482,11 +480,6 @@ function parseRunName(name) {
   const match = RUN_NAME_PATTERN.exec(name);
   if (!match) return null;
   return { prefix: match[1], slug: match[2], timestamp: match[3], n: match[4] === void 0 ? 1 : Number(match[4]) };
-}
-function parseRunFolderName(name) {
-  const parsed = parseRunName(name);
-  if (parsed === null || parsed.prefix !== "architecture") return null;
-  return { slug: parsed.slug, timestamp: parsed.timestamp, n: parsed.n };
 }
 function isInside(parentReal, childReal) {
   return childReal.startsWith(parentReal.endsWith(sep) ? parentReal : parentReal + sep);
@@ -595,7 +588,7 @@ function newRunRecord(fields, now = /* @__PURE__ */ new Date()) {
     focus: fields.focus,
     paths: fields.paths ?? [],
     base: fields.base ?? null,
-    parent: fields.parent ?? null,
+    parent: null,
     createdAt: now.toISOString(),
     skillVersion: fields.skillVersion,
     phase: "created",
@@ -610,30 +603,23 @@ function writeRunRecord(root, runDir, record) {
 
 // src/agent/repo-facts.ts
 var SKILL_VERSION = "0.2.0";
-var USAGE = "repo-facts.mjs: usage: node repo-facts.mjs [--focus <text>] [--parent <run>]\n";
+var USAGE = "repo-facts.mjs: usage: node repo-facts.mjs [--focus <text>]\n";
 function main(args) {
   let focus = "";
-  let parent = null;
   for (let i = 0; i < args.length; i += 2) {
     const value = args[i + 1];
-    if (value === void 0 || args[i] !== "--focus" && args[i] !== "--parent") {
+    if (value === void 0 || args[i] !== "--focus") {
       process.stderr.write(USAGE);
       return 2;
     }
-    if (args[i] === "--focus") focus = value;
-    else parent = value;
+    focus = value;
   }
   const root = process.cwd();
-  if (parent !== null && (!parseRunFolderName(parent) || !existsSync2(join6(root, ARCHIFY_DIR, parent, CANDIDATE_FILE)))) {
-    process.stderr.write(`repo-facts.mjs: --parent names no accepted map in ${ARCHIFY_DIR}/: ${parent}
-`);
-    return 2;
-  }
   const git = collectGitFacts(root);
   let run2;
   try {
     run2 = createRunFolder(root, slugify(focus, basename2(root)), runTimestamp(/* @__PURE__ */ new Date()));
-    writeRunRecord(root, join6(root, ARCHIFY_DIR, run2), newRunRecord({ focus, skillVersion: SKILL_VERSION, ...parent === null ? {} : { kind: "drill", parent } }));
+    writeRunRecord(root, join6(root, ARCHIFY_DIR, run2), newRunRecord({ focus, skillVersion: SKILL_VERSION }));
   } catch (error) {
     process.stderr.write(`repo-facts.mjs: ${error.message}
 `);

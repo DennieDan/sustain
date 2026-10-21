@@ -8415,7 +8415,7 @@ function newRunRecord(fields, now = /* @__PURE__ */ new Date()) {
     focus: fields.focus,
     paths: fields.paths ?? [],
     base: fields.base ?? null,
-    parent: fields.parent ?? null,
+    parent: null,
     createdAt: now.toISOString(),
     skillVersion: fields.skillVersion,
     phase: "created",

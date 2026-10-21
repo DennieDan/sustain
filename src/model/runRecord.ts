@@ -8,7 +8,7 @@ import { isJsonObject } from "./types";
 
 export const RUN_FILE = "run.json";
 
-export type RunKind = "full" | "refresh" | "drill";
+export type RunKind = "full" | "refresh";
 export type RunPhase = "created" | "validating" | "accepted" | "rejected";
 
 /** The estimate stated before the run (CST-03). */
@@ -30,11 +30,11 @@ export interface RunRecord {
   schema: 1;
   kind: RunKind;
   focus: string;
-  /** Path globs a refresh or drill-down is limited to; empty for a whole run. */
+  /** Path globs a refresh is limited to; empty for a whole run. */
   paths: string[];
   /** The run folder a refresh starts from. */
   base: string | null;
-  /** The run folder a drill-down came from. */
+  /** The map a drill-down came from, in records written before the drill-down was removed. New records hold `null`. */
   parent: string | null;
   createdAt: string;
   skillVersion: string;
@@ -51,14 +51,14 @@ export interface RunRecord {
 }
 
 /** A fresh record for a run created now. */
-export function newRunRecord(fields: { kind?: RunKind; focus: string; paths?: string[]; base?: string | null; parent?: string | null; skillVersion: string }, now = new Date()): RunRecord {
+export function newRunRecord(fields: { kind?: RunKind; focus: string; paths?: string[]; base?: string | null; skillVersion: string }, now = new Date()): RunRecord {
   return {
     schema: 1,
     kind: fields.kind ?? "full",
     focus: fields.focus,
     paths: fields.paths ?? [],
     base: fields.base ?? null,
-    parent: fields.parent ?? null,
+    parent: null,
     createdAt: now.toISOString(),
     skillVersion: fields.skillVersion,
     phase: "created",

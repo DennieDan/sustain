@@ -34,7 +34,6 @@ The focus is: $ARGUMENTS
 - In Codex the focus is the text after the `$sustain-architecture` mention; ignore the line above if it still reads as a placeholder.
 - If the focus starts with the token `--regenerate`, remove that token from the focus and remember to pass `--regenerate` in step 3.
 - If the focus is empty, draw a whole-system overview led by the main user journey.
-- If the arguments end with `--parent <run folder>`, the focus is one box of that map, to draw in detail. Keep the run folder's name apart from the focus.
 
 ## 2. Create the run folder
 
@@ -44,7 +43,7 @@ Run, from the repository root:
 node ${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs --focus "<focus>"
 ```
 
-Omit `--focus "<focus>"` entirely when the focus is empty. For a box drawn in detail, add `--parent <run folder>` after it, so the new map records which map it came from. The script prints one JSON object. Keep its `runFolder`, `draft`, `git` and `budget` values; `git` lists uncommitted paths whose line numbers may still change. If it exits non-zero, stop and report its stderr.
+Omit `--focus "<focus>"` entirely when the focus is empty. The script prints one JSON object. Keep its `runFolder`, `draft`, `git` and `budget` values; `git` lists uncommitted paths whose line numbers may still change. If it exits non-zero, stop and report its stderr.
 
 Before you go on, tell the user the estimate in one line. Use `estimate.claude.text` if you are Claude Code, and `estimate.codex.text` otherwise.
 
