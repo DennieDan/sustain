@@ -53,7 +53,6 @@ export function clip(text: string, max = 120): string {
 export function commandItem(command: string): FeedItem {
   if (/validate\.mjs/.test(command)) return { kind: "validate", text: "Validating the draft" };
   if (/repo-facts\.mjs/.test(command)) return { kind: "command", text: "Creating the run folder" };
-  if (/refresh-facts\.mjs/.test(command)) return { kind: "command", text: "Finding what changed" };
   return { kind: "command", text: `Running ${clip(command, 80)}` };
 }
 

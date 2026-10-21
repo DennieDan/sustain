@@ -1,4 +1,4 @@
-// SAF-03: strings that look like secrets never enter a map, a sidecar or an upload.
+// SAF-03: strings that look like secrets never enter a map or a sidecar.
 import { pointerToken, type Issue } from "./types";
 
 /** Named patterns of well-known credential formats. */
