@@ -51,5 +51,5 @@ test("CST-03 a run needs a second click only when the top of its range is above 
   expect(text).toBe(estimateText(range, priceRange(range, "claude", modelPrice("claude")!)));
   expect(runEstimate(size, "claude", "full", range.high).confirm).toBe(false);
   expect(runEstimate(size, "claude", "full", range.high - 1).confirm).toBe(true);
-  expect(skillEstimates(size, "refresh").codex).toEqual({ ...estimate(size, "codex", "refresh"), text: runEstimate(size, "codex", "refresh", Infinity).text });
+  expect(skillEstimates(size, "full").codex).toEqual({ ...estimate(size, "codex", "full"), text: runEstimate(size, "codex", "full", Infinity).text });
 });

@@ -1,13 +1,13 @@
 // CST-02: an estimated token range for a run from the repository's size (CST-01), and its price at
-// API rates. `coefficients.json` is provisional until `npm run bench:fit` fits it from bench results;
-// `pricing.json` holds each model's prices with the date and page they were read from.
+// API rates. `coefficients.json` holds provisional coefficients. `pricing.json` holds each model's
+// prices with the date and page they were read from.
 import coefficients from "./coefficients.json";
 import pricing from "./pricing.json";
 
 export type EstimateAgent = "claude" | "codex";
-export type EstimateKind = "full" | "refresh" | "ask";
+export type EstimateKind = "full";
 export const ESTIMATE_AGENTS: readonly EstimateAgent[] = ["claude", "codex"];
-export const ESTIMATE_KINDS: readonly EstimateKind[] = ["full", "refresh", "ask"];
+export const ESTIMATE_KINDS: readonly EstimateKind[] = ["full"];
 
 /** Tokens ≈ base + perLine × non-test lines + perFile × files, between low × and high × that. */
 export interface TokenLine {
@@ -29,7 +29,7 @@ export interface TokenMix {
 export interface Coefficients {
   basis: "provisional" | "fitted";
   fittedAt: string | null;
-  /** Bench runs the fit used. */
+  /** Runs the fit used. */
   runs: number;
   lines: Record<EstimateAgent, Record<EstimateKind, TokenLine>>;
   mix: Record<EstimateAgent, TokenMix>;

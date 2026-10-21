@@ -1,7 +1,8 @@
 // SAF-04: agents launch with the prompt alone and only from absolute PATH entries.
 import { chmodSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { agentLaunchArgs, agentPrompt, AGENTS, copiedPrompt, findOnPath, headlessArgs, PROMPT_TARGETS } from "../../../src/extension/agents";
+import { agentLaunchArgs, agentPrompt, AGENTS, copiedPrompt, headlessArgs, PROMPT_TARGETS } from "../../../src/extension/agents";
+import { findOnPath } from "../../../src/model/which";
 import { devinPromptArgs } from "../../../src/extension/devin";
 import { put, tempDir } from "../support/temp";
 

@@ -162,7 +162,7 @@ async function buildDist() {
   }));
 
   // The webviews: one IIFE each loaded by nonce under a strict CSP (NFR-SEC-01). The diagram one
-  // carries elkjs inside its layout worker's code (VWR-02).
+  // carries elkjs, which lays the map out in the page's own thread (VWR-02).
   results.push(await esbuild.build({
     ...common,
     entryPoints: [join(root, "webview/main.ts")],

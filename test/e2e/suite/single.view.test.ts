@@ -53,11 +53,12 @@ suite("FR-VIEW-01/04 Open Architecture and the viewer", () => {
   });
 
   test("without candidates: info with Generate, which runs Generate Architecture", async () => {
-    ui.answers.info.push("Generate", "Cancel");
+    ui.answers.info.push("Generate");
+    ui.answers.inputBox.push(undefined);
     await vscode.commands.executeCommand("sustain.openArchitecture");
     assert.equal(ui.infos[0]!.message, "No architecture diagram yet.");
     assert.deepEqual(ui.infos[0]!.rest, ["Generate"]);
-    assert.equal(ui.infos[1]?.message, "Install the sustain-architecture skill first?", "Generate Architecture ran");
+    assert.deepEqual(ui.inputBoxes, [{ prompt: "Focus (optional)" }], "Generate Architecture ran");
     assert.deepEqual(hook.viewers(), []);
   });
 

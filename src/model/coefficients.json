@@ -10,20 +10,6 @@
         "perFile": 30,
         "low": 0.7,
         "high": 1.4
-      },
-      "refresh": {
-        "base": 60000,
-        "perLine": 0.3,
-        "perFile": 10,
-        "low": 0.6,
-        "high": 1.6
-      },
-      "ask": {
-        "base": 30000,
-        "perLine": 0.1,
-        "perFile": 5,
-        "low": 0.5,
-        "high": 2
       }
     },
     "codex": {
@@ -33,20 +19,6 @@
         "perFile": 30,
         "low": 0.7,
         "high": 1.4
-      },
-      "refresh": {
-        "base": 45000,
-        "perLine": 0.3,
-        "perFile": 10,
-        "low": 0.6,
-        "high": 1.6
-      },
-      "ask": {
-        "base": 25000,
-        "perLine": 0.1,
-        "perFile": 5,
-        "low": 0.5,
-        "high": 2
       }
     }
   },

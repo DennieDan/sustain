@@ -42,10 +42,3 @@ test("RCH-05 a v* tag runs the gates and releases the files, and a hyphenated ta
   expect(publishing).toContain("npx --yes ovsx@1.3.0 publish");
   expect(publishing).toContain("vsce publish --packagePath release/files/sustain-*.vsix --azure-credential");
 });
-
-test("RCH-05 the cloud deploys from main once the owner turns it on", () => {
-  const deploy = readFileSync(join(repoRoot, ".github/workflows/deploy-cloud.yml"), "utf8");
-  expect(deploy).toContain("branches: [main]");
-  expect(deploy).toContain("if: vars.SUSTAIN_DEPLOY == 'true'");
-  expect([...deploy.matchAll(/- run: (.+)/g)].map((match) => match[1])).toEqual(["npm ci", "npm run -w cloud test", "npm run -w cloud build"]);
-});

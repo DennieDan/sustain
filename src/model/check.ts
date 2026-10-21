@@ -9,7 +9,7 @@ import { deltaReport, isSourceFile, verdict, type DeltaReport } from "./delta";
 import { listCandidates } from "./discovery";
 import { importLanguage, importResolver } from "./evidence/graph";
 import { diffBetween, existsAt, fileAt, filesAt, mergeBase, renamesSince, untrackedFiles } from "./git";
-import { globToRegExp } from "./refresh";
+import { globToRegExp } from "./glob";
 import { isTestPath, listFiles } from "./repoSize";
 import { checkRules, readRules, type Violation } from "./rules";
 import type { ImportRef } from "./evidence/paths";

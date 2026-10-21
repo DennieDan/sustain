@@ -882,34 +882,6 @@ body {
   stroke-dasharray: none;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* Drill-down (VWR-05): the way back to the overview, at the bottom right */
-
-.overview {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  background: var(--sustain-widget-background);
-  border: 1px solid var(--sustain-widget-border);
-  box-shadow: 0 2px 8px var(--sustain-shadow);
-}
-
-.overview[hidden],
-.app--empty .overview {
-  display: none;
-}
-
 .tooltip__status--added {
   color: var(--vscode-gitDecoration-addedResourceForeground);
 }

@@ -1,5 +1,4 @@
-// VWR-02: ELK in the calling thread, for Node: the tests and the layout fixtures. Pages run it in
-// workers instead (webview/layoutWorkers.ts).
+// VWR-02: ELK in the calling thread. The viewer and the tests both lay maps out this way.
 import ELK from "elkjs/lib/elk.bundled.js";
 import { runElk } from "./elk";
 import type { RunElk } from "./scene";

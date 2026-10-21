@@ -28,7 +28,7 @@ suite("ARC-04 architecture notes for agents", () => {
     root = vscode.workspace.workspaceFolders![0]!.uri.fsPath;
     write(
       root,
-      `.archify/${RUN}/candidate.json`,
+      `.archify/${RUN}/candidate.sir`,
       JSON.stringify({
         meta: { title: "Notes" },
         components: [

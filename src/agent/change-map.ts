@@ -15,7 +15,8 @@ import {
   renderMapping,
   type ModeDecision,
 } from "../model/changeMap";
-import { citationPathOk, probeFile } from "../model/citations";
+import { citationPathOk } from "../model/citationPath";
+import { probeFile } from "../model/citations";
 import { listCandidates, type Candidate } from "../model/discovery";
 import { baseReachable, collectGitFacts, commitInfo, readChanges } from "../model/git";
 import { readLineage, writeLineage, writeRunChanges, type Lineage } from "../model/lineage";

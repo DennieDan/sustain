@@ -28,7 +28,7 @@ suite("FR-INS-01 Install Agent Skills", () => {
     rmSync(join(root, ".gitignore"), { force: true });
   });
 
-  test("SAF-06 FRS-05 ACC-05 SKL-02 a fresh install copies every skill, links .claude and leaves .devin and .gitignore alone", async () => {
+  test("SAF-06 ACC-05 SKL-02 a fresh install copies every skill, links .claude and leaves .devin and .gitignore alone", async () => {
     await vscode.commands.executeCommand("sustain.installSkills");
     for (const file of ["SKILL.md", "agents/openai.yaml", "references/archify-format.md", "references/example.json", "scripts/validate.mjs", "scripts/repo-facts.mjs", "scripts/change-map.mjs", "scripts/match-ids.mjs"]) {
       assert.ok(existsSync(join(home, ".agents/skills/sustain-architecture", file)), file);
@@ -36,16 +36,7 @@ suite("FR-INS-01 Install Agent Skills", () => {
     for (const file of ["SKILL.md", "agents/openai.yaml", "references/bug-taxonomy.md", "scripts/session.mjs", "scripts/session-hook.mjs"]) {
       assert.ok(existsSync(join(home, ".agents/skills/sustain-bugfix", file)), file);
     }
-    for (const file of ["SKILL.md", "agents/openai.yaml", "references/archify-format.md", "scripts/refresh-facts.mjs", "scripts/validate.mjs"]) {
-      assert.ok(existsSync(join(home, ".agents/skills/sustain-refresh", file)), file);
-    }
-    for (const file of ["SKILL.md", "agents/openai.yaml", "scripts/audit-record.mjs"]) {
-      assert.ok(existsSync(join(home, ".agents/skills/sustain-audit", file)), file);
-    }
-    for (const file of ["SKILL.md", "agents/openai.yaml", "scripts/tour-record.mjs"]) {
-      assert.ok(existsSync(join(home, ".agents/skills/sustain-tour", file)), file);
-    }
-    for (const name of ["sustain-architecture", "sustain-audit", "sustain-bugfix", "sustain-refresh", "sustain-tour"]) {
+    for (const name of ["sustain-architecture", "sustain-bugfix"]) {
       const link = join(home, ".claude/skills", name);
       assert.equal(lstatSync(link).isSymbolicLink(), true);
       assert.equal(readlinkSync(link), `../../.agents/skills/${name}`);
@@ -66,7 +57,7 @@ suite("FR-INS-01 Install Agent Skills", () => {
     ui.answers.warning.push("Overwrite");
     await vscode.commands.executeCommand("sustain.installSkills");
     assert.equal(ui.warnings.length, 1);
-    assert.equal(ui.warnings[0]!.message, "Overwrite the existing sustain-architecture, sustain-audit, sustain-bugfix, sustain-refresh and sustain-tour skills?");
+    assert.equal(ui.warnings[0]!.message, "Overwrite the existing sustain-architecture and sustain-bugfix skills?");
     assert.deepEqual(ui.warnings[0]!.rest, [{ modal: true }, "Overwrite"]);
     assert.equal(existsSync(marker), false, "overwrite removes the old install first");
     assert.equal(lstatSync(join(home, ".claude/skills/sustain-architecture")).isSymbolicLink(), true);
