@@ -9,7 +9,7 @@ Unofficial; not affiliated with Archify. Includes material derived from Archify 
 - Upstream commit: `27f78a2bd13a1ee0c71d5288650670513bf64e7c` (2026-10-09)
 - License: MIT (text below)
 - Material derived from Archify in this repository:
-  - `src/model/schemas/architecture.schema.json` and `common.schema.json`
+  - `src/core/schemas/architecture.schema.json` and `common.schema.json`
     (copied from `archify/schemas/`);
   - `fixtures/archify/**` (architecture JSON copied from `archify/examples/`, `examples/`,
     `docs/cases/`, `archify/test/fixtures/`, plus one Archify-skill run candidate);
