@@ -1,10 +1,24 @@
 import { runTests } from "@vscode/test-electron";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, delimiter, join, resolve } from "node:path";
 
 // The VS Code builds the [e2e] suite runs against: the engines.vscode floor and the latest stable.
 const VSCODE_VERSIONS = ["1.126.0", "1.141.0"];
+
+/** The agent CLIs the extension looks for. The tests put stubs of them on PATH. */
+const AGENT_CLIS = ["claude", "codex", "devin"];
+
+/**
+ * The runner's PATH without the folders that hold an installed agent CLI. The extension then finds
+ * only the tests' stubs. Node is linked into `nodeDir` first, because it can share a folder with an
+ * agent CLI.
+ */
+function e2ePath(nodeDir: string): string {
+  symlinkSync(process.execPath, join(nodeDir, basename(process.execPath)));
+  const kept = (process.env["PATH"] ?? "").split(delimiter).filter((dir) => !AGENT_CLIS.some((cli) => existsSync(join(dir, cli))));
+  return [nodeDir, ...kept].join(delimiter);
+}
 
 /**
  * Each scenario launches its own VS Code with a fresh profile and runs the suite files
@@ -50,15 +64,18 @@ async function main(): Promise<void> {
     writeFileSync(join(userData, "User", "settings.json"), `${JSON.stringify({ "git.enabled": false })}\n`);
     // Skills install per user by default (SET-01), so each launch gets its own home folder.
     const home = mkdtempSync(join(tmpdir(), "sustain-home-"));
+    const nodeDir = mkdtempSync(join(tmpdir(), "sustain-node-"));
     console.log(`\n=== e2e VS Code ${version}, scenario: ${scenario.name} ===`);
     try {
       await runTests({
         version,
         extensionDevelopmentPath,
         extensionTestsPath,
-        extensionTestsEnv: { SUSTAIN_E2E_SCENARIO: scenario.name, HOME: home, USERPROFILE: home },
+        extensionTestsEnv: { SUSTAIN_E2E_SCENARIO: scenario.name, HOME: home, USERPROFILE: home, PATH: e2ePath(nodeDir) },
         // Each launch has its own home folder, which holds no macOS keychain. Secrets stay in memory
-        // and encryption uses a mock keychain, so macOS never asks to create a keychain.
+        // and encryption uses a mock keychain. macOS therefore never asks to create a keychain.
+        // The extension host gets the runner's environment as it is. VS Code skips the login shell's
+        // PATH, which would add any agent CLI installed on the machine to the tests' stubs.
         launchArgs: [
           ...(workspace ? [workspace] : []),
           `--user-data-dir=${userData}`,
@@ -67,12 +84,14 @@ async function main(): Promise<void> {
           "--skip-release-notes",
           "--use-inmemory-secretstorage",
           "--use-mock-keychain",
+          "--force-disable-user-env",
         ],
       });
     } finally {
       rmSync(base, { recursive: true, force: true });
       rmSync(home, { recursive: true, force: true });
       rmSync(userData, { recursive: true, force: true });
+      rmSync(nodeDir, { recursive: true, force: true });
     }
   }
 }
