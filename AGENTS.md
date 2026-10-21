@@ -4,12 +4,12 @@ Sustain is a VS Code extension with agent skills. A coding agent maps a reposito
 
 ## Current work
 
-`docs/spec-v0.3.md` is the contract and `docs/progress-v0.3.md` the state of the v0.3 build on branch `kerk`. Follow the spec's resume protocol (§7) at the start of every session. `docs/vision.md` explains why a feature exists. It adds no requirements.
+`docs/spec-refactor.md` is the contract and `docs/progress-refactor.md` the state of the refactor on `main`. Follow the spec's Process (§6) at the start of every session. `docs/vision.md` explains why a feature exists. It adds no requirements. `docs/spec-v0.3.md` and `docs/progress-v0.3.md` are historical.
 
 ## Working agreement
 
 - Build exactly what the spec describes. Ambitious ideas go into the progress log as suggestions, and the code stays minimal.
-- The build runs in advance mode. Keep moving without waiting for the owner. Only the hard stops in the spec's §7 pause a feature, and other work continues meanwhile.
+- The build runs in advance mode. Keep moving without waiting for the owner. Only the hard stops in the spec's §6 pause a feature, and other work continues meanwhile.
 - Before a milestone's first line of code, write its proposal table into progress. Give one row per file or logical unit, with the change and an estimated size such as `+40 / -12`, then list the tests the milestone's ACs call for.
 - When the build departs from the spec or the proposal, record what changed and why in the progress log and carry on. The divergence never ships unannounced.
 - When a milestone closes, add a Built column with the real sizes and a list of where the build differs. Keep the approved table as it was.
@@ -42,7 +42,8 @@ For example, "A skill whose files differ from the bundled copy is reinstalled be
 
 ## Git
 
-- Commit each finished feature on `kerk` after its gates pass, as `v0.3 <IDs>: <summary>`. Stage only that feature's files.
+- Each milestone gets one branch off the latest `main`, named `refactor/rfN-<slug>`, and one pull request.
+- Commit each finished feature on its milestone branch after its gates pass, as `refactor RFn <IDs>: <summary>`. Stage only that feature's files.
 - The owner pushes and merges. Leave `origin` and `main` alone.
 - Before any revert, reset, rebase, merge, amend or squash, state the exact resulting history and wait for a yes.
 
@@ -56,7 +57,7 @@ Keep tool output and scratch files out of the repository. Build and probe in the
 
 ## Shell and environment
 
-- Non-interactive shells resolve `node` to system Node 18. The toolchain needs Node 22.12 or newer, and `.nvmrc` pins 26. Start every command that runs `node`, `npm` or `npx` with `source ~/.nvm/nvm.sh && nvm use >/dev/null &&`.
+- On machines with nvm, non-interactive shells resolve `node` to system Node 18. The toolchain needs Node 22.12 or newer, and `.nvmrc` pins 26. There, start every command that runs `node`, `npm` or `npx` with `source ~/.nvm/nvm.sh && nvm use >/dev/null &&`. The prefix applies only where nvm is installed.
 - Run tools through the npm scripts or `node_modules/.bin`. A bare `npx <tool>` can pick up a stale cache built for Node 18.
 - Unset `ELECTRON_RUN_AS_NODE` before `npm run test:e2e`. Terminals inside editors set it.
 - Other agent sessions run on this machine at the same time. Give any server or database you start its own port and name, and remove it afterwards.

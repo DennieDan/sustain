@@ -1,5 +1,7 @@
 # Progress (v0.3)
 
+Status: historical. `main` shipped only the VS Code subset of this build, in `647df7b`. The current state is in [progress-refactor.md](progress-refactor.md).
+
 Tracks [spec-v0.3.md](spec-v0.3.md). Milestone statuses: Not started, In progress, Closed pending owner (spec §6), Closed. Tick a feature only when its AC passed, and write the evidence next to it: test names, commands and results. `[smoke]` items, and `[ci]` items until CI runs, wait for the owner under **Waiting**.
 
 ## Status

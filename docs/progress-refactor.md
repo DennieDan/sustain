@@ -70,7 +70,17 @@ Tests the AC calls for:
 - `RFX-01 check:docs traces the refactor spec and fails when an RFX ID is missing from its progress checklist` in `test/unit/checkDocs.test.ts`.
 - The existing `the repository's own docs pass` covers the real `docs/` folder.
 
-- [ ] **RFX-01 Refactor docs adopted** `[unit]`
+Baseline on `main` at `215c944`, 2026-10-21, before any change:
+- `npm run check` passes. Vitest runs 1262 tests in 85 files, and check:docs reports 70 ADRs and 242 relative links.
+- `npm run test:e2e` fails. The `single` scenario on VS Code 1.126.0 has 69 passing and 12 failing, and the runner stops there. `node out/e2e/runTest.js empty` passes 3 tests on each of 1.126.0 and 1.141.0. `multi` stalled on a macOS dialog, "A keychain cannot be found to store "Code Key"", until the run was stopped.
+- With the keychain fix below, `single` has 77 passing and 9 failing, and `multi` passes 2 tests on each version. The 9 failures are in Generate (3), Install (2), architecture notes (2), the session launcher (1) and Open Architecture (1). Several expect the dropped skills, which RFX-03 handles in RF1.
+
+Divergences:
+- `test/e2e/runTest.ts` launches VS Code with `--use-inmemory-secretstorage` and `--use-mock-keychain`. Each launch has its own home folder without a keychain. macOS then asked to create one, and the dialog stalled the run. The spec does not name this change. It touches only the test runner and has its own commit.
+- `AGENTS.md` also changes in "Working agreement", where the hard stops now point at the spec's §6 instead of v0.3's §7.
+- `checkTraceability` takes the progress file's name, and its unknown-ID problem reads "is defined in no spec it builds on" in place of "is defined in neither spec", because the refactor builds on two earlier specs. The ENG-03 unit test follows the new wording.
+
+- [x] **RFX-01 Refactor docs adopted** `[unit]`. `test/unit/checkDocs.test.ts` › `RFX-01 check:docs traces the refactor spec and fails when an RFX ID is missing from its progress checklist` passes, and it failed with the refactor row removed from `TRACES`. `the repository's own docs pass` passes on the real `docs/`. `npm run check` passes with 1263 tests, and check:docs reports 70 ADRs and 245 relative links. `npm run test:e2e` gives the same 77 passing and 9 failing in `single` as the baseline with the keychain fix. RF1 owns those failures.
 
 ## RF1 Dead code
 

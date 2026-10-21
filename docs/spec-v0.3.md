@@ -1,5 +1,6 @@
 # Sustain v0.3 build specification
 
+- Historical. `main` shipped only the VS Code subset of this build, in `647df7b`. The current contract is [spec-refactor.md](spec-refactor.md).
 - Status: Proposed, 2026-10-18. Branch `kerk`, starting from `feat/bugfix-mode` at `5df3221` (v0.2.0).
 - This is the contract: the features below, each with acceptance criteria (AC) an agent can check. Why they exist, the strategy and everything else: [vision.md](vision.md).
 - Earlier contracts still hold where this one is silent: [spec.md](spec.md) (v0.1 viewer) and ADRs [0029](adr/0029-learning-modes-in-one-agent-session.md)–[0040](adr/0040-hooks-merge-panel-read-side-and-devin-detection.md) (learning sessions). State: [progress-v0.3.md](progress-v0.3.md). Agent entry point: [AGENTS.md](../AGENTS.md).

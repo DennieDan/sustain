@@ -1,6 +1,6 @@
 # Sustain refactor specification
 
-- Status: Proposed, 2026-10-21. Drafted in `.scratch/`. It moves to `docs/spec-refactor.md` in RF0, before any code changes.
+- Status: Approved by the owner on 2026-10-21. Drafted in `.scratch/` and moved to `docs/` in RF0, before any code changed.
 - Base: `main` at `215c944`. `main` holds the VS Code subset of `kerk`, because `647df7b` ("merge only vscode") left out the cloud, bench, eval and IntelliJ work.
 - This is the contract for the refactor. It lists each feature with acceptance criteria (AC) that an agent can check. `progress-refactor.md` records the state of the build.
 
