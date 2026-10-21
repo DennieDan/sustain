@@ -1,0 +1,67 @@
+{
+  "basis": "provisional",
+  "fittedAt": null,
+  "runs": 0,
+  "lines": {
+    "claude": {
+      "full": {
+        "base": 120000,
+        "perLine": 1.5,
+        "perFile": 30,
+        "low": 0.7,
+        "high": 1.4
+      },
+      "refresh": {
+        "base": 60000,
+        "perLine": 0.3,
+        "perFile": 10,
+        "low": 0.6,
+        "high": 1.6
+      },
+      "ask": {
+        "base": 30000,
+        "perLine": 0.1,
+        "perFile": 5,
+        "low": 0.5,
+        "high": 2
+      }
+    },
+    "codex": {
+      "full": {
+        "base": 90000,
+        "perLine": 1.5,
+        "perFile": 30,
+        "low": 0.7,
+        "high": 1.4
+      },
+      "refresh": {
+        "base": 45000,
+        "perLine": 0.3,
+        "perFile": 10,
+        "low": 0.6,
+        "high": 1.6
+      },
+      "ask": {
+        "base": 25000,
+        "perLine": 0.1,
+        "perFile": 5,
+        "low": 0.5,
+        "high": 2
+      }
+    }
+  },
+  "mix": {
+    "claude": {
+      "input": 0.05,
+      "cacheWrite": 0.1,
+      "cacheRead": 0.82,
+      "output": 0.03
+    },
+    "codex": {
+      "input": 0.15,
+      "cacheWrite": 0,
+      "cacheRead": 0.8,
+      "output": 0.05
+    }
+  }
+}

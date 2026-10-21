@@ -3,7 +3,6 @@
 import type { ViewDiagram } from "../model/tolerant";
 import { authoredBoundaryRects, hierarchy, memberSets, overlayRect } from "./boundaries";
 import { labelAnchor, selfLoop, straightEdge } from "./edges";
-import { runElk } from "./elk";
 import type { Direction, ElkInput } from "./elk";
 import { boundingBox, pad } from "./geom";
 import { autoNodeSize } from "./measure";
@@ -42,7 +41,7 @@ export async function layoutDiagram(diagram: ViewDiagram, options: LayoutOptions
     connections,
   };
   const autoScene = async (direction: Direction): Promise<Scene> => {
-    const elk = await runElk(input, direction);
+    const elk = await options.run(input, direction);
     const boundaries = sets.map((set, b) => {
       const nestedRect = elk.boundaries[b];
       return nestedRect ? { rect: nestedRect, nested: true } : { rect: overlayRect(set, elk.nodes), nested: false };
@@ -50,6 +49,7 @@ export async function layoutDiagram(diagram: ViewDiagram, options: LayoutOptions
     const edges = connections.map(({ from, to }, e) => (from === to ? selfLoop(elk.nodes[from]!) : elk.edges[e]!));
     return toScene(diagram, translateToOrigin({ nodes: elk.nodes, boundaries, edges }), "auto", direction);
   };
+  // VWR-02: on a page each direction runs in its own worker, so the two lay out in parallel.
   const [right, down] = await Promise.all([autoScene("RIGHT"), autoScene("DOWN")]);
   const fit = (scene: Scene): number => Math.min(options.viewport.width / scene.bounds.w, options.viewport.height / scene.bounds.h);
   return fit(down) > fit(right) ? down : right;

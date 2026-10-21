@@ -130,12 +130,12 @@ export class ArchitectureViewer {
     try {
       text = readFileSync(this.file, "utf8");
     } catch (error) {
-      this.fail(`Can't show \`${name}\`: ${(error as Error).message}`);
+      this.fail(name, (error as Error).message);
       return;
     }
     const result = parseDiagram(text);
     if (!result.ok) {
-      this.fail(`Can't show \`${name}\`: ${result.reason}`);
+      this.fail(name, result.reason);
       return;
     }
     // The webview gets the parsed JSON only (NFR-SEC-01), never source files.
@@ -169,9 +169,11 @@ export class ArchitectureViewer {
     this.send();
   }
 
-  private fail(message: string): void {
-    void vscode.window.showErrorMessage(message);
-    this.showEmpty(message);
+  private fail(name: string, reason: string): void {
+    void vscode.window.showErrorMessage(`Can't show \`${name}\`: ${reason}`, "Open File").then((action) => {
+      if (action === "Open File") void vscode.commands.executeCommand("vscode.openWith", vscode.Uri.file(this.file), "default");
+    });
+    this.showEmpty(`Can't show \`${name}\`: ${reason}`);
   }
 
   private send(): void {

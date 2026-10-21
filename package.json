@@ -2,21 +2,106 @@
   "name": "sustain",
   "displayName": "Sustain",
   "description": "View a repository's architecture as an Archify diagram and open the code behind each node.",
-  "version": "0.1.0",
+  "icon": "media/icon.png",
+  "preview": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xplus2g4/sustain.git"
+  },
+  "homepage": "https://github.com/xplus2g4/sustain#readme",
+  "bugs": {
+    "url": "https://github.com/xplus2g4/sustain/issues"
+  },
+  "keywords": [
+    "architecture",
+    "diagram",
+    "archify",
+    "code map",
+    "documentation",
+    "claude code",
+    "codex"
+  ],
+  "categories": [
+    "Visualization",
+    "AI",
+    "Education"
+  ],
+  "version": "0.2.0",
   "publisher": "sustain",
   "private": true,
   "engines": {
     "vscode": "^1.126.0",
     "node": ">=18"
   },
-  "categories": [
-    "Visualization"
-  ],
   "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Sustain launches coding agents and runs git in the opened folder."
+    }
+  },
   "activationEvents": [
     "onStartupFinished"
   ],
   "contributes": {
+    "configuration": {
+      "title": "Sustain",
+      "properties": {
+        "sustain.skillScope": {
+          "type": "string",
+          "enum": [
+            "user",
+            "project"
+          ],
+          "enumDescriptions": [
+            "Install the skills in your home folder (~/.claude/skills, ~/.agents/skills). Nothing is added to the repository.",
+            "Install the skills in the repository (.claude/skills, .agents/skills)."
+          ],
+          "default": "user",
+          "description": "Where Sustain installs its agent skills."
+        },
+        "sustain.runMode": {
+          "type": "string",
+          "enum": [
+            "sidebar",
+            "terminal"
+          ],
+          "enumDescriptions": [
+            "Run the agent headless and stream its progress into the Sustain sidebar.",
+            "Run the agent in a terminal, as you would yourself."
+          ],
+          "default": "sidebar",
+          "description": "Where Generate runs the agent."
+        },
+        "sustain.confirmAboveTokens": {
+          "type": "number",
+          "default": 300000,
+          "minimum": 0,
+          "description": "Runs whose estimate reaches above this many tokens need a second click before they start."
+        },
+        "sustain.rules.severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information"
+          ],
+          "default": "warning",
+          "description": "How the Problems panel shows an import that breaks an architecture rule in sustain.config.json."
+        },
+        "sustain.hotspots.days": {
+          "type": "number",
+          "default": 90,
+          "minimum": 1,
+          "description": "How many days of git history the map's Hotspots count."
+        },
+        "sustain.usageLog": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keep daily counts of which Sustain actions you use, on this machine only. The log holds no paths, labels, repository names or anything you typed. Export or clear it from the Sustain sidebar's menu."
+        }
+      }
+    },
     "commands": [
       {
         "command": "sustain.installSkills",
@@ -29,8 +114,100 @@
         "category": "Sustain"
       },
       {
+        "command": "sustain.copyPromptFor",
+        "title": "Copy Prompt for…",
+        "category": "Sustain"
+      },
+      {
         "command": "sustain.openArchitecture",
         "title": "Open Architecture",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.startLearning",
+        "title": "Start Learning Session",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.checkSetup",
+        "title": "Check Setup",
+        "category": "Sustain",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "sustain.refreshHome",
+        "title": "Refresh",
+        "category": "Sustain",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sustain.cancelRun",
+        "title": "Cancel Run",
+        "category": "Sustain",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "sustain.showInMap",
+        "title": "Show in Map",
+        "category": "Sustain",
+        "icon": {
+          "light": "media/sustain-light.svg",
+          "dark": "media/sustain-dark.svg"
+        }
+      },
+      {
+        "command": "sustain.showFileInMap",
+        "title": "Show in Architecture Map",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.mapFolder",
+        "title": "Map This Folder with Sustain",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.openBoxCode",
+        "title": "Open Code",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.forbidArrow",
+        "title": "Forbid This Dependency",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.onlyAllowImportsFrom",
+        "title": "Only Allow Imports From…",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.routeThrough",
+        "title": "Route Dependencies Through…",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.suggestRules",
+        "title": "Suggest Rules",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.writeAgentNotes",
+        "title": "Write Architecture Notes for Agents",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.removeSustain",
+        "title": "Remove Sustain from This Folder",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.exportUsageLog",
+        "title": "Export Usage Log",
+        "category": "Sustain"
+      },
+      {
+        "command": "sustain.clearUsageLog",
+        "title": "Clear Usage Log",
         "category": "Sustain"
       }
     ],
@@ -50,17 +227,154 @@
       "files.associations": {
         "*.sir": "json"
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sustain",
+          "title": "Sustain",
+          "icon": "media/sustain.svg"
+        }
+      ]
+    },
+    "views": {
+      "sustain": [
+        {
+          "type": "webview",
+          "id": "sustain.home",
+          "name": "Sustain"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "sustain.refreshHome",
+          "when": "view == sustain.home",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sustain.checkSetup",
+          "when": "view == sustain.home",
+          "group": "navigation@2"
+        },
+        {
+          "command": "sustain.cancelRun",
+          "when": "view == sustain.home && sustain.running",
+          "group": "navigation@0"
+        },
+        {
+          "command": "sustain.installSkills",
+          "when": "view == sustain.home",
+          "group": "more@2"
+        },
+        {
+          "command": "sustain.removeSustain",
+          "when": "view == sustain.home",
+          "group": "z_sustain@9"
+        },
+        {
+          "command": "sustain.exportUsageLog",
+          "when": "view == sustain.home && config.sustain.usageLog",
+          "group": "z_sustain@7"
+        },
+        {
+          "command": "sustain.clearUsageLog",
+          "when": "view == sustain.home && config.sustain.usageLog",
+          "group": "z_sustain@8"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "sustain.cancelRun",
+          "when": "sustain.running"
+        },
+        {
+          "command": "sustain.showFileInMap",
+          "when": "false"
+        },
+        {
+          "command": "sustain.mapFolder",
+          "when": "false"
+        },
+        {
+          "command": "sustain.openBoxCode",
+          "when": "false"
+        },
+        {
+          "command": "sustain.forbidArrow",
+          "when": "false"
+        },
+        {
+          "command": "sustain.onlyAllowImportsFrom",
+          "when": "false"
+        },
+        {
+          "command": "sustain.routeThrough",
+          "when": "false"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "sustain.showInMap",
+          "when": "resourceScheme == file",
+          "group": "navigation@100"
+        },
+        {
+          "command": "sustain.writeAgentNotes",
+          "when": "activeWebviewPanelId == 'sustain.architecture'",
+          "group": "z_sustain@1"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "sustain.mapFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "sustain@1"
+        },
+        {
+          "command": "sustain.showFileInMap",
+          "when": "!explorerResourceIsFolder",
+          "group": "sustain@2"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "sustain.openBoxCode",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sustain.onlyAllowImportsFrom",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
+          "group": "rules@1"
+        },
+        {
+          "command": "sustain.routeThrough",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'box'",
+          "group": "rules@2"
+        },
+        {
+          "command": "sustain.forbidArrow",
+          "when": "webviewId == 'sustain.architecture' && webviewSection == 'arrow'",
+          "group": "rules@1"
+        }
+      ]
     }
   },
   "scripts": {
     "build": "node esbuild.mjs",
+    "action": "node esbuild.mjs --action",
+    "build:release": "node scripts/release.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:docs": "node scripts/check-docs.mjs",
-    "check": "npm run typecheck && npm run test && npm run check:docs && npm run build",
+    "notices": "node scripts/notices.mjs --write",
+    "check:notices": "node scripts/notices.mjs --check",
+    "check": "npm run typecheck && npm run test && npm run check:docs && npm run build && npm run check:notices",
     "test:e2e": "npm run build && node esbuild.mjs --e2e && node out/e2e/runTest.js",
     "vscode:prepublish": "node esbuild.mjs",
-    "package": "vsce package --no-dependencies --skip-license --allow-missing-repository"
+    "package": "node scripts/package.mjs"
   },
   "dependencies": {
     "ajv": "8.20.0",

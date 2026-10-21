@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0064](0064-layout-runs-in-web-workers-from-blob-urls.md)
 date: 2026-10-10
 decision-makers: owner
 ---

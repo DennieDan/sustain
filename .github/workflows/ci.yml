@@ -1,0 +1,127 @@
+name: CI
+
+# A pull request's pushes run once, as the pull request. Pushes to main run for main itself.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm run check
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: xvfb-run -a npm run test:e2e
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm run package
+      - uses: actions/upload-artifact@v6
+        with:
+          name: vsix
+          path: "*.vsix"
+
+  scripts-node18:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 18
+      - run: echo "SUSTAIN_SCRIPT_NODE=$(command -v node)" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npx vitest run --project unit test/unit/agent
+
+  action-dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm run action
+      - run: git diff --exit-code action/dist
+
+  sustain-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./action
+
+  cloud:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm run -w cloud test
+      - run: npm run -w cloud build
+      - run: npx -w cloud playwright install --with-deps chromium
+      - run: npm run -w cloud test:web
+
+  # CLD-10: the self-hosting image builds, and its health endpoint answers.
+  cloud-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -f cloud/Dockerfile -t sustain-cloud .
+      - run: docker run -d --name sustain-cloud -p 3000:3000 -e NEXTAUTH_URL=http://127.0.0.1:3000 -e NEXTAUTH_SECRET=ci-secret-ci-secret-ci-secret -e GITHUB_CLIENT_ID=ci -e GITHUB_CLIENT_SECRET=ci sustain-cloud
+      - run: for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:3000/api/health && exit 0; sleep 2; done; docker logs sustain-cloud; exit 1
+
+  skills-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm run build
+      - run: git diff --exit-code skills
+
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm run build:release
+      - run: npx --yes @anthropic-ai/claude-code@2.1.302 plugin validate release/plugin

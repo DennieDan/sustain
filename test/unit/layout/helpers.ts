@@ -1,3 +1,4 @@
+import { runInThread } from "../../../src/layout/elkInThread";
 import { layoutDiagram } from "../../../src/layout/layout";
 import type { MeasureText, Point, Rect, Scene } from "../../../src/layout/scene";
 import { readDiagram } from "../../../src/model/tolerant";
@@ -16,7 +17,7 @@ export function diagramOf(doc: Record<string, unknown>): ViewDiagram {
 }
 
 export function lay(diagram: ViewDiagram, viewport = VIEWPORT): Promise<Scene> {
-  return layoutDiagram(diagram, { measure: fixedAdvance, viewport });
+  return layoutDiagram(diagram, { measure: fixedAdvance, viewport, run: runInThread });
 }
 
 export function comp(id: string, extra: Record<string, unknown> = {}): Record<string, unknown> {

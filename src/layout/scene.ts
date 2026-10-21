@@ -1,5 +1,6 @@
 // The Scene: absolute diagram geometry produced by `layoutDiagram` and drawn by the webview.
 // Browser-safe types only.
+import type { Direction, ElkInput, ElkResult } from "./elk";
 import type { BoundaryKind, ComponentType, Variant } from "../model/types";
 
 export interface Point {
@@ -70,8 +71,12 @@ export interface Scene {
   bounds: Rect;
 }
 
+/** VWR-02: runs one direction's ELK layout, in a worker on a page or in the thread in Node. */
+export type RunElk = (input: ElkInput, direction: Direction) => Promise<ElkResult>;
+
 export interface LayoutOptions {
   measure: MeasureText;
   /** Size the fit-to-viewport scale is computed for (FR-LAY-02 direction choice). */
   viewport: { width: number; height: number };
+  run: RunElk;
 }

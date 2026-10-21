@@ -1,7 +1,7 @@
 // FR-WAT-01, FR-CMP-08: 300 ms debouncing, what each open viewer does about a change
 // (reload / deleted / baseline) and what happens to a new newest run (open / notify).
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ChangeBatch, DEBOUNCE_MS, newRunAction, viewerAction, type CandidateChange, type ViewerFacts } from "../../../src/extension/watchLogic";
+import { candidateOf, ChangeBatch, DEBOUNCE_MS, newRunAction, noteCandidate, viewerAction, type CandidateChange, type ViewerFacts } from "../../../src/extension/watchLogic";
 
 describe("FR-WAT-01 debouncing", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -133,5 +133,23 @@ describe("FR-CMP-08 watching the baseline", () => {
   test("without a baseline another candidate's change does nothing", () => {
     expect(viewerAction(change({}), { ...viewer, baseline: null })).toBeUndefined();
     expect(viewerAction(change({ exists: false }), { ...viewer, baseline: null })).toBeUndefined();
+  });
+});
+
+describe("FR-WAT-01 candidates from any event in a run folder", () => {
+  test("an event anywhere in a run folder concerns that folder's candidate.sir", () => {
+    const archify = "/r/.archify";
+    expect(candidateOf(archify, "/r/.archify/run-a", "/")).toBe("/r/.archify/run-a/candidate.sir");
+    expect(candidateOf(archify, "/r/.archify/run-a/.candidate.sir.tmp-1-2", "/")).toBe("/r/.archify/run-a/candidate.sir");
+    expect(candidateOf(archify, "/r/.archify", "/")).toBeUndefined();
+    expect(candidateOf(archify, "/r/.archifyx/run-a", "/")).toBeUndefined();
+  });
+
+  test("a candidate is new once, then a change, and new again after it was deleted", () => {
+    const known = new Set<string>();
+    expect(noteCandidate(known, "/r/.archify/a/candidate.sir", true)).toBe(true);
+    expect(noteCandidate(known, "/r/.archify/a/candidate.sir", true)).toBe(false);
+    expect(noteCandidate(known, "/r/.archify/a/candidate.sir", false)).toBe(false);
+    expect(noteCandidate(known, "/r/.archify/a/candidate.sir", true)).toBe(true);
   });
 });

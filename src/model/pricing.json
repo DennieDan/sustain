@@ -1,0 +1,13 @@
+{
+  "asOf": "2026-10-18",
+  "unit": "USD per million tokens",
+  "defaults": { "claude": "claude-opus-5-5", "codex": "gpt-5.5" },
+  "models": [
+    { "id": "claude-fable-5-1", "label": "Claude Fable 5.1", "agent": "claude", "input": 10, "cacheWrite": 12.5, "cacheRead": 0.25, "output": 50, "source": "https://platform.claude.com/docs/en/about-claude/pricing" },
+    { "id": "claude-opus-5-5", "label": "Claude Opus 5.5", "agent": "claude", "input": 4, "cacheWrite": 5, "cacheRead": 0.2, "output": 20, "source": "https://platform.claude.com/docs/en/about-claude/pricing" },
+    { "id": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5", "agent": "claude", "input": 2, "cacheWrite": 2.5, "cacheRead": 0.1, "output": 10, "source": "https://platform.claude.com/docs/en/about-claude/pricing" },
+    { "id": "gpt-5.5", "label": "GPT-5.5", "agent": "codex", "input": 5, "cacheWrite": 0, "cacheRead": 0.5, "output": 30, "source": "https://developers.openai.com/api/docs/pricing" },
+    { "id": "gpt-5.4", "label": "GPT-5.4", "agent": "codex", "input": 2.5, "cacheWrite": 0, "cacheRead": 0.25, "output": 15, "source": "https://developers.openai.com/api/docs/pricing" },
+    { "id": "gpt-5.3-codex", "label": "GPT-5.3-Codex", "agent": "codex", "input": 1.75, "cacheWrite": 0, "cacheRead": 0.175, "output": 14, "source": "https://developers.openai.com/api/docs/pricing" }
+  ]
+}

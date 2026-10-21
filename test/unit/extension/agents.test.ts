@@ -29,10 +29,11 @@ describe("FR-GEN-01 prompt", () => {
     expect(agentPrompt(agent, focus, true)).toBe(expected);
   });
 
-  test("the agents are Claude Code and Codex, in that order", () => {
+  test("RCH-04 the agents are Claude Code, Codex and Devin, in that order", () => {
     expect(AGENTS.map((agent) => [agent.label, agent.cli])).toEqual([
       ["Claude Code", "claude"],
       ["Codex", "codex"],
+      ["Devin", "devin"],
     ]);
   });
 });

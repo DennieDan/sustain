@@ -13,11 +13,13 @@ function source(): string {
 }
 
 describe("FR-INS-01 skill files", () => {
+  const NAME = "sustain-architecture";
+
   test("copies into .agents and links .claude relatively", () => {
     const root = tempDir();
-    const targets = skillTargets(root);
+    const targets = skillTargets(root, NAME);
     expect(skillInstalled(targets)).toBe(false);
-    expect(writeSkill(source(), targets)).toBe("symlink");
+    expect(writeSkill(root, source(), targets, NAME)).toBe("symlink");
     expect(readFileSync(join(root, ".agents/skills/sustain-architecture/scripts/validate.mjs"), "utf8")).toBe("// v\n");
     expect(lstatSync(targets.claudeLink).isSymbolicLink()).toBe(true);
     expect(readlinkSync(targets.claudeLink)).toBe("../../.agents/skills/sustain-architecture");
@@ -27,18 +29,18 @@ describe("FR-INS-01 skill files", () => {
 
   test("copies into .claude when the symlink cannot be created", () => {
     const root = tempDir();
-    const targets = skillTargets(root);
+    const targets = skillTargets(root, NAME);
     const failingLink = (): void => {
       throw Object.assign(new Error("EPERM: operation not permitted, symlink"), { code: "EPERM" });
     };
-    expect(writeSkill(source(), targets, failingLink)).toBe("copy");
+    expect(writeSkill(root, source(), targets, NAME, failingLink)).toBe("copy");
     expect(lstatSync(targets.claudeLink).isDirectory()).toBe(true);
     expect(readFileSync(join(targets.claudeLink, "SKILL.md"), "utf8")).toBe("new skill\n");
   });
 
   test("replaces an existing install and removes a stale link without following it", () => {
     const root = tempDir();
-    const targets = skillTargets(root);
+    const targets = skillTargets(root, NAME);
     put(root, ".agents/skills/sustain-architecture/old.txt", "old");
     const elsewhere = tempDir();
     put(elsewhere, "keep.txt", "keep");
@@ -46,15 +48,23 @@ describe("FR-INS-01 skill files", () => {
     symlinkSync(elsewhere, targets.claudeLink);
     expect(skillInstalled(targets)).toBe(true);
 
-    writeSkill(source(), targets);
+    writeSkill(root, source(), targets, NAME);
     expect(existsSync(join(targets.agentsDir, "old.txt"))).toBe(false);
     expect(readlinkSync(targets.claudeLink)).toBe("../../.agents/skills/sustain-architecture");
     expect(readFileSync(join(elsewhere, "keep.txt"), "utf8")).toBe("keep");
   });
 
+  test("SAF-05 an install refuses .agents linked outside the root and writes nothing there", () => {
+    const root = tempDir();
+    const outside = tempDir();
+    symlinkSync(outside, join(root, ".agents"), process.platform === "win32" ? "junction" : "dir");
+    expect(() => writeSkill(root, source(), skillTargets(root, NAME), NAME)).toThrow(/outside/);
+    expect(existsSync(join(outside, "skills"))).toBe(false);
+  });
+
   test("a dangling .claude link counts as installed", () => {
     const root = tempDir();
-    const targets = skillTargets(root);
+    const targets = skillTargets(root, NAME);
     put(root, ".claude/skills/.keep", "");
     symlinkSync("../../.agents/skills/sustain-architecture", targets.claudeLink);
     expect(skillInstalled(targets)).toBe(true);

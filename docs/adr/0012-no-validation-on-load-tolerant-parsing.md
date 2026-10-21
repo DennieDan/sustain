@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0048](0048-maps-show-staleness-from-fingerprints.md)
 date: 2026-10-10
 decision-makers: owner
 ---

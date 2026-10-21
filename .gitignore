@@ -9,5 +9,8 @@ out/
 .archify/
 .claude/
 .devin/
+!action/dist/
+*.tsbuildinfo
+release/
 research/change-collection/
 .scratch/

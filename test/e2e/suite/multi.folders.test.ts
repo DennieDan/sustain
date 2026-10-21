@@ -10,12 +10,15 @@ suite("FR-WS-01 multi-root workspace", () => {
   let ui: UiStubs;
   let folders: string[];
 
-  setup(() => {
+  setup(async () => {
+    // The folder pick decides where a project install goes (SET-01).
+    await vscode.workspace.getConfiguration("sustain").update("skillScope", "project", vscode.ConfigurationTarget.Global);
     ui = stubUi();
     folders = vscode.workspace.workspaceFolders!.map((folder) => folder.uri.fsPath);
   });
 
-  teardown(() => {
+  teardown(async () => {
+    await vscode.workspace.getConfiguration("sustain").update("skillScope", undefined, vscode.ConfigurationTarget.Global);
     ui.restore();
     for (const folder of folders) {
       rmSync(join(folder, ".agents"), { recursive: true, force: true });

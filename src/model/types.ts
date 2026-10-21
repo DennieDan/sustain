@@ -92,7 +92,10 @@ export type IssueCode =
   | "BoundaryOverlap"
   | "InvalidCitationPath"
   | "DeniedCitation"
-  | "BrokenCitation";
+  | "BrokenCitation"
+  | "SecretLike"
+  /** ACC-05: a box or arrow the audit has no entry for. */
+  | "MissingEntry";
 
 /** One finding, located by the RFC 6901 JSON pointer of the offending instance (`""` = whole document). */
 export interface Issue {

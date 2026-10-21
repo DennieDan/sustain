@@ -10,9 +10,9 @@ const assets = {
 };
 
 describe("NFR-SEC-01 webview CSP", () => {
-  test("the policy is exactly default-src none, a nonce'd script and the extension's styles", () => {
+  test("VWR-02 the policy is exactly default-src none, a nonce'd script, the extension's styles and workers from Blob URLs", () => {
     expect(webviewCsp(assets.cspSource, assets.nonce)).toBe(
-      "default-src 'none'; script-src 'nonce-n0nce123'; style-src https://file+.vscode-resource.vscode-cdn.net",
+      "default-src 'none'; script-src 'nonce-n0nce123'; style-src https://file+.vscode-resource.vscode-cdn.net; worker-src blob:",
     );
   });
 

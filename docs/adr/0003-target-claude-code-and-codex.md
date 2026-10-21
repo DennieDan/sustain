@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0065](0065-devin-joins-the-composer-and-other-agents-get-copied-prompts.md)
 date: 2026-10-10
 decision-makers: owner
 ---

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { checkDocs, relativeLinks } from "../../scripts/check-docs.mjs";
+import { checkDocs, checkTraceability, relativeLinks } from "../../scripts/check-docs.mjs";
 import { repoRoot } from "./support/sourceScan";
 
 function adr(title: string, overrides: { status?: string; date?: string; body?: string } = {}): string {
@@ -147,7 +147,35 @@ describe("FR-DOC-03 check:docs", () => {
     expect(checkDocs(docs).problems).toEqual(["progress.md: broken link missing.md#top"]);
   });
 
+  test("links in docs/research/ go unchecked, since they point at the researcher's own data", () => {
+    write("research/report.md", "[ledger](../../research/change-collection/results/ledger.jsonl)\n");
+    write("progress.md", "[report](research/report.md)\n");
+    expect(checkDocs(docs).problems).toEqual([]);
+  });
+
   test("relativeLinks skips fenced code blocks", () => {
     expect(relativeLinks("```\n[a](a.md)\n```\n[b](b.md)\n")).toEqual(["b.md"]);
+  });
+});
+
+describe("ENG-03 traceability", () => {
+  const SPEC = ["| ID | Feature |", "|---|---|", "| SAF-01 | Integrity |", "| SAF-02 | Approvals |", "| UI-01 | Sidebar |"].join("\n");
+  const SPEC_V01 = "FR-VAL-05 checks citations.";
+
+  test("ENG-03 every ID the spec defines is on exactly one checklist line, and progress names only defined IDs", () => {
+    const good = ["- [x] **SAF-01 Integrity** — done, see FR-VAL-05.", "- [ ] **SAF-02 Approvals**", "- [x] **UI-01 Sidebar**"].join("\n");
+    expect(checkTraceability(SPEC, SPEC_V01, good)).toEqual([]);
+    const bad = ["- [x] **SAF-01 Integrity**", "- [x] **SAF-01 Integrity**, pulled forward", "- [x] **UI-01 Sidebar** — also closes SAF-09"].join("\n");
+    expect(checkTraceability(SPEC, SPEC_V01, bad)).toEqual([
+      "progress-v0.3.md: SAF-01 is on 2 checklist lines; it needs exactly one",
+      "progress-v0.3.md: SAF-02 is on 0 checklist lines; it needs exactly one",
+      "progress-v0.3.md: SAF-09 is defined in neither spec",
+    ]);
+  });
+
+  test("ENG-03 check:docs traces the spec and progress it finds in the docs folder", () => {
+    write("spec-v0.3.md", SPEC);
+    write("progress-v0.3.md", ["- [x] **SAF-01 Integrity**", "- [x] **SAF-02 Approvals**"].join("\n"));
+    expect(checkDocs(docs).problems).toEqual(["progress-v0.3.md: UI-01 is on 0 checklist lines; it needs exactly one"]);
   });
 });
