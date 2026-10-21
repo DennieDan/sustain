@@ -1,4 +1,4 @@
-// src/agent/change-map.ts
+// src/skills/change-map.ts
 import { existsSync, readFileSync as readFileSync2, realpathSync as realpathSync4, statSync as statSync4, writeFileSync as writeFileSync2 } from "node:fs";
 import { basename as basename2, dirname as dirname2, join as join5, resolve } from "node:path";
 
@@ -684,7 +684,7 @@ function usageError(script, message) {
   return 2;
 }
 
-// src/agent/change-map.ts
+// src/skills/change-map.ts
 var CHANGE_FILE = "change.md";
 var MAPPING_FILE = "mapping.md";
 var SCRIPT = "change-map.mjs";

@@ -1,4 +1,4 @@
-// src/agent/repo-facts.ts
+// src/skills/repo-facts.ts
 import { basename as basename3, join as join6 } from "node:path";
 
 // src/core-node/git.ts
@@ -635,7 +635,7 @@ function usageError(script, message) {
   return 2;
 }
 
-// src/agent/repo-facts.ts
+// src/skills/repo-facts.ts
 var SKILL_VERSION = "0.2.0";
 var SCRIPT = "repo-facts.mjs";
 function main(args) {

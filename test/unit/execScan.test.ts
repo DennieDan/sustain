@@ -23,7 +23,7 @@ function execViolations(file: string, source: string): string[] {
 }
 
 test("SAF-02 src/agent and src/model spawn only node itself or the resolved git", () => {
-  const files = [...sourceFiles("src/agent"), ...sourceFiles("src/model"), ...sourceFiles("src/core"), ...sourceFiles("src/core-node")];
+  const files = [...sourceFiles("src/agent"), ...sourceFiles("src/skills"), ...sourceFiles("src/model"), ...sourceFiles("src/core"), ...sourceFiles("src/core-node")];
   const violations = files.flatMap((file) => execViolations(file, readFileSync(join(repoRoot, file), "utf8")));
   expect(violations).toEqual([]);
 });

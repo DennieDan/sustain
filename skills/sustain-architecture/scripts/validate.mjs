@@ -7452,7 +7452,7 @@ var require__ = __commonJS({
   }
 });
 
-// src/agent/validate.ts
+// src/skills/validate.ts
 import { readFileSync as readFileSync5 } from "node:fs";
 import { dirname as dirname4, join as join8 } from "node:path";
 
@@ -9003,7 +9003,7 @@ function checkSubmission(value, app, checkCitations2) {
   return { removed, errors: [...semanticChecks(doc), ...findSecrets(doc), ...checkCitations2(doc)] };
 }
 
-// src/agent/validate.ts
+// src/skills/validate.ts
 var MAX_LISTED_ERRORS = 50;
 var HINT = "Fix exactly these errors and run the validator again.";
 function listErrors(errors) {

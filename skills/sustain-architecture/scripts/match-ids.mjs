@@ -1,4 +1,4 @@
-// src/agent/match-ids.ts
+// src/skills/match-ids.ts
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -173,7 +173,7 @@ function usageError(script, message) {
   return 2;
 }
 
-// src/agent/match-ids.ts
+// src/skills/match-ids.ts
 var SCRIPT = "match-ids.mjs";
 function readInput(path, what) {
   try {

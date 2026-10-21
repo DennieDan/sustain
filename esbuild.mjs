@@ -22,10 +22,10 @@ const common = {
 
 /** The script entry points, emitted as `<name>.mjs`. @type {Record<string, string>} */
 const SCRIPT_ENTRIES = {
-  "repo-facts": "src/agent/repo-facts.ts",
-  validate: "src/agent/validate.ts",
-  "change-map": "src/agent/change-map.ts",
-  "match-ids": "src/agent/match-ids.ts",
+  "repo-facts": "src/skills/repo-facts.ts",
+  validate: "src/skills/validate.ts",
+  "change-map": "src/skills/change-map.ts",
+  "match-ids": "src/skills/match-ids.ts",
   session: "src/agent/session.ts",
   "session-hook": "src/agent/session-hook.ts",
 };
