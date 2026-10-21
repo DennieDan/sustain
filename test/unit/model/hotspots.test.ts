@@ -2,7 +2,7 @@
 // box over the window, with older commits left out.
 import { spawnSync } from "node:child_process";
 import { expect, test } from "vitest";
-import { changeLog } from "../../../src/model/git";
+import { changeLog } from "../../../src/core-node/git";
 import { hotspotNote, hotspots } from "../../../src/model/hotspots";
 import { git, gitRepo, put } from "../support/temp";
 

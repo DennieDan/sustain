@@ -6,7 +6,7 @@ import * as esbuild from "esbuild";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { hashTree } from "./src/model/hashTree.mts";
+import { hashTree } from "./src/core-node/hashTree.mts";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, "dist");

@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import type { ChangeMap, FileDiff } from "../../../src/core/changeMap";
-import { CHANGES_FILE, readRunChanges, writeRunChanges } from "../../../src/model/lineage";
+import { CHANGES_FILE, readRunChanges, writeRunChanges } from "../../../src/core-node/lineage";
 import { buildRunChanges, parseRunChanges, type RunChanges } from "../../../src/core/runChanges";
 import { tempDir } from "../support/temp";
 

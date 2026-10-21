@@ -1,6 +1,6 @@
 // ACC-02: imports per language, and what they say about the map's arrows and boxes.
 import { describe, expect, test } from "vitest";
-import { checkImports, importLinks } from "../../../src/model/evidence/graph";
+import { checkImports, importLinks } from "../../../src/core-node/evidence/graph";
 
 /** importLinks over an in-memory repository. */
 function links(files: Record<string, string>): Map<string, string[]> {

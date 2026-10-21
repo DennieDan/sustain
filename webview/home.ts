@@ -4,7 +4,7 @@
 import { relativeAge } from "../src/core/dates";
 import { mapStatus, runFigures } from "../src/model/home";
 import type { HomeState, HomeWebviewMessage, MapItem, RunCard } from "../src/model/messages";
-import type { Check } from "../src/model/preflight";
+import type { Check } from "../src/core-node/preflight";
 import { button, el } from "./dom";
 
 export type Post = (message: HomeWebviewMessage) => void;

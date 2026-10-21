@@ -1,7 +1,7 @@
 // src/agent/repo-facts.ts
 import { basename as basename3, join as join6 } from "node:path";
 
-// src/model/git.ts
+// src/core-node/git.ts
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 
@@ -23,7 +23,7 @@ function parsePorcelainZ(output) {
   return paths;
 }
 
-// src/model/which.ts
+// src/core-node/which.ts
 import { accessSync, constants, statSync } from "node:fs";
 import { delimiter, join, posix, win32 } from "node:path";
 function isExecutableFile(path, platform) {
@@ -49,7 +49,7 @@ function findOnPath(cli, env, platform = process.platform) {
   return void 0;
 }
 
-// src/model/git.ts
+// src/core-node/git.ts
 var MAX_DIRTY_PATHS = 200;
 var GIT_PREFIX = ["-c", "core.fsmonitor=false", "--no-optional-locks"];
 var GIT_READS = {
@@ -147,7 +147,7 @@ function generatedFiles(root, paths, env = process.env) {
   return marked;
 }
 
-// src/model/coefficients.json
+// src/core-node/coefficients.json
 var coefficients_default = {
   basis: "provisional",
   fittedAt: null,
@@ -188,7 +188,7 @@ var coefficients_default = {
   }
 };
 
-// src/model/pricing.json
+// src/core-node/pricing.json
 var pricing_default = {
   asOf: "2026-10-18",
   unit: "USD per million tokens",
@@ -203,7 +203,7 @@ var pricing_default = {
   ]
 };
 
-// src/model/estimate.ts
+// src/core-node/estimate.ts
 var COEFFICIENTS = coefficients_default;
 var PRICING = pricing_default;
 function estimate(size, agent, kind, table = COEFFICIENTS) {
@@ -244,7 +244,7 @@ function skillEstimates(size, kind) {
   return { claude: entry("claude"), codex: entry("codex") };
 }
 
-// src/model/repoSize.ts
+// src/core-node/repoSize.ts
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join as join2 } from "node:path";
 
@@ -265,7 +265,7 @@ function isDenied(path) {
   return path.split("/").some(segmentDenied);
 }
 
-// src/model/repoSize.ts
+// src/core-node/repoSize.ts
 var SKIPPED_DIRS = [".git", "node_modules", "vendor", "dist", "build", "target", "out", ".sustain"];
 var COUNT_LIMIT = 2e3;
 var MAX_FILE_BYTES = 1024 * 1024;
@@ -454,11 +454,11 @@ function repoSize(root, env = process.env, limit = COUNT_LIMIT) {
   return { listing, files, counted, lines: { total, test, nonTest: total - test }, languages: sorted, tier: tierOf(total - test) };
 }
 
-// src/model/runFolder.ts
+// src/core-node/runFolder.ts
 import { mkdirSync, realpathSync as realpathSync2, statSync as statSync2, unlinkSync } from "node:fs";
 import { basename as basename2, dirname as dirname2, join as join4, resolve, sep } from "node:path";
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 import { closeSync, fsyncSync, openSync, readFileSync as readFileSync2, renameSync, rmSync, writeSync } from "node:fs";
 import { basename, dirname, join as join3 } from "node:path";
 
@@ -468,7 +468,7 @@ function stringifyDocument(value) {
 `;
 }
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 function writeAtomic(path, content) {
   const temp = join3(dirname(path), `.${basename(path)}.tmp-${process.pid}-${Date.now()}`);
   try {
@@ -489,7 +489,7 @@ function writeJson(path, value) {
   writeAtomic(path, stringifyDocument(value));
 }
 
-// src/model/runFolder.ts
+// src/core-node/runFolder.ts
 var ARCHIFY_DIR = ".archify";
 var DRAFT_FILE = "draft.json";
 var SLUG_MAX = 40;
@@ -549,10 +549,10 @@ function createRunFolder(root, slug, timestamp, options = {}) {
   throw new Error(`can't create ${dir}/${base}: too many folders with that name`);
 }
 
-// src/model/runRecord.ts
+// src/core-node/runRecord.ts
 import { join as join5 } from "node:path";
 
-// src/model/confine.ts
+// src/core-node/confine.ts
 import { lstatSync as lstatSync2, realpathSync as realpathSync3 } from "node:fs";
 import { dirname as dirname3, isAbsolute, relative } from "node:path";
 function isWithin(parentReal, childReal) {
@@ -583,7 +583,7 @@ function assertWritable(root, path) {
   assertNotLink(path);
 }
 
-// src/model/runRecord.ts
+// src/core-node/runRecord.ts
 var RUN_FILE = "run.json";
 function newRunRecord(fields, now = /* @__PURE__ */ new Date()) {
   return {
@@ -605,7 +605,7 @@ function writeRunRecord(root, runDir, record) {
   writeJson(path, record);
 }
 
-// src/model/scriptArgs.ts
+// src/core-node/scriptArgs.ts
 function parseArgs(args, spec) {
   const count = spec.positionals ?? 0;
   if (args.length < count) return null;

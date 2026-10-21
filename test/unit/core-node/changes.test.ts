@@ -1,6 +1,6 @@
 // FRS-04: diffs parse into old-side hunks, and boxes are marked by how the hunks touch what they cite.
 import { describe, expect, test } from "vitest";
-import { markChanges, parseDiff, rangeOf } from "../../../src/model/changes";
+import { markChanges, parseDiff, rangeOf } from "../../../src/core-node/changes";
 import { unquotePath } from "../../../src/core/gitFormat";
 
 const DIFF = [

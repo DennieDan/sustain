@@ -1,8 +1,8 @@
 // PRC-04: the Sustain check on a pull request. It runs PRC-01 from origin/<base> to HEAD, posts or
 // updates one comment marked <!-- sustain-check --> and sets the job result from fail-on.
-import { runCheck } from "../../src/model/check";
-import { FAIL_ON, type FailOn } from "../../src/model/config";
-import { COMMENT_MARKER, deltaMarkdown, deltaMermaid } from "../../src/model/deltaMarkdown";
+import { runCheck } from "../../src/core-node/check";
+import { FAIL_ON, type FailOn } from "../../src/core-node/config";
+import { COMMENT_MARKER, deltaMarkdown, deltaMermaid } from "../../src/core-node/deltaMarkdown";
 import type { GitHubClient } from "./github";
 
 /** Items per list in the comment; GitHub caps a comment at 65,536 characters. */

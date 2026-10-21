@@ -7,13 +7,13 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { removeNotes, NOTES_START } from "../model/agentNotes";
-import { CONFIG_FILE } from "../model/config";
-import { assertWritable, isWithin } from "../model/confine";
-import { ARCHIFY_DIR } from "../model/runFolder";
+import { CONFIG_FILE } from "../core-node/config";
+import { assertWritable, isWithin } from "../core-node/confine";
+import { ARCHIFY_DIR } from "../core-node/runFolder";
 import { SUSTAIN_DIR } from "../model/session";
 import { pickRepoRoot } from "./folders";
 import { removeAgentHooks, removeGitExclude, removeHooks } from "./hooksFiles";
-import { SKILL_NAMES, skillInstalled, skillTargets } from "./skillFiles";
+import { SKILL_NAMES, skillInstalled, skillTargets } from "../core-node/skillFiles";
 
 /** The files whose Sustain block goes (ARC-04). */
 const NOTES_FILES = ["AGENTS.md", "CLAUDE.md"];

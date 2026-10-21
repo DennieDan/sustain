@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
-import type { RepoSize } from "../../../src/model/repoSize";
+import type { RepoSize } from "../../../src/core-node/repoSize";
 import { SCRIPTS_DIR } from "./buildScripts";
 
 const created: string[] = [];

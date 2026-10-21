@@ -6,8 +6,8 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, join, sep } from "node:path";
 import * as vscode from "vscode";
-import { listCandidates } from "../model/discovery";
-import { ARCHIFY_DIR } from "../model/runFolder";
+import { listCandidates } from "../core-node/discovery";
+import { ARCHIFY_DIR } from "../core-node/runFolder";
 import { ArchitectureViewer, defaultColumn, showViewer } from "./viewer";
 import { BASELINE_DELETED_MESSAGE, candidateOf, ChangeBatch, DELETED_MESSAGE, newRunAction, noteCandidate, viewerAction } from "./watchLogic";
 

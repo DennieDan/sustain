@@ -1,9 +1,9 @@
 // ARC-02: rules written from the map. Each builder returns a rule for one menu action; `withRules`
 // adds rules to a config with unique ids; `suggestRules` proposes `forbid` both ways for every
 // pair of boxes whose code shares no import today. Browser-safe.
-import type { SustainConfig } from "./config";
-import { Ownership } from "./ownership";
-import { PATH_PREFIX, readRules, type Rule } from "./rules";
+import type { SustainConfig } from "../core-node/config";
+import { Ownership } from "../core-node/ownership";
+import { PATH_PREFIX, readRules, type Rule } from "../core-node/rules";
 
 /** The reason a suggested rule carries until someone writes a better one. */
 export const SUGGESTED_REASON = "No import joins these boxes today. Suggested from the map.";

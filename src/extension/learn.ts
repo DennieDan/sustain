@@ -11,7 +11,7 @@ import { ensureSkillIntact } from "./integrity";
 import { SessionPanel } from "./sessionPanel";
 import { configuredScope } from "./scope";
 import { sessionAgents, sessionArgs, sessionPrompt } from "./sessionAgents";
-import { agentsSkillDir, skillBase } from "./skillFiles";
+import { agentsSkillDir, skillBase } from "../core-node/skillFiles";
 
 interface LearningMode {
   label: string;

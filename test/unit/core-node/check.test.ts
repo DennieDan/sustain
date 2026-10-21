@@ -3,11 +3,11 @@
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { mainMap, runCheck } from "../../../src/model/check";
-import { readConfig, withIgnored } from "../../../src/model/config";
-import { deltaMarkdown, deltaMermaid, escapeMarkdown } from "../../../src/model/deltaMarkdown";
-import { isSourceFile, isTestFile } from "../../../src/model/delta";
-import { Ownership } from "../../../src/model/ownership";
+import { mainMap, runCheck } from "../../../src/core-node/check";
+import { readConfig, withIgnored } from "../../../src/core-node/config";
+import { deltaMarkdown, deltaMermaid, escapeMarkdown } from "../../../src/core-node/deltaMarkdown";
+import { isSourceFile, isTestFile } from "../../../src/core-node/delta";
+import { Ownership } from "../../../src/core-node/ownership";
 import { git, gitRepo, put, runScript } from "../support/temp";
 
 const HANDLER = ["export function handle(req) {", "  const body = parse(req);", "  return save(body);", "}", ""].join("\n");

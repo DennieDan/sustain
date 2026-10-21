@@ -1,10 +1,10 @@
 // ARC-02: rules written from the map and the sidebar. Every rule asks why it exists, and every config
 // write shows its diff and waits for a yes.
 import * as vscode from "vscode";
-import { CONFIG_FILE } from "../model/config";
-import { importLinks } from "../model/evidence/graph";
+import { CONFIG_FILE } from "../core-node/config";
+import { importLinks } from "../core-node/evidence/graph";
 import { forbidRule, onlyFromRule, suggestRules, throughRule, withRules } from "../model/ruleEdits";
-import { readRules, type Rule } from "../model/rules";
+import { readRules, type Rule } from "../core-node/rules";
 import { configFile, configText, confirmWrite } from "./previewWrite";
 import { ruleSourceFiles, rulesMap, textReader, type RulesService } from "./rules";
 

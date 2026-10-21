@@ -1,8 +1,8 @@
 // ARC-03: how much each box's code changes. Commits, lines changed and the number of distinct authors
 // over the files a box owns (PRC-01's ownership), from git's log at zero tokens. Authors are only
 // counted, never named. Browser-safe; git.ts reads the log.
-import type { LoggedCommit } from "./git";
-import { Ownership } from "./ownership";
+import type { LoggedCommit } from "../core-node/git";
+import { Ownership } from "../core-node/ownership";
 
 export interface BoxHotspot {
   id: string;

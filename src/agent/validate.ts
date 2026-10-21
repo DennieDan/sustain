@@ -2,17 +2,17 @@
 // (FR-VAL-01..06). Contract and exit codes: ADR 0017. Bundled to a dependency-free ESM file.
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { checkCitations } from "../model/citations";
-import { assertWritable } from "../model/confine";
-import { checkEvidence, EVIDENCE_FILE, type Evidence } from "../model/evidence";
-import { fingerprint, writeFingerprints } from "../model/fingerprints";
-import { importLanguage, importLinks } from "../model/evidence/graph";
-import { fileReader, isTestPath, listFiles } from "../model/repoSize";
-import { collectGitFacts, repositoryFromGit } from "../model/git";
-import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftLocation } from "../model/runFolder";
-import { newRunRecord, readRunRecord, RUN_FILE, updateRunRecord, type RunRecord } from "../model/runRecord";
-import { writeJson } from "../model/jsonFile";
-import { parseArgs, usageError } from "../model/scriptArgs";
+import { checkCitations } from "../core-node/citations";
+import { assertWritable } from "../core-node/confine";
+import { checkEvidence, EVIDENCE_FILE, type Evidence } from "../core-node/evidence";
+import { fingerprint, writeFingerprints } from "../core-node/fingerprints";
+import { importLanguage, importLinks } from "../core-node/evidence/graph";
+import { fileReader, isTestPath, listFiles } from "../core-node/repoSize";
+import { collectGitFacts, repositoryFromGit } from "../core-node/git";
+import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftLocation } from "../core-node/runFolder";
+import { newRunRecord, readRunRecord, RUN_FILE, updateRunRecord, type RunRecord } from "../core-node/runRecord";
+import { writeJson } from "../core-node/jsonFile";
+import { parseArgs, usageError } from "../core-node/scriptArgs";
 import { checkSubmission, REMOVED_FIELD_MESSAGE } from "../core/submission";
 import { stringifyDocument, type ArchifyDoc, type Issue } from "../core/types";
 

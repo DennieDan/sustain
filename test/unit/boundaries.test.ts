@@ -18,36 +18,36 @@ const BROWSER_SAFE_MODEL: Record<string, true> = {
   "src/core/comparison.ts": true,
   "src/core/runChanges.ts": true,
   "src/model/home.ts": true,
-  "src/model/changes.ts": true,
-  "src/model/evidence.ts": true,
+  "src/core-node/changes.ts": true,
+  "src/core-node/evidence.ts": true,
   "src/core/citationPath.ts": true,
   "src/core/deny.ts": true,
-  "src/model/config.ts": true,
-  "src/model/ownership.ts": true,
-  "src/model/delta.ts": true,
-  "src/model/deltaMarkdown.ts": true,
+  "src/core-node/config.ts": true,
+  "src/core-node/ownership.ts": true,
+  "src/core-node/delta.ts": true,
+  "src/core-node/deltaMarkdown.ts": true,
   "src/core/dates.ts": true,
   "src/core/gitFormat.ts": true,
 };
 const NODE_MODEL: Record<string, true> = {
-  "src/model/citations.ts": true,
-  "src/model/git.ts": true,
-  "src/model/runFolder.ts": true,
-  "src/model/discovery.ts": true,
-  "src/model/lineage.ts": true,
+  "src/core-node/citations.ts": true,
+  "src/core-node/git.ts": true,
+  "src/core-node/runFolder.ts": true,
+  "src/core-node/discovery.ts": true,
+  "src/core-node/lineage.ts": true,
   "src/model/session.ts": true,
-  "src/model/confine.ts": true,
-  "src/model/which.ts": true,
-  "src/model/integrity.ts": true,
-  "src/model/runRecord.ts": true,
-  "src/model/preflight.ts": true,
+  "src/core-node/confine.ts": true,
+  "src/core-node/which.ts": true,
+  "src/core-node/integrity.ts": true,
+  "src/core-node/runRecord.ts": true,
+  "src/core-node/preflight.ts": true,
   "src/model/maps.ts": true,
-  "src/model/check.ts": true,
-  "src/model/repoSize.ts": true,
-  "src/model/fingerprints.ts": true,
-  "src/model/staleness.ts": true,
-  "src/model/jsonFile.ts": true,
-  "src/model/hashTree.mts": true,
+  "src/core-node/check.ts": true,
+  "src/core-node/repoSize.ts": true,
+  "src/core-node/fingerprints.ts": true,
+  "src/core-node/staleness.ts": true,
+  "src/core-node/jsonFile.ts": true,
+  "src/core-node/hashTree.mts": true,
 };
 const NODE_ALLOWED: Record<string, true> = {
   "node:fs": true,
@@ -74,7 +74,7 @@ function boundaryViolations(file: string, source: string): string[] {
       else if (!NODE_ALLOWED[specifier]) violations.push(`${file}: imports ${specifier}; only fs, path, child_process, crypto are allowed`);
     } else if (specifier.startsWith(".")) {
       const target = join(file, "..", specifier).split("\\").join("/");
-      const allowedPrefixes = file.startsWith("src/layout/") ? ["src/layout/", "src/model/", "src/core/"] : ["src/model/", "src/core/"];
+      const allowedPrefixes = file.startsWith("src/layout/") ? ["src/layout/", "src/model/", "src/core/", "src/core-node/"] : ["src/model/", "src/core/", "src/core-node/"];
       if (!allowedPrefixes.some((prefix) => target.startsWith(prefix))) {
         violations.push(`${file}: imports ${specifier} outside its allowed layers`);
       }
@@ -85,7 +85,8 @@ function boundaryViolations(file: string, source: string): string[] {
 
 describe("NFR-QUAL-03 module boundaries", () => {
   test("src/model and src/layout respect the boundaries", () => {
-    const files = [...sourceFiles("src/model"), ...sourceFiles("src/core"), ...sourceFiles("src/layout")];
+    // skillFiles.ts came from src/extension, which this test does not scan.
+    const files = [...sourceFiles("src/model"), ...sourceFiles("src/core"), ...sourceFiles("src/core-node"), ...sourceFiles("src/layout")].filter((file) => file !== "src/core-node/skillFiles.ts");
     const violations = files.flatMap((file) => boundaryViolations(file, readFileSync(join(repoRoot, file), "utf8")));
     expect(violations).toEqual([]);
   });
@@ -97,10 +98,10 @@ describe("NFR-QUAL-03 module boundaries", () => {
     ["src/core/types.ts", 'export { x } from "node:path";'],
     ["src/core/tolerant.ts", 'const fs = require("fs");'],
     ["src/core/schema.ts", 'import { readFileSync } from "node:fs";'],
-    ["src/model/citations.ts", 'import { createServer } from "node:http";'],
+    ["src/core-node/citations.ts", 'import { createServer } from "node:http";'],
     // Dynamic import on purpose: the scanner must also catch `import()` of a built-in.
     ["src/core/checks.ts", 'const m = await import("node:os");'],
-    ["src/model/git.ts", 'import type { ExtensionContext } from "vscode";'],
+    ["src/core-node/git.ts", 'import type { ExtensionContext } from "vscode";'],
     ["src/core/schema.ts", 'import { panel } from "../extension/panel";'],
     ["src/layout/elk.ts", 'import { render } from "../../webview/render";'],
   ])("%s rejects %s", (file, source) => {
@@ -108,8 +109,8 @@ describe("NFR-QUAL-03 module boundaries", () => {
   });
 
   test.each([
-    ["src/model/citations.ts", 'import { realpathSync } from "node:fs";'],
-    ["src/model/git.ts", 'import { spawnSync } from "node:child_process";'],
+    ["src/core-node/citations.ts", 'import { realpathSync } from "node:fs";'],
+    ["src/core-node/git.ts", 'import { spawnSync } from "node:child_process";'],
     ["src/core/schema.ts", 'import Ajv2020 from "ajv/dist/2020";'],
     ["src/layout/elk.ts", 'import ELK from "elkjs/lib/elk.bundled.js";'],
     ["src/layout/elk.ts", 'import type { ArchifyDoc } from "../model/types";'],

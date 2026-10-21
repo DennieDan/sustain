@@ -2,7 +2,7 @@
 // people's own text untouched.
 import { expect, test } from "vitest";
 import { claudeNeedsNotes, mergeNotes, notesBlock, NOTES_END, NOTES_START } from "../../../src/model/agentNotes";
-import type { Rule } from "../../../src/model/rules";
+import type { Rule } from "../../../src/core-node/rules";
 
 const MAP = {
   run: "architecture-shop-20261019-120000",

@@ -29,7 +29,7 @@ function restClient(api, repository, token) {
   };
 }
 
-// src/model/check.ts
+// src/core-node/check.ts
 var import_node_fs6 = require("node:fs");
 var import_node_path6 = require("node:path");
 
@@ -157,7 +157,7 @@ function parseDiffSections(diff) {
   return sections;
 }
 
-// src/model/changes.ts
+// src/core-node/changes.ts
 function parseDiff(text) {
   return parseDiffSections(text).map((section) => {
     const [headerOld, headerNew] = section.headerPaths;
@@ -199,7 +199,7 @@ function markChanges(components, changes) {
   return { strong, weak, uncovered };
 }
 
-// src/model/ownership.ts
+// src/core-node/ownership.ts
 var Ownership = class {
   byFile = /* @__PURE__ */ new Map();
   byDir = /* @__PURE__ */ new Map();
@@ -243,7 +243,7 @@ function add(map, key, id) {
   map.set(key, set);
 }
 
-// src/model/glob.ts
+// src/core-node/glob.ts
 function globToRegExp(glob) {
   let pattern = "";
   for (let i = 0; i < glob.length; i++) {
@@ -264,7 +264,7 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// src/model/rules.ts
+// src/core-node/rules.ts
 var RULE_KINDS = ["forbid", "only-via", "isolated"];
 var PATH_PREFIX = "path:";
 var ends = (value) => typeof value === "string" && value !== "" ? [value] : Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === "string" && entry !== "") ? value : null;
@@ -327,7 +327,7 @@ function checkRules(rules, components, refs) {
   return violations;
 }
 
-// src/model/config.ts
+// src/core-node/config.ts
 var CONFIG_FILE = "sustain.config.json";
 var FAIL_ON = ["stale", "new-box", "new-arrow", "violation"];
 function strings(value) {
@@ -354,7 +354,7 @@ function readConfig(value) {
   return errors.length === 0 ? { ok: true, config: value } : { ok: false, errors };
 }
 
-// src/model/delta.ts
+// src/core-node/delta.ts
 var CANDIDATE_LINES = 200;
 var CANDIDATE_FILES = 3;
 var SOURCE_EXTENSIONS = new Set(
@@ -456,11 +456,11 @@ function verdict(report, failOn) {
   return { result: reasons.length === 0 ? "pass" : "fail", reasons };
 }
 
-// src/model/discovery.ts
+// src/core-node/discovery.ts
 var import_node_fs = require("node:fs");
 var import_node_path = require("node:path");
 
-// src/model/runFolder.ts
+// src/core-node/runFolder.ts
 var ARCHIFY_DIR = ".archify";
 var CANDIDATE_FILE = "candidate.sir";
 var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
@@ -475,7 +475,7 @@ function parseRunFolderName(name) {
   return { slug: parsed.slug, timestamp: parsed.timestamp, n: parsed.n };
 }
 
-// src/model/discovery.ts
+// src/core-node/discovery.ts
 function compareCandidates(a, b) {
   const ra = parseRunFolderName(a.runFolder);
   const rb = parseRunFolderName(b.runFolder);
@@ -512,7 +512,7 @@ function listCandidates(root) {
   return candidates.sort(compareCandidates);
 }
 
-// src/model/evidence/paths.ts
+// src/core-node/evidence/paths.ts
 function joinPath(dir, rel) {
   const parts = dir === "" ? [] : dir.split("/");
   for (const part of rel.split("/")) {
@@ -544,7 +544,7 @@ var ImportSet = class {
   }
 };
 
-// src/model/evidence/java.ts
+// src/core-node/evidence/java.ts
 var PACKAGE = /^\s*package\s+([\w.]+)\s*;/m;
 var IMPORT = /^\s*import\s+(static\s+)?([\w.]+?)(\.\*)?\s*;/gm;
 var baseName = (path2) => path2.slice(path2.lastIndexOf("/") + 1).replace(/\.java$/, "");
@@ -593,7 +593,7 @@ function javaImports(file, text, index) {
   return found.refs();
 }
 
-// src/model/evidence/python.ts
+// src/core-node/evidence/python.ts
 var IMPORT2 = /^[ \t]*import[ \t]+([\w.]+(?:[ \t]+as[ \t]+\w+)?(?:[ \t]*,[ \t]*[\w.]+(?:[ \t]+as[ \t]+\w+)?)*)/gm;
 var FROM = /^[ \t]*from[ \t]+(\.*)([\w.]*)[ \t]+import[ \t]+(\([^)]*\)|[^\n#]+)/gm;
 function dotted(path2, root) {
@@ -656,7 +656,7 @@ function pythonImports(file, text, index) {
   return found.refs();
 }
 
-// src/model/evidence/typescript.ts
+// src/core-node/evidence/typescript.ts
 var SPECIFIERS = [
   /\bimport\s+(?:type\s+)?(?:[\w$*{}\s,]+?\s+from\s+)?["']([^"'\n]+)["']/g,
   /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+[\w$]+)?|\{[^}]*\})\s+from\s+["']([^"'\n]+)["']/g,
@@ -734,7 +734,7 @@ function typescriptImports(file, text, files, configFor) {
   return found.refs();
 }
 
-// src/model/evidence/graph.ts
+// src/core-node/evidence/graph.ts
 function importLanguage(path2) {
   if (path2.endsWith(".java")) return "java";
   if (/\.py$/.test(path2)) return "python";
@@ -770,10 +770,10 @@ function importResolver(files, read) {
   };
 }
 
-// src/model/git.ts
+// src/core-node/git.ts
 var import_node_child_process = require("node:child_process");
 
-// src/model/which.ts
+// src/core-node/which.ts
 var import_node_fs2 = require("node:fs");
 var import_node_path2 = require("node:path");
 function isExecutableFile(path2, platform) {
@@ -799,7 +799,7 @@ function findOnPath(cli, env, platform = process.platform) {
   return void 0;
 }
 
-// src/model/git.ts
+// src/core-node/git.ts
 var GIT_PREFIX = ["-c", "core.fsmonitor=false", "--no-optional-locks"];
 var GIT_READS = {
   topLevel: [...GIT_PREFIX, "rev-parse", "--show-toplevel"],
@@ -907,7 +907,7 @@ function filesAt(root, revision, dir, env = process.env) {
   return (output ?? "").split("\0").filter((path2) => path2 !== "");
 }
 
-// src/model/repoSize.ts
+// src/core-node/repoSize.ts
 var import_node_fs3 = require("node:fs");
 var import_node_path3 = require("node:path");
 
@@ -928,7 +928,7 @@ function isDenied(path2) {
   return path2.split("/").some(segmentDenied);
 }
 
-// src/model/repoSize.ts
+// src/core-node/repoSize.ts
 var SKIPPED_DIRS = [".git", "node_modules", "vendor", "dist", "build", "target", "out", ".sustain"];
 var MAX_FILE_BYTES = 1024 * 1024;
 var BINARY = new Set(
@@ -971,7 +971,7 @@ function listFiles(root, env = process.env) {
   return { listing: tracked === null ? "walk" : "git", files: generated.size === 0 ? kept : kept.filter((path2) => !generated.has(path2)) };
 }
 
-// src/model/runRecord.ts
+// src/core-node/runRecord.ts
 var import_node_fs4 = require("node:fs");
 var import_node_path4 = require("node:path");
 var RUN_FILE = "run.json";
@@ -984,11 +984,11 @@ function readRunRecord(runDir) {
   }
 }
 
-// src/model/staleness.ts
+// src/core-node/staleness.ts
 var import_node_fs5 = require("node:fs");
 var import_node_path5 = require("node:path");
 
-// src/model/fingerprints.ts
+// src/core-node/fingerprints.ts
 var import_node_crypto = require("node:crypto");
 var FINGERPRINTS_FILE = "fingerprints.json";
 function gitBlobId(bytes) {
@@ -1004,7 +1004,7 @@ function looseLines(lines) {
   return lines.map((line) => line.trimStart());
 }
 
-// src/model/staleness.ts
+// src/core-node/staleness.ts
 var ORDER = ["fresh", "unknown", "moved", "edited", "missing"];
 function readFingerprints(runDir) {
   try {
@@ -1212,7 +1212,7 @@ function readDiagram(value) {
   return { ok: true, diagram, skipped: skipped2 };
 }
 
-// src/model/check.ts
+// src/core-node/check.ts
 function loadConfig(root) {
   let text;
   try {
@@ -1324,7 +1324,7 @@ function runCheck(options) {
   return { ok: true, diagram, report: { map: run2, base, head: head ?? null, mergeBase: shared, ...delta, ...outcome } };
 }
 
-// src/model/deltaMarkdown.ts
+// src/core-node/deltaMarkdown.ts
 var COMMENT_MARKER = "<!-- sustain-check -->";
 function escapeMarkdown(text) {
   return text.replace(/([\\`*_{}[\]()#+!~-])/g, "\\$1").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\|/g, "&#124;").replace(/\r?\n/g, " ");

@@ -2,8 +2,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
-import { CONFIG_FILE, readConfig, type SustainConfig } from "../model/config";
-import { assertWritable } from "../model/confine";
+import { CONFIG_FILE, readConfig, type SustainConfig } from "../core-node/config";
+import { assertWritable } from "../core-node/confine";
 import { onAction } from "./notify";
 
 export const PREVIEW_SCHEME = "sustain-preview";

@@ -1,9 +1,9 @@
 // UI-01: the sidebar's maps list, from each candidate and its run record.
 import { readFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { listCandidates } from "./discovery";
+import { listCandidates } from "../core-node/discovery";
 import type { MapItem } from "./messages";
-import { readRunRecord } from "./runRecord";
+import { readRunRecord } from "../core-node/runRecord";
 import { parseDiagram } from "../core/tolerant";
 
 /** Every candidate in `root`, newest first, described for the maps list. */

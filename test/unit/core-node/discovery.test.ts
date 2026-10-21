@@ -2,7 +2,7 @@
 import { mkdirSync, symlinkSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { listCandidates, repoRootFor } from "../../../src/model/discovery";
+import { listCandidates, repoRootFor } from "../../../src/core-node/discovery";
 import { put, tempDir } from "../support/temp";
 
 function candidate(root: string, folder: string, mtimeSeconds: number): void {

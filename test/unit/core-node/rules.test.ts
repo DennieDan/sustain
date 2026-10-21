@@ -1,7 +1,7 @@
 // ARC-01: each rule kind in each checked language, against the imports, with the importing line.
 import { describe, expect, test } from "vitest";
-import { importRefs } from "../../../src/model/evidence/graph";
-import { checkRules, readRules, type Rule } from "../../../src/model/rules";
+import { importRefs } from "../../../src/core-node/evidence/graph";
+import { checkRules, readRules, type Rule } from "../../../src/core-node/rules";
 
 /** The same three boxes in each language: the UI imports the API and the store; the API imports the store. */
 const REPOS: Record<string, { files: Record<string, string>; ui: string; api: string; store: string; storeLine: number }> = {

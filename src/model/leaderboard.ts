@@ -1,7 +1,7 @@
 // The local leaderboard (ADR 0034): aggregates `.sustain/<run>/events.jsonl` plus the run's
 // public `session.json` into one ranked row per session. Pure functions — the extension
 // host reads the files; `manifest.json` is never touched (the webview trust boundary).
-import { parseRunName } from "./runFolder";
+import { parseRunName } from "../core-node/runFolder";
 import type { SessionState } from "./session";
 
 /** One `events.jsonl` line, tolerantly read: unknown fields pass through unchecked. */

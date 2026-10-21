@@ -3,12 +3,12 @@
 // the repository's size (CST-01), the estimate for each agent (CST-03) and the read budget for its
 // tier (CST-05).
 import { basename, join } from "node:path";
-import { collectGitFacts } from "../model/git";
-import { skillEstimates } from "../model/estimate";
-import { READ_BUDGET, repoSize, sizeFacts } from "../model/repoSize";
-import { ARCHIFY_DIR, createRunFolder, DRAFT_FILE, runTimestamp, slugify } from "../model/runFolder";
-import { newRunRecord, writeRunRecord } from "../model/runRecord";
-import { parseArgs, usageError } from "../model/scriptArgs";
+import { collectGitFacts } from "../core-node/git";
+import { skillEstimates } from "../core-node/estimate";
+import { READ_BUDGET, repoSize, sizeFacts } from "../core-node/repoSize";
+import { ARCHIFY_DIR, createRunFolder, DRAFT_FILE, runTimestamp, slugify } from "../core-node/runFolder";
+import { newRunRecord, writeRunRecord } from "../core-node/runRecord";
+import { parseArgs, usageError } from "../core-node/scriptArgs";
 
 /** The skill version, filled in by the build. */
 const SKILL_VERSION = process.env.SUSTAIN_VERSION ?? "unknown";

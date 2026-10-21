@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import { pickRepoRoot } from "./folders";
 import { ensureGitExclude, mergeSessionHooks, type SessionAgent } from "./hooksFiles";
 import { configuredScope } from "./scope";
-import { SKILL_NAMES, skillBase, skillInstalled, skillTargets, writeSkill } from "./skillFiles";
+import { SKILL_NAMES, skillBase, skillInstalled, skillTargets, writeSkill } from "../core-node/skillFiles";
 
 /**
  * The session-side assets, merged when a learning session launches in `agent`: that agent's

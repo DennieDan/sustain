@@ -3,7 +3,7 @@
 import { symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { repoSize, tierOf, type RepoSize } from "../../../src/model/repoSize";
+import { repoSize, tierOf, type RepoSize } from "../../../src/core-node/repoSize";
 import { envWithoutGit, git, gitRepo, put, tempDir } from "../support/temp";
 
 const lines = (count: number): string => "x\n".repeat(count);

@@ -1,6 +1,6 @@
 // ACC-01: a box is DeclarationOnly when every citation is at most 3 lines that only declare.
 import { describe, expect, test } from "vitest";
-import { checkEvidence, declarationOnly } from "../../../src/model/evidence";
+import { checkEvidence, declarationOnly } from "../../../src/core-node/evidence";
 
 describe("ACC-01 declaration-only heuristic", () => {
   test.each([

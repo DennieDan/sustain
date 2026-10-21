@@ -1,6 +1,6 @@
 // `Sustain: Open Architecture` (FR-VIEW-01, FR-VIEW-02): the newest diagram of the folder.
 import * as vscode from "vscode";
-import { listCandidates } from "../model/discovery";
+import { listCandidates } from "../core-node/discovery";
 import { pickRepoRoot } from "./folders";
 import { defaultColumn, showViewer } from "./viewer";
 

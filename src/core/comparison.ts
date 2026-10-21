@@ -1,7 +1,7 @@
 // The context of a comparison (FR-CMP-04, ADR 0031): warnings, the approximate flag, whether the
 // previous run's change data applies, and the commits to show. Browser-safe and pure: the host
 // injects every fact read from disk.
-import type { Lineage } from "../model/lineage";
+import type { Lineage } from "../core-node/lineage";
 import type { Repository } from "./types";
 
 /** Facts about one run, read by the host. */

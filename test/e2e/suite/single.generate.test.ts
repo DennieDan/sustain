@@ -7,7 +7,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import * as vscode from "vscode";
 import type { TestHook } from "../../../src/extension/extension";
-import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
+import { skillTargets, writeSkill } from "../../../src/core-node/skillFiles";
 import { afterEstimate, prompts, stubUi, type UiStubs } from "../stubs";
 import { setup, suite, suiteSetup, teardown, test } from "../tdd";
 

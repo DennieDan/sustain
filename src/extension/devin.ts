@@ -3,7 +3,7 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { findOnPath } from "../model/which";
+import { findOnPath } from "../core-node/which";
 
 /**
  * Well-known Devin CLI locations checked after PATH, most-specific first: the per-user

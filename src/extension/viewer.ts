@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { basename, dirname, relative, sep } from "node:path";
 import * as vscode from "vscode";
-import { repoRootFor } from "../model/discovery";
+import { repoRootFor } from "../core-node/discovery";
 import type { Compare, HostMessage, WebviewMessage } from "../model/messages";
 import { parseDiagram, type ViewDiagram } from "../core/tolerant";
 import { buildCompare, defaultBaseline, pickerItems, runFolderOf } from "./baseline";

@@ -3,9 +3,9 @@
 // ESM file.
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { readJson } from "../model/jsonFile";
+import { readJson } from "../core-node/jsonFile";
 import { matchIds } from "../core/matchIds";
-import { parseArgs, usageError } from "../model/scriptArgs";
+import { parseArgs, usageError } from "../core-node/scriptArgs";
 import { isRecord, stringifyDocument } from "../core/types";
 
 const SCRIPT = "match-ids.mjs";

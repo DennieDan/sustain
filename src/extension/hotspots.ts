@@ -1,7 +1,7 @@
 // ARC-03: hotspots for a folder's maps, from git's log over `sustain.hotspots.days`. The log is
 // read at most once a minute per folder.
 import * as vscode from "vscode";
-import { changeLog, type LoggedCommit } from "../model/git";
+import { changeLog, type LoggedCommit } from "../core-node/git";
 import { hotspotNote, hotspots, type BoxHotspot } from "../model/hotspots";
 
 /** How long a folder's log is reused. */

@@ -4,8 +4,8 @@ import type { HealthItem, HealthKind } from "./health";
 import type { FeedItem, StreamUsage } from "./agentStream/feed";
 import type { RunStatus } from "./agentStream/tracker";
 import type { LeaderboardEntry } from "./leaderboard";
-import type { Check, CheckId } from "./preflight";
-import type { RunPhase } from "./runRecord";
+import type { Check, CheckId } from "../core-node/preflight";
+import type { RunPhase } from "../core-node/runRecord";
 import type { ComparisonContext } from "../core/comparison";
 import type { RunChanges } from "../core/runChanges";
 

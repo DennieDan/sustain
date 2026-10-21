@@ -3,14 +3,14 @@
 import { readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import * as vscode from "vscode";
-import { loadConfig, mainMap } from "../model/check";
-import { importLanguage, importRefs } from "../model/evidence/graph";
-import { untrackedFiles } from "../model/git";
-import { Ownership } from "../model/ownership";
-import { isTestPath, listFiles, skipped } from "../model/repoSize";
-import { checkRules, readRules, type Violation } from "../model/rules";
-import { ARCHIFY_DIR, CANDIDATE_FILE } from "../model/runFolder";
-import { fileReader } from "../model/repoSize";
+import { loadConfig, mainMap } from "../core-node/check";
+import { importLanguage, importRefs } from "../core-node/evidence/graph";
+import { untrackedFiles } from "../core-node/git";
+import { Ownership } from "../core-node/ownership";
+import { isTestPath, listFiles, skipped } from "../core-node/repoSize";
+import { checkRules, readRules, type Violation } from "../core-node/rules";
+import { ARCHIFY_DIR, CANDIDATE_FILE } from "../core-node/runFolder";
+import { fileReader } from "../core-node/repoSize";
 import { readDiagram } from "../core/tolerant";
 
 /** Wait after the last save before checking again. */

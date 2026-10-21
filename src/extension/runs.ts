@@ -5,12 +5,12 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import type { StreamParser } from "../model/agentStream/feed";
 import type { RunState } from "../model/agentStream/tracker";
-import type { RunEstimate } from "../model/estimate";
+import type { RunEstimate } from "../core-node/estimate";
 import type { ComposerCli, RunCard, RunMode } from "../model/messages";
-import { CANDIDATE_FILE } from "../model/runFolder";
+import { CANDIDATE_FILE } from "../core-node/runFolder";
 import type { LaunchTask } from "./generate";
 import { onAction } from "./notify";
-import { newRunRecord, newRunSince, RUN_FILE, runFolderNames, updateRunRecord } from "../model/runRecord";
+import { newRunRecord, newRunSince, RUN_FILE, runFolderNames, updateRunRecord } from "../core-node/runRecord";
 import { startHeadless, type HeadlessRun } from "./runner";
 import { defaultColumn, showViewer } from "./viewer";
 

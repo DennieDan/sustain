@@ -2,7 +2,7 @@
 import { chmodSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { parseVersion, runPreflight } from "../../../src/model/preflight";
+import { parseVersion, runPreflight } from "../../../src/core-node/preflight";
 import { put, tempDir } from "../support/temp";
 
 /** A folder of stub CLIs that print `version` for `--version`. */

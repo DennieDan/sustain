@@ -2,7 +2,7 @@
 import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { assertWritable } from "../../../src/model/confine";
+import { assertWritable } from "../../../src/core-node/confine";
 import { put, tempDir } from "../support/temp";
 
 const DIR_LINK = process.platform === "win32" ? "junction" : "dir";

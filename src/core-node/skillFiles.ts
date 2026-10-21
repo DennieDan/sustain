@@ -4,7 +4,7 @@
 import { cpSync, lstatSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { assertWritable } from "../model/confine";
+import { assertWritable } from "./confine";
 
 /** The skills `Sustain: Install Agent Skills` ships: architecture + the learning session. */
 export const SKILL_NAMES: readonly string[] = ["sustain-architecture", "sustain-bugfix"];

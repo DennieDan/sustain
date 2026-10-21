@@ -16,13 +16,13 @@ import {
   type ModeDecision,
 } from "../core/changeMap";
 import { citationPathOk } from "../core/citationPath";
-import { probeFile } from "../model/citations";
-import { listCandidates, type Candidate } from "../model/discovery";
-import { baseReachable, collectGitFacts, commitInfo, readChanges } from "../model/git";
-import { readLineage, writeLineage, writeRunChanges, type Lineage } from "../model/lineage";
+import { probeFile } from "../core-node/citations";
+import { listCandidates, type Candidate } from "../core-node/discovery";
+import { baseReachable, collectGitFacts, commitInfo, readChanges } from "../core-node/git";
+import { readLineage, writeLineage, writeRunChanges, type Lineage } from "../core-node/lineage";
 import { buildRunChanges } from "../core/runChanges";
-import { ARCHIFY_DIR, CANDIDATE_FILE, parseRunFolderName } from "../model/runFolder";
-import { parseArgs, usageError } from "../model/scriptArgs";
+import { ARCHIFY_DIR, CANDIDATE_FILE, parseRunFolderName } from "../core-node/runFolder";
+import { parseArgs, usageError } from "../core-node/scriptArgs";
 
 const CHANGE_FILE = "change.md";
 const MAPPING_FILE = "mapping.md";

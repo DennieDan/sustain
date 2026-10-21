@@ -2,11 +2,11 @@
 import { lstatSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
-import { assertWritable } from "../model/confine";
-import { checkSkill, diffSize, type AgentId, type SkillHashes } from "../model/integrity";
+import { assertWritable } from "../core-node/confine";
+import { checkSkill, diffSize, type AgentId, type SkillHashes } from "../core-node/integrity";
 import { onAction } from "./notify";
 import { configuredScope } from "./scope";
-import { skillBase, skillTargets, writeSkill } from "./skillFiles";
+import { skillBase, skillTargets, writeSkill } from "../core-node/skillFiles";
 
 const AGENT_LABELS: Record<AgentId, string> = { claude: "Claude Code", codex: "Codex", devin: "Devin" };
 

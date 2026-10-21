@@ -5,9 +5,9 @@
 // the webview must never see `manifest.json`.
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseRunName } from "./runFolder";
-import { assertNotLink } from "./confine";
-import { readJson, writeJson } from "./jsonFile";
+import { parseRunName } from "../core-node/runFolder";
+import { assertNotLink } from "../core-node/confine";
+import { readJson, writeJson } from "../core-node/jsonFile";
 import { isRecord } from "../core/types";
 
 export const SUSTAIN_DIR = ".sustain";

@@ -2,8 +2,8 @@
 import { cpSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { hashTree, LINK_MARK } from "../../../src/model/hashTree.mts";
-import { checkSkill, diffSkill } from "../../../src/model/integrity";
+import { hashTree, LINK_MARK } from "../../../src/core-node/hashTree.mts";
+import { checkSkill, diffSkill } from "../../../src/core-node/integrity";
 import { put, tempDir } from "../support/temp";
 
 const NAME = "sustain-architecture";

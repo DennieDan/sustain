@@ -6,8 +6,8 @@
 // runs a `.agents/skills/sustain-*` script are touched, so user entries always survive.
 import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { assertWritable } from "../model/confine";
-import { writeJson } from "../model/jsonFile";
+import { assertWritable } from "../core-node/confine";
+import { writeJson } from "../core-node/jsonFile";
 import { isRecord } from "../core/types";
 
 export const DEVIN_HOOKS_FILE = join(".devin", "hooks.v1.json");

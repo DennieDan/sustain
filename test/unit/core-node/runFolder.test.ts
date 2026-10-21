@@ -11,7 +11,7 @@ import {
   runTimestamp,
   SLUG_MAX,
   slugify,
-} from "../../../src/model/runFolder";
+} from "../../../src/core-node/runFolder";
 import { put, tempDir } from "../support/temp";
 
 describe("FR-RF-01 slug", () => {

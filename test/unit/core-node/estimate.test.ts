@@ -1,7 +1,7 @@
 // CST-02: token estimates from the repository's size and prices from the official pages.
 // CST-03: the estimate's text and the second click.
 import { expect, test } from "vitest";
-import { COEFFICIENTS, dollars, ESTIMATE_AGENTS, ESTIMATE_KINDS, estimate, estimateText, modelPrice, PRICING, priceRange, runEstimate, skillEstimates, tokenAmount, type Coefficients, type TokenMix } from "../../../src/model/estimate";
+import { COEFFICIENTS, dollars, ESTIMATE_AGENTS, ESTIMATE_KINDS, estimate, estimateText, modelPrice, PRICING, priceRange, runEstimate, skillEstimates, tokenAmount, type Coefficients, type TokenMix } from "../../../src/core-node/estimate";
 
 test("CST-02 estimates grow with size for every agent and kind, and stay provisional until fitted", () => {
   const sizes = [

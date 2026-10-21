@@ -3,7 +3,7 @@
 import { symlinkSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { citationPathOk } from "../../../src/core/citationPath";
-import { checkCitations, countLines, MAX_CITED_BYTES } from "../../../src/model/citations";
+import { checkCitations, countLines, MAX_CITED_BYTES } from "../../../src/core-node/citations";
 import type { ArchifyDoc, SourceRef } from "../../../src/core/types";
 import { put, tempDir } from "../support/temp";
 

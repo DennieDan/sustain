@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { ensureGitExclude, mergeAgentHooks, mergeHooks } from "../../../src/extension/hooksFiles";
-import { skillTargets, writeSkill } from "../../../src/extension/skillFiles";
+import { skillTargets, writeSkill } from "../../../src/core-node/skillFiles";
 import { stubUi, type UiStubs } from "../stubs";
 import { setup, suite, teardown, test } from "../tdd";
 

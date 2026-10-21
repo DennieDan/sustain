@@ -2,9 +2,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { skillEstimates } from "../../../src/model/estimate";
-import { sizeFacts } from "../../../src/model/repoSize";
-import { runTimestamp } from "../../../src/model/runFolder";
+import { skillEstimates } from "../../../src/core-node/estimate";
+import { sizeFacts } from "../../../src/core-node/repoSize";
+import { runTimestamp } from "../../../src/core-node/runFolder";
 import { envWithoutGit, git, gitRepo, put, runScript, tempDir } from "../support/temp";
 
 const RUN_NAME = /^architecture-([a-z0-9-]+)-(\d{8}-\d{6})(-\d+)?$/;

@@ -1,7 +1,7 @@
 // UI-01, SET-02, UI-02, CST-04: the sidebar renders each state from the HomeState it is sent.
 import { beforeEach, describe, expect, test } from "vitest";
 import type { HomeState, HomeWebviewMessage, MapItem, RunCard } from "../../src/model/messages";
-import type { Check } from "../../src/model/preflight";
+import type { Check } from "../../src/core-node/preflight";
 import { createHome, phaseLine, type Home } from "../../webview/home";
 
 const NOW = new Date("2026-10-18T12:00:00Z");

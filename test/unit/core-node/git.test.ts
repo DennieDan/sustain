@@ -2,7 +2,7 @@
 import { chmodSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { collectGitFacts, commitInfo, GIT_READS, repositoryFromGit, sanitizeOrigin } from "../../../src/model/git";
+import { collectGitFacts, commitInfo, GIT_READS, repositoryFromGit, sanitizeOrigin } from "../../../src/core-node/git";
 import { parsePorcelainZ } from "../../../src/core/gitFormat";
 import { git, gitRepo, put, tempDir } from "../support/temp";
 

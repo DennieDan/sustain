@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { agentPrompt, AGENTS } from "../../../src/extension/agents";
-import { findOnPath } from "../../../src/model/which";
+import { findOnPath } from "../../../src/core-node/which";
 import { put, tempDir } from "../support/temp";
 
 const [claude, codex] = AGENTS as [(typeof AGENTS)[number], (typeof AGENTS)[number]];

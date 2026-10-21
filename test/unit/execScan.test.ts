@@ -6,7 +6,7 @@ import { expect, test } from "vitest";
 import { repoRoot, sourceFiles } from "./support/sourceScan";
 
 /** Programs a spawn may start, per file. Git and the setup check resolve theirs from absolute PATH entries. */
-const ALLOWED_PROGRAMS: Record<string, string[]> = { "*": ["process.execPath"], "src/model/git.ts": ["program"], "src/model/preflight.ts": ["binary"] };
+const ALLOWED_PROGRAMS: Record<string, string[]> = { "*": ["process.execPath"], "src/core-node/git.ts": ["program"], "src/core-node/preflight.ts": ["binary"] };
 
 function execViolations(file: string, source: string): string[] {
   const violations: string[] = [];
@@ -23,7 +23,7 @@ function execViolations(file: string, source: string): string[] {
 }
 
 test("SAF-02 src/agent and src/model spawn only node itself or the resolved git", () => {
-  const files = [...sourceFiles("src/agent"), ...sourceFiles("src/model")];
+  const files = [...sourceFiles("src/agent"), ...sourceFiles("src/model"), ...sourceFiles("src/core"), ...sourceFiles("src/core-node")];
   const violations = files.flatMap((file) => execViolations(file, readFileSync(join(repoRoot, file), "utf8")));
   expect(violations).toEqual([]);
 });

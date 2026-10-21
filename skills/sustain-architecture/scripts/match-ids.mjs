@@ -2,7 +2,7 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 
 // src/core/types.ts
@@ -14,7 +14,7 @@ function stringifyDocument(value) {
 `;
 }
 
-// src/model/jsonFile.ts
+// src/core-node/jsonFile.ts
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
@@ -143,7 +143,7 @@ function matchIds(previous, draft, threshold = MATCH_THRESHOLD) {
   return { diagram, componentMap: Object.fromEntries(componentMap), connectionMap, renamed };
 }
 
-// src/model/scriptArgs.ts
+// src/core-node/scriptArgs.ts
 function parseArgs(args, spec) {
   const count = spec.positionals ?? 0;
   if (args.length < count) return null;

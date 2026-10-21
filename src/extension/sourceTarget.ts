@@ -3,7 +3,7 @@
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { citationPathOk } from "../core/citationPath";
-import { probeFile } from "../model/citations";
+import { probeFile } from "../core-node/citations";
 import type { SourceRef } from "../core/types";
 
 /** 1-based inclusive line range to select. */

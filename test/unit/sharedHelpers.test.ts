@@ -32,6 +32,6 @@ describe("RFX-04 one copy of each shared helper", () => {
   });
 
   test("one write renames a temp file over its target", () => {
-    expect(matches(/\brenameSync\(/g)).toEqual(["src/model/jsonFile.ts"]);
+    expect(matches(/\brenameSync\(/g)).toEqual(["src/core-node/jsonFile.ts"]);
   });
 });

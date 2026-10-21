@@ -6,7 +6,7 @@ import { relativeAge } from "../../../src/core/dates";
 import { clock, mapStatus, runFigures, statusText, tokenCount } from "../../../src/model/home";
 import { listMaps } from "../../../src/model/maps";
 import type { MapItem, RunCard } from "../../../src/model/messages";
-import { newRunRecord, newRunSince, runFolderNames, writeRunRecord } from "../../../src/model/runRecord";
+import { newRunRecord, newRunSince, runFolderNames, writeRunRecord } from "../../../src/core-node/runRecord";
 import { put, tempDir } from "../support/temp";
 
 const NOW = new Date("2026-10-18T12:00:00Z");

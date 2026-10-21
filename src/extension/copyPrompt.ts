@@ -7,7 +7,7 @@ import { copiedPrompt, PROMPT_TARGETS } from "./agents";
 import { pickRepoRoot } from "./folders";
 import { installSkill } from "./install";
 import { configuredScope } from "./scope";
-import { skillBase, skillInstalled, skillTargets } from "./skillFiles";
+import { skillBase, skillInstalled, skillTargets } from "../core-node/skillFiles";
 
 /** Asks which agent, then copies the Generate prompt with `focus` for it. */
 export async function copyPromptCommand(extensionUri: vscode.Uri, root: string, focus: string): Promise<void> {

@@ -4,10 +4,10 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { compareRuns, pickerTags, type RunFacts } from "../core/comparison";
-import { listCandidates, type Candidate } from "../model/discovery";
-import { readLineage, readRunChanges, type Lineage } from "../model/lineage";
+import { listCandidates, type Candidate } from "../core-node/discovery";
+import { readLineage, readRunChanges, type Lineage } from "../core-node/lineage";
 import type { Compare } from "../model/messages";
-import { ARCHIFY_DIR, CANDIDATE_FILE, parseRunFolderName } from "../model/runFolder";
+import { ARCHIFY_DIR, CANDIDATE_FILE, parseRunFolderName } from "../core-node/runFolder";
 import { parseDiagram, type ViewDiagram } from "../core/tolerant";
 import { isRecord, type Repository } from "../core/types";
 

@@ -1,7 +1,7 @@
 // ARC-04: architecture notes for coding agents. A managed block in AGENTS.md (and in CLAUDE.md when it
 // does not import AGENTS.md) holds the map's boxes with their roles and paths, its arrows, and the
 // rules in plain language. Writing again replaces only the block. Browser-safe.
-import { PATH_PREFIX, type Rule } from "./rules";
+import { PATH_PREFIX, type Rule } from "../core-node/rules";
 
 export const NOTES_START = "<!-- sustain:architecture:start -->";
 export const NOTES_END = "<!-- sustain:architecture:end -->";
