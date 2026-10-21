@@ -57,12 +57,16 @@ async function main(): Promise<void> {
         extensionDevelopmentPath,
         extensionTestsPath,
         extensionTestsEnv: { SUSTAIN_E2E_SCENARIO: scenario.name, HOME: home, USERPROFILE: home },
+        // Each launch has its own home folder, which holds no macOS keychain. Secrets stay in memory
+        // and encryption uses a mock keychain, so macOS never asks to create a keychain.
         launchArgs: [
           ...(workspace ? [workspace] : []),
           `--user-data-dir=${userData}`,
           "--disable-extensions",
           "--skip-welcome",
           "--skip-release-notes",
+          "--use-inmemory-secretstorage",
+          "--use-mock-keychain",
         ],
       });
     } finally {
