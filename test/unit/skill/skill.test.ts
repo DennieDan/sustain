@@ -91,10 +91,10 @@ describe("FR-UPD-05 skill body", () => {
   test("scripts run by repo-root path in the order repo-facts → change-map → match-ids → validate", () => {
     const commands = [...body.matchAll(/^\s*node (\S+)/gm)].map((match) => match[1]);
     expect(commands).toEqual([
-      ".agents/skills/sustain-architecture/scripts/repo-facts.mjs",
-      ".agents/skills/sustain-architecture/scripts/change-map.mjs",
-      ".agents/skills/sustain-architecture/scripts/match-ids.mjs",
-      ".agents/skills/sustain-architecture/scripts/validate.mjs",
+      "${CLAUDE_SKILL_DIR}/scripts/repo-facts.mjs",
+      "${CLAUDE_SKILL_DIR}/scripts/change-map.mjs",
+      "${CLAUDE_SKILL_DIR}/scripts/match-ids.mjs",
+      "${CLAUDE_SKILL_DIR}/scripts/validate.mjs",
     ]);
   });
 

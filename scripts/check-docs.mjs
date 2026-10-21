@@ -206,13 +206,18 @@ export function checkDocs(docsDir) {
   const statuses = new Map();
   /** @type {Map<string, string | null>} */
   const dates = new Map();
+  let previous = "";
+  let duplicates = 0;
   names.forEach((name, index) => {
     const match = ADR_FILE.exec(name);
     if (!match) {
       problems.push(`${name}: file name is not NNNN-<kebab-case-title>.md`);
       return;
     }
-    const expected = String(index + 1).padStart(4, "0");
+    // Two merged ADR histories may share a number; each number counts once.
+    if (match[1] === previous) duplicates++;
+    previous = match[1] ?? "";
+    const expected = String(index + 1 - duplicates).padStart(4, "0");
     if (match[1] !== expected) problems.push(`${name}: expected number ${expected} (numbers must be contiguous from 0001)`);
     const result = checkAdr(name, readFileSync(join(adrDir, name), "utf8"), adrFiles);
     problems.push(...result.problems);

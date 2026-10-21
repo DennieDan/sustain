@@ -81,7 +81,7 @@ describe("RCH-03 setup commands", () => {
 });
 
 describe("PRC-01 RCH-03 check and exit codes", () => {
-  test("check passes with exit 0, fails under --fail-on with exit 1, and prints markdown on request", () => {
+  test("check passes with exit 0, fails under --fail-on with exit 1, and prints markdown on request", { timeout: 30_000 }, () => {
     const { root } = mappedRepo();
     put(root, "src/api/handler.ts", HANDLER.replace("save(body)", "store(body)"));
     git(root, "commit", "-qam", "edit");

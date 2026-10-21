@@ -1,5 +1,5 @@
-// NFR-SEC-02, PRC-04 and CLD-09: neither the extension, the webview nor the skill scripts make
-// network requests; only the cloud upload client and, in the Action, the GitHub client do.
+// NFR-SEC-02 and PRC-04: neither the extension, the webview nor the skill scripts make
+// network requests; in the Action only the GitHub client does.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
@@ -21,21 +21,18 @@ function networkViolations(file: string, source: string): string[] {
 }
 
 describe("NFR-SEC-02 no network", () => {
-  test("src/** and webview/** contain no network imports or APIs, except the cloud upload client", () => {
-    // CLD-09: src/cloud/client.ts uploads only when the user runs publish or sets the Action's upload.
-    const files = [...sourceFiles("src"), ...sourceFiles("webview")].filter((file) => file !== "src/cloud/client.ts");
-    expect(sourceFiles("src")).toContain("src/cloud/client.ts");
+  test("src/** and webview/** contain no network imports or APIs", () => {
+    const files = [...sourceFiles("src"), ...sourceFiles("webview")];
     const violations = files.flatMap((file) => networkViolations(file, readFileSync(join(repoRoot, file), "utf8")));
     expect(violations).toEqual([]);
   });
 
-  test("PRC-04 PRC-05 in the Action only the GitHub client uses the network, and only the map update starts a program", () => {
+  test("PRC-04 in the Action only the GitHub client uses the network, and no file starts a program", () => {
     const files = sourceFiles("action/src");
     expect(files).toContain("action/src/github.ts");
-    expect(files).toContain("action/src/refresh.ts");
     const violations = files.filter((file) => file !== "action/src/github.ts").flatMap((file) => networkViolations(file, readFileSync(join(repoRoot, file), "utf8")));
     expect(violations).toEqual([]);
-    for (const file of files.filter((entry) => entry !== "action/src/refresh.ts")) expect(readFileSync(join(repoRoot, file), "utf8")).not.toMatch(/child_process|\bspawn|\bexec(File)?(Sync)?\(/);
+    for (const file of files) expect(readFileSync(join(repoRoot, file), "utf8")).not.toMatch(/child_process|\bspawn|\bexec(File)?(Sync)?\(/);
   });
 
   test.each([

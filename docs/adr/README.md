@@ -13,9 +13,9 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0007](0007-validator-as-dependency-free-node-bundles.md) | Validator and repo facts as dependency-free Node bundles | accepted | 2026-10-10 |
 | [0008](0008-validator-publishes-draft-as-candidate.md) | Validator publishes draft.json as candidate.json | accepted | 2026-10-10 |
 | [0009](0009-validator-owns-geometry-and-meta-fields.md) | Validator owns geometry, presentation and repository metadata | accepted | 2026-10-10 |
-| [0010](0010-elkjs-layout-in-the-webview.md) | elkjs layout in the webview, authored positions when complete | accepted | 2026-10-10 |
+| [0010](0010-elkjs-layout-in-the-webview.md) | elkjs layout in the webview, authored positions when complete | superseded by [ADR-0064](0064-layout-runs-in-web-workers-from-blob-urls.md) | 2026-10-10 |
 | [0011](0011-webview-panel-viewer-with-code-beside.md) | WebviewPanel viewer with code in the other column | superseded by [ADR-0033](0033-custom-editor-for-sir-files.md) | 2026-10-10 |
-| [0012](0012-no-validation-on-load-tolerant-parsing.md) | No validation on load; tolerant parsing; stale citations reported on click | accepted | 2026-10-10 |
+| [0012](0012-no-validation-on-load-tolerant-parsing.md) | No validation on load; tolerant parsing; stale citations reported on click | superseded by [ADR-0048](0048-maps-show-staleness-from-fingerprints.md) | 2026-10-10 |
 | [0013](0013-archify-json-v1-and-archify-folder-layout.md) | Archify JSON v1 and the .archify folder layout | accepted | 2026-10-10 |
 | [0014](0014-desktop-vscode-vsix-single-folder.md) | Desktop VS Code, .vsix install, one chosen folder | superseded by [ADR-0057](0057-release-from-tags-to-github-and-the-stores.md) | 2026-10-10 |
 | [0015](0015-typescript-esbuild-vitest-plain-svg-webview.md) | TypeScript, npm, esbuild, vitest; plain TypeScript SVG webview | accepted | 2026-10-10 |

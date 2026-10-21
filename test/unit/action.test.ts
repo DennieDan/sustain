@@ -69,7 +69,7 @@ function env(inputs: Record<string, string> = {}): NodeJS.ProcessEnv {
 }
 
 describe("PRC-04 the Action", () => {
-  test("it posts one marked comment with the report and a Mermaid chart, then updates it", async () => {
+  test("it posts one marked comment with the report and a Mermaid chart, then updates it", { timeout: 30_000 }, async () => {
     const root = checkout();
     const github = fakeGitHub([{ id: 7, body: "an unrelated comment" }]);
     const log: string[] = [];

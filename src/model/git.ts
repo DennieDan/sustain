@@ -117,7 +117,8 @@ export function collectGitFacts(root: string, env: NodeJS.ProcessEnv = process.e
   if (head === undefined || !/^[0-9a-f]{40}$/.test(head)) return null;
 
   const origin = run(program, root, GIT_READS.origin)?.trim() ?? "";
-  const allDirty = parsePorcelainZ(run(program, root, GIT_READS.status) ?? "");
+  // Sustain's own run folders are never repo dirt.
+  const allDirty = parsePorcelainZ(run(program, root, GIT_READS.status) ?? "").filter((path) => !path.startsWith(".archify/"));
   return {
     head,
     origin: origin === "" ? null : sanitizeOrigin(origin),

@@ -169,6 +169,6 @@ describe("FR-CMP-01 commit details", () => {
   });
 
   test("the argv is fixed", () => {
-    expect(GIT_READS.commitInfo).toEqual(["--no-optional-locks", "log", "-1", "--no-color", "--no-show-signature", "--format=%s%x00%cI"]);
+    expect(GIT_READS.commitInfo).toEqual(["-c", "core.fsmonitor=false", "--no-optional-locks", "log", "-1", "--no-color", "--no-show-signature", "--format=%s%x00%cI"]);
   });
 });

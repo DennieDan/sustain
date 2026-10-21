@@ -69,7 +69,7 @@ export function headlessArgs(cli: "claude" | "codex", prompt: string, options: H
  * draws from scratch instead of updating the previous diagram.
  */
 export function agentPrompt(agent: Agent, focus: string, regenerate = false): string {
-  return skillPrompt(agent.cli, "sustain-architecture", regenerate ? `--regenerate ${focus}` : focus);
+  return skillPrompt(agent.cli, "sustain-architecture", regenerate ? `--regenerate ${focus.trim()}` : focus);
 }
 
 /** `/<skill> <args>` for Claude Code and Devin, or `$<skill> <args>` for Codex; no trailing space without arguments. */

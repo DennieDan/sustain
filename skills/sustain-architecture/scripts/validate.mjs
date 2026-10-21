@@ -7453,8 +7453,8 @@ var require__ = __commonJS({
 });
 
 // src/agent/validate.ts
-import { readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname4, join as join9 } from "node:path";
+import { readFileSync as readFileSync5 } from "node:fs";
+import { dirname as dirname4, join as join8 } from "node:path";
 
 // src/model/citations.ts
 import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
@@ -8051,20 +8051,156 @@ function checkEvidence(components, read, imports) {
   return { schema: 1, findings };
 }
 
+// src/model/fingerprints.ts
+import { createHash } from "node:crypto";
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join4 } from "node:path";
+
+// src/model/session.ts
+import {
+  appendFileSync,
+  closeSync as closeSync3,
+  existsSync,
+  fsyncSync as fsyncSync2,
+  mkdirSync as mkdirSync2,
+  openSync as openSync3,
+  readFileSync,
+  renameSync as renameSync2,
+  rmSync as rmSync2,
+  writeSync as writeSync2
+} from "node:fs";
+import { dirname as dirname3, join as join3 } from "node:path";
+
+// src/model/runFolder.ts
+import { closeSync as closeSync2, fsyncSync, mkdirSync, openSync as openSync2, realpathSync as realpathSync3, renameSync, rmSync, statSync as statSync2, unlinkSync, writeSync } from "node:fs";
+import { basename, dirname as dirname2, join as join2, resolve, sep as sep2 } from "node:path";
+var ARCHIFY_DIR = ".archify";
+var DRAFT_FILE = "draft.json";
+var CANDIDATE_FILE = "candidate.sir";
+var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
+function parseRunName(name) {
+  const match = RUN_NAME_PATTERN.exec(name);
+  if (!match) return null;
+  return { prefix: match[1], slug: match[2], timestamp: match[3], n: match[4] === void 0 ? 1 : Number(match[4]) };
+}
+function parseRunFolderName(name) {
+  const parsed = parseRunName(name);
+  if (parsed === null || parsed.prefix !== "architecture") return null;
+  return { slug: parsed.slug, timestamp: parsed.timestamp, n: parsed.n };
+}
+function locateDraft(arg, cwd) {
+  const draft = resolve(cwd, arg);
+  const runDir = dirname2(draft);
+  const archify = dirname2(runDir);
+  const run2 = basename(runDir);
+  if (basename(draft) !== DRAFT_FILE || basename(archify) !== ARCHIFY_DIR) {
+    throw new Error(`expected a path of the form <repo>/${ARCHIFY_DIR}/<run>/${DRAFT_FILE}, got ${arg}`);
+  }
+  const parsed = parseRunFolderName(run2);
+  if (!parsed) throw new Error(`run folder "${run2}" does not match architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]`);
+  return { root: dirname2(archify), run: run2, slug: parsed.slug, draft };
+}
+function publishCandidate(draft, content) {
+  const dir = dirname2(draft);
+  const target = join2(dir, CANDIDATE_FILE);
+  const temp = join2(dir, `.${CANDIDATE_FILE}.tmp-${process.pid}-${Date.now()}`);
+  try {
+    const fd = openSync2(temp, "wx");
+    try {
+      writeSync(fd, content);
+      fsyncSync(fd);
+    } finally {
+      closeSync2(fd);
+    }
+    renameSync(temp, target);
+  } catch (error) {
+    rmSync(temp, { force: true });
+    throw error;
+  }
+  unlinkSync(draft);
+}
+
+// src/model/session.ts
+var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
+function writeAtomic(path, content) {
+  const temp = join3(dirname3(path), `.tmp-${process.pid}-${Date.now()}`);
+  try {
+    const fd = openSync3(temp, "wx");
+    try {
+      writeSync2(fd, content);
+      fsyncSync2(fd);
+    } finally {
+      closeSync3(fd);
+    }
+    renameSync2(temp, path);
+  } catch (error) {
+    rmSync2(temp, { force: true });
+    throw error;
+  }
+}
+function writeJson(path, value) {
+  writeAtomic(path, `${JSON.stringify(value, null, 2)}
+`);
+}
+
+// src/model/fingerprints.ts
+var FINGERPRINTS_FILE = "fingerprints.json";
+function gitBlobId(bytes) {
+  return createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+}
+function normalizedLines(text) {
+  return text.split("\n").map((line) => line.trimEnd());
+}
+function hashLines(lines2) {
+  return createHash("sha256").update(lines2.join("\n")).digest("hex");
+}
+function looseLines(lines2) {
+  return lines2.map((line) => line.trimStart());
+}
+function fingerprint(doc, root, revision, now = /* @__PURE__ */ new Date()) {
+  const contents = /* @__PURE__ */ new Map();
+  const citations = [];
+  for (const component of doc.components) {
+    (component.sources ?? []).forEach((source, index) => {
+      let bytes = contents.get(source.path);
+      if (bytes === void 0) {
+        bytes = readFileSync2(join4(root, ...source.path.split("/")));
+        contents.set(source.path, bytes);
+      }
+      const print = { component: component.id, index, path: source.path, blob: gitBlobId(bytes) };
+      if (source.line !== void 0) {
+        print.line = source.line;
+        const end = source.end_line ?? source.line;
+        if (source.end_line !== void 0) print.end_line = source.end_line;
+        const block = normalizedLines(bytes.toString("utf8")).slice(source.line - 1, end);
+        print.range = hashLines(block);
+        print.loose = hashLines(looseLines(block));
+      }
+      citations.push(print);
+    });
+  }
+  return { schema: 1, revision, createdAt: now.toISOString(), citations };
+}
+function writeFingerprints(root, runDir, prints) {
+  const path = join4(runDir, FINGERPRINTS_FILE);
+  assertWritable(root, path);
+  writeJson(path, prints);
+}
+
 // src/model/repoSize.ts
-import { lstatSync as lstatSync2, readdirSync, readFileSync } from "node:fs";
-import { join as join3 } from "node:path";
+import { lstatSync as lstatSync2, readdirSync, readFileSync as readFileSync3 } from "node:fs";
+import { join as join6 } from "node:path";
 
 // src/model/git.ts
 import { spawnSync } from "node:child_process";
-import { realpathSync as realpathSync3 } from "node:fs";
+import { realpathSync as realpathSync4 } from "node:fs";
 
 // src/model/which.ts
-import { accessSync, constants, statSync as statSync2 } from "node:fs";
-import { delimiter, join as join2, posix, win32 } from "node:path";
+import { accessSync, constants, statSync as statSync3 } from "node:fs";
+import { delimiter, join as join5, posix, win32 } from "node:path";
 function isExecutableFile(path, platform) {
   try {
-    if (!statSync2(path).isFile()) return false;
+    if (!statSync3(path).isFile()) return false;
     if (platform !== "win32") accessSync(path, constants.X_OK);
     return true;
   } catch {
@@ -8078,7 +8214,7 @@ function findOnPath(cli, env, platform = process.platform) {
   for (const dir of pathValue.split(platform === "win32" ? ";" : delimiter)) {
     if (!absolute2(dir)) continue;
     for (const extension of extensions) {
-      const candidate = join2(dir, cli + extension);
+      const candidate = join5(dir, cli + extension);
       if (isExecutableFile(candidate, platform)) return candidate;
     }
   }
@@ -8092,7 +8228,19 @@ var GIT_READS = {
   topLevel: [...GIT_PREFIX, "rev-parse", "--show-toplevel"],
   head: [...GIT_PREFIX, "rev-parse", "--verify", "--quiet", "HEAD"],
   origin: [...GIT_PREFIX, "config", "--get", "remote.origin.url"],
-  status: [...GIT_PREFIX, "status", "--porcelain=v1", "-z"]
+  status: [...GIT_PREFIX, "status", "--porcelain=v1", "-z"],
+  /** `+ <base>^{commit}`: exits 0 when the commit is in the object store (FR-UPD-02). */
+  commitExists: [...GIT_PREFIX, "cat-file", "-e"],
+  /** `+ <base> HEAD`: exits 0 when base is an ancestor of HEAD (FR-UPD-02). */
+  isAncestor: [...GIT_PREFIX, "merge-base", "--is-ancestor"],
+  /** `+ <base> --`: base against the working tree, paths verbatim (FR-UPD-03). */
+  nameStatus: [...GIT_PREFIX, "diff", "--name-status", "-z", "--find-renames", "--no-color", "--no-ext-diff"],
+  /** `+ <base> --`: unified diff of base against the working tree (FR-UPD-03). */
+  diff: [...GIT_PREFIX, "diff", "--find-renames", "--no-color", "--no-ext-diff", "--no-textconv", "--unified=3", "--src-prefix=a/", "--dst-prefix=b/"],
+  /** Untracked, not ignored files, NUL-separated (FR-UPD-03). */
+  untracked: [...GIT_PREFIX, "ls-files", "-z", "--others", "--exclude-standard"],
+  /** `+ <rev> --`: subject and committer date, NUL-separated (FR-CMP-01). */
+  commitInfo: [...GIT_PREFIX, "log", "-1", "--no-color", "--no-show-signature", "--format=%s%x00%cI"]
 };
 function gitProgram(env = process.env) {
   return findOnPath("git", env);
@@ -8138,14 +8286,14 @@ function collectGitFacts(root, env = process.env) {
   const top = run(program, root, GIT_READS.topLevel);
   if (top === null) return null;
   try {
-    if (realpathSync3(top.trim()) !== realpathSync3(root)) return null;
+    if (realpathSync4(top.trim()) !== realpathSync4(root)) return null;
   } catch {
     return null;
   }
   const head = run(program, root, GIT_READS.head)?.trim().toLowerCase();
   if (head === void 0 || !/^[0-9a-f]{40}$/.test(head)) return null;
   const origin = run(program, root, GIT_READS.origin)?.trim() ?? "";
-  const allDirty = parsePorcelainZ(run(program, root, GIT_READS.status) ?? "");
+  const allDirty = parsePorcelainZ(run(program, root, GIT_READS.status) ?? "").filter((path) => !path.startsWith(".archify/"));
   return {
     head,
     origin: origin === "" ? null : sanitizeOrigin(origin),
@@ -8213,7 +8361,7 @@ function walk(root) {
     const dir = pending.pop();
     let entries;
     try {
-      entries = readdirSync(join3(root, dir), { withFileTypes: true });
+      entries = readdirSync(join6(root, dir), { withFileTypes: true });
     } catch {
       continue;
     }
@@ -8232,141 +8380,14 @@ function listFiles(root, env = process.env) {
   const generated = tracked === null ? /* @__PURE__ */ new Set() : generatedFiles(root, kept, env);
   return { listing: tracked === null ? "walk" : "git", files: generated.size === 0 ? kept : kept.filter((path) => !generated.has(path)) };
 }
-
-// src/model/fingerprints.ts
-import { createHash } from "node:crypto";
-import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join6 } from "node:path";
-
-// src/model/session.ts
-import {
-  appendFileSync,
-  closeSync as closeSync3,
-  existsSync,
-  fsyncSync as fsyncSync2,
-  mkdirSync as mkdirSync2,
-  openSync as openSync3,
-  readFileSync as readFileSync2,
-  renameSync as renameSync2,
-  rmSync as rmSync2,
-  writeSync as writeSync2
-} from "node:fs";
-import { dirname as dirname3, join as join5 } from "node:path";
-
-// src/model/runFolder.ts
-import { closeSync as closeSync2, fsyncSync, mkdirSync, openSync as openSync2, realpathSync as realpathSync4, renameSync, rmSync, statSync as statSync3, unlinkSync, writeSync } from "node:fs";
-import { basename, dirname as dirname2, join as join4, resolve, sep as sep2 } from "node:path";
-var ARCHIFY_DIR = ".archify";
-var DRAFT_FILE = "draft.json";
-var CANDIDATE_FILE = "candidate.json";
-var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
-function parseRunName(name) {
-  const match = RUN_NAME_PATTERN.exec(name);
-  if (!match) return null;
-  return { prefix: match[1], slug: match[2], timestamp: match[3], n: match[4] === void 0 ? 1 : Number(match[4]) };
-}
-function parseRunFolderName(name) {
-  const parsed = parseRunName(name);
-  if (parsed === null || parsed.prefix !== "architecture") return null;
-  return { slug: parsed.slug, timestamp: parsed.timestamp, n: parsed.n };
-}
-function locateDraft(arg, cwd) {
-  const draft = resolve(cwd, arg);
-  const runDir = dirname2(draft);
-  const archify = dirname2(runDir);
-  const run2 = basename(runDir);
-  if (basename(draft) !== DRAFT_FILE || basename(archify) !== ARCHIFY_DIR) {
-    throw new Error(`expected a path of the form <repo>/${ARCHIFY_DIR}/<run>/${DRAFT_FILE}, got ${arg}`);
-  }
-  const parsed = parseRunFolderName(run2);
-  if (!parsed) throw new Error(`run folder "${run2}" does not match architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]`);
-  return { root: dirname2(archify), run: run2, slug: parsed.slug, draft };
-}
-function publishCandidate(draft, content) {
-  const dir = dirname2(draft);
-  const target = join4(dir, CANDIDATE_FILE);
-  const temp = join4(dir, `.${CANDIDATE_FILE}.tmp-${process.pid}-${Date.now()}`);
-  try {
-    const fd = openSync2(temp, "wx");
+function fileReader(root) {
+  return (path) => {
     try {
-      writeSync(fd, content);
-      fsyncSync(fd);
-    } finally {
-      closeSync2(fd);
+      return readFileSync3(join6(root, ...path.split("/")));
+    } catch {
+      return null;
     }
-    renameSync(temp, target);
-  } catch (error) {
-    rmSync(temp, { force: true });
-    throw error;
-  }
-  unlinkSync(draft);
-}
-
-// src/model/session.ts
-var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
-function writeAtomic(path, content) {
-  const temp = join5(dirname3(path), `.tmp-${process.pid}-${Date.now()}`);
-  try {
-    const fd = openSync3(temp, "wx");
-    try {
-      writeSync2(fd, content);
-      fsyncSync2(fd);
-    } finally {
-      closeSync3(fd);
-    }
-    renameSync2(temp, path);
-  } catch (error) {
-    rmSync2(temp, { force: true });
-    throw error;
-  }
-}
-function writeJson(path, value) {
-  writeAtomic(path, `${JSON.stringify(value, null, 2)}
-`);
-}
-
-// src/model/fingerprints.ts
-var FINGERPRINTS_FILE = "fingerprints.json";
-function gitBlobId(bytes) {
-  return createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
-}
-function normalizedLines(text) {
-  return text.split("\n").map((line) => line.trimEnd());
-}
-function hashLines(lines2) {
-  return createHash("sha256").update(lines2.join("\n")).digest("hex");
-}
-function looseLines(lines2) {
-  return lines2.map((line) => line.trimStart());
-}
-function fingerprint(doc, root, revision, now = /* @__PURE__ */ new Date()) {
-  const contents = /* @__PURE__ */ new Map();
-  const citations = [];
-  for (const component of doc.components) {
-    (component.sources ?? []).forEach((source, index) => {
-      let bytes = contents.get(source.path);
-      if (bytes === void 0) {
-        bytes = readFileSync3(join6(root, ...source.path.split("/")));
-        contents.set(source.path, bytes);
-      }
-      const print = { component: component.id, index, path: source.path, blob: gitBlobId(bytes) };
-      if (source.line !== void 0) {
-        print.line = source.line;
-        const end = source.end_line ?? source.line;
-        if (source.end_line !== void 0) print.end_line = source.end_line;
-        const block = normalizedLines(bytes.toString("utf8")).slice(source.line - 1, end);
-        print.range = hashLines(block);
-        print.loose = hashLines(looseLines(block));
-      }
-      citations.push(print);
-    });
-  }
-  return { schema: 1, revision, createdAt: now.toISOString(), citations };
-}
-function writeFingerprints(root, runDir, prints) {
-  const path = join6(runDir, FINGERPRINTS_FILE);
-  assertWritable(root, path);
-  writeJson(path, prints);
+  };
 }
 
 // src/model/runRecord.ts
@@ -8446,7 +8467,9 @@ function semanticChecks(doc) {
   });
   const firstConnection = /* @__PURE__ */ new Map();
   (doc.connections ?? []).forEach((connection, i) => {
-    if (connection.id !== void 0) {
+    if (connection.id === void 0) {
+      issues.push({ code: "MissingId", pointer: `/connections/${i}/id`, message: "every connection needs a unique `id`" });
+    } else {
       const first = firstConnection.get(connection.id);
       if (first === void 0) firstConnection.set(connection.id, i);
       else {
@@ -8973,19 +8996,6 @@ function checkSubmission(value, app, checkCitations2) {
   return { removed, errors: [...semanticChecks(doc), ...findSecrets(doc), ...checkCitations2(doc)] };
 }
 
-// src/model/staleness.ts
-import { readFileSync as readFileSync5 } from "node:fs";
-import { join as join8 } from "node:path";
-function fileReader(root) {
-  return (path) => {
-    try {
-      return readFileSync5(join8(root, ...path.split("/")));
-    } catch {
-      return null;
-    }
-  };
-}
-
 // src/agent/validate.ts
 var MAX_LISTED_ERRORS = 50;
 var HINT = "Fix exactly these errors and run the validator again.";
@@ -9013,7 +9023,7 @@ function main(args) {
   let text;
   try {
     location = locateDraft(args[0], process.cwd());
-    text = readFileSync6(location.draft, "utf8");
+    text = readFileSync5(location.draft, "utf8");
   } catch (error) {
     return usageError(error.message);
   }
@@ -9062,11 +9072,11 @@ function main(args) {
   const evidence = checkEvidence(doc.components, readText, { connections: doc.connections ?? [], links: importLinks(sources, readText) });
   try {
     const runDir = dirname4(location.draft);
-    assertWritable(location.root, join9(runDir, CANDIDATE_FILE));
+    assertWritable(location.root, join8(runDir, CANDIDATE_FILE));
     publishCandidate(location.draft, stringifyDocument(value));
     writeFingerprints(location.root, runDir, fingerprint(doc, location.root, git?.head ?? null));
-    assertWritable(location.root, join9(runDir, EVIDENCE_FILE));
-    writeJson(join9(runDir, EVIDENCE_FILE), evidence);
+    assertWritable(location.root, join8(runDir, EVIDENCE_FILE));
+    writeJson(join8(runDir, EVIDENCE_FILE), evidence);
     record(location, { phase: "accepted", finishedAt: (/* @__PURE__ */ new Date()).toISOString() });
   } catch (error) {
     return usageError(`cannot publish ${CANDIDATE_FILE}: ${error.message}`);

@@ -1,6 +1,6 @@
 # Messages
 
-Every notification Sustain shows in VS Code is listed here by ID, with its kind, its text and the actions it offers. Errors and warnings offer exactly one action. VS Code adds Cancel to a modal question, and Cancel is not counted. A name in braces stands for what the message fills in. The reasons in practice-blocked are the ones the sidebar's Practice section shows. `test/unit/messages.test.ts` scans the source and fails when this table and the code differ.
+Every notification Sustain shows in VS Code is listed here by ID, with its kind, its text and the actions it offers. Errors and warnings offer exactly one action. VS Code adds Cancel to a modal question, and Cancel is not counted. A name in braces stands for what the message fills in. `test/unit/messages.test.ts` scans the source and fails when this table and the code differ.
 
 | ID | Kind | Text | Action |
 |---|---|---|---|
@@ -25,22 +25,7 @@ Every notification Sustain shows in VS Code is listed here by ID, with its kind,
 | skill-copies-differ | warning | Other copies of {skill} differ from Sustain's: {copies}. Claude Code loads the one in {loaded}. | Remove Copies |
 | skill-copies-loaded | warning | Other copies of {skill} differ from Sustain's, and {agent} would load them too: {copies}. Remove them before running? | Remove |
 | prompt-copied | info | Copied the prompt for {agent}. Paste it into its chat. | — |
-| export-page-no-map | info | Open a map first. Export Page writes the shown map as a web page. | — |
-| export-page-failed | error | Could not write the diagram page: {reason} | Try Again |
-| export-page-done | info | Wrote the diagram page: {file} | Open in Browser |
-| save-image-no-map | info | Open a map first. Save Image writes the shown map as a picture. | — |
-| save-image-not-drawn | error | The map did not draw itself as an image. | Try Again |
-| save-image-failed | error | Could not write {file}: {reason} | Try Again |
-| save-image-done | info | Saved the map image: {file} | Open |
-| changes-no-map | info | Generate a map first. Show Changes marks the boxes on it. | — |
-| changes-failed | error | Show Changes could not read the changes. {reason} | Try Again |
-| compare-no-other | info | This folder has no other map to compare with. | — |
-| compare-unreadable | error | Cannot read {map} to compare with it. | Compare With… |
-| review-no-map | info | Generate a map first. Review compares changes with it. | — |
-| review-base-unreadable | error | Cannot read the base map {map} at {commit}. | Compare With… |
-| review-ignore | warning | Ignore {folder}/ in {config}? | Ignore |
 | rules-need-main-map | info | Rules use the main map's boxes. Generate a map with an empty focus first. | — |
-| rules-other-map | info | Rules use the boxes of {map}. Open that map to write rules from it. | — |
 | suggest-rules-no-map | info | Suggest Rules needs a main map. Generate a map with an empty focus first. | — |
 | suggest-rules-none | info | Every pair of boxes with code already shares an import, or has a rule. | — |
 | add-rules | warning | Add {rules} to {config}? | Add |
@@ -50,14 +35,6 @@ Every notification Sustain shows in VS Code is listed here by ID, with its kind,
 | notes-need-main-map | info | The notes come from the main map. Generate a map with an empty focus first. | — |
 | write-notes | warning | Write the architecture notes into {file}? | Write |
 | notes-up-to-date | info | The architecture notes for agents are up to date. | — |
-| note-save-failed | error | Could not save the note: {reason} | Copy Note |
-| note-saved | info | Saved your note on {box} in {file}. | Refresh this box |
-| audit-no-map | info | Open a map to audit it. | — |
-| create-tour-no-map | info | Open a map to create a tour of it. | — |
-| play-tour-no-map | info | Open a map to play its tour. | — |
-| no-tour | info | This map has no tour yet. | Create Tour |
-| practice-blocked | info | Check My Understanding cannot start. {reason} | — |
-| practice-confirm | info | Check your understanding? | Start |
 | install-skills-first | info | Install the Sustain skills first? | Install; Cancel |
 | no-agent | warning | No Claude Code, Codex or Devin was found on PATH or where Devin installs. | Copy prompt |
 | hooks-merge-failed | warning | The {agent} hooks could not be merged — hunt edits won't be blocked: {reason} | Start Anyway |

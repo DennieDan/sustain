@@ -57,7 +57,19 @@ var GIT_READS = {
   topLevel: [...GIT_PREFIX, "rev-parse", "--show-toplevel"],
   head: [...GIT_PREFIX, "rev-parse", "--verify", "--quiet", "HEAD"],
   origin: [...GIT_PREFIX, "config", "--get", "remote.origin.url"],
-  status: [...GIT_PREFIX, "status", "--porcelain=v1", "-z"]
+  status: [...GIT_PREFIX, "status", "--porcelain=v1", "-z"],
+  /** `+ <base>^{commit}`: exits 0 when the commit is in the object store (FR-UPD-02). */
+  commitExists: [...GIT_PREFIX, "cat-file", "-e"],
+  /** `+ <base> HEAD`: exits 0 when base is an ancestor of HEAD (FR-UPD-02). */
+  isAncestor: [...GIT_PREFIX, "merge-base", "--is-ancestor"],
+  /** `+ <base> --`: base against the working tree, paths verbatim (FR-UPD-03). */
+  nameStatus: [...GIT_PREFIX, "diff", "--name-status", "-z", "--find-renames", "--no-color", "--no-ext-diff"],
+  /** `+ <base> --`: unified diff of base against the working tree (FR-UPD-03). */
+  diff: [...GIT_PREFIX, "diff", "--find-renames", "--no-color", "--no-ext-diff", "--no-textconv", "--unified=3", "--src-prefix=a/", "--dst-prefix=b/"],
+  /** Untracked, not ignored files, NUL-separated (FR-UPD-03). */
+  untracked: [...GIT_PREFIX, "ls-files", "-z", "--others", "--exclude-standard"],
+  /** `+ <rev> --`: subject and committer date, NUL-separated (FR-CMP-01). */
+  commitInfo: [...GIT_PREFIX, "log", "-1", "--no-color", "--no-show-signature", "--format=%s%x00%cI"]
 };
 function gitProgram(env = process.env) {
   return findOnPath("git", env);
@@ -110,7 +122,7 @@ function collectGitFacts(root2, env = process.env) {
   const head = run(program, root2, GIT_READS.head)?.trim().toLowerCase();
   if (head === void 0 || !/^[0-9a-f]{40}$/.test(head)) return null;
   const origin = run(program, root2, GIT_READS.origin)?.trim() ?? "";
-  const allDirty = parsePorcelainZ(run(program, root2, GIT_READS.status) ?? "");
+  const allDirty = parsePorcelainZ(run(program, root2, GIT_READS.status) ?? "").filter((path) => !path.startsWith(".archify/"));
   return {
     head,
     origin: origin === "" ? null : sanitizeOrigin(origin),
