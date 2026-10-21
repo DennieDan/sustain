@@ -9,7 +9,7 @@ import { readLineage, readRunChanges, type Lineage } from "../model/lineage";
 import type { Compare } from "../model/messages";
 import { ARCHIFY_DIR, CANDIDATE_FILE, parseRunFolderName } from "../model/runFolder";
 import { parseDiagram, type ViewDiagram } from "../model/tolerant";
-import { isJsonObject, type Repository } from "../model/types";
+import { isRecord, type Repository } from "../model/types";
 
 /** Characters of a revision shown in the picker. */
 const SHORT_HASH = 7;
@@ -22,9 +22,9 @@ interface ReadDiagram {
 
 /** `meta.repository` when it has string `url` and `revision`, else `null`. */
 function repositoryOf(value: unknown): Repository | null {
-  if (!isJsonObject(value) || !isJsonObject(value["meta"])) return null;
+  if (!isRecord(value) || !isRecord(value["meta"])) return null;
   const repository = value["meta"]["repository"];
-  if (!isJsonObject(repository)) return null;
+  if (!isRecord(repository)) return null;
   const { url, revision } = repository;
   return typeof url === "string" && typeof revision === "string" ? { url, revision } : null;
 }

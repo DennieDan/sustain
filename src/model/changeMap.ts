@@ -3,8 +3,9 @@
 // renderings. Ported from the change collection study's `harness/change-input.mjs` and
 // `harness/lib/diff.mjs`. Pure: git output and file reads come in as strings or callbacks.
 import { isDenied } from "./deny";
+import { parseDiffSections, parseNameStatusZ, type DiffHunk, type NameStatus } from "./gitFormat";
 import type { Lineage } from "./lineage";
-import { isJsonObject } from "./types";
+import { isRecord } from "./types";
 
 /** Updates allowed before the next run regenerates (U4, ADR 0029). */
 export const MAX_UPDATES = 5;
@@ -69,14 +70,14 @@ export interface MapComponent {
 
 /** The components of a parsed candidate; entries without a string `id` are skipped. */
 export function diagramComponents(value: unknown): MapComponent[] {
-  if (!isJsonObject(value) || !Array.isArray(value["components"])) return [];
+  if (!isRecord(value) || !Array.isArray(value["components"])) return [];
   const out: MapComponent[] = [];
   for (const component of value["components"]) {
-    if (!isJsonObject(component) || typeof component["id"] !== "string") continue;
+    if (!isRecord(component) || typeof component["id"] !== "string") continue;
     const id = component["id"];
     const label = typeof component["label"] === "string" ? component["label"] : id;
     const sources = Array.isArray(component["sources"]) ? component["sources"] : [];
-    const paths = new Set(sources.flatMap((source) => (isJsonObject(source) && typeof source["path"] === "string" ? [source["path"]] : [])));
+    const paths = new Set(sources.flatMap((source) => (isRecord(source) && typeof source["path"] === "string" ? [source["path"]] : [])));
     out.push({ id, label, paths });
   }
   return out;
@@ -84,17 +85,9 @@ export function diagramComponents(value: unknown): MapComponent[] {
 
 /** `meta.repository.revision` of a parsed candidate, or `null`. */
 export function candidateRevision(value: unknown): string | null {
-  if (!isJsonObject(value) || !isJsonObject(value["meta"]) || !isJsonObject(value["meta"]["repository"])) return null;
+  if (!isRecord(value) || !isRecord(value["meta"]) || !isRecord(value["meta"]["repository"])) return null;
   const revision = value["meta"]["repository"]["revision"];
   return typeof revision === "string" ? revision : null;
-}
-
-export interface Hunk {
-  header: string;
-  oldStart: number;
-  oldLines: number;
-  newStart: number;
-  newLines: number;
 }
 
 /** One file of a unified diff; `text` is what `change.md` shows for it. */
@@ -102,118 +95,27 @@ export interface FileDiff {
   oldPath: string | null;
   newPath: string | null;
   text: string;
-  hunks: Hunk[];
+  hunks: DiffHunk[];
   /** Why the content is not shown, for files listed by name only. */
   note?: string;
 }
 
-/** One `--name-status` entry; renames and copies carry `oldPath`. */
-export interface NameStatus {
-  status: string;
-  path: string;
-  oldPath?: string;
-}
-
-const C_ESCAPES: Record<string, number> = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, "\\": 92 };
-
-/** Undoes git's C-style quoting of a path (`"dir/\303\251.txt"`); unquoted paths are returned unchanged. */
-export function unquotePath(path: string): string {
-  if (!(path.length >= 2 && path.startsWith('"') && path.endsWith('"'))) return path;
-  const bytes: number[] = [];
-  const body = path.slice(1, -1);
-  for (let i = 0; i < body.length; i += 1) {
-    const ch = body[i]!;
-    if (ch !== "\\") {
-      bytes.push(...new TextEncoder().encode(ch));
-      continue;
-    }
-    const next = body[i + 1] ?? "";
-    const octal = /^[0-7]{3}/.exec(body.slice(i + 1));
-    if (octal) {
-      bytes.push(parseInt(octal[0], 8));
-      i += 3;
-    } else {
-      bytes.push(C_ESCAPES[next] ?? next.charCodeAt(0));
-      i += 1;
-    }
-  }
-  return new TextDecoder().decode(new Uint8Array(bytes));
-}
-
-/** A `---`/`+++`/`rename`/`copy` header path: unquoted, prefix removed, git's trailing tab dropped. */
-function headerPath(raw: string, prefix: string): string {
-  const path = unquotePath(raw.replace(/\t$/, ""));
-  return path.startsWith(prefix) ? path.slice(prefix.length) : path;
-}
-
-/** Splits a unified diff made with `a/` and `b/` prefixes into per-file sections. */
+/**
+ * Splits a unified diff made with `a/` and `b/` prefixes into per-file sections. A section
+ * whose header lines name no path, such as a binary or mode-only change, takes the path its
+ * `diff --git` line names twice.
+ */
 export function splitDiff(raw: string): FileDiff[] {
-  const files: FileDiff[] = [];
-  const chunks = raw.split(/^(?=diff --git )/m).filter((chunk) => chunk.startsWith("diff --git "));
-  for (const text of chunks) {
-    const lines = text.split("\n");
-    let oldPath: string | null | undefined;
-    let newPath: string | null | undefined;
-    const hunks: Hunk[] = [];
-    for (const line of lines) {
-      if (line.startsWith("rename from ")) oldPath = headerPath(line.slice("rename from ".length), "");
-      else if (line.startsWith("rename to ")) newPath = headerPath(line.slice("rename to ".length), "");
-      else if (line.startsWith("copy from ")) oldPath = headerPath(line.slice("copy from ".length), "");
-      else if (line.startsWith("copy to ")) newPath = headerPath(line.slice("copy to ".length), "");
-      else if (line.startsWith("--- ") && oldPath === undefined) oldPath = line === "--- /dev/null" ? null : headerPath(line.slice(4), "a/");
-      else if (line.startsWith("+++ ") && newPath === undefined) newPath = line === "+++ /dev/null" ? null : headerPath(line.slice(4), "b/");
-      const hunk = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(line);
-      if (hunk) {
-        hunks.push({
-          header: line,
-          oldStart: Number(hunk[1]),
-          oldLines: hunk[2] === undefined ? 1 : Number(hunk[2]),
-          newStart: Number(hunk[3]),
-          newLines: hunk[4] === undefined ? 1 : Number(hunk[4]),
-        });
-      }
-    }
+  return parseDiffSections(raw).map((section) => {
+    let { oldPath, newPath } = section;
     if (oldPath === undefined || newPath === undefined) {
-      // Binary or mode-only change without ---/+++ lines: `diff --git a/P b/P`.
-      const header = (lines[0] ?? "").slice("diff --git ".length);
-      let path: string | null = null;
-      const quoted = /^"(a\/(?:[^"\\]|\\.)*)" "(b\/(?:[^"\\]|\\.)*)"$/.exec(header);
-      if (quoted) {
-        const [left, right] = [unquotePath(`"${quoted[1]}"`).slice(2), unquotePath(`"${quoted[2]}"`).slice(2)];
-        if (left === right) path = left;
-      } else {
-        const half = (header.length - 1) / 2;
-        const left = header.slice(0, half);
-        const right = header.slice(half + 1);
-        if (left.startsWith("a/") && right.startsWith("b/") && left.slice(2) === right.slice(2)) path = left.slice(2);
-      }
-      if (oldPath === undefined) oldPath = /^new file mode/m.test(text) ? null : path;
-      if (newPath === undefined) newPath = /^deleted file mode/m.test(text) ? null : path;
+      const [left, right] = section.headerPaths;
+      const path = left === right ? left : null;
+      if (oldPath === undefined) oldPath = section.added ? null : path;
+      if (newPath === undefined) newPath = section.deleted ? null : path;
     }
-    files.push({ oldPath: oldPath ?? null, newPath: newPath ?? null, text, hunks });
-  }
-  return files;
-}
-
-/** Parses `git diff --name-status -z`: `S\0path\0`, or `R<score>\0old\0new\0` for renames and copies. */
-export function parseNameStatusZ(output: string): NameStatus[] {
-  const fields = output.split("\0");
-  const entries: NameStatus[] = [];
-  for (let i = 0; i < fields.length; i += 1) {
-    const status = fields[i]!;
-    if (status === "") continue;
-    if (/^[RC]/.test(status)) {
-      const oldPath = fields[i + 1];
-      const path = fields[i + 2];
-      i += 2;
-      if (oldPath && path) entries.push({ status, path, oldPath });
-    } else {
-      const path = fields[i + 1];
-      i += 1;
-      if (path) entries.push({ status, path });
-    }
-  }
-  return entries;
+    return { oldPath, newPath, text: section.text, hunks: section.hunks };
+  });
 }
 
 /** Touched files (§4 glossary): every listed path; a rename touches both paths. */

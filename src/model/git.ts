@@ -3,8 +3,8 @@
 // shell, and with the repository's fsmonitor hook switched off (SAF-07).
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
+import { isRevision, parseNameStatusZ, parsePorcelainZ } from "./gitFormat";
 import type { CommitInfo } from "./lineage";
-import { REVISION_PATTERN } from "./changes";
 import type { Repository } from "./types";
 import { findOnPath } from "./which";
 
@@ -84,22 +84,6 @@ export function sanitizeOrigin(url: string): string {
 }
 
 /**
- * Parses `git status --porcelain=v1 -z`. Renames and copies are followed by their original
- * path, which is skipped: the new path is reported.
- */
-export function parsePorcelainZ(output: string): string[] {
-  const fields = output.split("\0");
-  const paths: string[] = [];
-  for (let i = 0; i < fields.length; i += 1) {
-    const record = fields[i]!;
-    if (record.length < 4) continue;
-    paths.push(record.slice(3));
-    if (/[RC]/.test(record.slice(0, 2))) i += 1;
-  }
-  return paths;
-}
-
-/**
  * Git facts for `root`, or `null` when git is not on PATH, `root` is not inside a work
  * tree, is a subfolder of one, or HEAD does not exist yet. Never throws for those cases.
  */
@@ -114,7 +98,7 @@ export function collectGitFacts(root: string, env: NodeJS.ProcessEnv = process.e
     return null;
   }
   const head = run(program, root, GIT_READS.head)?.trim().toLowerCase();
-  if (head === undefined || !/^[0-9a-f]{40}$/.test(head)) return null;
+  if (head === undefined || !isRevision(head, "commit")) return null;
 
   const origin = run(program, root, GIT_READS.origin)?.trim() ?? "";
   // Sustain's own run folders are never repo dirt.
@@ -140,14 +124,9 @@ export function repositoryFromGit(facts: GitFacts): Repository | null {
   return { url: facts.origin, revision: facts.head, link_mode: "local-only" };
 }
 
-/** A full commit name: 40 lowercase hex characters. */
-export function isRevision(value: unknown): value is string {
-  return typeof value === "string" && /^[0-9a-f]{40}$/.test(value);
-}
-
-/** Whether `base` is a commit in the object store and an ancestor of (or equal to) HEAD. */
-export function baseReachable(root: string, base: string, program = "git"): boolean {
-  if (!isRevision(base)) return false;
+/** Whether `base` is a commit in the object store and an ancestor of (or equal to) HEAD. `program` defaults to the resolved git. */
+export function baseReachable(root: string, base: string, program: string | undefined = gitProgram()): boolean {
+  if (program === undefined || !isRevision(base, "commit")) return false;
   return (
     run(program, root, [...GIT_READS.commitExists, `${base}^{commit}`]) !== null &&
     run(program, root, [...GIT_READS.isAncestor, base, "HEAD"]) !== null
@@ -164,9 +143,9 @@ export interface ChangeReads {
   untracked: string;
 }
 
-/** The three reads of FR-UPD-03, or `null` when any of them fails (or outgrows the 64 MiB buffer). */
-export function readChanges(root: string, base: string, program = "git"): ChangeReads | null {
-  if (!isRevision(base)) return null;
+/** The three reads of FR-UPD-03, or `null` when any of them fails (or outgrows the 64 MiB buffer). `program` defaults to the resolved git. */
+export function readChanges(root: string, base: string, program: string | undefined = gitProgram()): ChangeReads | null {
+  if (program === undefined || !isRevision(base, "commit")) return null;
   const nameStatus = run(program, root, [...GIT_READS.nameStatus, base, "--"]);
   const diff = run(program, root, [...GIT_READS.diff, base, "--"]);
   const untracked = run(program, root, GIT_READS.untracked);
@@ -176,10 +155,11 @@ export function readChanges(root: string, base: string, program = "git"): Change
 
 /**
  * Subject and committer date of `revision` (FR-CMP-01), or `null` when it is not a full commit
- * name, git fails (unknown commit, no git) or the output is not `subject\0date\n`.
+ * name, git fails (unknown commit, no git) or the output is not `subject\0date\n`. `program`
+ * defaults to the resolved git.
  */
-export function commitInfo(root: string, revision: string, program = "git"): CommitInfo | null {
-  if (!isRevision(revision)) return null;
+export function commitInfo(root: string, revision: string, program: string | undefined = gitProgram()): CommitInfo | null {
+  if (program === undefined || !isRevision(revision, "commit")) return null;
   const output = run(program, root, [...GIT_READS.commitInfo, revision, "--"]);
   const match = output === null ? null : /^([^\0\n]*)\0([^\0\n]+)\n?$/.exec(output);
   if (!match) return null;
@@ -193,17 +173,10 @@ export function commitInfo(root: string, revision: string, program = "git"): Com
 export function renamesSince(root: string, revision: string, env: NodeJS.ProcessEnv = process.env, to?: string): Map<string, string> {
   const renames = new Map<string, string>();
   const program = gitProgram(env);
-  if (program === undefined || !/^[0-9a-f]{7,64}$/i.test(revision) || (to !== undefined && !REVISION_PATTERN.test(to))) return renames;
+  if (program === undefined || !isRevision(revision, "name") || (to !== undefined && !isRevision(to, "name"))) return renames;
   const output = run(program, root, [...GIT_PREFIX, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", "--name-status", "-z", revision, ...(to === undefined ? [] : [to]), "--"]);
-  const fields = (output ?? "").split("\0");
-  for (let i = 0; i < fields.length; i++) {
-    const status = fields[i]!;
-    if (/^[RC]\d*$/.test(status)) {
-      if (status.startsWith("R")) renames.set(fields[i + 1]!, fields[i + 2]!);
-      i += 2;
-    } else if (/^[AMDTUX]$/.test(status)) {
-      i += 1;
-    }
+  for (const entry of parseNameStatusZ(output ?? "")) {
+    if (entry.status.startsWith("R") && entry.oldPath !== undefined) renames.set(entry.oldPath, entry.path);
   }
   return renames;
 }
@@ -279,27 +252,27 @@ export function changeLog(root: string, days: number, env: NodeJS.ProcessEnv = p
 export function untrackedFiles(root: string, env: NodeJS.ProcessEnv = process.env): string[] {
   const program = gitProgram(env);
   if (program === undefined) return [];
-  return (run(program, root, [...GIT_PREFIX, "ls-files", "--others", "--exclude-standard", "-z"]) ?? "").split("\0").filter((path) => path !== "");
+  return (run(program, root, GIT_READS.untracked) ?? "").split("\0").filter((path) => path !== "");
 }
 
 /** The commit `a` and `b` share, or `null`. */
 export function mergeBase(root: string, a: string, b: string, env: NodeJS.ProcessEnv = process.env): string | null {
   const program = gitProgram(env);
-  if (program === undefined || !REVISION_PATTERN.test(a) || !REVISION_PATTERN.test(b)) return null;
+  if (program === undefined || !isRevision(a, "name") || !isRevision(b, "name")) return null;
   return run(program, root, [...GIT_PREFIX, "merge-base", a, b])?.trim() || null;
 }
 
 /** The unified diff from `from` to `to`, or to the working tree without `to` (PRC-01). */
 export function diffBetween(root: string, from: string, to: string | null, env: NodeJS.ProcessEnv = process.env): string | null {
   const program = gitProgram(env);
-  if (program === undefined || ![from, ...(to === null ? [] : [to])].every((revision) => REVISION_PATTERN.test(revision))) return null;
+  if (program === undefined || ![from, ...(to === null ? [] : [to])].every((revision) => isRevision(revision, "name"))) return null;
   return run(program, root, [...GIT_PREFIX, ...DIFF_FLAGS, from, ...(to === null ? [] : [to]), "--"]);
 }
 
 /** A file's bytes at `revision`, or `null` when it is not there. */
 export function fileAt(root: string, revision: string, path: string, env: NodeJS.ProcessEnv = process.env): Buffer | null {
   const program = gitProgram(env);
-  if (program === undefined || !REVISION_PATTERN.test(revision) || path.startsWith("-") || path.includes(":")) return null;
+  if (program === undefined || !isRevision(revision, "name") || path.startsWith("-") || path.includes(":")) return null;
   return runRaw(program, root, [...GIT_PREFIX, "cat-file", "blob", `${revision}:${path}`]);
 }
 
@@ -307,14 +280,14 @@ export function fileAt(root: string, revision: string, path: string, env: NodeJS
 export function existsAt(root: string, revision: string, path: string, env: NodeJS.ProcessEnv = process.env): boolean {
   if (path === "") return true;
   const program = gitProgram(env);
-  if (program === undefined || !REVISION_PATTERN.test(revision) || path.startsWith("-") || path.includes(":")) return false;
+  if (program === undefined || !isRevision(revision, "name") || path.startsWith("-") || path.includes(":")) return false;
   return run(program, root, [...GIT_PREFIX, "cat-file", "-e", `${revision}:${path}`]) !== null;
 }
 
 /** Every file under `dir` at `revision`, repository-relative. */
 export function filesAt(root: string, revision: string, dir: string, env: NodeJS.ProcessEnv = process.env): string[] {
   const program = gitProgram(env);
-  if (program === undefined || !REVISION_PATTERN.test(revision)) return [];
+  if (program === undefined || !isRevision(revision, "name")) return [];
   const output = run(program, root, [...GIT_PREFIX, "ls-tree", "-r", "-z", "--name-only", revision, "--", dir === "" ? "." : dir]);
   return (output ?? "").split("\0").filter((path) => path !== "");
 }

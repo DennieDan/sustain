@@ -1,50 +1,45 @@
 // `node .agents/skills/sustain-architecture/scripts/match-ids.mjs <draft> --previous <candidate>` (FR-UPD-09).
 // Rewrites a regenerated draft in place so its elements carry the previous diagram's IDs. Bundled to a dependency-free
 // ESM file.
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readJson } from "../model/jsonFile";
 import { matchIds } from "../model/matchIds";
-import { isJsonObject, stringifyDocument } from "../model/types";
+import { parseArgs, usageError } from "../model/scriptArgs";
+import { isRecord, stringifyDocument } from "../model/types";
 
-function usageError(message: string): number {
-  process.stderr.write(`match-ids.mjs: ${message}\n`);
-  return 2;
-}
+const SCRIPT = "match-ids.mjs";
 
-function readJson(path: string, what: string): { value: unknown } | { error: string } {
-  let text: string;
+/** The JSON in `path`, or the usage error that names `what` could not be read or parsed. */
+function readInput(path: string, what: string): { value: unknown } | { error: string } {
   try {
-    text = readFileSync(path, "utf8");
+    return { value: readJson(path) };
   } catch (error) {
-    return { error: `cannot read ${what}: ${(error as Error).message}` };
-  }
-  try {
-    return { value: JSON.parse(text) };
-  } catch (error) {
-    return { error: `${what} is not valid JSON: ${(error as Error).message}` };
+    const message = (error as Error).message;
+    return { error: error instanceof SyntaxError ? `${what} is not valid JSON: ${message}` : `cannot read ${what}: ${message}` };
   }
 }
 
 function main(args: string[]): number {
-  if (args.length !== 3 || args[1] !== "--previous") {
-    return usageError("usage: node match-ids.mjs <draft> --previous <candidate>");
+  const parsed = parseArgs(args, { positionals: 1, options: ["previous"] });
+  const previousArg = parsed?.options["previous"];
+  if (!parsed || previousArg === undefined) return usageError(SCRIPT, "usage: node match-ids.mjs <draft> --previous <candidate>");
+  const draftPath = resolve(process.cwd(), parsed.positionals[0]!);
+  const previousPath = resolve(process.cwd(), previousArg);
+  const draft = readInput(draftPath, "draft");
+  if ("error" in draft) return usageError(SCRIPT, draft.error);
+  const previous = readInput(previousPath, "previous candidate");
+  if ("error" in previous) return usageError(SCRIPT, previous.error);
+  if (!isRecord(draft.value) || !Array.isArray(draft.value.components)) {
+    return usageError(SCRIPT, "draft must be a JSON object with a components array");
   }
-  const draftPath = resolve(process.cwd(), args[0]!);
-  const previousPath = resolve(process.cwd(), args[2]!);
-  const draft = readJson(draftPath, "draft");
-  if ("error" in draft) return usageError(draft.error);
-  const previous = readJson(previousPath, "previous candidate");
-  if ("error" in previous) return usageError(previous.error);
-  if (!isJsonObject(draft.value) || !Array.isArray(draft.value.components)) {
-    return usageError("draft must be a JSON object with a components array");
-  }
-  if (!isJsonObject(previous.value)) return usageError("previous candidate must be a JSON object");
+  if (!isRecord(previous.value)) return usageError(SCRIPT, "previous candidate must be a JSON object");
 
   const { diagram, componentMap, connectionMap, renamed } = matchIds(previous.value, draft.value);
   try {
     writeFileSync(draftPath, stringifyDocument(diagram));
   } catch (error) {
-    return usageError(`cannot write draft: ${(error as Error).message}`);
+    return usageError(SCRIPT, `cannot write draft: ${(error as Error).message}`);
   }
   process.stdout.write(`${JSON.stringify({ componentMap, connectionMap, renamed }, null, 2)}\n`);
   return 0;

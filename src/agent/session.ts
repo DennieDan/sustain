@@ -5,8 +5,10 @@
 // failure, 2 usage or I/O error (message on stderr, no stdout JSON). Command details and
 // scoring constants: ADR 0037.
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve, sep } from "node:path";
+import { probeFile } from "../model/citations";
+import { assertWritable, isWithin } from "../model/confine";
 import { isDenied } from "../model/deny";
 import { collectGitFacts } from "../model/git";
 import { createRunFolder, runTimestamp, slugify } from "../model/runFolder";
@@ -41,9 +43,10 @@ import {
   type SessionState,
   type SessionStep,
 } from "../model/session";
+import { parseArgs, usageError } from "../model/scriptArgs";
 import { bugStillPresent, hunkCount, mutateFile, restoreHunk, type MutationResult } from "./modes/bugfix/mutations";
-import { assertWritable } from "../model/confine";
 
+const SCRIPT = "session.mjs";
 const USAGE =
   "usage: node session.mjs <command>\n" +
   "  init --mode bugfix [--name <text>]     start a session, take the .sustain/active lock\n" +
@@ -73,25 +76,6 @@ interface Out {
 function report(code: number, out: Out): number {
   process.stdout.write(`${JSON.stringify(out, null, 2)}\n`);
   return code;
-}
-
-function usageError(message: string): number {
-  process.stderr.write(`session.mjs: ${message}\n`);
-  return 2;
-}
-
-/** `--name value` pairs for the listed flags; `null` on anything unexpected. */
-function flags(args: string[], names: string[]): Record<string, string> | null {
-  const out: Record<string, string> = {};
-  for (let i = 0; i < args.length; i += 1) {
-    const name = args[i]!;
-    if (!name.startsWith("--") || !names.includes(name.slice(2))) return null;
-    const value = args[i + 1];
-    if (value === undefined) return null;
-    out[name.slice(2)] = value;
-    i += 1;
-  }
-  return out;
 }
 
 interface Active {
@@ -126,39 +110,18 @@ function ifPaused(session: SessionState): number | null {
 }
 
 /**
- * Resolves `arg` to a regular file inside the repo root. Throws for missing files, paths
- * escaping the root, deny-listed paths and anything under `.sustain/`.
+ * `arg`'s `/`-separated path from the repository root, after following links, or `null` when it
+ * lies outside the root. A path where nothing exists is taken as written.
  */
-function repoFile(arg: string): { abs: string; rel: string } {
-  const abs = resolve(root, arg);
-  let real: string;
-  try {
-    real = realpathSync(abs);
-  } catch {
-    throw new Error(`${arg} does not exist`);
-  }
+function repoPath(arg: string): string | null {
   const rootReal = realpathSync(root);
-  if (real !== rootReal && !real.startsWith(rootReal + sep)) {
-    throw new Error(`${arg} resolves outside the repository root`);
-  }
-  const rel = relative(rootReal, real).split(sep).join("/");
-  if (rel === "") throw new Error(`${arg} is the repository root, not a file`);
-  if (rel.split("/")[0] === SUSTAIN_DIR || isDenied(rel)) throw new Error(`${rel} is off-limits for sessions`);
-  if (!statSync(real).isFile()) throw new Error(`${rel} is not a file`);
-  return { abs: real, rel };
-}
-
-/** `rel` for matching against `manifest` paths; never throws, never touches the fs. */
-function looseRel(arg: string): string | null {
-  let abs: string;
+  let abs = resolve(root, arg);
   try {
-    abs = realpathSync(resolve(root, arg));
+    abs = realpathSync(abs);
   } catch {
-    abs = resolve(root, arg);
+    // Nothing is there, so the written path is the one to match.
   }
-  const rootReal = realpathSync(root);
-  if (abs !== rootReal && !abs.startsWith(rootReal + sep)) return null;
-  return relative(rootReal, abs).split(sep).join("/");
+  return isWithin(rootReal, abs) ? relative(rootReal, abs).split(sep).join("/") : null;
 }
 
 function save(active: Active): void {
@@ -169,10 +132,10 @@ function save(active: Active): void {
 // --------------------------------------------------------------------------- init
 
 function cmdInit(args: string[]): number {
-  const opts = flags(args, ["mode", "name"]);
-  if (opts === null || opts["mode"] === undefined) return usageError(`init: ${USAGE.split("\n")[1]!.trim()}`);
+  const opts = parseArgs(args, { options: ["mode", "name"], repeatable: true })?.options ?? null;
+  if (opts === null || opts["mode"] === undefined) return usageError(SCRIPT, `init: ${USAGE.split("\n")[1]!.trim()}`);
   if (!SESSION_MODES.includes(opts["mode"] as SessionMode)) {
-    return usageError(`init: unknown mode ${JSON.stringify(opts["mode"])} (modes: ${SESSION_MODES.join(", ")})`);
+    return usageError(SCRIPT, `init: unknown mode ${JSON.stringify(opts["mode"])} (modes: ${SESSION_MODES.join(", ")})`);
   }
   const mode = opts["mode"] as SessionMode;
 
@@ -229,7 +192,7 @@ function cmdInit(args: string[]): number {
 // --------------------------------------------------------------------------- status
 
 function cmdStatus(args: string[]): number {
-  if (args.length !== 0) return usageError(`status: takes no arguments`);
+  if (args.length !== 0) return usageError(SCRIPT, `status: takes no arguments`);
   const active = loadActive();
   if (active === null) return report(0, { status: "none" });
   const { session, manifest } = active;
@@ -282,8 +245,8 @@ function parseSteps(json: string): SessionStep[] {
 }
 
 function cmdPlan(args: string[]): number {
-  const opts = flags(args, ["steps"]);
-  if (opts === null || opts["steps"] === undefined) return usageError(`plan: ${USAGE.split("\n")[2]!.trim()}`);
+  const opts = parseArgs(args, { options: ["steps"], repeatable: true })?.options ?? null;
+  if (opts === null || opts["steps"] === undefined) return usageError(SCRIPT, `plan: ${USAGE.split("\n")[2]!.trim()}`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session } = active;
@@ -296,7 +259,7 @@ function cmdPlan(args: string[]): number {
   try {
     steps = parseSteps(opts["steps"]);
   } catch (error) {
-    return usageError(`plan: ${(error as Error).message}`);
+    return usageError(SCRIPT, `plan: ${(error as Error).message}`);
   }
   session.steps = steps;
   session.stepIndex = 0;
@@ -309,16 +272,16 @@ function cmdPlan(args: string[]): number {
 // -------------------------------------------------------------------------- inject
 
 function cmdInject(args: string[]): number {
-  const opts = flags(args, ["file", "line", "kind"]);
+  const opts = parseArgs(args, { options: ["file", "line", "kind"], repeatable: true })?.options ?? null;
   if (opts === null || opts["file"] === undefined || opts["line"] === undefined || opts["kind"] === undefined) {
-    return usageError(`inject: ${USAGE.split("\n")[3]!.trim()}`);
+    return usageError(SCRIPT, `inject: ${USAGE.split("\n")[3]!.trim()}`);
   }
   if (!MUTATION_KINDS.includes(opts["kind"] as MutationKind)) {
-    return usageError(`inject: unknown kind ${JSON.stringify(opts["kind"])} (kinds: ${MUTATION_KINDS.join(", ")})`);
+    return usageError(SCRIPT, `inject: unknown kind ${JSON.stringify(opts["kind"])} (kinds: ${MUTATION_KINDS.join(", ")})`);
   }
   const kind = opts["kind"] as MutationKind;
   const line = Number(opts["line"]);
-  if (!Number.isInteger(line)) return usageError(`inject: --line must be a positive integer, got ${JSON.stringify(opts["line"])}`);
+  if (!Number.isInteger(line)) return usageError(SCRIPT, `inject: --line must be a positive integer, got ${JSON.stringify(opts["line"])}`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -328,12 +291,16 @@ function cmdInject(args: string[]): number {
     return report(1, { status: "bad-phase", phase: session.phase, message: `inject runs in implementing or hunting, not ${session.phase}` });
   }
 
-  let target: { abs: string; rel: string };
-  try {
-    target = repoFile(opts["file"]!);
-  } catch (error) {
-    return report(1, { status: "error", message: (error as Error).message });
-  }
+  const arg = opts["file"]!;
+  const fail = (message: string): number => report(1, { status: "error", message });
+  if (!existsSync(resolve(root, arg))) return fail(`${arg} does not exist`);
+  const rel = repoPath(arg);
+  if (rel === null) return fail(`${arg} resolves outside the repository root`);
+  if (rel === "") return fail(`${arg} is the repository root, not a file`);
+  if (rel.split("/")[0] === SUSTAIN_DIR || isDenied(rel)) return fail(`${rel} is off-limits for sessions`);
+  const rootReal = realpathSync(root);
+  if (probeFile(rootReal, rel).kind === "notFile") return fail(`${rel} is not a file`);
+  const target = { abs: join(rootReal, rel), rel };
   if (languageOf(target.rel) === null) {
     return report(1, { status: "error", message: `${target.rel}: bugs are seeded in JavaScript, TypeScript and Java files only` });
   }
@@ -371,14 +338,14 @@ function cmdInject(args: string[]): number {
 // -------------------------------------------------------------------------- report
 
 function cmdReport(args: string[]): number {
-  const opts = flags(args, ["file"]);
-  if (opts === null || opts["file"] === undefined) return usageError(`report: ${USAGE.split("\n")[5]!.trim()}`);
+  const opts = parseArgs(args, { options: ["file"], repeatable: true })?.options ?? null;
+  if (opts === null || opts["file"] === undefined) return usageError(SCRIPT, `report: ${USAGE.split("\n")[5]!.trim()}`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
   const parked = ifPaused(session);
   if (parked !== null) return parked;
-  const rel = looseRel(opts["file"]!);
+  const rel = repoPath(opts["file"]!);
   const bug = rel === null ? undefined : manifest.bugs.find((b) => b.file === rel && !b.found && !b.fixed && b.restored !== true);
   if (bug === undefined) {
     return report(1, { status: "miss", file: opts["file"], message: `${opts["file"]} holds no unreported seeded bug` });
@@ -393,10 +360,10 @@ function cmdReport(args: string[]): number {
 // --------------------------------------------------------------------------- hint
 
 function cmdHint(args: string[]): number {
-  const opts = flags(args, ["level", "bug", "file"]);
-  if (opts === null || opts["level"] === undefined) return usageError(`hint: ${USAGE.split("\n")[6]!.trim()}`);
+  const opts = parseArgs(args, { options: ["level", "bug", "file"], repeatable: true })?.options ?? null;
+  if (opts === null || opts["level"] === undefined) return usageError(SCRIPT, `hint: ${USAGE.split("\n")[6]!.trim()}`);
   const level = Number(opts["level"]);
-  if (!HINT_LEVELS.includes(level as HintLevel)) return usageError(`hint: --level must be 1, 2 or 3`);
+  if (!HINT_LEVELS.includes(level as HintLevel)) return usageError(SCRIPT, `hint: --level must be 1, 2 or 3`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -410,7 +377,7 @@ function cmdHint(args: string[]): number {
     if (bug === undefined) return report(1, { status: "no-bug", message: `unknown bug ${JSON.stringify(opts["bug"])}` });
     if (!live(bug)) return report(1, { status: "no-bug", bug: bug.id, message: `${bug.id} is already ${bug.fixed ? "fixed" : "restored"}` });
   } else if (opts["file"] !== undefined) {
-    const rel = looseRel(opts["file"]!);
+    const rel = repoPath(opts["file"]!);
     bug = rel === null ? undefined : manifest.bugs.find((b) => b.file === rel && live(b));
     if (bug === undefined) return report(1, { status: "no-bug", file: opts["file"], message: `${opts["file"]} holds no unfixed seeded bug` });
   } else {
@@ -436,10 +403,10 @@ function fileParses(abs: string): { ok: boolean; message?: string } {
 }
 
 function cmdVerify(args: string[]): number {
-  const opts = flags(args, ["check-exit"]);
-  if (opts === null) return usageError(`verify: ${USAGE.split("\n")[7]!.trim()}`);
+  const opts = parseArgs(args, { options: ["check-exit"], repeatable: true })?.options ?? null;
+  if (opts === null) return usageError(SCRIPT, `verify: ${USAGE.split("\n")[7]!.trim()}`);
   const checkExit = opts["check-exit"] === undefined ? undefined : Number(opts["check-exit"]);
-  if (checkExit !== undefined && !Number.isInteger(checkExit)) return usageError("verify: --check-exit takes the check command's integer exit code");
+  if (checkExit !== undefined && !Number.isInteger(checkExit)) return usageError(SCRIPT, "verify: --check-exit takes the check command's integer exit code");
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -491,7 +458,7 @@ function cmdVerify(args: string[]): number {
 // ------------------------------------------------------------------------- complete
 
 function cmdComplete(args: string[]): number {
-  if (args.length !== 0) return usageError(`complete: takes no arguments`);
+  if (args.length !== 0) return usageError(SCRIPT, `complete: takes no arguments`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -512,7 +479,7 @@ function cmdComplete(args: string[]): number {
 // ------------------------------------------------------------------ pause / resume
 
 function cmdPause(args: string[]): number {
-  if (args.length !== 0) return usageError(`pause: takes no arguments`);
+  if (args.length !== 0) return usageError(SCRIPT, `pause: takes no arguments`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session } = active;
@@ -527,7 +494,7 @@ function cmdPause(args: string[]): number {
 }
 
 function cmdResume(args: string[]): number {
-  if (args.length !== 0) return usageError(`resume: takes no arguments`);
+  if (args.length !== 0) return usageError(SCRIPT, `resume: takes no arguments`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session } = active;
@@ -602,8 +569,8 @@ function seededBugs(manifest: Manifest): ManifestBug[] {
 }
 
 function cmdRestore(args: string[]): number {
-  const opts = flags(args, ["bug"]);
-  if (opts === null) return usageError(`restore: [--bug <id>]`);
+  const opts = parseArgs(args, { options: ["bug"], repeatable: true })?.options ?? null;
+  if (opts === null) return usageError(SCRIPT, `restore: [--bug <id>]`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -624,7 +591,7 @@ function cmdRestore(args: string[]): number {
 }
 
 function cmdAbandon(args: string[]): number {
-  if (args.length !== 0) return usageError(`abandon: takes no arguments`);
+  if (args.length !== 0) return usageError(SCRIPT, `abandon: takes no arguments`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -659,13 +626,13 @@ const COMMANDS: Record<string, (args: string[]) => number> = {
 
 function main(args: string[]): number {
   const command = args[0];
-  if (command === undefined) return usageError(USAGE);
+  if (command === undefined) return usageError(SCRIPT, USAGE);
   const handler = COMMANDS[command];
-  if (handler === undefined) return usageError(`unknown command ${JSON.stringify(command)}\n${USAGE}`);
+  if (handler === undefined) return usageError(SCRIPT, `unknown command ${JSON.stringify(command)}\n${USAGE}`);
   try {
     return handler(args.slice(1));
   } catch (error) {
-    return usageError(`${command}: ${(error as Error).message}`);
+    return usageError(SCRIPT, `${command}: ${(error as Error).message}`);
   }
 }
 

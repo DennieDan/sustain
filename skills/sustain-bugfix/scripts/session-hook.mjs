@@ -1,21 +1,23 @@
 // src/agent/session-hook.ts
-import { existsSync as existsSync2, readFileSync as readFileSync2 } from "node:fs";
-import { dirname as dirname2, join as join2 } from "node:path";
+import { existsSync as existsSync2, readFileSync as readFileSync3 } from "node:fs";
+import { dirname, join as join2 } from "node:path";
 
 // src/model/session.ts
-import {
-  appendFileSync,
-  closeSync,
-  existsSync,
-  fsyncSync,
-  mkdirSync,
-  openSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeSync
-} from "node:fs";
-import { dirname, join } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync as readFileSync2 } from "node:fs";
+import { join } from "node:path";
+
+// src/model/jsonFile.ts
+import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
+
+// src/model/types.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// src/model/jsonFile.ts
+function readJson(path) {
+  return JSON.parse(readFileSync(path, "utf8"));
+}
 
 // src/model/runFolder.ts
 var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
@@ -33,9 +35,6 @@ var SESSION_PHASES = ["clarify", "implementing", "hunting", "paused", "done"];
 var LIVE_PHASES = ["clarify", "implementing", "hunting"];
 var SESSION_MODES = ["bugfix"];
 var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 function corrupt(file, problem) {
   return new Error(`${file} is corrupt: ${problem}`);
 }
@@ -67,10 +66,9 @@ function checkSession(value, file = SESSION_FILE) {
   return { ...value, steps };
 }
 function readJsonFile(runDir, file, check) {
-  const path = join(runDir, file);
   let value;
   try {
-    value = JSON.parse(readFileSync(path, "utf8"));
+    value = readJson(join(runDir, file));
   } catch (error) {
     throw new Error(`${file} is unreadable: ${error.message}`);
   }
@@ -81,7 +79,7 @@ function loadSession(runDir) {
 }
 function activeRun(root) {
   try {
-    const run = readFileSync(join(root, SUSTAIN_DIR, ACTIVE_FILE), "utf8").trim();
+    const run = readFileSync2(join(root, SUSTAIN_DIR, ACTIVE_FILE), "utf8").trim();
     return run !== "" && parseRunName(run) !== null ? run : null;
   } catch {
     return null;
@@ -94,9 +92,9 @@ function projectRoot(payload) {
   const named = process.env["DEVIN_PROJECT_DIR"] || process.env["CLAUDE_PROJECT_DIR"];
   if (named) return named;
   const start = typeof payload["cwd"] === "string" && payload["cwd"] !== "" ? payload["cwd"] : process.cwd();
-  for (let dir = start; ; dir = dirname2(dir)) {
+  for (let dir = start; ; dir = dirname(dir)) {
     if (existsSync2(join2(dir, SUSTAIN_DIR, ACTIVE_FILE))) return dir;
-    if (dirname2(dir) === dir) return start;
+    if (dirname(dir) === dir) return start;
   }
 }
 var SESSION_MJS = ".agents/skills/sustain-bugfix/scripts/session.mjs";
@@ -128,7 +126,7 @@ function block(run, tool) {
 function main() {
   let payload;
   try {
-    payload = JSON.parse(readFileSync2(0, "utf8"));
+    payload = JSON.parse(readFileSync3(0, "utf8"));
   } catch {
     return 0;
   }

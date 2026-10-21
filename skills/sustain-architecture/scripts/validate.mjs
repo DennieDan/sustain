@@ -8054,56 +8054,27 @@ function checkEvidence(components, read, imports) {
 // src/model/fingerprints.ts
 import { createHash } from "node:crypto";
 import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join4 } from "node:path";
+import { join as join3 } from "node:path";
 
-// src/model/session.ts
-import {
-  appendFileSync,
-  closeSync as closeSync3,
-  existsSync,
-  fsyncSync as fsyncSync2,
-  mkdirSync as mkdirSync2,
-  openSync as openSync3,
-  readFileSync,
-  renameSync as renameSync2,
-  rmSync as rmSync2,
-  writeSync as writeSync2
-} from "node:fs";
-import { dirname as dirname3, join as join3 } from "node:path";
+// src/model/jsonFile.ts
+import { closeSync as closeSync2, fsyncSync, openSync as openSync2, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
+import { basename, dirname as dirname2, join as join2 } from "node:path";
 
-// src/model/runFolder.ts
-import { closeSync as closeSync2, fsyncSync, mkdirSync, openSync as openSync2, realpathSync as realpathSync3, renameSync, rmSync, statSync as statSync2, unlinkSync, writeSync } from "node:fs";
-import { basename, dirname as dirname2, join as join2, resolve, sep as sep2 } from "node:path";
-var ARCHIFY_DIR = ".archify";
-var DRAFT_FILE = "draft.json";
-var CANDIDATE_FILE = "candidate.sir";
-var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
-function parseRunName(name) {
-  const match = RUN_NAME_PATTERN.exec(name);
-  if (!match) return null;
-  return { prefix: match[1], slug: match[2], timestamp: match[3], n: match[4] === void 0 ? 1 : Number(match[4]) };
+// src/model/types.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function parseRunFolderName(name) {
-  const parsed = parseRunName(name);
-  if (parsed === null || parsed.prefix !== "architecture") return null;
-  return { slug: parsed.slug, timestamp: parsed.timestamp, n: parsed.n };
+function pointerToken(token) {
+  return token.replace(/~/g, "~0").replace(/\//g, "~1");
 }
-function locateDraft(arg, cwd) {
-  const draft = resolve(cwd, arg);
-  const runDir = dirname2(draft);
-  const archify = dirname2(runDir);
-  const run2 = basename(runDir);
-  if (basename(draft) !== DRAFT_FILE || basename(archify) !== ARCHIFY_DIR) {
-    throw new Error(`expected a path of the form <repo>/${ARCHIFY_DIR}/<run>/${DRAFT_FILE}, got ${arg}`);
-  }
-  const parsed = parseRunFolderName(run2);
-  if (!parsed) throw new Error(`run folder "${run2}" does not match architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]`);
-  return { root: dirname2(archify), run: run2, slug: parsed.slug, draft };
+function stringifyDocument(value) {
+  return `${JSON.stringify(value, null, 2)}
+`;
 }
-function publishCandidate(draft, content) {
-  const dir = dirname2(draft);
-  const target = join2(dir, CANDIDATE_FILE);
-  const temp = join2(dir, `.${CANDIDATE_FILE}.tmp-${process.pid}-${Date.now()}`);
+
+// src/model/jsonFile.ts
+function writeAtomic(path, content) {
+  const temp = join2(dirname2(path), `.${basename(path)}.tmp-${process.pid}-${Date.now()}`);
   try {
     const fd = openSync2(temp, "wx");
     try {
@@ -8112,35 +8083,14 @@ function publishCandidate(draft, content) {
     } finally {
       closeSync2(fd);
     }
-    renameSync(temp, target);
+    renameSync(temp, path);
   } catch (error) {
     rmSync(temp, { force: true });
     throw error;
   }
-  unlinkSync(draft);
-}
-
-// src/model/session.ts
-var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
-function writeAtomic(path, content) {
-  const temp = join3(dirname3(path), `.tmp-${process.pid}-${Date.now()}`);
-  try {
-    const fd = openSync3(temp, "wx");
-    try {
-      writeSync2(fd, content);
-      fsyncSync2(fd);
-    } finally {
-      closeSync3(fd);
-    }
-    renameSync2(temp, path);
-  } catch (error) {
-    rmSync2(temp, { force: true });
-    throw error;
-  }
 }
 function writeJson(path, value) {
-  writeAtomic(path, `${JSON.stringify(value, null, 2)}
-`);
+  writeAtomic(path, stringifyDocument(value));
 }
 
 // src/model/fingerprints.ts
@@ -8164,7 +8114,7 @@ function fingerprint(doc, root, revision, now = /* @__PURE__ */ new Date()) {
     (component.sources ?? []).forEach((source, index) => {
       let bytes = contents.get(source.path);
       if (bytes === void 0) {
-        bytes = readFileSync2(join4(root, ...source.path.split("/")));
+        bytes = readFileSync2(join3(root, ...source.path.split("/")));
         contents.set(source.path, bytes);
       }
       const print = { component: component.id, index, path: source.path, blob: gitBlobId(bytes) };
@@ -8182,25 +8132,43 @@ function fingerprint(doc, root, revision, now = /* @__PURE__ */ new Date()) {
   return { schema: 1, revision, createdAt: now.toISOString(), citations };
 }
 function writeFingerprints(root, runDir, prints) {
-  const path = join4(runDir, FINGERPRINTS_FILE);
+  const path = join3(runDir, FINGERPRINTS_FILE);
   assertWritable(root, path);
   writeJson(path, prints);
 }
 
 // src/model/repoSize.ts
 import { lstatSync as lstatSync2, readdirSync, readFileSync as readFileSync3 } from "node:fs";
-import { join as join6 } from "node:path";
+import { join as join5 } from "node:path";
 
 // src/model/git.ts
 import { spawnSync } from "node:child_process";
-import { realpathSync as realpathSync4 } from "node:fs";
+import { realpathSync as realpathSync3 } from "node:fs";
+
+// src/model/gitFormat.ts
+var COMMIT = /^[0-9a-f]{40}$/;
+var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
+function isRevision(value, kind) {
+  return typeof value === "string" && (kind === "commit" ? COMMIT : NAME).test(value);
+}
+function parsePorcelainZ(output) {
+  const fields = output.split("\0");
+  const paths = [];
+  for (let i = 0; i < fields.length; i += 1) {
+    const record2 = fields[i];
+    if (record2.length < 4) continue;
+    paths.push(record2.slice(3));
+    if (/[RC]/.test(record2.slice(0, 2))) i += 1;
+  }
+  return paths;
+}
 
 // src/model/which.ts
-import { accessSync, constants, statSync as statSync3 } from "node:fs";
-import { delimiter, join as join5, posix, win32 } from "node:path";
+import { accessSync, constants, statSync as statSync2 } from "node:fs";
+import { delimiter, join as join4, posix, win32 } from "node:path";
 function isExecutableFile(path, platform) {
   try {
-    if (!statSync3(path).isFile()) return false;
+    if (!statSync2(path).isFile()) return false;
     if (platform !== "win32") accessSync(path, constants.X_OK);
     return true;
   } catch {
@@ -8214,7 +8182,7 @@ function findOnPath(cli, env, platform = process.platform) {
   for (const dir of pathValue.split(platform === "win32" ? ";" : delimiter)) {
     if (!absolute2(dir)) continue;
     for (const extension of extensions) {
-      const candidate = join5(dir, cli + extension);
+      const candidate = join4(dir, cli + extension);
       if (isExecutableFile(candidate, platform)) return candidate;
     }
   }
@@ -8269,29 +8237,18 @@ function sanitizeOrigin(url) {
   const host = authority.slice(authority.lastIndexOf("@") + 1);
   return `${scheme}://${host}${tail}`;
 }
-function parsePorcelainZ(output) {
-  const fields = output.split("\0");
-  const paths = [];
-  for (let i = 0; i < fields.length; i += 1) {
-    const record2 = fields[i];
-    if (record2.length < 4) continue;
-    paths.push(record2.slice(3));
-    if (/[RC]/.test(record2.slice(0, 2))) i += 1;
-  }
-  return paths;
-}
 function collectGitFacts(root, env = process.env) {
   const program = gitProgram(env);
   if (program === void 0) return null;
   const top = run(program, root, GIT_READS.topLevel);
   if (top === null) return null;
   try {
-    if (realpathSync4(top.trim()) !== realpathSync4(root)) return null;
+    if (realpathSync3(top.trim()) !== realpathSync3(root)) return null;
   } catch {
     return null;
   }
   const head = run(program, root, GIT_READS.head)?.trim().toLowerCase();
-  if (head === void 0 || !/^[0-9a-f]{40}$/.test(head)) return null;
+  if (head === void 0 || !isRevision(head, "commit")) return null;
   const origin = run(program, root, GIT_READS.origin)?.trim() ?? "";
   const allDirty = parsePorcelainZ(run(program, root, GIT_READS.status) ?? "").filter((path) => !path.startsWith(".archify/"));
   return {
@@ -8361,7 +8318,7 @@ function walk(root) {
     const dir = pending.pop();
     let entries;
     try {
-      entries = readdirSync(join6(root, dir), { withFileTypes: true });
+      entries = readdirSync(join5(root, dir), { withFileTypes: true });
     } catch {
       continue;
     }
@@ -8383,30 +8340,50 @@ function listFiles(root, env = process.env) {
 function fileReader(root) {
   return (path) => {
     try {
-      return readFileSync3(join6(root, ...path.split("/")));
+      return readFileSync3(join5(root, ...path.split("/")));
     } catch {
       return null;
     }
   };
 }
 
+// src/model/runFolder.ts
+import { mkdirSync, realpathSync as realpathSync4, statSync as statSync3, unlinkSync } from "node:fs";
+import { basename as basename2, dirname as dirname3, join as join6, resolve, sep as sep2 } from "node:path";
+var ARCHIFY_DIR = ".archify";
+var DRAFT_FILE = "draft.json";
+var CANDIDATE_FILE = "candidate.sir";
+var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
+function parseRunName(name) {
+  const match = RUN_NAME_PATTERN.exec(name);
+  if (!match) return null;
+  return { prefix: match[1], slug: match[2], timestamp: match[3], n: match[4] === void 0 ? 1 : Number(match[4]) };
+}
+function parseRunFolderName(name) {
+  const parsed = parseRunName(name);
+  if (parsed === null || parsed.prefix !== "architecture") return null;
+  return { slug: parsed.slug, timestamp: parsed.timestamp, n: parsed.n };
+}
+function locateDraft(arg, cwd) {
+  const draft = resolve(cwd, arg);
+  const runDir = dirname3(draft);
+  const archify = dirname3(runDir);
+  const run2 = basename2(runDir);
+  if (basename2(draft) !== DRAFT_FILE || basename2(archify) !== ARCHIFY_DIR) {
+    throw new Error(`expected a path of the form <repo>/${ARCHIFY_DIR}/<run>/${DRAFT_FILE}, got ${arg}`);
+  }
+  const parsed = parseRunFolderName(run2);
+  if (!parsed) throw new Error(`run folder "${run2}" does not match architecture-<slug>-<YYYYMMDD-HHMMSS>[-N]`);
+  return { root: dirname3(archify), run: run2, slug: parsed.slug, draft };
+}
+function publishCandidate(draft, content) {
+  writeAtomic(join6(dirname3(draft), CANDIDATE_FILE), content);
+  unlinkSync(draft);
+}
+
 // src/model/runRecord.ts
 import { readdirSync as readdirSync2, readFileSync as readFileSync4 } from "node:fs";
 import { join as join7 } from "node:path";
-
-// src/model/types.ts
-function isJsonObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function pointerToken(token) {
-  return token.replace(/~/g, "~0").replace(/\//g, "~1");
-}
-function stringifyDocument(value) {
-  return `${JSON.stringify(value, null, 2)}
-`;
-}
-
-// src/model/runRecord.ts
 var RUN_FILE = "run.json";
 function newRunRecord(fields, now = /* @__PURE__ */ new Date()) {
   return {
@@ -8425,7 +8402,7 @@ function newRunRecord(fields, now = /* @__PURE__ */ new Date()) {
 function readRunRecord(runDir) {
   try {
     const value = JSON.parse(readFileSync4(join7(runDir, RUN_FILE), "utf8"));
-    return isJsonObject(value) && value["schema"] === 1 && typeof value["phase"] === "string" ? value : null;
+    return isRecord(value) && value["schema"] === 1 && typeof value["phase"] === "string" ? value : null;
   } catch {
     return null;
   }
@@ -8439,6 +8416,36 @@ function updateRunRecord(root, runDir, patch, fallback) {
   const next = { ...readRunRecord(runDir) ?? fallback(), ...patch };
   writeRunRecord(root, runDir, next);
   return next;
+}
+
+// src/model/scriptArgs.ts
+function parseArgs(args, spec) {
+  const count = spec.positionals ?? 0;
+  if (args.length < count) return null;
+  const parsed = { positionals: args.slice(0, count), options: {}, switches: /* @__PURE__ */ new Set() };
+  const seen = /* @__PURE__ */ new Set();
+  for (let i = count; i < args.length; i += 1) {
+    const arg = args[i];
+    const name = arg.startsWith("--") ? arg.slice(2) : null;
+    if (name === null || seen.has(name) && spec.repeatable !== true) return null;
+    seen.add(name);
+    if (spec.switches?.includes(name)) {
+      parsed.switches.add(name);
+    } else if (spec.options?.includes(name)) {
+      const value = args[i + 1];
+      if (value === void 0) return null;
+      parsed.options[name] = value;
+      i += 1;
+    } else {
+      return null;
+    }
+  }
+  return parsed;
+}
+function usageError(script, message) {
+  process.stderr.write(`${script}: ${message}
+`);
+  return 2;
 }
 
 // src/model/checks.ts
@@ -8965,21 +8972,21 @@ function dropInArray(root, field, keys, removed) {
   const items = root[field];
   if (!Array.isArray(items)) return;
   items.forEach((item, i) => {
-    if (isJsonObject(item)) dropKeys(item, keys, `/${field}/${i}`, removed);
+    if (isRecord(item)) dropKeys(item, keys, `/${field}/${i}`, removed);
   });
 }
 function applyAppOwnedFields(value, app) {
   const removed = [];
-  if (!isJsonObject(value)) return removed;
+  if (!isRecord(value)) return removed;
   dropKeys(value, ["layout"], "", removed);
-  if (isJsonObject(value["meta"])) dropKeys(value["meta"], META_DROPS, "/meta", removed);
+  if (isRecord(value["meta"])) dropKeys(value["meta"], META_DROPS, "/meta", removed);
   dropInArray(value, "components", COMPONENT_DROPS, removed);
   dropInArray(value, "connections", CONNECTION_DROPS, removed);
   dropInArray(value, "boundaries", BOUNDARY_DROPS, removed);
   const rest = Object.entries(value).filter(([key]) => key !== "schema_version" && key !== "diagram_type");
   for (const key of Object.keys(value)) delete value[key];
   Object.assign(value, { schema_version: 1, diagram_type: "architecture" }, Object.fromEntries(rest));
-  if (!isJsonObject(value["meta"])) value["meta"] = {};
+  if (!isRecord(value["meta"])) value["meta"] = {};
   const meta = value["meta"];
   meta["locale"] = "en";
   meta["quality_profile"] = "showcase";
@@ -9010,28 +9017,23 @@ var SKILL_VERSION = "0.2.0";
 function record(location, patch) {
   updateRunRecord(location.root, dirname4(location.draft), patch, () => newRunRecord({ focus: "", skillVersion: SKILL_VERSION }));
 }
-function usageError(message) {
-  process.stderr.write(`validate.mjs: ${message}
-`);
-  return 2;
-}
+var SCRIPT = "validate.mjs";
 function main(args) {
-  if (args.length !== 1) {
-    return usageError(`usage: node validate.mjs <repo>/${ARCHIFY_DIR}/<run>/draft.json`);
-  }
+  const parsed = parseArgs(args, { positionals: 1 });
+  if (!parsed) return usageError(SCRIPT, `usage: node validate.mjs <repo>/${ARCHIFY_DIR}/<run>/draft.json`);
   let location;
   let text;
   try {
-    location = locateDraft(args[0], process.cwd());
+    location = locateDraft(parsed.positionals[0], process.cwd());
     text = readFileSync5(location.draft, "utf8");
   } catch (error) {
-    return usageError(error.message);
+    return usageError(SCRIPT, error.message);
   }
   try {
     const attempts = (readRunRecord(dirname4(location.draft))?.attempts ?? 0) + 1;
     record(location, { phase: "validating", attempts });
   } catch (error) {
-    return usageError(`cannot write ${RUN_FILE}: ${error.message}`);
+    return usageError(SCRIPT, `cannot write ${RUN_FILE}: ${error.message}`);
   }
   let value;
   try {
@@ -9079,7 +9081,7 @@ function main(args) {
     writeJson(join8(runDir, EVIDENCE_FILE), evidence);
     record(location, { phase: "accepted", finishedAt: (/* @__PURE__ */ new Date()).toISOString() });
   } catch (error) {
-    return usageError(`cannot publish ${CANDIDATE_FILE}: ${error.message}`);
+    return usageError(SCRIPT, `cannot publish ${CANDIDATE_FILE}: ${error.message}`);
   }
   const report = {
     status: "accepted",

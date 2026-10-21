@@ -1,7 +1,7 @@
 // Tolerant reading of Archify documents for the viewer (FR-VIEW-03, ADR 0012). No schema
-// validation: whatever can be drawn is kept, the rest is skipped. Browser-safe: no imports
-// besides types.
-import type { BoundaryKind, ComponentType, GridLayout, Point, SourceRef, Variant } from "./types";
+// validation: whatever can be drawn is kept, the rest is skipped. Browser-safe: it imports
+// only from `./types`.
+import { isRecord, type BoundaryKind, type ComponentType, type GridLayout, type Point, type SourceRef, type Variant } from "./types";
 
 const COMPONENT_TYPES: readonly ComponentType[] = ["frontend", "backend", "database", "cloud", "security", "messagebus", "external"];
 const VARIANTS: readonly Variant[] = ["default", "emphasis", "security", "dashed"];
@@ -50,12 +50,6 @@ export type TolerantResult =
   | { ok: true; diagram: ViewDiagram; /** What was dropped, as `<pointer>: <reason>` (for tests and logs). */ skipped: string[] }
   | { ok: false; reason: string };
 
-type Obj = Record<string, unknown>;
-
-function isObj(value: unknown): value is Obj {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function str(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
@@ -74,8 +68,8 @@ function readSources(value: unknown, pointer: string, skipped: string[]): Source
   if (!Array.isArray(value)) return [];
   const sources: SourceRef[] = [];
   value.forEach((entry, k) => {
-    const path = isObj(entry) ? str(entry["path"]) : undefined;
-    if (!isObj(entry) || path === undefined) {
+    const path = isRecord(entry) ? str(entry["path"]) : undefined;
+    if (!isRecord(entry) || path === undefined) {
       skipped.push(`${pointer}/sources/${k}: no string path`);
       return;
     }
@@ -92,7 +86,7 @@ function readSources(value: unknown, pointer: string, skipped: string[]): Source
 }
 
 function readGrid(value: unknown): GridLayout | undefined {
-  if (!isObj(value) || value["mode"] !== "grid") return undefined;
+  if (!isRecord(value) || value["mode"] !== "grid") return undefined;
   const grid: GridLayout = { mode: "grid" };
   const origin = pair(value["origin"]);
   if (origin) grid.origin = origin;
@@ -105,7 +99,7 @@ function readGrid(value: unknown): GridLayout | undefined {
 
 /** Tolerant read of an already parsed JSON value. */
 export function readDiagram(value: unknown): TolerantResult {
-  if (!isObj(value)) return { ok: false, reason: "the root is not a JSON object" };
+  if (!isRecord(value)) return { ok: false, reason: "the root is not a JSON object" };
   const rawComponents = value["components"];
   if (!Array.isArray(rawComponents) || rawComponents.length === 0) {
     return { ok: false, reason: "it has no components" };
@@ -115,8 +109,8 @@ export function readDiagram(value: unknown): TolerantResult {
   const ids = new Set<string>();
   rawComponents.forEach((raw, i) => {
     const pointer = `/components/${i}`;
-    const id = isObj(raw) ? str(raw["id"]) : undefined;
-    if (!isObj(raw) || id === undefined) {
+    const id = isRecord(raw) ? str(raw["id"]) : undefined;
+    if (!isRecord(raw) || id === undefined) {
       skipped.push(`${pointer}: no string id`);
       return;
     }
@@ -152,9 +146,9 @@ export function readDiagram(value: unknown): TolerantResult {
   const rawConnections = value["connections"];
   if (Array.isArray(rawConnections)) {
     rawConnections.forEach((raw, i) => {
-      const from = isObj(raw) ? str(raw["from"]) : undefined;
-      const to = isObj(raw) ? str(raw["to"]) : undefined;
-      if (!isObj(raw) || from === undefined || to === undefined || !ids.has(from) || !ids.has(to)) {
+      const from = isRecord(raw) ? str(raw["from"]) : undefined;
+      const to = isRecord(raw) ? str(raw["to"]) : undefined;
+      if (!isRecord(raw) || from === undefined || to === undefined || !ids.has(from) || !ids.has(to)) {
         skipped.push(`/connections/${i}: from/to do not resolve`);
         return;
       }
@@ -173,7 +167,7 @@ export function readDiagram(value: unknown): TolerantResult {
   if (Array.isArray(rawBoundaries)) {
     rawBoundaries.forEach((raw, i) => {
       const pointer = `/boundaries/${i}`;
-      if (!isObj(raw)) {
+      if (!isRecord(raw)) {
         skipped.push(`${pointer}: not an object`);
         return;
       }
@@ -194,7 +188,7 @@ export function readDiagram(value: unknown): TolerantResult {
 
   const diagram: ViewDiagram = { components, connections, boundaries };
   const meta = value["meta"];
-  const title = isObj(meta) ? str(meta["title"]) : undefined;
+  const title = isRecord(meta) ? str(meta["title"]) : undefined;
   if (title) diagram.title = title;
   const grid = readGrid(value["layout"]);
   if (grid) diagram.grid = grid;

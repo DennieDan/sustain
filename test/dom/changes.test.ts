@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { WebviewMessage } from "../../src/model/messages";
 import { readDiagram } from "../../src/model/tolerant";
 import type { ViewDiagram } from "../../src/model/tolerant";
-import { ChangesView, KEPT_NOTE, NO_DIFF_TEXT, compareDiagrams, readChangesState, relativeDate } from "../../webview/changes";
+import { relativeAge } from "../../src/model/dates";
+import { ChangesView, KEPT_NOTE, NO_DIFF_TEXT, compareDiagrams, readChangesState } from "../../webview/changes";
 import type { ChangesState } from "../../webview/changes";
 import type { ElementKind } from "../../webview/render";
 import { BASE_REVISION, CURRENT_DOC, NOW, compare } from "./support/compare";
@@ -17,7 +18,7 @@ function diagramOf(doc: unknown): ViewDiagram {
 
 const CURRENT = diagramOf(CURRENT_DOC);
 
-describe("FR-CMP-09 relativeDate", () => {
+describe("FR-CMP-09 relativeAge with a 30-day cutoff", () => {
   test.each([
     ["2026-10-19T11:59:30Z", "just now"],
     ["2026-10-19T12:05:00Z", "just now"],
@@ -30,11 +31,11 @@ describe("FR-CMP-09 relativeDate", () => {
     ["2026-09-19T11:59:00+08:00", "2026-09-19"],
     ["2025-01-02T03:04:05Z", "2025-01-02"],
   ])("%s → %s", (iso, expected) => {
-    expect(relativeDate(iso, NOW)).toBe(expected);
+    expect(relativeAge(iso, NOW, 30)).toBe(expected);
   });
 
   test("an unparseable date gives undefined", () => {
-    expect(relativeDate("yesterday", NOW)).toBeUndefined();
+    expect(relativeAge("yesterday", NOW, 30)).toBeUndefined();
   });
 });
 

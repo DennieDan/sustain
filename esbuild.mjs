@@ -3,10 +3,10 @@
 // `node esbuild.mjs --e2e`  → out/e2e/ (the @vscode/test-electron suite; never shipped)
 // `node esbuild.mjs --action` → action/dist/index.js (the GitHub Action, committed; PRC-04)
 import * as esbuild from "esbuild";
-import { createHash } from "node:crypto";
-import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { hashTree } from "./src/model/hashTree.mts";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, "dist");
@@ -66,27 +66,6 @@ function writeBundleInputs(metafiles) {
   const inputs = new Set(metafiles.flatMap((meta) => Object.keys(meta.inputs)).filter((path) => path.includes("node_modules/")));
   mkdirSync(join(root, "out/meta"), { recursive: true });
   writeFileSync(join(root, "out/meta/bundles.json"), `${JSON.stringify({ inputs: [...inputs].sort() }, null, 2)}\n`);
-}
-
-/**
- * SHA-256 of every file below `dir`, keyed by `/`-separated relative path, with links marked
- * `link`. It matches `hashTree` in src/model/integrity.ts, and the e2e smoke test checks that.
- * @param {string} dir
- * @param {string} [prefix]
- * @returns {Record<string, string>}
- */
-function hashTree(dir, prefix = "") {
-  /** @type {Record<string, string>} */
-  const out = {};
-  for (const name of readdirSync(dir).sort()) {
-    const path = join(dir, name);
-    const key = prefix === "" ? name : `${prefix}/${name}`;
-    const stat = lstatSync(path);
-    if (stat.isSymbolicLink()) out[key] = "link";
-    else if (stat.isDirectory()) Object.assign(out, hashTree(path, key));
-    else out[key] = createHash("sha256").update(readFileSync(path)).digest("hex");
-  }
-  return out;
 }
 
 /**

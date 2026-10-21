@@ -8,22 +8,17 @@ import { skillEstimates } from "../model/estimate";
 import { READ_BUDGET, repoSize, sizeFacts } from "../model/repoSize";
 import { ARCHIFY_DIR, createRunFolder, DRAFT_FILE, runTimestamp, slugify } from "../model/runFolder";
 import { newRunRecord, writeRunRecord } from "../model/runRecord";
+import { parseArgs, usageError } from "../model/scriptArgs";
 
 /** The skill version, filled in by the build. */
 const SKILL_VERSION = process.env.SUSTAIN_VERSION ?? "unknown";
 
-const USAGE = "repo-facts.mjs: usage: node repo-facts.mjs [--focus <text>]\n";
+const SCRIPT = "repo-facts.mjs";
 
 function main(args: string[]): number {
-  let focus = "";
-  for (let i = 0; i < args.length; i += 2) {
-    const value = args[i + 1];
-    if (value === undefined || args[i] !== "--focus") {
-      process.stderr.write(USAGE);
-      return 2;
-    }
-    focus = value;
-  }
+  const parsed = parseArgs(args, { options: ["focus"], repeatable: true });
+  if (!parsed) return usageError(SCRIPT, "usage: node repo-facts.mjs [--focus <text>]");
+  const focus = parsed.options["focus"] ?? "";
   const root = process.cwd();
   // Git facts come first, so the new run folder is not among the dirty paths.
   const git = collectGitFacts(root);
@@ -32,8 +27,7 @@ function main(args: string[]): number {
     run = createRunFolder(root, slugify(focus, basename(root)), runTimestamp(new Date()));
     writeRunRecord(root, join(root, ARCHIFY_DIR, run), newRunRecord({ focus, skillVersion: SKILL_VERSION }));
   } catch (error) {
-    process.stderr.write(`repo-facts.mjs: ${(error as Error).message}\n`);
-    return 2;
+    return usageError(SCRIPT, (error as Error).message);
   }
   const size = repoSize(root);
   const facts = {

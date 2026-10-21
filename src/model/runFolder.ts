@@ -1,7 +1,8 @@
 // Run folders under `<repo>/.archify/` (FR-RF-01, FR-VAL-01, FR-VAL-06), ported from the
 // prototype's `archalign-repo/src/storage.rs` (slugify, run folders, atomic writes).
-import { closeSync, fsyncSync, mkdirSync, openSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, writeSync } from "node:fs";
+import { mkdirSync, realpathSync, statSync, unlinkSync } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
+import { writeAtomic } from "./jsonFile";
 
 export const ARCHIFY_DIR = ".archify";
 export const DRAFT_FILE = "draft.json";
@@ -155,25 +156,10 @@ export function locateDraft(arg: string, cwd: string): DraftLocation {
 }
 
 /**
- * Publishes `content` as `candidate.sir` next to `draft`: written to a temp file in the
- * same folder, flushed, renamed over the target, then the draft is deleted.
+ * Publishes `content` as `candidate.sir` next to `draft` with an atomic write, then deletes
+ * the draft.
  */
 export function publishCandidate(draft: string, content: string): void {
-  const dir = dirname(draft);
-  const target = join(dir, CANDIDATE_FILE);
-  const temp = join(dir, `.${CANDIDATE_FILE}.tmp-${process.pid}-${Date.now()}`);
-  try {
-    const fd = openSync(temp, "wx");
-    try {
-      writeSync(fd, content);
-      fsyncSync(fd);
-    } finally {
-      closeSync(fd);
-    }
-    renameSync(temp, target);
-  } catch (error) {
-    rmSync(temp, { force: true });
-    throw error;
-  }
+  writeAtomic(join(dirname(draft), CANDIDATE_FILE), content);
   unlinkSync(draft);
 }

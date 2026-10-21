@@ -33,87 +33,141 @@ function restClient(api, repository, token) {
 var import_node_fs6 = require("node:fs");
 var import_node_path6 = require("node:path");
 
-// src/model/changes.ts
-var REVISION_PATTERN = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
-function unquotePath(raw) {
-  if (!raw.startsWith('"')) return raw;
+// src/model/gitFormat.ts
+var COMMIT = /^[0-9a-f]{40}$/;
+var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
+function isRevision(value, kind) {
+  return typeof value === "string" && (kind === "commit" ? COMMIT : NAME).test(value);
+}
+var C_ESCAPES = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, "\\": 92 };
+function unquotePath(path2) {
+  if (!(path2.length >= 2 && path2.startsWith('"') && path2.endsWith('"'))) return path2;
   const bytes = [];
-  const escapes = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, "\\": 92 };
-  for (let i = 1; i < raw.length - 1; i++) {
-    const char = raw[i];
-    if (char !== "\\") {
-      bytes.push(...new TextEncoder().encode(char));
+  const body = path2.slice(1, -1);
+  for (let i = 0; i < body.length; i += 1) {
+    const ch = body[i];
+    if (ch !== "\\") {
+      bytes.push(...new TextEncoder().encode(ch));
       continue;
     }
-    const next = raw[i + 1];
-    if (/[0-7]/.test(next)) {
-      bytes.push(parseInt(raw.slice(i + 1, i + 4), 8));
+    const next = body[i + 1] ?? "";
+    const octal = /^[0-7]{3}/.exec(body.slice(i + 1));
+    if (octal) {
+      bytes.push(parseInt(octal[0], 8));
       i += 3;
     } else {
-      bytes.push(escapes[next] ?? next.charCodeAt(0));
+      bytes.push(C_ESCAPES[next] ?? next.charCodeAt(0));
       i += 1;
     }
   }
-  return new TextDecoder().decode(Uint8Array.from(bytes));
+  return new TextDecoder().decode(new Uint8Array(bytes));
 }
-function headerPaths(rest) {
+function parseNameStatusZ(output) {
+  const fields = output.split("\0");
+  const entries = [];
+  for (let i = 0; i < fields.length; i += 1) {
+    const status = fields[i];
+    if (status === "") continue;
+    if (/^[RC]/.test(status)) {
+      const oldPath = fields[i + 1];
+      const path2 = fields[i + 2];
+      i += 2;
+      if (oldPath && path2) entries.push({ status, path: path2, oldPath });
+    } else {
+      const path2 = fields[i + 1];
+      i += 1;
+      if (path2) entries.push({ status, path: path2 });
+    }
+  }
+  return entries;
+}
+var HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
+function withoutPrefix(path2, prefix) {
+  return path2.startsWith(prefix) ? path2.slice(prefix.length) : path2;
+}
+function gitHeaderPaths(rest) {
+  const half = (rest.length - 1) / 2;
+  if (Number.isInteger(half) && rest.startsWith("a/") && rest.slice(half, half + 3) === " b/" && rest.slice(2, half) === rest.slice(half + 3)) {
+    return [rest.slice(2, half), rest.slice(half + 3)];
+  }
   let oldRaw;
   let newRaw;
   if (rest.startsWith('"')) {
-    const end = /^"(?:[^"\\]|\\.)*"/.exec(rest)?.[0] ?? rest;
-    oldRaw = end;
-    newRaw = rest.slice(end.length + 1);
+    oldRaw = /^"(?:[^"\\]|\\.)*"/.exec(rest)?.[0] ?? rest;
+    newRaw = rest.slice(oldRaw.length + 1);
   } else {
     const split = Math.max(rest.lastIndexOf(" b/"), rest.lastIndexOf(' "b/'));
     oldRaw = split < 0 ? rest : rest.slice(0, split);
     newRaw = split < 0 ? rest : rest.slice(split + 1);
   }
-  const strip = (raw, prefix) => {
-    const path2 = unquotePath(raw);
-    return path2.startsWith(prefix) ? path2.slice(prefix.length) : path2;
-  };
-  return [strip(oldRaw, "a/"), strip(newRaw, "b/")];
+  return [withoutPrefix(unquotePath(oldRaw), "a/"), withoutPrefix(unquotePath(newRaw), "b/")];
 }
-function sidePath(line, prefix) {
-  const raw = unquotePath(line.slice(4).replace(/\t$/, ""));
-  if (raw === "/dev/null") return null;
-  return raw.startsWith(prefix) ? raw.slice(2) : raw;
+function headerLinePath(raw, prefix) {
+  const path2 = unquotePath(raw.replace(/\t$/, ""));
+  return path2 === "/dev/null" ? null : withoutPrefix(path2, prefix);
 }
-function parseDiff(text) {
-  const files = [];
-  let current = null;
-  for (const line of text.split("\n")) {
-    if (line.startsWith("diff --git ")) {
-      const [oldPath, path2] = headerPaths(line.slice("diff --git ".length));
-      current = { path: path2, oldPath, status: "modified", hunks: [] };
-      files.push(current);
-    } else if (current === null) {
-      continue;
-    } else if (line.startsWith("rename from ")) {
-      current.oldPath = unquotePath(line.slice("rename from ".length));
-      current.status = "renamed";
-    } else if (line.startsWith("rename to ")) {
-      current.path = unquotePath(line.slice("rename to ".length));
-    } else if (line.startsWith("new file mode")) {
-      current.status = "added";
-    } else if (line.startsWith("deleted file mode")) {
-      current.status = "deleted";
-    } else if (line.startsWith("--- ")) {
-      const old = sidePath(line, "a/");
-      if (old !== null) current.oldPath = old;
-    } else if (line.startsWith("+++ ")) {
-      const next = sidePath(line, "b/");
-      if (next !== null) current.path = next;
-      else current.path = current.oldPath;
-    } else if (line.startsWith("@@ ")) {
-      const hunk = /^@@ -(\d+)(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
+function parseDiffSections(diff) {
+  const sections = [];
+  for (const text of diff.split(/^(?=diff --git )/m)) {
+    if (!text.startsWith("diff --git ")) continue;
+    const lines = text.split("\n");
+    const section = {
+      text,
+      headerPaths: gitHeaderPaths(lines[0].slice("diff --git ".length)),
+      oldPath: void 0,
+      newPath: void 0,
+      renamed: false,
+      added: false,
+      deleted: false,
+      hunks: []
+    };
+    for (const line of lines.slice(1)) {
+      const hunk = HUNK_HEADER.exec(line);
       if (hunk) {
-        current.hunks.push({ oldStart: Number(hunk[1]), oldLines: hunk[2] === void 0 ? 1 : Number(hunk[2]) });
-        current.added = (current.added ?? 0) + (hunk[3] === void 0 ? 1 : Number(hunk[3]));
+        section.hunks.push({
+          header: line,
+          oldStart: Number(hunk[1]),
+          oldLines: hunk[2] === void 0 ? 1 : Number(hunk[2]),
+          newStart: Number(hunk[3]),
+          newLines: hunk[4] === void 0 ? 1 : Number(hunk[4])
+        });
+      } else if (section.hunks.length > 0) {
+        continue;
+      } else if (line.startsWith("rename from ")) {
+        section.oldPath = headerLinePath(line.slice("rename from ".length), "");
+        section.renamed = true;
+      } else if (line.startsWith("rename to ")) {
+        section.newPath = headerLinePath(line.slice("rename to ".length), "");
+      } else if (line.startsWith("copy from ")) {
+        section.oldPath = headerLinePath(line.slice("copy from ".length), "");
+      } else if (line.startsWith("copy to ")) {
+        section.newPath = headerLinePath(line.slice("copy to ".length), "");
+      } else if (line.startsWith("new file mode")) {
+        section.added = true;
+      } else if (line.startsWith("deleted file mode")) {
+        section.deleted = true;
+      } else if (line.startsWith("--- ") && section.oldPath === void 0) {
+        section.oldPath = headerLinePath(line.slice(4), "a/");
+      } else if (line.startsWith("+++ ") && section.newPath === void 0) {
+        section.newPath = headerLinePath(line.slice(4), "b/");
       }
     }
+    sections.push(section);
   }
-  return files;
+  return sections;
+}
+
+// src/model/changes.ts
+function parseDiff(text) {
+  return parseDiffSections(text).map((section) => {
+    const [headerOld, headerNew] = section.headerPaths;
+    const oldPath = section.oldPath ?? headerOld;
+    const path2 = section.newPath === null ? oldPath : section.newPath ?? headerNew;
+    const status = section.deleted ? "deleted" : section.added ? "added" : section.renamed ? "renamed" : "modified";
+    const change = { path: path2, oldPath, status, hunks: section.hunks.map(({ oldStart, oldLines }) => ({ oldStart, oldLines })) };
+    if (section.hunks.length > 0) change.added = section.hunks.reduce((sum, hunk) => sum + hunk.newLines, 0);
+    return change;
+  });
 }
 function touches(hunk, start, end) {
   if (hunk.oldLines === 0) return hunk.oldStart >= start && hunk.oldStart < end;
@@ -205,10 +259,14 @@ function globToRegExp(glob) {
   return new RegExp(`^${pattern}(?:/.*)?$`);
 }
 
+// src/model/types.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 // src/model/rules.ts
 var RULE_KINDS = ["forbid", "only-via", "isolated"];
 var PATH_PREFIX = "path:";
-var isRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 var ends = (value) => typeof value === "string" && value !== "" ? [value] : Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === "string" && entry !== "") ? value : null;
 function readRules(value) {
   const rules = [];
@@ -269,11 +327,6 @@ function checkRules(rules, components, refs) {
   return violations;
 }
 
-// src/model/types.ts
-function isJsonObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 // src/model/config.ts
 var CONFIG_FILE = "sustain.config.json";
 var FAIL_ON = ["stale", "new-box", "new-arrow", "violation"];
@@ -281,7 +334,7 @@ function strings(value) {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string");
 }
 function readConfig(value) {
-  if (!isJsonObject(value)) return { ok: false, errors: ["the config must be a JSON object"] };
+  if (!isRecord(value)) return { ok: false, errors: ["the config must be a JSON object"] };
   const errors = [];
   for (const key of Object.keys(value)) if (!["map", "ignore", "check", "rules"].includes(key)) errors.push(`unknown key "${key}"`);
   if (value["map"] !== void 0 && (typeof value["map"] !== "string" || !/^[a-z0-9]+-[A-Za-z0-9._-]+$/.test(value["map"]))) errors.push('"map" must name a run folder in .archify/');
@@ -289,7 +342,7 @@ function readConfig(value) {
   if (value["rules"] !== void 0) errors.push(...readRules(value["rules"]).errors);
   const check = value["check"];
   if (check !== void 0) {
-    if (!isJsonObject(check)) errors.push('"check" must be an object');
+    if (!isRecord(check)) errors.push('"check" must be an object');
     else {
       for (const key of Object.keys(check)) if (key !== "failOn") errors.push(`unknown key "check.${key}"`);
       const failOn = check["failOn"];
@@ -785,17 +838,10 @@ function run(program, root, argv) {
 function renamesSince(root, revision, env = process.env, to) {
   const renames = /* @__PURE__ */ new Map();
   const program = gitProgram(env);
-  if (program === void 0 || !/^[0-9a-f]{7,64}$/i.test(revision) || to !== void 0 && !REVISION_PATTERN.test(to)) return renames;
+  if (program === void 0 || !isRevision(revision, "name") || to !== void 0 && !isRevision(to, "name")) return renames;
   const output = run(program, root, [...GIT_PREFIX, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", "--name-status", "-z", revision, ...to === void 0 ? [] : [to], "--"]);
-  const fields = (output ?? "").split("\0");
-  for (let i = 0; i < fields.length; i++) {
-    const status = fields[i];
-    if (/^[RC]\d*$/.test(status)) {
-      if (status.startsWith("R")) renames.set(fields[i + 1], fields[i + 2]);
-      i += 2;
-    } else if (/^[AMDTUX]$/.test(status)) {
-      i += 1;
-    }
+  for (const entry of parseNameStatusZ(output ?? "")) {
+    if (entry.status.startsWith("R") && entry.oldPath !== void 0) renames.set(entry.oldPath, entry.path);
   }
   return renames;
 }
@@ -831,32 +877,32 @@ function generatedFiles(root, paths, env = process.env) {
 function untrackedFiles(root, env = process.env) {
   const program = gitProgram(env);
   if (program === void 0) return [];
-  return (run(program, root, [...GIT_PREFIX, "ls-files", "--others", "--exclude-standard", "-z"]) ?? "").split("\0").filter((path2) => path2 !== "");
+  return (run(program, root, GIT_READS.untracked) ?? "").split("\0").filter((path2) => path2 !== "");
 }
 function mergeBase(root, a, b, env = process.env) {
   const program = gitProgram(env);
-  if (program === void 0 || !REVISION_PATTERN.test(a) || !REVISION_PATTERN.test(b)) return null;
+  if (program === void 0 || !isRevision(a, "name") || !isRevision(b, "name")) return null;
   return run(program, root, [...GIT_PREFIX, "merge-base", a, b])?.trim() || null;
 }
 function diffBetween(root, from, to, env = process.env) {
   const program = gitProgram(env);
-  if (program === void 0 || ![from, ...to === null ? [] : [to]].every((revision) => REVISION_PATTERN.test(revision))) return null;
+  if (program === void 0 || ![from, ...to === null ? [] : [to]].every((revision) => isRevision(revision, "name"))) return null;
   return run(program, root, [...GIT_PREFIX, ...DIFF_FLAGS, from, ...to === null ? [] : [to], "--"]);
 }
 function fileAt(root, revision, path2, env = process.env) {
   const program = gitProgram(env);
-  if (program === void 0 || !REVISION_PATTERN.test(revision) || path2.startsWith("-") || path2.includes(":")) return null;
+  if (program === void 0 || !isRevision(revision, "name") || path2.startsWith("-") || path2.includes(":")) return null;
   return runRaw(program, root, [...GIT_PREFIX, "cat-file", "blob", `${revision}:${path2}`]);
 }
 function existsAt(root, revision, path2, env = process.env) {
   if (path2 === "") return true;
   const program = gitProgram(env);
-  if (program === void 0 || !REVISION_PATTERN.test(revision) || path2.startsWith("-") || path2.includes(":")) return false;
+  if (program === void 0 || !isRevision(revision, "name") || path2.startsWith("-") || path2.includes(":")) return false;
   return run(program, root, [...GIT_PREFIX, "cat-file", "-e", `${revision}:${path2}`]) !== null;
 }
 function filesAt(root, revision, dir, env = process.env) {
   const program = gitProgram(env);
-  if (program === void 0 || !REVISION_PATTERN.test(revision)) return [];
+  if (program === void 0 || !isRevision(revision, "name")) return [];
   const output = run(program, root, [...GIT_PREFIX, "ls-tree", "-r", "-z", "--name-only", revision, "--", dir === "" ? "." : dir]);
   return (output ?? "").split("\0").filter((path2) => path2 !== "");
 }
@@ -928,16 +974,11 @@ function listFiles(root, env = process.env) {
 // src/model/runRecord.ts
 var import_node_fs4 = require("node:fs");
 var import_node_path4 = require("node:path");
-
-// src/model/session.ts
-var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
-
-// src/model/runRecord.ts
 var RUN_FILE = "run.json";
 function readRunRecord(runDir) {
   try {
     const value = JSON.parse((0, import_node_fs4.readFileSync)((0, import_node_path4.join)(runDir, RUN_FILE), "utf8"));
-    return isJsonObject(value) && value["schema"] === 1 && typeof value["phase"] === "string" ? value : null;
+    return isRecord(value) && value["schema"] === 1 && typeof value["phase"] === "string" ? value : null;
   } catch {
     return null;
   }
@@ -968,7 +1009,7 @@ var ORDER = ["fresh", "unknown", "moved", "edited", "missing"];
 function readFingerprints(runDir) {
   try {
     const value = JSON.parse((0, import_node_fs5.readFileSync)((0, import_node_path5.join)(runDir, FINGERPRINTS_FILE), "utf8"));
-    return isJsonObject(value) && value["schema"] === 1 && Array.isArray(value["citations"]) ? value : null;
+    return isRecord(value) && value["schema"] === 1 && Array.isArray(value["citations"]) ? value : null;
   } catch {
     return null;
   }
@@ -1035,9 +1076,6 @@ function fileReader(root) {
 // src/model/tolerant.ts
 var COMPONENT_TYPES = ["frontend", "backend", "database", "cloud", "security", "messagebus", "external"];
 var VARIANTS = ["default", "emphasis", "security", "dashed"];
-function isObj(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 function str(value) {
   return typeof value === "string" ? value : void 0;
 }
@@ -1053,8 +1091,8 @@ function readSources(value, pointer, skipped2) {
   if (!Array.isArray(value)) return [];
   const sources = [];
   value.forEach((entry, k) => {
-    const path2 = isObj(entry) ? str(entry["path"]) : void 0;
-    if (!isObj(entry) || path2 === void 0) {
+    const path2 = isRecord(entry) ? str(entry["path"]) : void 0;
+    if (!isRecord(entry) || path2 === void 0) {
       skipped2.push(`${pointer}/sources/${k}: no string path`);
       return;
     }
@@ -1070,7 +1108,7 @@ function readSources(value, pointer, skipped2) {
   return sources;
 }
 function readGrid(value) {
-  if (!isObj(value) || value["mode"] !== "grid") return void 0;
+  if (!isRecord(value) || value["mode"] !== "grid") return void 0;
   const grid = { mode: "grid" };
   const origin = pair(value["origin"]);
   if (origin) grid.origin = origin;
@@ -1081,7 +1119,7 @@ function readGrid(value) {
   return grid;
 }
 function readDiagram(value) {
-  if (!isObj(value)) return { ok: false, reason: "the root is not a JSON object" };
+  if (!isRecord(value)) return { ok: false, reason: "the root is not a JSON object" };
   const rawComponents = value["components"];
   if (!Array.isArray(rawComponents) || rawComponents.length === 0) {
     return { ok: false, reason: "it has no components" };
@@ -1091,8 +1129,8 @@ function readDiagram(value) {
   const ids = /* @__PURE__ */ new Set();
   rawComponents.forEach((raw, i) => {
     const pointer = `/components/${i}`;
-    const id = isObj(raw) ? str(raw["id"]) : void 0;
-    if (!isObj(raw) || id === void 0) {
+    const id = isRecord(raw) ? str(raw["id"]) : void 0;
+    if (!isRecord(raw) || id === void 0) {
       skipped2.push(`${pointer}: no string id`);
       return;
     }
@@ -1127,9 +1165,9 @@ function readDiagram(value) {
   const rawConnections = value["connections"];
   if (Array.isArray(rawConnections)) {
     rawConnections.forEach((raw, i) => {
-      const from = isObj(raw) ? str(raw["from"]) : void 0;
-      const to = isObj(raw) ? str(raw["to"]) : void 0;
-      if (!isObj(raw) || from === void 0 || to === void 0 || !ids.has(from) || !ids.has(to)) {
+      const from = isRecord(raw) ? str(raw["from"]) : void 0;
+      const to = isRecord(raw) ? str(raw["to"]) : void 0;
+      if (!isRecord(raw) || from === void 0 || to === void 0 || !ids.has(from) || !ids.has(to)) {
         skipped2.push(`/connections/${i}: from/to do not resolve`);
         return;
       }
@@ -1147,7 +1185,7 @@ function readDiagram(value) {
   if (Array.isArray(rawBoundaries)) {
     rawBoundaries.forEach((raw, i) => {
       const pointer = `/boundaries/${i}`;
-      if (!isObj(raw)) {
+      if (!isRecord(raw)) {
         skipped2.push(`${pointer}: not an object`);
         return;
       }
@@ -1167,7 +1205,7 @@ function readDiagram(value) {
   }
   const diagram = { components, connections, boundaries };
   const meta = value["meta"];
-  const title = isObj(meta) ? str(meta["title"]) : void 0;
+  const title = isRecord(meta) ? str(meta["title"]) : void 0;
   if (title) diagram.title = title;
   const grid = readGrid(value["layout"]);
   if (grid) diagram.grid = grid;
@@ -1226,7 +1264,7 @@ function filesOnDisk(root, dir) {
 }
 function runCheck(options) {
   const { root, base, head } = options;
-  if (!REVISION_PATTERN.test(base) || head !== void 0 && !REVISION_PATTERN.test(head)) return { ok: false, reason: "--base and --head take revisions such as origin/main or HEAD." };
+  if (!isRevision(base, "name") || head !== void 0 && !isRevision(head, "name")) return { ok: false, reason: "--base and --head take revisions such as origin/main or HEAD." };
   const config = loadConfig(root);
   if (!config.ok) return config;
   const run2 = options.map ?? config.config.map ?? mainMap(root);

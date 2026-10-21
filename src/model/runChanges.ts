@@ -1,8 +1,9 @@
 // `<run folder>/changes.json` (FR-CMP-02): the change map of an update run as data, for the
 // viewer's "Code changed, kept" and "Not in any component" sections. Browser-safe: types and
 // pure functions only; reading and writing the file is in lineage.ts.
-import type { ChangeMap, FileDiff, NameStatus } from "./changeMap";
-import { isJsonObject } from "./types";
+import type { ChangeMap, FileDiff } from "./changeMap";
+import type { NameStatus } from "./gitFormat";
+import { isRecord } from "./types";
 
 /** Git status reduced to what the viewer shows: renames carry `oldPath`. */
 export type FileStatus = "A" | "M" | "D" | "R";
@@ -31,7 +32,7 @@ const isStatus = (value: unknown): value is FileStatus => value === "A" || value
 function parseFileChanges(values: unknown[]): FileChange[] {
   const out: FileChange[] = [];
   for (const value of values) {
-    if (!isJsonObject(value)) continue;
+    if (!isRecord(value)) continue;
     const { status, path, oldPath } = value;
     if (!isStatus(status) || typeof path !== "string" || path === "") continue;
     if (status !== "R") out.push({ status, path });
@@ -45,13 +46,13 @@ function parseFileChanges(values: unknown[]): FileChange[] {
  * and touched components are skipped.
  */
 export function parseRunChanges(value: unknown): RunChanges | null {
-  if (!isJsonObject(value)) return null;
+  if (!isRecord(value)) return null;
   const { baseRevision, revision, touchedComponents, uncited } = value;
   if (typeof baseRevision !== "string" || !(revision === null || typeof revision === "string")) return null;
   if (!Array.isArray(touchedComponents) || !Array.isArray(uncited)) return null;
   const touched: RunChanges["touchedComponents"] = [];
   for (const component of touchedComponents) {
-    if (!isJsonObject(component) || typeof component["id"] !== "string" || !Array.isArray(component["files"])) continue;
+    if (!isRecord(component) || typeof component["id"] !== "string" || !Array.isArray(component["files"])) continue;
     touched.push({ id: component["id"], files: parseFileChanges(component["files"]) });
   }
   return { baseRevision, revision, touchedComponents: touched, uncited: parseFileChanges(uncited) };

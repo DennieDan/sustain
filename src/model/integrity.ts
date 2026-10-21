@@ -1,30 +1,13 @@
 // SAF-01: the skill an agent will load must match the copy Sustain ships.
-import { createHash } from "node:crypto";
-import { lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import { lstatSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { isWithin } from "./confine";
+import { hashTree } from "./hashTree.mts";
 
 /** `dist/skill-hashes.json`: the shipped skills' file hashes, written by the build. */
 export interface SkillHashes {
   version: string;
   skills: Record<string, Record<string, string>>;
-}
-
-/** The value recorded for a link inside a skill folder. Links are never followed. */
-export const LINK_MARK = "link";
-
-/** SHA-256 of every file below `dir`, keyed by `/`-separated relative path. */
-export function hashTree(dir: string, prefix = ""): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const name of readdirSync(dir).sort()) {
-    const path = join(dir, name);
-    const key = prefix === "" ? name : `${prefix}/${name}`;
-    const stat = lstatSync(path);
-    if (stat.isSymbolicLink()) out[key] = LINK_MARK;
-    else if (stat.isDirectory()) Object.assign(out, hashTree(path, key));
-    else out[key] = createHash("sha256").update(readFileSync(path)).digest("hex");
-  }
-  return out;
 }
 
 export interface SkillDiff {

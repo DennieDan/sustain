@@ -1,7 +1,11 @@
 // src/agent/session.ts
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { existsSync as existsSync2, readFileSync as readFileSync3, realpathSync as realpathSync4, statSync as statSync3, unlinkSync as unlinkSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { basename as basename2, join as join4, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
+import { existsSync as existsSync2, readFileSync as readFileSync4, realpathSync as realpathSync5, unlinkSync as unlinkSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { basename as basename3, join as join6, relative as relative2, resolve as resolve2, sep as sep3 } from "node:path";
+
+// src/model/citations.ts
+import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
+import { join, sep } from "node:path";
 
 // src/model/deny.ts
 var DENIED_NAMES = [".git", ".archify", ".npmrc", ".pypirc", ".netrc"];
@@ -20,16 +24,110 @@ function isDenied(path) {
   return path.split("/").some(segmentDenied);
 }
 
+// src/model/citations.ts
+var MAX_CITED_BYTES = 2 * 1024 * 1024;
+var BINARY_SNIFF_BYTES = 8 * 1024;
+function countLines(bytes) {
+  let newlines = 0;
+  for (const byte of bytes) if (byte === 10) newlines += 1;
+  if (bytes.length === 0) return 0;
+  return bytes[bytes.length - 1] === 10 ? newlines : newlines + 1;
+}
+function probeFile(rootReal, path) {
+  let real;
+  try {
+    real = realpathSync(join(rootReal, ...path.split("/")));
+  } catch (error) {
+    const code = error.code;
+    if (code === "ENOENT" || code === "ENOTDIR") return { kind: "missing" };
+    return { kind: "unreadable", reason: error.message };
+  }
+  if (real !== rootReal && !real.startsWith(rootReal.endsWith(sep) ? rootReal : rootReal + sep)) {
+    return { kind: "outside" };
+  }
+  let fd;
+  try {
+    const stat = statSync(real);
+    if (!stat.isFile()) return { kind: "notFile" };
+    if (stat.size > MAX_CITED_BYTES) return { kind: "tooLarge", size: stat.size };
+    const buffer = Buffer.alloc(Math.min(stat.size, MAX_CITED_BYTES) + 1);
+    fd = openSync(real, "r");
+    let length = 0;
+    while (length < buffer.length) {
+      const read = readSync(fd, buffer, length, buffer.length - length, length);
+      if (read === 0) break;
+      length += read;
+    }
+    if (length > MAX_CITED_BYTES) return { kind: "tooLarge", size: length };
+    const bytes = buffer.subarray(0, length);
+    if (bytes.subarray(0, BINARY_SNIFF_BYTES).includes(0)) return { kind: "binary" };
+    return { kind: "text", lineCount: countLines(bytes) };
+  } catch (error) {
+    return { kind: "unreadable", reason: error.message };
+  } finally {
+    if (fd !== void 0) closeSync(fd);
+  }
+}
+
+// src/model/confine.ts
+import { lstatSync, realpathSync as realpathSync2 } from "node:fs";
+import { dirname, isAbsolute, relative } from "node:path";
+function isWithin(parentReal, childReal) {
+  const rel = relative(parentReal, childReal);
+  return rel === "" || !rel.startsWith("..") && !isAbsolute(rel);
+}
+function lstatOrNull(path) {
+  try {
+    return lstatSync(path);
+  } catch {
+    return null;
+  }
+}
+function assertNotLink(path) {
+  if (lstatOrNull(path)?.isSymbolicLink()) throw new Error(`${path} is a link. Sustain does not write through links.`);
+}
+function assertWritable(root2, path) {
+  const rootReal = realpathSync2(root2);
+  let ancestor = dirname(path);
+  while (lstatOrNull(ancestor) === null && dirname(ancestor) !== ancestor) ancestor = dirname(ancestor);
+  let ancestorReal;
+  try {
+    ancestorReal = realpathSync2(ancestor);
+  } catch {
+    throw new Error(`${path} would be written through a broken link at ${ancestor}`);
+  }
+  if (!isWithin(rootReal, ancestorReal)) throw new Error(`${path} would be written outside ${root2}`);
+  assertNotLink(path);
+}
+
 // src/model/git.ts
 import { spawnSync } from "node:child_process";
-import { realpathSync } from "node:fs";
+import { realpathSync as realpathSync3 } from "node:fs";
+
+// src/model/gitFormat.ts
+var COMMIT = /^[0-9a-f]{40}$/;
+var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
+function isRevision(value, kind) {
+  return typeof value === "string" && (kind === "commit" ? COMMIT : NAME).test(value);
+}
+function parsePorcelainZ(output) {
+  const fields = output.split("\0");
+  const paths = [];
+  for (let i = 0; i < fields.length; i += 1) {
+    const record = fields[i];
+    if (record.length < 4) continue;
+    paths.push(record.slice(3));
+    if (/[RC]/.test(record.slice(0, 2))) i += 1;
+  }
+  return paths;
+}
 
 // src/model/which.ts
-import { accessSync, constants, statSync } from "node:fs";
-import { delimiter, join, posix, win32 } from "node:path";
+import { accessSync, constants, statSync as statSync2 } from "node:fs";
+import { delimiter, join as join2, posix, win32 } from "node:path";
 function isExecutableFile(path, platform) {
   try {
-    if (!statSync(path).isFile()) return false;
+    if (!statSync2(path).isFile()) return false;
     if (platform !== "win32") accessSync(path, constants.X_OK);
     return true;
   } catch {
@@ -43,7 +141,7 @@ function findOnPath(cli, env, platform = process.platform) {
   for (const dir of pathValue.split(platform === "win32" ? ";" : delimiter)) {
     if (!absolute(dir)) continue;
     for (const extension of extensions) {
-      const candidate = join(dir, cli + extension);
+      const candidate = join2(dir, cli + extension);
       if (isExecutableFile(candidate, platform)) return candidate;
     }
   }
@@ -98,29 +196,18 @@ function sanitizeOrigin(url) {
   const host = authority.slice(authority.lastIndexOf("@") + 1);
   return `${scheme}://${host}${tail}`;
 }
-function parsePorcelainZ(output) {
-  const fields = output.split("\0");
-  const paths = [];
-  for (let i = 0; i < fields.length; i += 1) {
-    const record = fields[i];
-    if (record.length < 4) continue;
-    paths.push(record.slice(3));
-    if (/[RC]/.test(record.slice(0, 2))) i += 1;
-  }
-  return paths;
-}
 function collectGitFacts(root2, env = process.env) {
   const program = gitProgram(env);
   if (program === void 0) return null;
   const top = run(program, root2, GIT_READS.topLevel);
   if (top === null) return null;
   try {
-    if (realpathSync(top.trim()) !== realpathSync(root2)) return null;
+    if (realpathSync3(top.trim()) !== realpathSync3(root2)) return null;
   } catch {
     return null;
   }
   const head = run(program, root2, GIT_READS.head)?.trim().toLowerCase();
-  if (head === void 0 || !/^[0-9a-f]{40}$/.test(head)) return null;
+  if (head === void 0 || !isRevision(head, "commit")) return null;
   const origin = run(program, root2, GIT_READS.origin)?.trim() ?? "";
   const allDirty = parsePorcelainZ(run(program, root2, GIT_READS.status) ?? "").filter((path) => !path.startsWith(".archify/"));
   return {
@@ -132,8 +219,47 @@ function collectGitFacts(root2, env = process.env) {
 }
 
 // src/model/runFolder.ts
-import { closeSync, fsyncSync, mkdirSync, openSync, realpathSync as realpathSync2, renameSync, rmSync, statSync as statSync2, unlinkSync, writeSync } from "node:fs";
-import { basename, dirname, join as join2, resolve, sep } from "node:path";
+import { mkdirSync, realpathSync as realpathSync4, statSync as statSync3, unlinkSync } from "node:fs";
+import { basename as basename2, dirname as dirname3, join as join4, resolve, sep as sep2 } from "node:path";
+
+// src/model/jsonFile.ts
+import { closeSync as closeSync2, fsyncSync, openSync as openSync2, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
+import { basename, dirname as dirname2, join as join3 } from "node:path";
+
+// src/model/types.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function stringifyDocument(value) {
+  return `${JSON.stringify(value, null, 2)}
+`;
+}
+
+// src/model/jsonFile.ts
+function readJson(path) {
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+function writeAtomic(path, content) {
+  const temp = join3(dirname2(path), `.${basename(path)}.tmp-${process.pid}-${Date.now()}`);
+  try {
+    const fd = openSync2(temp, "wx");
+    try {
+      writeSync(fd, content);
+      fsyncSync(fd);
+    } finally {
+      closeSync2(fd);
+    }
+    renameSync(temp, path);
+  } catch (error) {
+    rmSync(temp, { force: true });
+    throw error;
+  }
+}
+function writeJson(path, value) {
+  writeAtomic(path, stringifyDocument(value));
+}
+
+// src/model/runFolder.ts
 var ARCHIFY_DIR = ".archify";
 var SLUG_MAX = 40;
 var RUN_NAME_PATTERN = /^([a-z0-9]+)-(.+)-(\d{8}-\d{6})(?:-(\d+))?$/;
@@ -165,7 +291,7 @@ function parseRunName(name) {
   return { prefix: match[1], slug: match[2], timestamp: match[3], n: match[4] === void 0 ? 1 : Number(match[4]) };
 }
 function isInside(parentReal, childReal) {
-  return childReal.startsWith(parentReal.endsWith(sep) ? parentReal : parentReal + sep);
+  return childReal.startsWith(parentReal.endsWith(sep2) ? parentReal : parentReal + sep2);
 }
 function createRunFolder(root2, slug, timestamp, options = {}) {
   const dir = options.dir ?? ARCHIFY_DIR;
@@ -174,16 +300,16 @@ function createRunFolder(root2, slug, timestamp, options = {}) {
   if (!/^[a-z0-9]+$/.test(prefix)) throw new Error(`"${prefix}" is not a valid run folder prefix`);
   const base = `${prefix}-${slug}-${timestamp}`;
   if (!parseRunName(base) || /[/\\]/.test(base)) throw new Error(`"${base}" is not a valid run folder name`);
-  const parent = join2(root2, dir);
+  const parent = join4(root2, dir);
   mkdirSync(parent, { recursive: true });
-  const parentReal = realpathSync2(parent);
-  if (!isInside(realpathSync2(root2), parentReal) || !statSync2(parentReal).isDirectory()) {
+  const parentReal = realpathSync4(parent);
+  if (!isInside(realpathSync4(root2), parentReal) || !statSync3(parentReal).isDirectory()) {
     throw new Error(`${dir} must be a folder inside the repository root`);
   }
   for (let n = 1; n <= MAX_COLLISIONS; n += 1) {
     const name = n === 1 ? base : `${base}-${n}`;
     try {
-      mkdirSync(join2(parentReal, name));
+      mkdirSync(join4(parentReal, name));
       return name;
     } catch (error) {
       if (error.code !== "EEXIST") throw error;
@@ -193,52 +319,8 @@ function createRunFolder(root2, slug, timestamp, options = {}) {
 }
 
 // src/model/session.ts
-import {
-  appendFileSync,
-  closeSync as closeSync2,
-  existsSync,
-  fsyncSync as fsyncSync2,
-  mkdirSync as mkdirSync2,
-  openSync as openSync2,
-  readFileSync,
-  renameSync as renameSync2,
-  rmSync as rmSync2,
-  writeSync as writeSync2
-} from "node:fs";
-import { dirname as dirname3, join as join3 } from "node:path";
-
-// src/model/confine.ts
-import { lstatSync, realpathSync as realpathSync3 } from "node:fs";
-import { dirname as dirname2, isAbsolute, relative } from "node:path";
-function isWithin(parentReal, childReal) {
-  const rel = relative(parentReal, childReal);
-  return rel === "" || !rel.startsWith("..") && !isAbsolute(rel);
-}
-function lstatOrNull(path) {
-  try {
-    return lstatSync(path);
-  } catch {
-    return null;
-  }
-}
-function assertNotLink(path) {
-  if (lstatOrNull(path)?.isSymbolicLink()) throw new Error(`${path} is a link. Sustain does not write through links.`);
-}
-function assertWritable(root2, path) {
-  const rootReal = realpathSync3(root2);
-  let ancestor = dirname2(path);
-  while (lstatOrNull(ancestor) === null && dirname2(ancestor) !== ancestor) ancestor = dirname2(ancestor);
-  let ancestorReal;
-  try {
-    ancestorReal = realpathSync3(ancestor);
-  } catch {
-    throw new Error(`${path} would be written through a broken link at ${ancestor}`);
-  }
-  if (!isWithin(rootReal, ancestorReal)) throw new Error(`${path} would be written outside ${root2}`);
-  assertNotLink(path);
-}
-
-// src/model/session.ts
+import { appendFileSync, existsSync, mkdirSync as mkdirSync2, readFileSync as readFileSync2 } from "node:fs";
+import { join as join5 } from "node:path";
 var SUSTAIN_DIR = ".sustain";
 var ACTIVE_FILE = "active";
 var SESSION_FILE = "session.json";
@@ -288,33 +370,10 @@ function isSessionStale(session, now = /* @__PURE__ */ new Date()) {
 }
 function appendEvent(runDir, event, now = /* @__PURE__ */ new Date()) {
   mkdirSync2(runDir, { recursive: true });
-  assertNotLink(join3(runDir, EVENTS_FILE));
+  assertNotLink(join5(runDir, EVENTS_FILE));
   const line = { ts: now.toISOString(), ...event };
-  appendFileSync(join3(runDir, EVENTS_FILE), `${JSON.stringify(line)}
+  appendFileSync(join5(runDir, EVENTS_FILE), `${JSON.stringify(line)}
 `);
-}
-function writeAtomic(path, content) {
-  const temp = join3(dirname3(path), `.tmp-${process.pid}-${Date.now()}`);
-  try {
-    const fd = openSync2(temp, "wx");
-    try {
-      writeSync2(fd, content);
-      fsyncSync2(fd);
-    } finally {
-      closeSync2(fd);
-    }
-    renameSync2(temp, path);
-  } catch (error) {
-    rmSync2(temp, { force: true });
-    throw error;
-  }
-}
-function writeJson(path, value) {
-  writeAtomic(path, `${JSON.stringify(value, null, 2)}
-`);
-}
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function corrupt(file, problem) {
   return new Error(`${file} is corrupt: ${problem}`);
@@ -370,10 +429,9 @@ function checkManifest(value, file = MANIFEST_FILE) {
   return { version: 1, bugs };
 }
 function readJsonFile(runDir, file, check) {
-  const path = join3(runDir, file);
   let value;
   try {
-    value = JSON.parse(readFileSync(path, "utf8"));
+    value = readJson(join5(runDir, file));
   } catch (error) {
     throw new Error(`${file} is unreadable: ${error.message}`);
   }
@@ -384,28 +442,58 @@ function loadSession(runDir) {
 }
 function saveSession(runDir, session, now = /* @__PURE__ */ new Date()) {
   session.updatedAt = now.toISOString();
-  writeJson(join3(runDir, SESSION_FILE), session);
+  writeJson(join5(runDir, SESSION_FILE), session);
 }
 function loadManifest(runDir) {
   return readJsonFile(runDir, MANIFEST_FILE, checkManifest);
 }
 function saveManifest(runDir, manifest) {
-  writeJson(join3(runDir, MANIFEST_FILE), manifest);
+  writeJson(join5(runDir, MANIFEST_FILE), manifest);
 }
 function activeRun(root2) {
   try {
-    const run2 = readFileSync(join3(root2, SUSTAIN_DIR, ACTIVE_FILE), "utf8").trim();
+    const run2 = readFileSync2(join5(root2, SUSTAIN_DIR, ACTIVE_FILE), "utf8").trim();
     return run2 !== "" && parseRunName(run2) !== null ? run2 : null;
   } catch {
     return null;
   }
 }
 function runExists(root2, run2) {
-  return existsSync(join3(root2, SUSTAIN_DIR, run2));
+  return existsSync(join5(root2, SUSTAIN_DIR, run2));
+}
+
+// src/model/scriptArgs.ts
+function parseArgs(args, spec) {
+  const count = spec.positionals ?? 0;
+  if (args.length < count) return null;
+  const parsed = { positionals: args.slice(0, count), options: {}, switches: /* @__PURE__ */ new Set() };
+  const seen = /* @__PURE__ */ new Set();
+  for (let i = count; i < args.length; i += 1) {
+    const arg = args[i];
+    const name = arg.startsWith("--") ? arg.slice(2) : null;
+    if (name === null || seen.has(name) && spec.repeatable !== true) return null;
+    seen.add(name);
+    if (spec.switches?.includes(name)) {
+      parsed.switches.add(name);
+    } else if (spec.options?.includes(name)) {
+      const value = args[i + 1];
+      if (value === void 0) return null;
+      parsed.options[name] = value;
+      i += 1;
+    } else {
+      return null;
+    }
+  }
+  return parsed;
+}
+function usageError(script, message) {
+  process.stderr.write(`${script}: ${message}
+`);
+  return 2;
 }
 
 // src/agent/modes/bugfix/mutations.ts
-import { readFileSync as readFileSync2, writeFileSync } from "node:fs";
+import { readFileSync as readFileSync3, writeFileSync } from "node:fs";
 function codeMask(line) {
   const mask = new Array(line.length).fill(true);
   let quote = null;
@@ -552,7 +640,7 @@ function mutateText(text, line, kind, language = "js") {
 function mutateFile(path, line, kind) {
   const language = languageOf(path);
   if (language === null) throw new Error(`${path}: bugs are seeded in JavaScript, TypeScript and Java files only`);
-  const result = mutateText(readFileSync2(path, "utf8"), line, kind, language);
+  const result = mutateText(readFileSync3(path, "utf8"), line, kind, language);
   writeFileSync(path, result.text);
   return result;
 }
@@ -579,6 +667,7 @@ function restoreHunk(text, bug) {
 }
 
 // src/agent/session.ts
+var SCRIPT = "session.mjs";
 var USAGE = `usage: node session.mjs <command>
   init --mode bugfix [--name <text>]     start a session, take the .sustain/active lock
   plan --steps '<json>'                  record the plan: [{"title":\u2026,"files":[\u2026]}] or ["\u2026"]
@@ -599,27 +688,10 @@ function report(code, out) {
 `);
   return code;
 }
-function usageError(message) {
-  process.stderr.write(`session.mjs: ${message}
-`);
-  return 2;
-}
-function flags(args, names) {
-  const out = {};
-  for (let i = 0; i < args.length; i += 1) {
-    const name = args[i];
-    if (!name.startsWith("--") || !names.includes(name.slice(2))) return null;
-    const value = args[i + 1];
-    if (value === void 0) return null;
-    out[name.slice(2)] = value;
-    i += 1;
-  }
-  return out;
-}
 function loadActive() {
   const run2 = activeRun(root);
   if (run2 === null || !runExists(root, run2)) return null;
-  const dir = join4(root, SUSTAIN_DIR, run2);
+  const dir = join6(root, SUSTAIN_DIR, run2);
   const session = loadSession(dir);
   const manifest = loadManifest(dir);
   return { run: run2, dir, session, manifest };
@@ -631,44 +703,24 @@ function ifPaused(session) {
   if (session.phase !== "paused") return null;
   return report(1, { status: "paused", phase: "paused", message: "session is paused \u2014 resume or abandon it first" });
 }
-function repoFile(arg) {
-  const abs = resolve2(root, arg);
-  let real;
+function repoPath(arg) {
+  const rootReal = realpathSync5(root);
+  let abs = resolve2(root, arg);
   try {
-    real = realpathSync4(abs);
+    abs = realpathSync5(abs);
   } catch {
-    throw new Error(`${arg} does not exist`);
   }
-  const rootReal = realpathSync4(root);
-  if (real !== rootReal && !real.startsWith(rootReal + sep2)) {
-    throw new Error(`${arg} resolves outside the repository root`);
-  }
-  const rel = relative2(rootReal, real).split(sep2).join("/");
-  if (rel === "") throw new Error(`${arg} is the repository root, not a file`);
-  if (rel.split("/")[0] === SUSTAIN_DIR || isDenied(rel)) throw new Error(`${rel} is off-limits for sessions`);
-  if (!statSync3(real).isFile()) throw new Error(`${rel} is not a file`);
-  return { abs: real, rel };
-}
-function looseRel(arg) {
-  let abs;
-  try {
-    abs = realpathSync4(resolve2(root, arg));
-  } catch {
-    abs = resolve2(root, arg);
-  }
-  const rootReal = realpathSync4(root);
-  if (abs !== rootReal && !abs.startsWith(rootReal + sep2)) return null;
-  return relative2(rootReal, abs).split(sep2).join("/");
+  return isWithin(rootReal, abs) ? relative2(rootReal, abs).split(sep3).join("/") : null;
 }
 function save(active) {
   saveSession(active.dir, active.session);
   saveManifest(active.dir, active.manifest);
 }
 function cmdInit(args) {
-  const opts = flags(args, ["mode", "name"]);
-  if (opts === null || opts["mode"] === void 0) return usageError(`init: ${USAGE.split("\n")[1].trim()}`);
+  const opts = parseArgs(args, { options: ["mode", "name"], repeatable: true })?.options ?? null;
+  if (opts === null || opts["mode"] === void 0) return usageError(SCRIPT, `init: ${USAGE.split("\n")[1].trim()}`);
   if (!SESSION_MODES.includes(opts["mode"])) {
-    return usageError(`init: unknown mode ${JSON.stringify(opts["mode"])} (modes: ${SESSION_MODES.join(", ")})`);
+    return usageError(SCRIPT, `init: unknown mode ${JSON.stringify(opts["mode"])} (modes: ${SESSION_MODES.join(", ")})`);
   }
   const mode = opts["mode"];
   const warnings = [];
@@ -677,7 +729,7 @@ function cmdInit(args) {
     let stale = !runExists(root, held);
     if (!stale) {
       try {
-        const heldSession = checkSession(JSON.parse(readFileSync3(join4(root, SUSTAIN_DIR, held, SESSION_FILE), "utf8")));
+        const heldSession = checkSession(JSON.parse(readFileSync4(join6(root, SUSTAIN_DIR, held, SESSION_FILE), "utf8")));
         stale = heldSession.phase === "done" || isSessionStale(heldSession);
       } catch {
         stale = true;
@@ -689,17 +741,17 @@ function cmdInit(args) {
     warnings.push(`released the stale lock of ${held}`);
   }
   const git = collectGitFacts(root);
-  const run2 = createRunFolder(root, slugify(opts["name"] ?? "", basename2(root)), runTimestamp(/* @__PURE__ */ new Date()), {
+  const run2 = createRunFolder(root, slugify(opts["name"] ?? "", basename3(root)), runTimestamp(/* @__PURE__ */ new Date()), {
     dir: SUSTAIN_DIR,
     prefix: mode
   });
-  const dir = join4(root, SUSTAIN_DIR, run2);
+  const dir = join6(root, SUSTAIN_DIR, run2);
   const session = newSession(mode);
   saveSession(dir, session);
   saveManifest(dir, newManifest());
   appendEvent(dir, { type: "init", mode });
-  assertWritable(root, join4(root, SUSTAIN_DIR, ACTIVE_FILE));
-  writeFileSync2(join4(root, SUSTAIN_DIR, ACTIVE_FILE), `${run2}
+  assertWritable(root, join6(root, SUSTAIN_DIR, ACTIVE_FILE));
+  writeFileSync2(join6(root, SUSTAIN_DIR, ACTIVE_FILE), `${run2}
 `);
   if (git !== null && git.dirtyCount > 0) {
     warnings.push(`repository has ${git.dirtyCount} uncommitted change(s); bug restore works on recorded hunks, not git`);
@@ -715,7 +767,7 @@ function cmdInit(args) {
   });
 }
 function cmdStatus(args) {
-  if (args.length !== 0) return usageError(`status: takes no arguments`);
+  if (args.length !== 0) return usageError(SCRIPT, `status: takes no arguments`);
   const active = loadActive();
   if (active === null) return report(0, { status: "none" });
   const { session, manifest } = active;
@@ -764,8 +816,8 @@ function parseSteps(json) {
   });
 }
 function cmdPlan(args) {
-  const opts = flags(args, ["steps"]);
-  if (opts === null || opts["steps"] === void 0) return usageError(`plan: ${USAGE.split("\n")[2].trim()}`);
+  const opts = parseArgs(args, { options: ["steps"], repeatable: true })?.options ?? null;
+  if (opts === null || opts["steps"] === void 0) return usageError(SCRIPT, `plan: ${USAGE.split("\n")[2].trim()}`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session } = active;
@@ -778,7 +830,7 @@ function cmdPlan(args) {
   try {
     steps = parseSteps(opts["steps"]);
   } catch (error) {
-    return usageError(`plan: ${error.message}`);
+    return usageError(SCRIPT, `plan: ${error.message}`);
   }
   session.steps = steps;
   session.stepIndex = 0;
@@ -788,16 +840,16 @@ function cmdPlan(args) {
   return report(0, { status: "ok", phase: session.phase, steps: steps.length });
 }
 function cmdInject(args) {
-  const opts = flags(args, ["file", "line", "kind"]);
+  const opts = parseArgs(args, { options: ["file", "line", "kind"], repeatable: true })?.options ?? null;
   if (opts === null || opts["file"] === void 0 || opts["line"] === void 0 || opts["kind"] === void 0) {
-    return usageError(`inject: ${USAGE.split("\n")[3].trim()}`);
+    return usageError(SCRIPT, `inject: ${USAGE.split("\n")[3].trim()}`);
   }
   if (!MUTATION_KINDS.includes(opts["kind"])) {
-    return usageError(`inject: unknown kind ${JSON.stringify(opts["kind"])} (kinds: ${MUTATION_KINDS.join(", ")})`);
+    return usageError(SCRIPT, `inject: unknown kind ${JSON.stringify(opts["kind"])} (kinds: ${MUTATION_KINDS.join(", ")})`);
   }
   const kind = opts["kind"];
   const line = Number(opts["line"]);
-  if (!Number.isInteger(line)) return usageError(`inject: --line must be a positive integer, got ${JSON.stringify(opts["line"])}`);
+  if (!Number.isInteger(line)) return usageError(SCRIPT, `inject: --line must be a positive integer, got ${JSON.stringify(opts["line"])}`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -806,16 +858,20 @@ function cmdInject(args) {
   if (session.phase !== "implementing" && session.phase !== "hunting") {
     return report(1, { status: "bad-phase", phase: session.phase, message: `inject runs in implementing or hunting, not ${session.phase}` });
   }
-  let target;
-  try {
-    target = repoFile(opts["file"]);
-  } catch (error) {
-    return report(1, { status: "error", message: error.message });
-  }
+  const arg = opts["file"];
+  const fail = (message) => report(1, { status: "error", message });
+  if (!existsSync2(resolve2(root, arg))) return fail(`${arg} does not exist`);
+  const rel = repoPath(arg);
+  if (rel === null) return fail(`${arg} resolves outside the repository root`);
+  if (rel === "") return fail(`${arg} is the repository root, not a file`);
+  if (rel.split("/")[0] === SUSTAIN_DIR || isDenied(rel)) return fail(`${rel} is off-limits for sessions`);
+  const rootReal = realpathSync5(root);
+  if (probeFile(rootReal, rel).kind === "notFile") return fail(`${rel} is not a file`);
+  const target = { abs: join6(rootReal, rel), rel };
   if (languageOf(target.rel) === null) {
     return report(1, { status: "error", message: `${target.rel}: bugs are seeded in JavaScript, TypeScript and Java files only` });
   }
-  const pristineText = readFileSync3(target.abs, "utf8");
+  const pristineText = readFileSync4(target.abs, "utf8");
   let mutation;
   try {
     assertWritable(root, target.abs);
@@ -844,14 +900,14 @@ function cmdInject(args) {
   return report(0, { status: "ok", bug: bug.id, file: bug.file, region: bug.region, kind, phase: session.phase, bugs: session.bugs });
 }
 function cmdReport(args) {
-  const opts = flags(args, ["file"]);
-  if (opts === null || opts["file"] === void 0) return usageError(`report: ${USAGE.split("\n")[5].trim()}`);
+  const opts = parseArgs(args, { options: ["file"], repeatable: true })?.options ?? null;
+  if (opts === null || opts["file"] === void 0) return usageError(SCRIPT, `report: ${USAGE.split("\n")[5].trim()}`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
   const parked = ifPaused(session);
   if (parked !== null) return parked;
-  const rel = looseRel(opts["file"]);
+  const rel = repoPath(opts["file"]);
   const bug = rel === null ? void 0 : manifest.bugs.find((b) => b.file === rel && !b.found && !b.fixed && b.restored !== true);
   if (bug === void 0) {
     return report(1, { status: "miss", file: opts["file"], message: `${opts["file"]} holds no unreported seeded bug` });
@@ -863,10 +919,10 @@ function cmdReport(args) {
   return report(0, { status: "found", bug: bug.id, found: session.found, bugs: session.bugs });
 }
 function cmdHint(args) {
-  const opts = flags(args, ["level", "bug", "file"]);
-  if (opts === null || opts["level"] === void 0) return usageError(`hint: ${USAGE.split("\n")[6].trim()}`);
+  const opts = parseArgs(args, { options: ["level", "bug", "file"], repeatable: true })?.options ?? null;
+  if (opts === null || opts["level"] === void 0) return usageError(SCRIPT, `hint: ${USAGE.split("\n")[6].trim()}`);
   const level = Number(opts["level"]);
-  if (!HINT_LEVELS.includes(level)) return usageError(`hint: --level must be 1, 2 or 3`);
+  if (!HINT_LEVELS.includes(level)) return usageError(SCRIPT, `hint: --level must be 1, 2 or 3`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -879,7 +935,7 @@ function cmdHint(args) {
     if (bug === void 0) return report(1, { status: "no-bug", message: `unknown bug ${JSON.stringify(opts["bug"])}` });
     if (!live(bug)) return report(1, { status: "no-bug", bug: bug.id, message: `${bug.id} is already ${bug.fixed ? "fixed" : "restored"}` });
   } else if (opts["file"] !== void 0) {
-    const rel = looseRel(opts["file"]);
+    const rel = repoPath(opts["file"]);
     bug = rel === null ? void 0 : manifest.bugs.find((b) => b.file === rel && live(b));
     if (bug === void 0) return report(1, { status: "no-bug", file: opts["file"], message: `${opts["file"]} holds no unfixed seeded bug` });
   } else {
@@ -899,10 +955,10 @@ function fileParses(abs) {
   return { ok: false, message: (check.stderr || check.stdout || "syntax error").trim().split("\n")[0] };
 }
 function cmdVerify(args) {
-  const opts = flags(args, ["check-exit"]);
-  if (opts === null) return usageError(`verify: ${USAGE.split("\n")[7].trim()}`);
+  const opts = parseArgs(args, { options: ["check-exit"], repeatable: true })?.options ?? null;
+  if (opts === null) return usageError(SCRIPT, `verify: ${USAGE.split("\n")[7].trim()}`);
   const checkExit = opts["check-exit"] === void 0 ? void 0 : Number(opts["check-exit"]);
-  if (checkExit !== void 0 && !Number.isInteger(checkExit)) return usageError("verify: --check-exit takes the check command's integer exit code");
+  if (checkExit !== void 0 && !Number.isInteger(checkExit)) return usageError(SCRIPT, "verify: --check-exit takes the check command's integer exit code");
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -915,9 +971,9 @@ function cmdVerify(args) {
   const pending = manifest.bugs.filter((b) => !b.fixed && b.restored !== true);
   const newlyFixed = [];
   for (const bug of pending) {
-    const abs = join4(root, bug.file);
+    const abs = join6(root, bug.file);
     if (!existsSync2(abs)) return report(1, { status: "error", file: bug.file, message: `${bug.file} no longer exists \u2014 restore the file and try again` });
-    const text = readFileSync3(abs, "utf8");
+    const text = readFileSync4(abs, "utf8");
     if (bugStillPresent(text, bug)) continue;
     const parsed = fileParses(abs);
     if (!parsed.ok) return report(1, { status: "unparseable", file: bug.file, bug: bug.id, message: parsed.message });
@@ -946,7 +1002,7 @@ function cmdVerify(args) {
   return report(0, { status: "ok", phase: session.phase, stepIndex: session.stepIndex, step, fixed: newlyFixed });
 }
 function cmdComplete(args) {
-  if (args.length !== 0) return usageError(`complete: takes no arguments`);
+  if (args.length !== 0) return usageError(SCRIPT, `complete: takes no arguments`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -960,11 +1016,11 @@ function cmdComplete(args) {
   appendEvent(active.dir, { type: "completed", score: session.score });
   dropPristineSnapshots(manifest);
   save(active);
-  unlinkSync2(join4(root, SUSTAIN_DIR, ACTIVE_FILE));
+  unlinkSync2(join6(root, SUSTAIN_DIR, ACTIVE_FILE));
   return report(0, { status: "completed", score: session.score, found: session.found, fixed: session.fixed, bugs: session.bugs, run: `${SUSTAIN_DIR}/${active.run}` });
 }
 function cmdPause(args) {
-  if (args.length !== 0) return usageError(`pause: takes no arguments`);
+  if (args.length !== 0) return usageError(SCRIPT, `pause: takes no arguments`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session } = active;
@@ -978,7 +1034,7 @@ function cmdPause(args) {
   return report(0, { status: "ok", phase: "paused", pausedFrom: from });
 }
 function cmdResume(args) {
-  if (args.length !== 0) return usageError(`resume: takes no arguments`);
+  if (args.length !== 0) return usageError(SCRIPT, `resume: takes no arguments`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session } = active;
@@ -995,13 +1051,13 @@ function cmdResume(args) {
 function restoreSeededBugs(runDir, bugs) {
   const result = { restored: [], fixed: [], missing: [], unrestorable: [] };
   for (const bug of bugs) {
-    const abs = join4(root, bug.file);
+    const abs = join6(root, bug.file);
     if (!existsSync2(abs)) {
       bug.restored = true;
       result.missing.push(bug.id);
       continue;
     }
-    const text = readFileSync3(abs, "utf8");
+    const text = readFileSync4(abs, "utf8");
     if (!bugStillPresent(text, bug)) {
       bug.fixed = true;
       appendEvent(runDir, { type: "fixed", bug: bug.id });
@@ -1029,8 +1085,8 @@ function seededBugs(manifest) {
   return manifest.bugs.filter((b) => !b.fixed && b.restored !== true);
 }
 function cmdRestore(args) {
-  const opts = flags(args, ["bug"]);
-  if (opts === null) return usageError(`restore: [--bug <id>]`);
+  const opts = parseArgs(args, { options: ["bug"], repeatable: true })?.options ?? null;
+  if (opts === null) return usageError(SCRIPT, `restore: [--bug <id>]`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -1050,7 +1106,7 @@ function cmdRestore(args) {
   return report(0, { status: "ok", phase: session.phase, ...result });
 }
 function cmdAbandon(args) {
-  if (args.length !== 0) return usageError(`abandon: takes no arguments`);
+  if (args.length !== 0) return usageError(SCRIPT, `abandon: takes no arguments`);
   const active = loadActive();
   if (active === null) return noSession();
   const { session, manifest } = active;
@@ -1062,7 +1118,7 @@ function cmdAbandon(args) {
   appendEvent(active.dir, { type: "abandoned", ...result, score: session.score });
   dropPristineSnapshots(manifest);
   save(active);
-  unlinkSync2(join4(root, SUSTAIN_DIR, ACTIVE_FILE));
+  unlinkSync2(join6(root, SUSTAIN_DIR, ACTIVE_FILE));
   return report(0, { status: "abandoned", score: session.score, ...result, run: `${SUSTAIN_DIR}/${active.run}` });
 }
 var COMMANDS = {
@@ -1081,14 +1137,14 @@ var COMMANDS = {
 };
 function main(args) {
   const command = args[0];
-  if (command === void 0) return usageError(USAGE);
+  if (command === void 0) return usageError(SCRIPT, USAGE);
   const handler = COMMANDS[command];
-  if (handler === void 0) return usageError(`unknown command ${JSON.stringify(command)}
+  if (handler === void 0) return usageError(SCRIPT, `unknown command ${JSON.stringify(command)}
 ${USAGE}`);
   try {
     return handler(args.slice(1));
   } catch (error) {
-    return usageError(`${command}: ${error.message}`);
+    return usageError(SCRIPT, `${command}: ${error.message}`);
   }
 }
 process.exitCode = main(process.argv.slice(2));

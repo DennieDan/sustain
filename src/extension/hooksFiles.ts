@@ -7,7 +7,8 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { assertWritable } from "../model/confine";
-import { writeJson } from "../model/session";
+import { writeJson } from "../model/jsonFile";
+import { isRecord } from "../model/types";
 
 export const DEVIN_HOOKS_FILE = join(".devin", "hooks.v1.json");
 /** LRN-01: the files whose `hooks` object holds Claude Code's and Codex's hunt hook, relative to the repository. */
@@ -43,10 +44,6 @@ export function sustainHooks(command: string = sessionHookCommand()): Record<str
     PostCompaction: [promptHookGroup(command)],
     SessionStart: [promptHookGroup(command)],
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isSustainHook(value: unknown): boolean {

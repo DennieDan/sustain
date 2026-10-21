@@ -3,21 +3,12 @@
 // leaderboard derives from, `manifest.json` the secret record of seeded bugs, and
 // `.sustain/active` the one-session-per-repo lock. Written and read only by `session.mjs`;
 // the webview must never see `manifest.json`.
-import {
-  appendFileSync,
-  closeSync,
-  existsSync,
-  fsyncSync,
-  mkdirSync,
-  openSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeSync,
-} from "node:fs";
-import { dirname, join } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { parseRunName } from "./runFolder";
 import { assertNotLink } from "./confine";
+import { readJson, writeJson } from "./jsonFile";
+import { isRecord } from "./types";
 
 export const SUSTAIN_DIR = ".sustain";
 /** Names the live run folder; missing means no active session (ADR 0033). */
@@ -191,33 +182,6 @@ export function appendEvent(runDir: string, event: { type: EventType; [detail: s
   appendFileSync(join(runDir, EVENTS_FILE), `${JSON.stringify(line)}\n`);
 }
 
-/** Temp-file + fsync + rename, the `publishCandidate` write pattern; watchers see whole files. */
-function writeAtomic(path: string, content: string): void {
-  const temp = join(dirname(path), `.tmp-${process.pid}-${Date.now()}`);
-  try {
-    const fd = openSync(temp, "wx");
-    try {
-      writeSync(fd, content);
-      fsyncSync(fd);
-    } finally {
-      closeSync(fd);
-    }
-    renameSync(temp, path);
-  } catch (error) {
-    rmSync(temp, { force: true });
-    throw error;
-  }
-}
-
-/** Writes `value` as 2-space JSON with a trailing newline, atomically. */
-export function writeJson(path: string, value: unknown): void {
-  writeAtomic(path, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function corrupt(file: string, problem: string): Error {
   return new Error(`${file} is corrupt: ${problem}`);
 }
@@ -279,10 +243,9 @@ export function checkManifest(value: unknown, file = MANIFEST_FILE): Manifest {
 
 /** Reads and validates a JSON file inside a run folder; throws on missing or corrupt data. */
 function readJsonFile<T>(runDir: string, file: string, check: (value: unknown, file: string) => T): T {
-  const path = join(runDir, file);
   let value: unknown;
   try {
-    value = JSON.parse(readFileSync(path, "utf8"));
+    value = readJson(join(runDir, file));
   } catch (error) {
     throw new Error(`${file} is unreadable: ${(error as Error).message}`);
   }

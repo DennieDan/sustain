@@ -7,8 +7,8 @@ Tracks [spec-refactor.md](spec-refactor.md). Milestone statuses: Not started, In
 | Milestone | Status | Branch | Commit |
 |---|---|---|---|
 | RF0 Adoption | Closed (pull request #9) | `refactor/rf0-adoption` | `50f974c` |
-| RF1 Dead code | Closed pending owner (push and pull request) | `refactor/rf1-dead-code` | `91addcc` |
-| RF2 Shared helpers | Not started | `refactor/rf2-shared-helpers` | |
+| RF1 Dead code | Closed (pull request #10) | `refactor/rf1-dead-code` | `91addcc` |
+| RF2 Shared helpers | Closed pending owner (push and pull request) | `refactor/rf2-shared-helpers` | `f802490` |
 | RF3 Unit folders | Not started | `refactor/rf3-unit-folders` | |
 | RF4 Isolate learn | Not started | `refactor/rf4-isolate-learn` | |
 | RF5 Skills independence | Not started | `refactor/rf5-skills` | |
@@ -59,6 +59,9 @@ Calls made during the build:
 - Delete the remaining exports that no other source file uses, whether or not a test calls them: `agentPrompt` (`agents.ts`), `chosenHeadless` (`generate.ts`), `hotspotMarks` (`hotspots.ts`), `violationArrows` (`rules.ts`), `activeLockPath` (`sessionFiles.ts`), `summarizeStream` (`agentStream/summary.ts`), `rangeOf` (`changes.ts`), `withIgnored` (`config.ts`), `SIDEBAR_ACTIONS` (`home.ts`), `stripAppOwned` (`submission.ts`) and `focusView` (`viewport.ts`). RF1 found them with a scan of exported names.
 - `RunKind` `"refresh"` and run.json's `paths` and `base` fields have no writer since the refresh skill left. They stay because run.json is part of the format.
 - Widen the margin of `test/unit/layout/perf.test.ts` (NFR-PERF-01), or time more runs. On this machine the 60/120 layout takes about 12 times the small one, right at `BUDGET_FACTOR`, and the test fails about one run in three.
+- Route the remaining inline JSON reads through `readJson`. RF2 found ten, in `change-map.ts`, `session.ts`, `cli/commands.ts`, `extension/integrity.ts`, `extension/rules.ts`, `sessionFiles.ts`, `showInMap.ts`, `check.ts`, `runRecord.ts` and `staleness.ts`. `session-hook.ts` reads its event from stdin the same way.
+- Let `runFolder.ts`'s `isInside` and the containment check in `citations.probeFile` use `confine.isWithin`. `isInside` excludes the root itself, and it would keep that with its own equality check.
+- Build the tooltip's `div` and the viewer toolbar's buttons in `webview/main.ts` with the shared `el` and `button`.
 
 ## RF0 Adoption
 
@@ -148,10 +151,63 @@ Divergences:
 
 ## RF2 Shared helpers
 
-- [ ] **RFX-04 One copy of each shared helper** `[unit]`
-- [ ] **RFX-05 One argument parser for the scripts** `[unit]`
-- [ ] **RFX-06 One git output parser** `[unit]`
-- [ ] **RFX-07 One set of webview DOM helpers** `[dom]`
+Investigation before the proposal:
+- `relativeDate` (changes panel) and `relativeAge` (sidebar) differ. Past 30 days the panel shows the ISO date (FR-CMP-09), and it shows no date for an unparseable timestamp. `relativeAge` says "N months ago" and "just now". The owner chose on 2026-10-21 one helper with both behaviours: `relativeAge` takes an optional number of days after which it gives the ISO date.
+- Node's type stripping, which lets `esbuild.mjs` import TypeScript, cannot resolve extensionless imports such as `integrity.ts`'s `./confine`. The owner chose on 2026-10-21 to move `hashTree` into a module without relative imports, which `esbuild.mjs` imports by its `.ts` path.
+- `session-hook.ts` reads no arguments and reports no usage error. It has nothing to share with the argument parser.
+- `isRevision` (a full commit name) and `REVISION_PATTERN` (a name a user may type) guard different calls. `commitInfo(root, "HEAD")` must stay `null` (git.test.ts). The one guard therefore takes the kind of revision it checks.
+- `ChangeInput.untracked` is the raw `ls-files -z` output, and the changeMap tests pass it as a string. `readChanges` and `untrackedFiles` therefore share one read of `GIT_READS.untracked`, and `untrackedFiles` splits it.
+- `leaderboard.ts`, `secrets.ts` and `webview/changes.ts` test `typeof value === "object" && value !== null` without excluding arrays. They are not copies of `isRecord`, and they stay.
+
+Proposal:
+
+| File or unit | Change | Estimate | Built |
+|---|---|---|---|
+| `isRecord` | `isJsonObject` in `src/model/types.ts` is renamed `isRecord`, and its ten importers follow. `tolerant.ts`, `rules.ts`, `session.ts`, `hooksFiles.ts`, `agentStream/claude.ts` and `agentStream/codex.ts` drop their copies and import it. | +30 / -40 | +50 / -54 |
+| `src/model/jsonFile.ts` | New. `readJson`, `writeJson` and `writeAtomic`, out of `session.ts`. `writeAtomic` names its temp file after the target, as `publishCandidate` does today. `runFolder.ts`, `lineage.ts`, `match-ids.ts` and `session.ts` use them, and `validate.ts`, `hooksFiles.ts`, `fingerprints.ts` and `runRecord.ts` import `writeJson` from here. `boundaries.test.ts` lists the module among the Node modules. | +45 / -60 | +74 / -94 |
+| `src/model/hashTree.ts` | New. `hashTree` and `LINK_MARK` move here from `integrity.ts`. `esbuild.mjs` imports it and drops its copy. `tsconfig.json` gains `allowImportingTsExtensions`. `integrity.test.ts` and `single.smoke.test.ts` import the new path. `AGENTS.md` says the toolchain needs Node 22.18. | +30 / -35 | +34 / -45, as `hashTree.mts` |
+| `src/model/dates.ts` | New. `relativeAge` from `home.ts`, with an optional number of days after which it gives the ISO date. `home.ts`, `webview/home.ts` and `webview/changes.ts` use it, and `relativeDate` goes. The FR-CMP-09 test calls `relativeAge(iso, NOW, 30)`. `boundaries.test.ts` lists the module as browser-safe. | +30 / -35 | +47 / -44 |
+| `src/agent/session.ts` | `repoFile` and `looseRel` give way to one path helper on `confine.isWithin`, with `citations.probeFile` telling a file from a folder. | +20 / -35 | +22 / -38 |
+| `test/unit/sharedHelpers.test.ts` | New. A source scan finds exactly one definition of each RFX-04 helper. | +40 / -0 | +37 / -0 |
+| `src/model/scriptArgs.ts` | New. `parseArgs` (leading positionals, options with a value, switches, and whether a flag may repeat) and `usageError`. | +45 / -0 | +55 / -0 |
+| Script argument handling | `change-map.ts`, `match-ids.ts`, `validate.ts`, `repo-facts.ts` and `session.ts` parse with `parseArgs` and report with `usageError`. Usage text, error wording and exit codes stay. | +40 / -75 | +67 / -108 |
+| `src/model/gitFormat.ts` | New. `unquotePath`, `parseNameStatusZ`, `parsePorcelainZ`, one unified-diff section parser and `isRevision(value, kind)`. | +130 / -0 | +198 / -0 |
+| `src/model/changes.ts`, `changeMap.ts` | `parseDiff` and `splitDiff` read the shared sections. Both copies of `unquotePath`, the header helpers, `parseNameStatusZ` and `REVISION_PATTERN` go. | +30 / -170 | +28 / -203, with `runChanges.ts` |
+| `src/model/git.ts`, `check.ts` | `renamesSince` uses `parseNameStatusZ`. `parsePorcelainZ` and `isRevision` move out. Every revision check uses the one guard. `untrackedFiles` and `readChanges` share one read. `baseReachable`, `readChanges` and `commitInfo` default to the resolved git. | +20 / -40 | +24 / -50 |
+| `test/unit/execScan.test.ts` | The scan flags a bare `"git"` program. Import paths in the changeMap, changes and git tests follow the moved functions. | +12 / -4 | +17 / -4, with `boundaries.test.ts` |
+| `webview/dom.ts` | New. `el` and `button`. `changes.ts`, `home.ts` and `session.ts` drop their copies, and `home.ts`'s `button` calls take the shared argument order. | +20 / -35 | +35 / -49 |
+| Bundles | `skills/*/scripts/*.mjs` and `action/dist/index.js` are rebuilt with the change that causes them. | | +906 / -693 |
+
+Where the build differs from the proposal:
+- The Built sizes come from `git show --numstat` of `a742e7a`, `51f4229`, `daa4df7` and `f802490`, without the progress log. A file that two RFX-04 rows touch counts once, in the `jsonFile.ts` row: `hooksFiles.ts`, `runRecord.ts`, `match-ids.ts`, `lineage.ts` and `boundaries.test.ts`.
+- `hashTree` went into `src/model/hashTree.mts`, not `hashTree.ts`. The Divergences below say why.
+- `gitFormat.ts` came out larger than estimated. It documents each field of a diff section, and it reads a `diff --git` line both by length and by its last ` b/`.
+- `match-ids.ts` keeps `readInput`, and `lineage.ts` keeps `readRunFile`. Each turns the shared `readJson`'s throw into the result its caller had before.
+- The RFX-04 test is `test/unit/sharedHelpers.test.ts` › `RFX-04 one copy of each shared helper`, with one case per helper, in place of the single test the proposal named.
+
+Tests the ACs call for:
+- RFX-04: `RFX-04 each shared helper has exactly one definition` in `test/unit/sharedHelpers.test.ts`, and the existing tests of every caller.
+- RFX-05: the existing script tests in `test/unit/agent/`.
+- RFX-06: `SAF-07 the scan flags a bare "git" program` in `test/unit/execScan.test.ts`, and the existing changeMap, changes and git tests.
+- RFX-07: the existing dom tests.
+
+Divergences:
+- `hashTree` lives in `src/model/hashTree.mts`, not `integrity.ts`, as the owner chose. The `.mts` name tells Node that the file is an ES module. The build then prints no module-type warning. Its importers name the file with its extension, which `allowImportingTsExtensions` in `tsconfig.json` allows. `AGENTS.md` raises the toolchain's Node to 22.18.
+- `writeAtomic` names its temp file `.<target>.tmp-<pid>-<time>`, as `publishCandidate` did. The session files' temp file was `.tmp-<pid>-<time>`. No watcher or test reads either name.
+- The FR-CMP-09 dom test calls `relativeAge(iso, NOW, 30)` in place of `relativeDate(iso, NOW)`, as the owner chose. Its cases and expectations stay.
+- `boundaries.test.ts` lists `dates.ts` as browser-safe, and `jsonFile.ts` and `hashTree.mts` among the Node modules.
+- `session.mjs inject` checks that the file exists with `existsSync` before the path checks. `repoFile` used the failure of `realpathSync` for this, with the same message.
+- `session-hook.ts` does not use the argument parser. It reads no arguments and reports no usage error.
+- The `session.mjs` commands that take no arguments keep their `args.length` check. They have no flags to parse.
+- `parseDiff` reads paths only from a section's header lines, as `splitDiff` did. It used to take a removed line starting `-- ` or an added line starting `++ ` inside a hunk for a `---` or `+++` header, and reported that line's text as the file's path. A comparison of the old and new parsers on every commit of this repository, and on a commit with quoted, tabbed, spaced, renamed, binary, mode-only, added and deleted paths, differed only on that case.
+- `renamesSince` accepts any revision a user may type, where it took 7 to 64 hex characters before. Of the guard's two kinds, only `"name"` accepts every revision `renamesSince` took. Its caller passes the full commit name from `fingerprints.json`.
+- The one untracked listing is `GIT_READS.untracked`, which both `readChanges` and `untrackedFiles` run. `untrackedFiles` had its own argv with the same flags in another order.
+- The shared `button` takes its class before its text, as `el` does and as the changes panel's copy did. The sidebar's fourteen calls swap their first two arguments.
+
+- [x] **RFX-04 One copy of each shared helper** `[unit]`. Commit `a742e7a`. `test/unit/sharedHelpers.test.ts` passes: `RFX-04 one copy of each shared helper` › each of `isRecord`, `readJson`, `writeJson`, `writeAtomic`, `hashTree`, `relativeAge`, `isWithin` and `probeFile` `has exactly one definition`, `relativeDate`, `repoFile` and `looseRel` have none, `one expression tells a plain object from null and arrays` and `one write renames a temp file over its target`. Two of them failed with an `isRecord` copy and a `relativeDate` function added to `hooksFiles.ts`. The existing caller tests pass with import-path changes only, apart from the FR-CMP-09 test above. A smoke run of the rebuilt `session.mjs` gives the old messages for a missing file, the root, a folder, `.sustain/active`, `/etc/hosts` and a link out of the repository, and seeds and reports a bug in `src/a.ts`. `npm run check` passes with 1256 tests in 83 files. `npm run test:e2e` passes in all six runs: `single` 86, `empty` 3 and `multi` 2 on each of VS Code 1.126.0 and 1.141.0. The action bundle no longer includes `src/model/session.ts`.
+- [x] **RFX-05 One argument parser for the scripts** `[unit]`. Commit `51f4229`. `parseArgs` and `usageError` in `src/model/scriptArgs.ts` serve `change-map`, `match-ids`, `validate`, `repo-facts` and `session`. The script tests in `test/unit/agent/` pass unchanged: 226 tests in 8 files. A throwaway script ran the committed and the rebuilt bundles of the five scripts on 50 argument lists, among them missing, repeated, unknown and misplaced flags, and their stderr and exit codes matched on every one. `npm run check` passes with 1256 tests in 83 files. `npm run test:e2e` passes in all six runs with the same counts.
+- [x] **RFX-06 One git output parser** `[unit]`. Commit `daa4df7`. `src/model/gitFormat.ts` holds `isRevision`, `unquotePath`, `parseNameStatusZ`, `parsePorcelainZ` and `parseDiffSections`. `parseDiff` and `splitDiff` read its sections, `renamesSince` uses `parseNameStatusZ`, and `baseReachable`, `readChanges` and `commitInfo` default to `gitProgram()`. The changeMap, changes and git tests pass with import-path changes only. `test/unit/execScan.test.ts` › `SAF-07 the scan flags a bare "git" program` passes, and `SAF-02 src/agent and src/model spawn only node itself or the resolved git` failed with `baseReachable`'s default set back to `"git"`. `npm run check` passes with 1257 tests in 83 files. `npm run test:e2e` passes in all six runs with the same counts.
+- [x] **RFX-07 One set of webview DOM helpers** `[dom]`. Commit `f802490`. `webview/dom.ts` holds `el` and `button`, and `changes.ts`, `home.ts` and `session.ts` import them. The dom tests pass unchanged: 145 tests in 8 files. 22 of them failed with the shared `button`'s first two parameters swapped. `npm run check` passes with 1257 tests in 83 files. `npm run test:e2e` passes in all six runs with the same counts.
 
 ## RF3 Unit folders
 

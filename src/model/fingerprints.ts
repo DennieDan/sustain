@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { assertWritable } from "./confine";
-import { writeJson } from "./session";
+import { writeJson } from "./jsonFile";
 import type { ArchifyDoc } from "./types";
 
 export const FINGERPRINTS_FILE = "fingerprints.json";
