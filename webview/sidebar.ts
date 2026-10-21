@@ -1,6 +1,6 @@
 // Sidebar webview entry point (UI-01): renders each HomeState the host sends and posts what the
 // user did. Bundled as dist/sidebar.js.
-import type { HomeHostMessage, HomeWebviewMessage } from "../src/model/messages";
+import type { HomeHostMessage, HomeWebviewMessage } from "../src/viewer/protocol";
 import { createHome } from "./home";
 
 declare function acquireVsCodeApi(): { postMessage(message: HomeWebviewMessage): void };

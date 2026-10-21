@@ -1,14 +1,14 @@
 // FR-CMP-09/11/12, §5.4: the header strip, the changes panel and their state, drawn from a
 // baseline/open pair; repository text goes in as text only.
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import type { WebviewMessage } from "../../src/model/messages";
-import { readDiagram } from "../../src/core/tolerant";
-import type { ViewDiagram } from "../../src/core/tolerant";
-import { relativeAge } from "../../src/core/dates";
-import { ChangesView, KEPT_NOTE, NO_DIFF_TEXT, compareDiagrams, readChangesState } from "../../webview/changes";
-import type { ChangesState } from "../../webview/changes";
-import type { ElementKind } from "../../webview/render";
-import { BASE_REVISION, CURRENT_DOC, NOW, compare } from "./support/compare";
+import type { WebviewMessage } from "../../../src/viewer/protocol";
+import { readDiagram } from "../../../src/core/tolerant";
+import type { ViewDiagram } from "../../../src/core/tolerant";
+import { relativeAge } from "../../../src/core/dates";
+import { ChangesView, KEPT_NOTE, NO_DIFF_TEXT, compareDiagrams, readChangesState } from "../../../src/viewer/changes";
+import type { ChangesState } from "../../../src/viewer/changes";
+import type { ElementKind } from "../../../src/viewer/render";
+import { BASE_REVISION, CURRENT_DOC, NOW, compare } from "../support/compare";
 
 function diagramOf(doc: unknown): ViewDiagram {
   const result = readDiagram(doc);

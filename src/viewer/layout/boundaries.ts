@@ -1,5 +1,5 @@
 // Boundary nesting and rectangles (FR-LAY-03).
-import type { ViewDiagram } from "../core/tolerant";
+import type { ViewDiagram } from "../../core/tolerant";
 import { boundingBox, pad } from "./geom";
 import type { Rect } from "./scene";
 

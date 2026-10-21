@@ -1,7 +1,7 @@
 // FR-LAY-03 boundaries: hierarchy placement, overlay rectangles, authored padding.
 import { describe, expect, test } from "vitest";
-import { hierarchy } from "../../../src/layout/boundaries";
-import type { Scene, SceneBoundary } from "../../../src/layout/scene";
+import { hierarchy } from "../../../../src/viewer/layout/boundaries";
+import type { Scene, SceneBoundary } from "../../../../src/viewer/layout/scene";
 import { chain, comp, contains, diagramOf, lay, overlaps, rectOf } from "./helpers";
 
 function boundary(scene: Scene, label: string): SceneBoundary {

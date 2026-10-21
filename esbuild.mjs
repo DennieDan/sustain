@@ -144,7 +144,7 @@ async function buildDist() {
   // carries elkjs, which lays the map out in the page's own thread (VWR-02).
   results.push(await esbuild.build({
     ...common,
-    entryPoints: [join(root, "webview/main.ts")],
+    entryPoints: [join(root, "src/viewer/main.ts")],
     outfile: join(dist, "webview.js"),
     platform: "browser",
     format: "iife",
@@ -169,7 +169,7 @@ async function buildDist() {
     target: "es2022",
     minify: true,
   }));
-  cpSync(join(root, "webview/styles.css"), join(dist, "webview.css"));
+  cpSync(join(root, "src/viewer/styles.css"), join(dist, "webview.css"));
   cpSync(join(root, "webview/session.css"), join(dist, "session-webview.css"));
   cpSync(join(root, "webview/sidebar.css"), join(dist, "sidebar.css"));
   writeBundleInputs(results.flatMap((result) => (result.metafile ? [result.metafile] : [])));

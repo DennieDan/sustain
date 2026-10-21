@@ -1,9 +1,9 @@
 // Session webview entry point: renders the learning-session snapshot — phase, step k/n,
 // bug progress, elapsed timer and the local leaderboard. Talks to the extension host via
 // SessionHostMessage/SessionWebviewMessage. Bundled as dist/session-webview.js.
-import type { SessionHostMessage, SessionView, SessionWebviewMessage } from "../src/model/messages";
+import type { SessionHostMessage, SessionView, SessionWebviewMessage } from "../src/viewer/protocol";
 import type { LeaderboardEntry } from "../src/model/leaderboard";
-import { el } from "./dom";
+import { el } from "../src/viewer/dom";
 
 declare function acquireVsCodeApi(): { postMessage(message: SessionWebviewMessage): void };
 const vscode = acquireVsCodeApi();

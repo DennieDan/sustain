@@ -4,7 +4,7 @@
 // (label), c2 added; boundaries "Application" renamed (from "App"), "Data" added. Removed:
 // component "Old", connection API → Old, boundary "Legacy".
 import type { ComparisonContext } from "../../../src/core/comparison";
-import type { Compare } from "../../../src/model/messages";
+import type { Compare } from "../../../src/viewer/protocol";
 import type { RunChanges } from "../../../src/core/runChanges";
 
 export const BASELINE_DOC = {

@@ -1,10 +1,10 @@
 // FR-NAV-01: clicking a node posts openSource for its first source; a drag does not.
 import { beforeEach, describe, expect, test } from "vitest";
-import type { WebviewMessage } from "../../src/model/messages";
-import type { ViewDiagram } from "../../src/core/tolerant";
-import { NodeClicks } from "../../webview/click";
-import { renderScene } from "../../webview/render";
-import { fixedMeasure, gridScene } from "./support/scene";
+import type { WebviewMessage } from "../../../src/viewer/protocol";
+import type { ViewDiagram } from "../../../src/core/tolerant";
+import { NodeClicks } from "../../../src/viewer/click";
+import { renderScene } from "../../../src/viewer/render";
+import { fixedMeasure, gridScene } from "../support/scene";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 

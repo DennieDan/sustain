@@ -3,9 +3,9 @@
 // text box persists across states, so typing survives updates.
 import { relativeAge } from "../src/core/dates";
 import { mapStatus, runFigures } from "../src/model/home";
-import type { HomeState, HomeWebviewMessage, MapItem, RunCard } from "../src/model/messages";
+import type { HomeState, HomeWebviewMessage, MapItem, RunCard } from "../src/viewer/protocol";
 import type { Check } from "../src/core-node/preflight";
-import { button, el } from "./dom";
+import { button, el } from "../src/viewer/dom";
 
 export type Post = (message: HomeWebviewMessage) => void;
 

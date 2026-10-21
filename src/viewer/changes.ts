@@ -2,13 +2,13 @@
 // diagram with its baseline, the header strip above the canvas and the changes panel docked
 // right. Repository text (labels, paths, commit subjects, run folders) goes in with
 // `textContent` only (§5.4).
-import { diffDiagrams, markKept } from "../src/core/diagramDiff";
-import type { DiagramDiff, ElementDiff, FieldChange } from "../src/core/diagramDiff";
-import type { CommitRef } from "../src/core/comparison";
-import { relativeAge } from "../src/core/dates";
-import type { Compare, WebviewMessage } from "../src/model/messages";
-import { readDiagram } from "../src/core/tolerant";
-import type { ViewConnection, ViewDiagram } from "../src/core/tolerant";
+import { diffDiagrams, markKept } from "../core/diagramDiff";
+import type { DiagramDiff, ElementDiff, FieldChange } from "../core/diagramDiff";
+import type { CommitRef } from "../core/comparison";
+import { relativeAge } from "../core/dates";
+import type { Compare, WebviewMessage } from "./protocol";
+import { readDiagram } from "../core/tolerant";
+import type { ViewConnection, ViewDiagram } from "../core/tolerant";
 import { button, el } from "./dom";
 import type { ElementKind } from "./render";
 import { formatFileChange } from "./tooltip";

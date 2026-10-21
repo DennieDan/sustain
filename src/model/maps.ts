@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { listCandidates } from "../core-node/discovery";
-import type { MapItem } from "./messages";
+import type { MapItem } from "../viewer/protocol";
 import { readRunRecord } from "../core-node/runRecord";
 import { parseDiagram } from "../core/tolerant";
 

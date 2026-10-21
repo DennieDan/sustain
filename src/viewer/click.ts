@@ -1,6 +1,6 @@
 // Node clicks (FR-NAV-01): a press and release on the same node with less than 4 px of pointer
 // movement opens the component's first source.
-import type { WebviewMessage } from "../src/model/messages";
+import type { WebviewMessage } from "./protocol";
 
 /** Pointer movement below this many pixels counts as a click, not a drag. */
 export const CLICK_SLOP_PX = 4;

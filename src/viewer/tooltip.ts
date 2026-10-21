@@ -2,11 +2,11 @@
 // pointer is over the node or the tooltip, hidden 200 ms after leaving both. Source entries post
 // `openSource`; with change marks on, a status line and the component's changed files (A/M/R
 // post `openFile`).
-import type { ElementDiff } from "../src/core/diagramDiff";
-import type { ViewDiagram } from "../src/core/tolerant";
-import type { WebviewMessage } from "../src/model/messages";
-import type { FileChange } from "../src/core/runChanges";
-import type { SourceRef } from "../src/core/types";
+import type { ElementDiff } from "../core/diagramDiff";
+import type { ViewDiagram } from "../core/tolerant";
+import type { WebviewMessage } from "./protocol";
+import type { FileChange } from "../core/runChanges";
+import type { SourceRef } from "../core/types";
 
 export const SHOW_DELAY_MS = 300;
 export const HIDE_DELAY_MS = 200;

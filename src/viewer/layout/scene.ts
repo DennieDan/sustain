@@ -1,7 +1,7 @@
 // The Scene: absolute diagram geometry produced by `layoutDiagram` and drawn by the webview.
 // Browser-safe types only.
 import type { Direction, ElkInput, ElkResult } from "./elk";
-import type { BoundaryKind, ComponentType, Variant } from "../core/types";
+import type { BoundaryKind, ComponentType, Variant } from "../../core/types";
 
 export interface Point {
   x: number;

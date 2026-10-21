@@ -8,7 +8,7 @@ import * as vscode from "vscode";
 import { claudeParser } from "../model/agentStream/claude";
 import { codexParser } from "../model/agentStream/codex";
 import { listCandidates } from "../core-node/discovery";
-import type { ComposerAgent, ComposerCli, RunMode } from "../model/messages";
+import type { ComposerAgent, ComposerCli, RunMode } from "../viewer/protocol";
 import { findOnPath } from "../core-node/which";
 import { agentLaunchArgs, AGENTS, headlessArgs, SKILL_SCRIPTS, skillPrompt, type Agent, type SkillName } from "./agents";
 import { devinPromptArgs, findDevinCli } from "./devin";

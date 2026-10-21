@@ -1,6 +1,6 @@
 // Viewport of the diagram canvas (FR-VIEW-06, FR-CMP-11 fit-to-element): pure math plus the DOM wiring for drag, wheel,
 // pinch, toolbar buttons and keys. `screen = diagram × scale + (x, y)`, in panel pixels.
-import type { Point, Rect } from "../src/layout/scene";
+import type { Point, Rect } from "./layout/scene";
 
 export interface ViewState {
   x: number;

@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 import type { StreamParser } from "../model/agentStream/feed";
 import type { RunState } from "../model/agentStream/tracker";
 import type { RunEstimate } from "../core-node/estimate";
-import type { ComposerCli, RunCard, RunMode } from "../model/messages";
+import type { ComposerCli, RunCard, RunMode } from "../viewer/protocol";
 import { CANDIDATE_FILE } from "../core-node/runFolder";
 import type { LaunchTask } from "./generate";
 import { onAction } from "./notify";

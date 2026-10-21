@@ -64,7 +64,7 @@ function isNodeBuiltin(specifier: string): boolean {
 /** Boundary violations for one file of src/model or src/layout. */
 function boundaryViolations(file: string, source: string): string[] {
   const violations: string[] = [];
-  const browserSafe = file.startsWith("src/layout/") || BROWSER_SAFE_MODEL[file] === true;
+  const browserSafe = file.startsWith("src/viewer/layout/") || BROWSER_SAFE_MODEL[file] === true;
   for (const specifier of importSpecifiers(source)) {
     if (specifier === "vscode") {
       violations.push(`${file}: imports vscode`);
@@ -74,7 +74,8 @@ function boundaryViolations(file: string, source: string): string[] {
       else if (!NODE_ALLOWED[specifier]) violations.push(`${file}: imports ${specifier}; only fs, path, child_process, crypto are allowed`);
     } else if (specifier.startsWith(".")) {
       const target = join(file, "..", specifier).split("\\").join("/");
-      const allowedPrefixes = file.startsWith("src/layout/") ? ["src/layout/", "src/model/", "src/core/", "src/core-node/"] : ["src/model/", "src/core/", "src/core-node/"];
+      const model = ["src/model/", "src/core/", "src/core-node/", "src/viewer/protocol"];
+      const allowedPrefixes = file.startsWith("src/viewer/layout/") ? ["src/viewer/layout/", ...model] : model;
       if (!allowedPrefixes.some((prefix) => target.startsWith(prefix))) {
         violations.push(`${file}: imports ${specifier} outside its allowed layers`);
       }
@@ -85,16 +86,16 @@ function boundaryViolations(file: string, source: string): string[] {
 
 describe("NFR-QUAL-03 module boundaries", () => {
   test("src/model and src/layout respect the boundaries", () => {
-    // skillFiles.ts came from src/extension, which this test does not scan.
-    const files = [...sourceFiles("src/model"), ...sourceFiles("src/core"), ...sourceFiles("src/core-node"), ...sourceFiles("src/layout")].filter((file) => file !== "src/core-node/skillFiles.ts");
+    // skillFiles.ts came from src/extension, which this test does not scan. protocol.ts came from src/model.
+    const files = [...sourceFiles("src/model"), ...sourceFiles("src/core"), ...sourceFiles("src/core-node"), ...sourceFiles("src/viewer/layout"), "src/viewer/protocol.ts"].filter((file) => file !== "src/core-node/skillFiles.ts");
     const violations = files.flatMap((file) => boundaryViolations(file, readFileSync(join(repoRoot, file), "utf8")));
     expect(violations).toEqual([]);
   });
 
   test.each([
-    ["src/layout/scene.ts", 'import * as vscode from "vscode";'],
-    ["src/layout/scene.ts", 'import { readFileSync } from "node:fs";'],
-    ["src/layout/scene.ts", 'import path from "path";'],
+    ["src/viewer/layout/scene.ts", 'import * as vscode from "vscode";'],
+    ["src/viewer/layout/scene.ts", 'import { readFileSync } from "node:fs";'],
+    ["src/viewer/layout/scene.ts", 'import path from "path";'],
     ["src/core/types.ts", 'export { x } from "node:path";'],
     ["src/core/tolerant.ts", 'const fs = require("fs");'],
     ["src/core/schema.ts", 'import { readFileSync } from "node:fs";'],
@@ -103,7 +104,7 @@ describe("NFR-QUAL-03 module boundaries", () => {
     ["src/core/checks.ts", 'const m = await import("node:os");'],
     ["src/core-node/git.ts", 'import type { ExtensionContext } from "vscode";'],
     ["src/core/schema.ts", 'import { panel } from "../extension/panel";'],
-    ["src/layout/elk.ts", 'import { render } from "../../webview/render";'],
+    ["src/viewer/layout/elk.ts", 'import { render } from "../render";'],
   ])("%s rejects %s", (file, source) => {
     expect(boundaryViolations(file, source)).toHaveLength(1);
   });
@@ -112,8 +113,8 @@ describe("NFR-QUAL-03 module boundaries", () => {
     ["src/core-node/citations.ts", 'import { realpathSync } from "node:fs";'],
     ["src/core-node/git.ts", 'import { spawnSync } from "node:child_process";'],
     ["src/core/schema.ts", 'import Ajv2020 from "ajv/dist/2020";'],
-    ["src/layout/elk.ts", 'import ELK from "elkjs/lib/elk.bundled.js";'],
-    ["src/layout/elk.ts", 'import type { ArchifyDoc } from "../model/types";'],
+    ["src/viewer/layout/elk.ts", 'import ELK from "elkjs/lib/elk.bundled.js";'],
+    ["src/viewer/layout/elk.ts", 'import type { ArchifyDoc } from "../../core/types";'],
   ])("%s allows %s", (file, source) => {
     expect(boundaryViolations(file, source)).toEqual([]);
   });

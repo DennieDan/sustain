@@ -1,11 +1,11 @@
 // FR-VIEW-07, FR-CMP-12: hover delay, contents, stay/hide rules, source and changed-file clicks of the node tooltip.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import type { WebviewMessage } from "../../src/model/messages";
-import type { ViewDiagram } from "../../src/core/tolerant";
-import type { FileChange } from "../../src/core/runChanges";
-import { renderScene } from "../../webview/render";
-import { HIDE_DELAY_MS, SHOW_DELAY_MS, TooltipController, formatSource } from "../../webview/tooltip";
-import { fixedMeasure, gridScene } from "./support/scene";
+import type { WebviewMessage } from "../../../src/viewer/protocol";
+import type { ViewDiagram } from "../../../src/core/tolerant";
+import type { FileChange } from "../../../src/core/runChanges";
+import { renderScene } from "../../../src/viewer/render";
+import { HIDE_DELAY_MS, SHOW_DELAY_MS, TooltipController, formatSource } from "../../../src/viewer/tooltip";
+import { fixedMeasure, gridScene } from "../support/scene";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 

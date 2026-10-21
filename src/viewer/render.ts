@@ -2,10 +2,10 @@
 // stroke widths and dash patterns come from webview/styles.css (VS Code theme variables); this
 // module sets geometry, classes and data attributes only. Text sizes are the ones the layout
 // measured node boxes with.
-import { LABEL_PX, SUBLABEL_PX, TAG_PX } from "../src/layout/measure";
-import type { MeasureText, Point, Rect, Scene, SceneEdge } from "../src/layout/scene";
-import type { DiagramDiff, ElementStatus } from "../src/core/diagramDiff";
-import type { ViewDiagram } from "../src/core/tolerant";
+import { LABEL_PX, SUBLABEL_PX, TAG_PX } from "./layout/measure";
+import type { MeasureText, Point, Rect, Scene, SceneEdge } from "./layout/scene";
+import type { DiagramDiff, ElementStatus } from "../core/diagramDiff";
+import type { ViewDiagram } from "../core/tolerant";
 import { boxName } from "./a11y";
 
 const SVG_NS = "http://www.w3.org/2000/svg";

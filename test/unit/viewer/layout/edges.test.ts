@@ -1,6 +1,6 @@
 // FR-LAY-04 edges and FR-LAY-02 direction choice.
 import { describe, expect, test } from "vitest";
-import type { Point, Scene } from "../../../src/layout/scene";
+import type { Point, Scene } from "../../../../src/viewer/layout/scene";
 import { chain, comp, diagramOf, lay, onBorder, rectOf } from "./helpers";
 
 const fit = (scene: Scene, viewport: { width: number; height: number }) => Math.min(viewport.width / scene.bounds.w, viewport.height / scene.bounds.h);

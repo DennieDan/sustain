@@ -2,11 +2,11 @@
 // host, lays out, renders and fits each loaded diagram, and shows its comparison with the
 // baseline (header, marks, changes panel). Bundled as dist/webview.js; the host's HTML only links
 // dist/webview.css and this script.
-import { runInThread } from "../src/layout/elkInThread";
-import { layoutDiagram } from "../src/layout/layout";
-import type { MeasureText } from "../src/layout/scene";
-import type { Compare, HostMessage, WebviewMessage } from "../src/model/messages";
-import { readDiagram } from "../src/core/tolerant";
+import { runInThread } from "./layout/elkInThread";
+import { layoutDiagram } from "./layout/layout";
+import type { MeasureText } from "./layout/scene";
+import type { Compare, HostMessage, WebviewMessage } from "./protocol";
+import { readDiagram } from "../core/tolerant";
 import { ChangesView, compareDiagrams, readChangesState } from "./changes";
 import type { ChangesState, Comparison } from "./changes";
 import { NodeClicks } from "./click";

@@ -1,7 +1,7 @@
 // FR-VIEW-06: viewport math (zoom clamps, zoom around a point, fit) and its DOM wiring.
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { FIT_PADDING, FOCUS_PADDING, MAX_SCALE, MIN_SCALE, ViewportController, ZOOM_STEP, clampScale, fitView, panBy, zoomAt } from "../../webview/viewport";
-import type { ViewState } from "../../webview/viewport";
+import { FIT_PADDING, FOCUS_PADDING, MAX_SCALE, MIN_SCALE, ViewportController, ZOOM_STEP, clampScale, fitView, panBy, zoomAt } from "../../../src/viewer/viewport";
+import type { ViewState } from "../../../src/viewer/viewport";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 

@@ -3,15 +3,15 @@
 // states, and shows a comparison (header, marks, panel, tooltip lines) with persisted state.
 // The layout is mocked with the hand-built grid scene so this tests the wiring only.
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { layoutDiagram } from "../../src/layout/layout";
-import type { Scene } from "../../src/layout/scene";
-import type { HostMessage, WebviewMessage } from "../../src/model/messages";
-import type { ChangesState } from "../../webview/changes";
-import { FOCUS_PADDING, fitView } from "../../webview/viewport";
-import { CURRENT_DOC, compare } from "./support/compare";
-import { gridScene } from "./support/scene";
+import { layoutDiagram } from "../../../src/viewer/layout/layout";
+import type { Scene } from "../../../src/viewer/layout/scene";
+import type { HostMessage, WebviewMessage } from "../../../src/viewer/protocol";
+import type { ChangesState } from "../../../src/viewer/changes";
+import { FOCUS_PADDING, fitView } from "../../../src/viewer/viewport";
+import { CURRENT_DOC, compare } from "../support/compare";
+import { gridScene } from "../support/scene";
 
-vi.mock("../../src/layout/layout", () => ({ layoutDiagram: vi.fn() }));
+vi.mock("../../../src/viewer/layout/layout", () => ({ layoutDiagram: vi.fn() }));
 
 // webview/main.ts runs on import: the VS Code API, panel size and canvas must be stubbed first.
 // The stored state has the changes panel collapsed, so startup restores it (FR-CMP-12).
@@ -36,7 +36,7 @@ const { posted, fonts, states } = vi.hoisted(() => {
   return { posted, fonts, states };
 });
 
-import "../../webview/main";
+import "../../../src/viewer/main";
 
 const startup = [...posted];
 

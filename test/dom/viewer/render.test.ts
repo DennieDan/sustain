@@ -2,16 +2,16 @@
 // with the classes the theme colours hang on, text placed inside the boxes the layout sized, and
 // change marks and element boxes addressed by the diagram's array indices.
 import { describe, expect, test } from "vitest";
-import { autoNodeSize } from "../../src/layout/measure";
-import type { Scene } from "../../src/layout/scene";
-import { diffDiagrams, markKept } from "../../src/core/diagramDiff";
-import { parseDiagram, readDiagram } from "../../src/core/tolerant";
-import type { ViewDiagram } from "../../src/core/tolerant";
-import type { BoundaryKind, ComponentType, Variant } from "../../src/core/types";
-import { archifyFixtures } from "../unit/support/fixtures";
-import { applyMarks, elementBox, renderScene } from "../../webview/render";
-import { BASELINE_DOC, CURRENT_DOC } from "./support/compare";
-import { contentGroup, fixedMeasure, gridScene } from "./support/scene";
+import { autoNodeSize } from "../../../src/viewer/layout/measure";
+import type { Scene } from "../../../src/viewer/layout/scene";
+import { diffDiagrams, markKept } from "../../../src/core/diagramDiff";
+import { parseDiagram, readDiagram } from "../../../src/core/tolerant";
+import type { ViewDiagram } from "../../../src/core/tolerant";
+import type { BoundaryKind, ComponentType, Variant } from "../../../src/core/types";
+import { archifyFixtures } from "../../unit/support/fixtures";
+import { applyMarks, elementBox, renderScene } from "../../../src/viewer/render";
+import { BASELINE_DOC, CURRENT_DOC } from "../support/compare";
+import { contentGroup, fixedMeasure, gridScene } from "../support/scene";
 
 const TYPES: ComponentType[] = ["frontend", "backend", "database", "cloud", "security", "messagebus", "external"];
 const VARIANTS: Variant[] = ["default", "emphasis", "security", "dashed"];
