@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
-import type { HomeState, HomeWebviewMessage, RunCard, SessionWebviewMessage, WebviewMessage } from "../viewer/protocol";
+import type { SessionWebviewMessage } from "../learn/protocol";
+import type { WebviewMessage } from "../viewer/protocol";
+import type { HomeState, HomeWebviewMessage, RunCard } from "./sidebar/protocol";
 import type { UsageEvent, UsageLog } from "./usageCounts";
 import { writeAgentNotesCommand } from "./agentNotes";
 import { copyPromptForCommand } from "./copyPrompt";

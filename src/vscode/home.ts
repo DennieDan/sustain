@@ -8,7 +8,7 @@ import { listCandidates } from "../core-node/discovery";
 import { healthItems, type HealthItem, type HealthKind } from "./sidebar/health";
 import { listMaps } from "./maps";
 import { ARCHIFY_DIR, CANDIDATE_FILE } from "../core-node/runFolder";
-import type { HomeHostMessage, HomeState, HomeWebviewMessage, MapItem, SessionSummary } from "../viewer/protocol";
+import type { HomeHostMessage, HomeState, HomeWebviewMessage, MapItem, SessionSummary } from "./sidebar/protocol";
 import { runPreflight, type Check } from "../core-node/preflight";
 import { assertWritable } from "../core-node/confine";
 import { AGENTS } from "./agents";

@@ -87,6 +87,8 @@ function boundaryViolations(file: string, source: string): string[] {
 /** Files that came from src/model into another unit. This test keeps checking them. */
 const MOVED_FROM_MODEL = [
   "src/viewer/protocol.ts",
+  "src/vscode/sidebar/protocol.ts",
+  "src/learn/protocol.ts",
   "src/vscode/agentStream/claude.ts",
   "src/vscode/agentStream/codex.ts",
   "src/vscode/agentStream/feed.ts",

@@ -5,7 +5,7 @@ import { describe, expect, test } from "vitest";
 import { relativeAge } from "../../../../src/core/dates";
 import { clock, mapStatus, runFigures, statusText, tokenCount } from "../../../../src/vscode/sidebar/wording";
 import { listMaps } from "../../../../src/vscode/maps";
-import type { MapItem, RunCard } from "../../../../src/viewer/protocol";
+import type { MapItem, RunCard } from "../../../../src/vscode/sidebar/protocol";
 import { newRunRecord, newRunSince, runFolderNames, writeRunRecord } from "../../../../src/core-node/runRecord";
 import { put, tempDir } from "../../support/temp";
 

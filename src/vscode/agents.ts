@@ -1,6 +1,6 @@
 // Agent launch details for `Sustain: Generate Architecture` (FR-GEN-01, FR-UPD-08). No `vscode`
 // import, so the prompt format is unit-tested in Node. The PATH lookup lives in `src/model/which.ts`.
-import type { ComposerCli } from "../viewer/protocol";
+import type { ComposerCli } from "./sidebar/protocol";
 
 export interface Agent {
   /** QuickPick label and terminal name suffix. */

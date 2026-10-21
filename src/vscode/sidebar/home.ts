@@ -3,7 +3,7 @@
 // text box persists across states, so typing survives updates.
 import { relativeAge } from "../../core/dates";
 import { mapStatus, runFigures } from "./wording";
-import type { HomeState, HomeWebviewMessage, MapItem, RunCard } from "../../viewer/protocol";
+import type { HomeState, HomeWebviewMessage, MapItem, RunCard } from "./protocol";
 import type { Check } from "../../core-node/preflight";
 import { button, el } from "../../viewer/dom";
 
