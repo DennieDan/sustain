@@ -57,20 +57,21 @@ Decisions for Sustain in [MADR 4.0](https://adr.github.io/madr/) format; the pro
 | [0046](0046-generate-streams-headless-runs-into-the-sidebar.md) | Generate streams headless runs into the sidebar | accepted | 2026-10-18 |
 | [0047](0047-the-viewer-reaches-its-host-through-a-bridge.md) | The viewer reaches its host through a bridge and colours itself from tokens | accepted | 2026-10-18 |
 | [0048](0048-maps-show-staleness-from-fingerprints.md) | Maps show staleness from fingerprints on load and on change | accepted | 2026-10-18 |
-| [0049](0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md) | A refresh skill updates a map from its fingerprints | accepted | 2026-10-18 |
+| [0049](0049-a-refresh-skill-updates-a-map-from-its-fingerprints.md) | A refresh skill updates a map from its fingerprints | superseded by [ADR-0066](0066-units-with-one-way-import-rules.md) | 2026-10-18 |
 | [0050](0050-the-validator-reports-evidence-on-acceptance.md) | The validator reports evidence on acceptance | accepted | 2026-10-18 |
-| [0051](0051-the-diagram-page-is-one-offline-html-file.md) | The diagram page is one offline HTML file | accepted | 2026-10-18 |
+| [0051](0051-the-diagram-page-is-one-offline-html-file.md) | The diagram page is one offline HTML file | superseded by [ADR-0066](0066-units-with-one-way-import-rules.md) | 2026-10-18 |
 | [0052](0052-a-core-cli-shares-the-model-with-every-host.md) | A core CLI shares the model with every host | accepted | 2026-10-18 |
 | [0053](0053-the-check-runs-as-a-javascript-action.md) | The pull request check runs as a JavaScript Action | superseded by [ADR-0058](0058-the-action-updates-the-map-only-when-asked.md) | 2026-10-18 |
-| [0054](0054-the-cloud-accepts-maps-never-code.md) | The cloud accepts maps, never code | accepted | 2026-10-18 |
-| [0055](0055-only-the-cloud-client-sends-and-only-when-asked.md) | Only the cloud client sends, and only when asked | accepted | 2026-10-18 |
+| [0054](0054-the-cloud-accepts-maps-never-code.md) | The cloud accepts maps, never code | superseded by [ADR-0066](0066-units-with-one-way-import-rules.md) | 2026-10-18 |
+| [0055](0055-only-the-cloud-client-sends-and-only-when-asked.md) | Only the cloud client sends, and only when asked | superseded by [ADR-0066](0066-units-with-one-way-import-rules.md) | 2026-10-18 |
 | [0056](0056-skills-ship-with-their-built-scripts.md) | Skills ship with their built scripts | accepted | 2026-10-18 |
 | [0057](0057-release-from-tags-to-github-and-the-stores.md) | Release from tags to GitHub and the stores | accepted | 2026-10-18 |
 | [0058](0058-the-action-updates-the-map-only-when-asked.md) | The Action updates the map only when asked | accepted | 2026-10-19 |
-| [0059](0059-explain-back-keeps-answer-keys-in-the-extension-host.md) | Explain-back keeps answer keys in the extension host | accepted | 2026-10-19 |
-| [0060](0060-tours-are-a-sidecar-the-viewer-plays.md) | Tours are a sidecar the viewer plays | accepted | 2026-10-19 |
+| [0059](0059-explain-back-keeps-answer-keys-in-the-extension-host.md) | Explain-back keeps answer keys in the extension host | superseded by [ADR-0066](0066-units-with-one-way-import-rules.md) | 2026-10-19 |
+| [0060](0060-tours-are-a-sidecar-the-viewer-plays.md) | Tours are a sidecar the viewer plays | superseded by [ADR-0066](0066-units-with-one-way-import-rules.md) | 2026-10-19 |
 | [0061](0061-sessions-enforce-the-hunt-in-each-agents-own-hooks.md) | Sessions enforce the hunt in each agent's own hooks | accepted | 2026-10-19 |
 | [0062](0062-bug-kinds-per-language.md) | Bug kinds per language | accepted | 2026-10-19 |
-| [0063](0063-plans-are-enforced-on-the-server-and-billed-through-stripes-api.md) | Plans are enforced on the server and billed through Stripe's API | accepted | 2026-10-19 |
+| [0063](0063-plans-are-enforced-on-the-server-and-billed-through-stripes-api.md) | Plans are enforced on the server and billed through Stripe's API | superseded by [ADR-0066](0066-units-with-one-way-import-rules.md) | 2026-10-19 |
 | [0064](0064-layout-runs-in-web-workers-from-blob-urls.md) | Layout runs in Web Workers from Blob URLs | accepted | 2026-10-19 |
 | [0065](0065-devin-joins-the-composer-and-other-agents-get-copied-prompts.md) | Devin joins the composer, and other agents get copied prompts | accepted | 2026-10-19 |
+| [0066](0066-units-with-one-way-import-rules.md) | Units with one-way import rules | accepted | 2026-10-21 |
