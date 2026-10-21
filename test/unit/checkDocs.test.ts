@@ -164,12 +164,12 @@ describe("ENG-03 traceability", () => {
 
   test("ENG-03 every ID the spec defines is on exactly one checklist line, and progress names only defined IDs", () => {
     const good = ["- [x] **SAF-01 Integrity** — done, see FR-VAL-05.", "- [ ] **SAF-02 Approvals**", "- [x] **UI-01 Sidebar**"].join("\n");
-    expect(checkTraceability(SPEC, SPEC_V01, good)).toEqual([]);
+    expect(checkTraceability(SPEC, SPEC_V01, good, "progress-v0.3.md")).toEqual([]);
     const bad = ["- [x] **SAF-01 Integrity**", "- [x] **SAF-01 Integrity**, pulled forward", "- [x] **UI-01 Sidebar** — also closes SAF-09"].join("\n");
-    expect(checkTraceability(SPEC, SPEC_V01, bad)).toEqual([
+    expect(checkTraceability(SPEC, SPEC_V01, bad, "progress-v0.3.md")).toEqual([
       "progress-v0.3.md: SAF-01 is on 2 checklist lines; it needs exactly one",
       "progress-v0.3.md: SAF-02 is on 0 checklist lines; it needs exactly one",
-      "progress-v0.3.md: SAF-09 is defined in neither spec",
+      "progress-v0.3.md: SAF-09 is defined in no spec it builds on",
     ]);
   });
 
@@ -177,5 +177,13 @@ describe("ENG-03 traceability", () => {
     write("spec-v0.3.md", SPEC);
     write("progress-v0.3.md", ["- [x] **SAF-01 Integrity**", "- [x] **SAF-02 Approvals**"].join("\n"));
     expect(checkDocs(docs).problems).toEqual(["progress-v0.3.md: UI-01 is on 0 checklist lines; it needs exactly one"]);
+  });
+
+  test("RFX-01 check:docs traces the refactor spec and fails when an RFX ID is missing from its progress checklist", () => {
+    write("spec-v0.3.md", SPEC);
+    write("progress-v0.3.md", ["- [x] **SAF-01 Integrity**", "- [x] **SAF-02 Approvals**", "- [x] **UI-01 Sidebar**"].join("\n"));
+    write("spec-refactor.md", ["| ID | Feature |", "|---|---|", "| RFX-01 | Docs |", "| RFX-02 | Dead code |"].join("\n"));
+    write("progress-refactor.md", "- [x] **RFX-01 Docs**, which keeps SAF-01.");
+    expect(checkDocs(docs).problems).toEqual(["progress-refactor.md: RFX-02 is on 0 checklist lines; it needs exactly one"]);
   });
 });

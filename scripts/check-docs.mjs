@@ -1,6 +1,6 @@
 // `npm run check:docs` (FR-DOC-03): validates docs/adr against MADR 4.0 as profiled by the spec,
-// checks that every relative link in docs/**/*.md outside docs/research/ resolves, and traces the v0.3 spec's IDs to the
-// progress checklist (ENG-03). Dependency-free Node ESM.
+// checks that every relative link in docs/**/*.md outside docs/research/ resolves, and traces the v0.3 spec's and the
+// refactor spec's IDs to their progress checklists (ENG-03, RFX-01). Dependency-free Node ESM.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -168,27 +168,34 @@ export function checklistIds(progress) {
 }
 
 /**
- * ENG-03: every ID the v0.3 spec defines is on exactly one checklist line of progress, and every
- * requirement-shaped ID progress names is in the v0.3 spec or the v0.1 spec.
- * @param {string} specV03
- * @param {string} specV01
+ * ENG-03: every ID `spec` defines is on exactly one checklist line of progress, and every
+ * requirement-shaped ID progress names is in `spec` or in one of the earlier specs.
+ * @param {string} spec
+ * @param {string} earlierSpecs the earlier specs' text, joined
  * @param {string} progress
+ * @param {string} progressName the progress file's name, which each problem starts with
  * @returns {string[]}
  */
-export function checkTraceability(specV03, specV01, progress) {
+export function checkTraceability(spec, earlierSpecs, progress, progressName) {
   /** @type {string[]} */
   const problems = [];
   const lines = checklistIds(progress);
-  for (const id of new Set(specIds(specV03))) {
+  for (const id of new Set(specIds(spec))) {
     const count = lines.filter((line) => line === id).length;
-    if (count !== 1) problems.push(`progress-v0.3.md: ${id} is on ${count} checklist lines; it needs exactly one`);
+    if (count !== 1) problems.push(`${progressName}: ${id} is on ${count} checklist lines; it needs exactly one`);
   }
-  const known = new Set([...specV03.matchAll(REQUIREMENT_ID), ...specV01.matchAll(REQUIREMENT_ID)].map((match) => match[0]));
+  const known = new Set([...spec.matchAll(REQUIREMENT_ID), ...earlierSpecs.matchAll(REQUIREMENT_ID)].map((match) => match[0]));
   for (const id of new Set([...progress.matchAll(REQUIREMENT_ID)].map((match) => match[0]))) {
-    if (!known.has(id)) problems.push(`progress-v0.3.md: ${id} is defined in neither spec`);
+    if (!known.has(id)) problems.push(`${progressName}: ${id} is defined in no spec it builds on`);
   }
   return problems;
 }
+
+/** Each spec traced to its progress log, with the earlier specs whose IDs its progress may also name. */
+const TRACES = [
+  { spec: "spec-v0.3.md", progress: "progress-v0.3.md", earlier: ["spec.md"] },
+  { spec: "spec-refactor.md", progress: "progress-refactor.md", earlier: ["spec-v0.3.md", "spec.md"] },
+];
 
 /**
  * All problems under `docsDir` (expects `docsDir/adr/`).
@@ -256,8 +263,12 @@ export function checkDocs(docsDir) {
   }
   /** @param {string} name */
   const read = (name) => (existsSync(join(docsDir, name)) ? readFileSync(join(docsDir, name), "utf8") : null);
-  const [specV03, specV01, progress] = [read("spec-v0.3.md"), read("spec.md"), read("progress-v0.3.md")];
-  if (specV03 !== null && progress !== null) problems.push(...checkTraceability(specV03, specV01 ?? "", progress));
+  for (const trace of TRACES) {
+    const [spec, progress] = [read(trace.spec), read(trace.progress)];
+    if (spec === null || progress === null) continue;
+    const earlier = trace.earlier.map((name) => read(name) ?? "").join("\n");
+    problems.push(...checkTraceability(spec, earlier, progress, trace.progress));
+  }
   return { problems, adrCount: names.length, linkCount };
 }
 
