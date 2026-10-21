@@ -7,8 +7,8 @@ Tracks [spec-refactor.md](spec-refactor.md). Milestone statuses: Not started, In
 | Milestone | Status | Branch | Commit |
 |---|---|---|---|
 | RF0 Adoption | Closed (pull request #9) | `refactor/rf0-adoption` | `50f974c` |
-| RF1 Dead code | Closed pending owner (push and pull request) | `refactor/rf1-dead-code` | `91addcc` |
-| RF2 Shared helpers | Not started | `refactor/rf2-shared-helpers` | |
+| RF1 Dead code | Closed (pull request #10) | `refactor/rf1-dead-code` | `91addcc` |
+| RF2 Shared helpers | In progress | `refactor/rf2-shared-helpers` | |
 | RF3 Unit folders | Not started | `refactor/rf3-unit-folders` | |
 | RF4 Isolate learn | Not started | `refactor/rf4-isolate-learn` | |
 | RF5 Skills independence | Not started | `refactor/rf5-skills` | |
@@ -147,6 +147,39 @@ Divergences:
 - [x] **RFX-03 Build, CI and test leftovers removed** `[unit]` `[e2e]`. Commits `baae8ff` and `91addcc`. `test/unit/ci.test.ts` passes against the trimmed workflow. `npm run test:e2e` passes for the first time since `647df7b`, with the counts above.
 
 ## RF2 Shared helpers
+
+Investigation before the proposal:
+- `relativeDate` (changes panel) and `relativeAge` (sidebar) differ. Past 30 days the panel shows the ISO date (FR-CMP-09), and it shows no date for an unparseable timestamp. `relativeAge` says "N months ago" and "just now". The owner chose on 2026-10-21 one helper with both behaviours: `relativeAge` takes an optional number of days after which it gives the ISO date.
+- Node's type stripping, which lets `esbuild.mjs` import TypeScript, cannot resolve extensionless imports such as `integrity.ts`'s `./confine`. The owner chose on 2026-10-21 to move `hashTree` into a module without relative imports, which `esbuild.mjs` imports by its `.ts` path.
+- `session-hook.ts` reads no arguments and reports no usage error. It has nothing to share with the argument parser.
+- `isRevision` (a full commit name) and `REVISION_PATTERN` (a name a user may type) guard different calls. `commitInfo(root, "HEAD")` must stay `null` (git.test.ts). The one guard therefore takes the kind of revision it checks.
+- `ChangeInput.untracked` is the raw `ls-files -z` output, and the changeMap tests pass it as a string. `readChanges` and `untrackedFiles` therefore share one read of `GIT_READS.untracked`, and `untrackedFiles` splits it.
+- `leaderboard.ts`, `secrets.ts` and `webview/changes.ts` test `typeof value === "object" && value !== null` without excluding arrays. They are not copies of `isRecord`, and they stay.
+
+Proposal:
+
+| File or unit | Change | Estimate |
+|---|---|---|
+| `isRecord` | `isJsonObject` in `src/model/types.ts` is renamed `isRecord`, and its ten importers follow. `tolerant.ts`, `rules.ts`, `session.ts`, `hooksFiles.ts`, `agentStream/claude.ts` and `agentStream/codex.ts` drop their copies and import it. | +30 / -40 |
+| `src/model/jsonFile.ts` | New. `readJson`, `writeJson` and `writeAtomic`, out of `session.ts`. `writeAtomic` names its temp file after the target, as `publishCandidate` does today. `runFolder.ts`, `lineage.ts`, `match-ids.ts` and `session.ts` use them, and `validate.ts`, `hooksFiles.ts`, `fingerprints.ts` and `runRecord.ts` import `writeJson` from here. `boundaries.test.ts` lists the module among the Node modules. | +45 / -60 |
+| `src/model/hashTree.ts` | New. `hashTree` and `LINK_MARK` move here from `integrity.ts`. `esbuild.mjs` imports it and drops its copy. `tsconfig.json` gains `allowImportingTsExtensions`. `integrity.test.ts` and `single.smoke.test.ts` import the new path. `AGENTS.md` says the toolchain needs Node 22.18. | +30 / -35 |
+| `src/model/dates.ts` | New. `relativeAge` from `home.ts`, with an optional number of days after which it gives the ISO date. `home.ts`, `webview/home.ts` and `webview/changes.ts` use it, and `relativeDate` goes. The FR-CMP-09 test calls `relativeAge(iso, NOW, 30)`. `boundaries.test.ts` lists the module as browser-safe. | +30 / -35 |
+| `src/agent/session.ts` | `repoFile` and `looseRel` give way to one path helper on `confine.isWithin`, with `citations.probeFile` telling a file from a folder. | +20 / -35 |
+| `test/unit/sharedHelpers.test.ts` | New. A source scan finds exactly one definition of each RFX-04 helper. | +40 / -0 |
+| `src/model/scriptArgs.ts` | New. `parseArgs` (leading positionals, options with a value, switches, and whether a flag may repeat) and `usageError`. | +45 / -0 |
+| Script argument handling | `change-map.ts`, `match-ids.ts`, `validate.ts`, `repo-facts.ts` and `session.ts` parse with `parseArgs` and report with `usageError`. Usage text, error wording and exit codes stay. | +40 / -75 |
+| `src/model/gitFormat.ts` | New. `unquotePath`, `parseNameStatusZ`, `parsePorcelainZ`, one unified-diff section parser and `isRevision(value, kind)`. | +130 / -0 |
+| `src/model/changes.ts`, `changeMap.ts` | `parseDiff` and `splitDiff` read the shared sections. Both copies of `unquotePath`, the header helpers, `parseNameStatusZ` and `REVISION_PATTERN` go. | +30 / -170 |
+| `src/model/git.ts`, `check.ts` | `renamesSince` uses `parseNameStatusZ`. `parsePorcelainZ` and `isRevision` move out. Every revision check uses the one guard. `untrackedFiles` and `readChanges` share one read. `baseReachable`, `readChanges` and `commitInfo` default to the resolved git. | +20 / -40 |
+| `test/unit/execScan.test.ts` | The scan flags a bare `"git"` program. Import paths in the changeMap, changes and git tests follow the moved functions. | +12 / -4 |
+| `webview/dom.ts` | New. `el` and `button`. `changes.ts`, `home.ts` and `session.ts` drop their copies, and `home.ts`'s `button` calls take the shared argument order. | +20 / -35 |
+| Bundles | `skills/*/scripts/*.mjs` and `action/dist/index.js` are rebuilt with the change that causes them. | |
+
+Tests the ACs call for:
+- RFX-04: `RFX-04 each shared helper has exactly one definition` in `test/unit/sharedHelpers.test.ts`, and the existing tests of every caller.
+- RFX-05: the existing script tests in `test/unit/agent/`.
+- RFX-06: `SAF-07 the scan flags a bare "git" program` in `test/unit/execScan.test.ts`, and the existing changeMap, changes and git tests.
+- RFX-07: the existing dom tests.
 
 - [ ] **RFX-04 One copy of each shared helper** `[unit]`
 - [ ] **RFX-05 One argument parser for the scripts** `[unit]`
