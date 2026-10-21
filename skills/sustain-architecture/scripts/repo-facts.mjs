@@ -598,19 +598,43 @@ function writeRunRecord(root, runDir, record) {
   writeJson(path, record);
 }
 
+// src/model/scriptArgs.ts
+function parseArgs(args, spec) {
+  const count = spec.positionals ?? 0;
+  if (args.length < count) return null;
+  const parsed = { positionals: args.slice(0, count), options: {}, switches: /* @__PURE__ */ new Set() };
+  const seen = /* @__PURE__ */ new Set();
+  for (let i = count; i < args.length; i += 1) {
+    const arg = args[i];
+    const name = arg.startsWith("--") ? arg.slice(2) : null;
+    if (name === null || seen.has(name) && spec.repeatable !== true) return null;
+    seen.add(name);
+    if (spec.switches?.includes(name)) {
+      parsed.switches.add(name);
+    } else if (spec.options?.includes(name)) {
+      const value = args[i + 1];
+      if (value === void 0) return null;
+      parsed.options[name] = value;
+      i += 1;
+    } else {
+      return null;
+    }
+  }
+  return parsed;
+}
+function usageError(script, message) {
+  process.stderr.write(`${script}: ${message}
+`);
+  return 2;
+}
+
 // src/agent/repo-facts.ts
 var SKILL_VERSION = "0.2.0";
-var USAGE = "repo-facts.mjs: usage: node repo-facts.mjs [--focus <text>]\n";
+var SCRIPT = "repo-facts.mjs";
 function main(args) {
-  let focus = "";
-  for (let i = 0; i < args.length; i += 2) {
-    const value = args[i + 1];
-    if (value === void 0 || args[i] !== "--focus") {
-      process.stderr.write(USAGE);
-      return 2;
-    }
-    focus = value;
-  }
+  const parsed = parseArgs(args, { options: ["focus"], repeatable: true });
+  if (!parsed) return usageError(SCRIPT, "usage: node repo-facts.mjs [--focus <text>]");
+  const focus = parsed.options["focus"] ?? "";
   const root = process.cwd();
   const git = collectGitFacts(root);
   let run2;
@@ -618,9 +642,7 @@ function main(args) {
     run2 = createRunFolder(root, slugify(focus, basename3(root)), runTimestamp(/* @__PURE__ */ new Date()));
     writeRunRecord(root, join6(root, ARCHIFY_DIR, run2), newRunRecord({ focus, skillVersion: SKILL_VERSION }));
   } catch (error) {
-    process.stderr.write(`repo-facts.mjs: ${error.message}
-`);
-    return 2;
+    return usageError(SCRIPT, error.message);
   }
   const size = repoSize(root);
   const facts = {

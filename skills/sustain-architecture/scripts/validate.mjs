@@ -8411,6 +8411,36 @@ function updateRunRecord(root, runDir, patch, fallback) {
   return next;
 }
 
+// src/model/scriptArgs.ts
+function parseArgs(args, spec) {
+  const count = spec.positionals ?? 0;
+  if (args.length < count) return null;
+  const parsed = { positionals: args.slice(0, count), options: {}, switches: /* @__PURE__ */ new Set() };
+  const seen = /* @__PURE__ */ new Set();
+  for (let i = count; i < args.length; i += 1) {
+    const arg = args[i];
+    const name = arg.startsWith("--") ? arg.slice(2) : null;
+    if (name === null || seen.has(name) && spec.repeatable !== true) return null;
+    seen.add(name);
+    if (spec.switches?.includes(name)) {
+      parsed.switches.add(name);
+    } else if (spec.options?.includes(name)) {
+      const value = args[i + 1];
+      if (value === void 0) return null;
+      parsed.options[name] = value;
+      i += 1;
+    } else {
+      return null;
+    }
+  }
+  return parsed;
+}
+function usageError(script, message) {
+  process.stderr.write(`${script}: ${message}
+`);
+  return 2;
+}
+
 // src/model/checks.ts
 function boundaryRelation(a, b) {
   let shared = 0;
@@ -8980,28 +9010,23 @@ var SKILL_VERSION = "0.2.0";
 function record(location, patch) {
   updateRunRecord(location.root, dirname4(location.draft), patch, () => newRunRecord({ focus: "", skillVersion: SKILL_VERSION }));
 }
-function usageError(message) {
-  process.stderr.write(`validate.mjs: ${message}
-`);
-  return 2;
-}
+var SCRIPT = "validate.mjs";
 function main(args) {
-  if (args.length !== 1) {
-    return usageError(`usage: node validate.mjs <repo>/${ARCHIFY_DIR}/<run>/draft.json`);
-  }
+  const parsed = parseArgs(args, { positionals: 1 });
+  if (!parsed) return usageError(SCRIPT, `usage: node validate.mjs <repo>/${ARCHIFY_DIR}/<run>/draft.json`);
   let location;
   let text;
   try {
-    location = locateDraft(args[0], process.cwd());
+    location = locateDraft(parsed.positionals[0], process.cwd());
     text = readFileSync5(location.draft, "utf8");
   } catch (error) {
-    return usageError(error.message);
+    return usageError(SCRIPT, error.message);
   }
   try {
     const attempts = (readRunRecord(dirname4(location.draft))?.attempts ?? 0) + 1;
     record(location, { phase: "validating", attempts });
   } catch (error) {
-    return usageError(`cannot write ${RUN_FILE}: ${error.message}`);
+    return usageError(SCRIPT, `cannot write ${RUN_FILE}: ${error.message}`);
   }
   let value;
   try {
@@ -9049,7 +9074,7 @@ function main(args) {
     writeJson(join8(runDir, EVIDENCE_FILE), evidence);
     record(location, { phase: "accepted", finishedAt: (/* @__PURE__ */ new Date()).toISOString() });
   } catch (error) {
-    return usageError(`cannot publish ${CANDIDATE_FILE}: ${error.message}`);
+    return usageError(SCRIPT, `cannot publish ${CANDIDATE_FILE}: ${error.message}`);
   }
   const report = {
     status: "accepted",

@@ -143,12 +143,38 @@ function matchIds(previous, draft, threshold = MATCH_THRESHOLD) {
   return { diagram, componentMap: Object.fromEntries(componentMap), connectionMap, renamed };
 }
 
-// src/agent/match-ids.ts
-function usageError(message) {
-  process.stderr.write(`match-ids.mjs: ${message}
+// src/model/scriptArgs.ts
+function parseArgs(args, spec) {
+  const count = spec.positionals ?? 0;
+  if (args.length < count) return null;
+  const parsed = { positionals: args.slice(0, count), options: {}, switches: /* @__PURE__ */ new Set() };
+  const seen = /* @__PURE__ */ new Set();
+  for (let i = count; i < args.length; i += 1) {
+    const arg = args[i];
+    const name = arg.startsWith("--") ? arg.slice(2) : null;
+    if (name === null || seen.has(name) && spec.repeatable !== true) return null;
+    seen.add(name);
+    if (spec.switches?.includes(name)) {
+      parsed.switches.add(name);
+    } else if (spec.options?.includes(name)) {
+      const value = args[i + 1];
+      if (value === void 0) return null;
+      parsed.options[name] = value;
+      i += 1;
+    } else {
+      return null;
+    }
+  }
+  return parsed;
+}
+function usageError(script, message) {
+  process.stderr.write(`${script}: ${message}
 `);
   return 2;
 }
+
+// src/agent/match-ids.ts
+var SCRIPT = "match-ids.mjs";
 function readInput(path, what) {
   try {
     return { value: readJson(path) };
@@ -158,24 +184,24 @@ function readInput(path, what) {
   }
 }
 function main(args) {
-  if (args.length !== 3 || args[1] !== "--previous") {
-    return usageError("usage: node match-ids.mjs <draft> --previous <candidate>");
-  }
-  const draftPath = resolve(process.cwd(), args[0]);
-  const previousPath = resolve(process.cwd(), args[2]);
+  const parsed = parseArgs(args, { positionals: 1, options: ["previous"] });
+  const previousArg = parsed?.options["previous"];
+  if (!parsed || previousArg === void 0) return usageError(SCRIPT, "usage: node match-ids.mjs <draft> --previous <candidate>");
+  const draftPath = resolve(process.cwd(), parsed.positionals[0]);
+  const previousPath = resolve(process.cwd(), previousArg);
   const draft = readInput(draftPath, "draft");
-  if ("error" in draft) return usageError(draft.error);
+  if ("error" in draft) return usageError(SCRIPT, draft.error);
   const previous = readInput(previousPath, "previous candidate");
-  if ("error" in previous) return usageError(previous.error);
+  if ("error" in previous) return usageError(SCRIPT, previous.error);
   if (!isRecord(draft.value) || !Array.isArray(draft.value.components)) {
-    return usageError("draft must be a JSON object with a components array");
+    return usageError(SCRIPT, "draft must be a JSON object with a components array");
   }
-  if (!isRecord(previous.value)) return usageError("previous candidate must be a JSON object");
+  if (!isRecord(previous.value)) return usageError(SCRIPT, "previous candidate must be a JSON object");
   const { diagram, componentMap, connectionMap, renamed } = matchIds(previous.value, draft.value);
   try {
     writeFileSync(draftPath, stringifyDocument(diagram));
   } catch (error) {
-    return usageError(`cannot write draft: ${error.message}`);
+    return usageError(SCRIPT, `cannot write draft: ${error.message}`);
   }
   process.stdout.write(`${JSON.stringify({ componentMap, connectionMap, renamed }, null, 2)}
 `);

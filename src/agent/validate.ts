@@ -12,6 +12,7 @@ import { collectGitFacts, repositoryFromGit } from "../model/git";
 import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftLocation } from "../model/runFolder";
 import { newRunRecord, readRunRecord, RUN_FILE, updateRunRecord, type RunRecord } from "../model/runRecord";
 import { writeJson } from "../model/jsonFile";
+import { parseArgs, usageError } from "../model/scriptArgs";
 import { checkSubmission, REMOVED_FIELD_MESSAGE } from "../model/submission";
 import { stringifyDocument, type ArchifyDoc, type Issue } from "../model/types";
 
@@ -44,28 +45,24 @@ function record(location: DraftLocation, patch: Partial<RunRecord>): void {
   updateRunRecord(location.root, dirname(location.draft), patch, () => newRunRecord({ focus: "", skillVersion: SKILL_VERSION }));
 }
 
-function usageError(message: string): number {
-  process.stderr.write(`validate.mjs: ${message}\n`);
-  return 2;
-}
+const SCRIPT = "validate.mjs";
 
 function main(args: string[]): number {
-  if (args.length !== 1) {
-    return usageError(`usage: node validate.mjs <repo>/${ARCHIFY_DIR}/<run>/draft.json`);
-  }
+  const parsed = parseArgs(args, { positionals: 1 });
+  if (!parsed) return usageError(SCRIPT, `usage: node validate.mjs <repo>/${ARCHIFY_DIR}/<run>/draft.json`);
   let location: DraftLocation;
   let text: string;
   try {
-    location = locateDraft(args[0]!, process.cwd());
+    location = locateDraft(parsed.positionals[0]!, process.cwd());
     text = readFileSync(location.draft, "utf8");
   } catch (error) {
-    return usageError((error as Error).message);
+    return usageError(SCRIPT, (error as Error).message);
   }
   try {
     const attempts = (readRunRecord(dirname(location.draft))?.attempts ?? 0) + 1;
     record(location, { phase: "validating", attempts });
   } catch (error) {
-    return usageError(`cannot write ${RUN_FILE}: ${(error as Error).message}`);
+    return usageError(SCRIPT, `cannot write ${RUN_FILE}: ${(error as Error).message}`);
   }
 
   let value: unknown;
@@ -114,7 +111,7 @@ function main(args: string[]): number {
     writeJson(join(runDir, EVIDENCE_FILE), evidence);
     record(location, { phase: "accepted", finishedAt: new Date().toISOString() });
   } catch (error) {
-    return usageError(`cannot publish ${CANDIDATE_FILE}: ${(error as Error).message}`);
+    return usageError(SCRIPT, `cannot publish ${CANDIDATE_FILE}: ${(error as Error).message}`);
   }
   const report: Report = {
     status: "accepted",

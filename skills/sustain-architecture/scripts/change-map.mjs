@@ -613,25 +613,41 @@ function writeRunChanges(runDir, changes) {
   writeFileSync(join4(runDir, CHANGES_FILE), stringifyDocument(changes));
 }
 
-// src/agent/change-map.ts
-var CHANGE_FILE = "change.md";
-var MAPPING_FILE = "mapping.md";
-var USAGE = "usage: node change-map.mjs --run-folder <runFolder> [--regenerate]";
-function usageError(message) {
-  process.stderr.write(`change-map.mjs: ${message}
+// src/model/scriptArgs.ts
+function parseArgs(args, spec) {
+  const count = spec.positionals ?? 0;
+  if (args.length < count) return null;
+  const parsed = { positionals: args.slice(0, count), options: {}, switches: /* @__PURE__ */ new Set() };
+  const seen = /* @__PURE__ */ new Set();
+  for (let i = count; i < args.length; i += 1) {
+    const arg = args[i];
+    const name = arg.startsWith("--") ? arg.slice(2) : null;
+    if (name === null || seen.has(name) && spec.repeatable !== true) return null;
+    seen.add(name);
+    if (spec.switches?.includes(name)) {
+      parsed.switches.add(name);
+    } else if (spec.options?.includes(name)) {
+      const value = args[i + 1];
+      if (value === void 0) return null;
+      parsed.options[name] = value;
+      i += 1;
+    } else {
+      return null;
+    }
+  }
+  return parsed;
+}
+function usageError(script, message) {
+  process.stderr.write(`${script}: ${message}
 `);
   return 2;
 }
-function parseArgs(args) {
-  let runFolder;
-  let regenerate = false;
-  for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === "--regenerate" && !regenerate) regenerate = true;
-    else if (args[i] === "--run-folder" && runFolder === void 0 && i + 1 < args.length) runFolder = args[++i];
-    else return null;
-  }
-  return runFolder === void 0 || runFolder === "" ? null : { runFolder, regenerate };
-}
+
+// src/agent/change-map.ts
+var CHANGE_FILE = "change.md";
+var MAPPING_FILE = "mapping.md";
+var SCRIPT = "change-map.mjs";
+var USAGE = "usage: node change-map.mjs --run-folder <runFolder> [--regenerate]";
 function previousCandidate(root, run2, slug) {
   const candidate = listCandidates(root).find((c) => c.runFolder !== run2 && parseRunFolderName(c.runFolder)?.slug === slug);
   if (!candidate) return null;
@@ -642,25 +658,26 @@ function previousCandidate(root, run2, slug) {
   }
 }
 function main(args) {
-  const parsed = parseArgs(args);
-  if (!parsed) return usageError(USAGE);
-  const runDir = resolve(process.cwd(), parsed.runFolder);
+  const parsed = parseArgs(args, { options: ["run-folder"], switches: ["regenerate"] });
+  const runFolder = parsed?.options["run-folder"];
+  if (!parsed || runFolder === void 0 || runFolder === "") return usageError(SCRIPT, USAGE);
+  const runDir = resolve(process.cwd(), runFolder);
   const run2 = basename2(runDir);
   const name = parseRunFolderName(run2);
   if (basename2(dirname2(runDir)) !== ARCHIFY_DIR || !name) {
-    return usageError(`expected a run folder of the form <repo>/${ARCHIFY_DIR}/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N], got ${parsed.runFolder}`);
+    return usageError(SCRIPT, `expected a run folder of the form <repo>/${ARCHIFY_DIR}/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N], got ${runFolder}`);
   }
   try {
-    if (!statSync4(runDir).isDirectory()) return usageError(`${parsed.runFolder} is not a folder`);
+    if (!statSync4(runDir).isDirectory()) return usageError(SCRIPT, `${runFolder} is not a folder`);
   } catch (error) {
-    return usageError(error.message);
+    return usageError(SCRIPT, error.message);
   }
   const root = dirname2(dirname2(runDir));
   const previous = previousCandidate(root, run2, name.slug);
   const previousLineage = previous ? readLineage(join5(root, ARCHIFY_DIR, previous.candidate.runFolder)) : null;
   const git = collectGitFacts(root);
   let decision = decideMode({
-    requested: parsed.regenerate,
+    requested: parsed.switches.has("regenerate"),
     hasPrevious: previous !== null,
     hasGit: git !== null,
     previousLineage,
@@ -724,7 +741,7 @@ function main(args) {
     };
     writeLineage(runDir, lineage);
   } catch (error) {
-    return usageError(error.message);
+    return usageError(SCRIPT, error.message);
   }
   process.stdout.write(`${JSON.stringify(report, null, 2)}
 `);

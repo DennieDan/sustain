@@ -22,9 +22,11 @@ import { baseReachable, collectGitFacts, commitInfo, readChanges } from "../mode
 import { readLineage, writeLineage, writeRunChanges, type Lineage } from "../model/lineage";
 import { buildRunChanges } from "../model/runChanges";
 import { ARCHIFY_DIR, CANDIDATE_FILE, parseRunFolderName } from "../model/runFolder";
+import { parseArgs, usageError } from "../model/scriptArgs";
 
 const CHANGE_FILE = "change.md";
 const MAPPING_FILE = "mapping.md";
+const SCRIPT = "change-map.mjs";
 const USAGE = "usage: node change-map.mjs --run-folder <runFolder> [--regenerate]";
 
 interface Report {
@@ -40,22 +42,6 @@ interface Report {
   uncitedFiles: string[];
 }
 
-function usageError(message: string): number {
-  process.stderr.write(`change-map.mjs: ${message}\n`);
-  return 2;
-}
-
-function parseArgs(args: string[]): { runFolder: string; regenerate: boolean } | null {
-  let runFolder: string | undefined;
-  let regenerate = false;
-  for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === "--regenerate" && !regenerate) regenerate = true;
-    else if (args[i] === "--run-folder" && runFolder === undefined && i + 1 < args.length) runFolder = args[++i];
-    else return null;
-  }
-  return runFolder === undefined || runFolder === "" ? null : { runFolder, regenerate };
-}
-
 /** The newest candidate of another run with the same slug, parsed; unparseable ones don't count. */
 function previousCandidate(root: string, run: string, slug: string): { candidate: Candidate; doc: unknown } | null {
   const candidate = listCandidates(root).find((c) => c.runFolder !== run && parseRunFolderName(c.runFolder)?.slug === slug);
@@ -68,18 +54,19 @@ function previousCandidate(root: string, run: string, slug: string): { candidate
 }
 
 function main(args: string[]): number {
-  const parsed = parseArgs(args);
-  if (!parsed) return usageError(USAGE);
-  const runDir = resolve(process.cwd(), parsed.runFolder);
+  const parsed = parseArgs(args, { options: ["run-folder"], switches: ["regenerate"] });
+  const runFolder = parsed?.options["run-folder"];
+  if (!parsed || runFolder === undefined || runFolder === "") return usageError(SCRIPT, USAGE);
+  const runDir = resolve(process.cwd(), runFolder);
   const run = basename(runDir);
   const name = parseRunFolderName(run);
   if (basename(dirname(runDir)) !== ARCHIFY_DIR || !name) {
-    return usageError(`expected a run folder of the form <repo>/${ARCHIFY_DIR}/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N], got ${parsed.runFolder}`);
+    return usageError(SCRIPT, `expected a run folder of the form <repo>/${ARCHIFY_DIR}/architecture-<slug>-<YYYYMMDD-HHMMSS>[-N], got ${runFolder}`);
   }
   try {
-    if (!statSync(runDir).isDirectory()) return usageError(`${parsed.runFolder} is not a folder`);
+    if (!statSync(runDir).isDirectory()) return usageError(SCRIPT, `${runFolder} is not a folder`);
   } catch (error) {
-    return usageError((error as Error).message);
+    return usageError(SCRIPT, (error as Error).message);
   }
   const root = dirname(dirname(runDir));
 
@@ -87,7 +74,7 @@ function main(args: string[]): number {
   const previousLineage = previous ? readLineage(join(root, ARCHIFY_DIR, previous.candidate.runFolder)) : null;
   const git = collectGitFacts(root);
   let decision: ModeDecision = decideMode({
-    requested: parsed.regenerate,
+    requested: parsed.switches.has("regenerate"),
     hasPrevious: previous !== null,
     hasGit: git !== null,
     previousLineage,
@@ -155,7 +142,7 @@ function main(args: string[]): number {
     };
     writeLineage(runDir, lineage);
   } catch (error) {
-    return usageError((error as Error).message);
+    return usageError(SCRIPT, (error as Error).message);
   }
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   return 0;
