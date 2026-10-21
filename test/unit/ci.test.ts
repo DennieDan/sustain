@@ -40,10 +40,6 @@ test("PRC-04 the Action's committed bundle is rebuilt and compared, and the Acti
   expect(job).toContain("- uses: ./action");
 });
 
-test("D5 the cloud job runs the cloud's unit tests, build and [web] suite", () => {
-  expect(jobRuns("cloud")).toEqual(["npm ci", "npm run -w cloud test", "npm run -w cloud build", "npx -w cloud playwright install --with-deps chromium", "npm run -w cloud test:web"]);
-});
-
 test("RCH-02 CI rebuilds the skills and fails when the committed scripts are stale", () => {
   expect(jobRuns("skills-fresh")).toEqual(["npm ci", "npm run build", "git diff --exit-code skills"]);
 });

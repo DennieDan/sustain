@@ -56,6 +56,9 @@ Calls made during the build:
 - Validate webview messages at runtime on the host side.
 - Build a standalone viewer host (a diagram page) and an IntelliJ JCEF host on the `ViewerHost` contract.
 - Promote units to npm workspaces once a second package needs them.
+- Delete the remaining exports that no other source file uses, whether or not a test calls them: `agentPrompt` (`agents.ts`), `chosenHeadless` (`generate.ts`), `hotspotMarks` (`hotspots.ts`), `violationArrows` (`rules.ts`), `activeLockPath` (`sessionFiles.ts`), `summarizeStream` (`agentStream/summary.ts`), `rangeOf` (`changes.ts`), `withIgnored` (`config.ts`), `SIDEBAR_ACTIONS` (`home.ts`), `stripAppOwned` (`submission.ts`) and `focusView` (`viewport.ts`). RF1 found them with a scan of exported names.
+- `RunKind` `"refresh"` and run.json's `paths` and `base` fields have no writer since the refresh skill left. They stay because run.json is part of the format.
+- Widen the margin of `test/unit/layout/perf.test.ts` (NFR-PERF-01), or time more runs. On this machine the 60/120 layout takes about 12 times the small one, right at `BUDGET_FACTOR`, and the test fails about one run in three.
 
 ## RF0 Adoption
 
@@ -125,8 +128,16 @@ Tests the ACs call for:
 - RFX-02: `SET-05 a log holding a count for a removed event keeps loading and counts the remaining events` in `test/unit/model/usageLog.test.ts`, plus `npm run check` and `npm run test:e2e`.
 - RFX-03: `test/unit/ci.test.ts` against the trimmed workflow, and `npm run test:e2e` green.
 
-- [ ] **RFX-02 Dropped features removed** `[unit]`
-- [ ] **RFX-03 Build, CI and test leftovers removed** `[unit]` `[e2e]`
+Divergences:
+- `test/e2e/runTest.ts` also launches VS Code with `--force-disable-user-env` and a PATH without installed agent CLIs. The spec does not name this change. Without it, `npm run test:e2e` fails on any machine with an agent CLI installed.
+- `single.notes.test.ts` and `single.view.test.ts` change beyond their import paths. They predate `58793bf` and `b84ea1b`, and RFX-03's AC needs them green.
+- `.github/workflows/deploy-cloud.yml` and its test in `package.test.ts` are deleted, beyond the `ci.yml` cloud jobs the spec names.
+- `.sr-only` and `.overview` in `webview/styles.css` are deleted. Only `screenReaderList` and the drill-down used them.
+- `refresh.ts` moved to `glob.ts`, the home the spec leaves open for `globToRegExp`.
+- Other exports with no production caller remain, because the spec lists the ones to delete. They are recorded under Suggestions.
+
+- [x] **RFX-02 Dropped features removed** `[unit]`. Commits `d42e9bc`, `4e8a9b2`, `9bb6e07`, `02e0a12`, `81453b3` and `c02721f`. `test/unit/model/usageLog.test.ts` › `SET-05 a log holding a count for a removed event keeps loading and counts the remaining events` passes, and it failed when `recordUsage` was made to reset a day that holds an unknown event. A smoke run of the committed `repo-facts.mjs` exits 2 with the usage line for `--parent`, and without it writes run.json with `"kind": "full"` and `"parent": null`. `npm run check` passes with 1243 tests in 82 files. `npm run test:e2e` passes, with the RFX-03 changes, in all six runs: `single` 86, `empty` 3 and `multi` 2 on each of VS Code 1.126.0 and 1.141.0.
+- [x] **RFX-03 Build, CI and test leftovers removed** `[unit]` `[e2e]`. Commits `baae8ff` and the RFX-03 commit that holds this line. `test/unit/ci.test.ts` passes against the trimmed workflow. `npm run test:e2e` passes for the first time since `647df7b`, with the counts above.
 
 ## RF2 Shared helpers
 
