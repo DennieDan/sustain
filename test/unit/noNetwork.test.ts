@@ -21,7 +21,7 @@ function networkViolations(file: string, source: string): string[] {
 }
 
 describe("NFR-SEC-02 no network", () => {
-  test("src/** and webview/** contain no network imports or APIs", () => {
+  test("src/** outside src/action and webview/** contain no network imports or APIs", () => {
     const files = [...sourceFiles("src"), ...sourceFiles("webview")].filter((file) => !file.startsWith("src/action/"));
     const violations = files.flatMap((file) => networkViolations(file, readFileSync(join(repoRoot, file), "utf8")));
     expect(violations).toEqual([]);

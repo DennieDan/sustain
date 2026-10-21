@@ -17,5 +17,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "webview", "test", "scripts", "esbuild.mjs", "vitest.config.ts"]
+  "include": ["src", "webview", "test", "scripts", "esbuild.mjs", "vitest.config.ts"],
+  "exclude": ["src/core/hostGlobals.d.ts"]
 }
