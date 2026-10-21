@@ -205,10 +205,14 @@ function globToRegExp(glob) {
   return new RegExp(`^${pattern}(?:/.*)?$`);
 }
 
+// src/model/types.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 // src/model/rules.ts
 var RULE_KINDS = ["forbid", "only-via", "isolated"];
 var PATH_PREFIX = "path:";
-var isRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 var ends = (value) => typeof value === "string" && value !== "" ? [value] : Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === "string" && entry !== "") ? value : null;
 function readRules(value) {
   const rules = [];
@@ -269,11 +273,6 @@ function checkRules(rules, components, refs) {
   return violations;
 }
 
-// src/model/types.ts
-function isJsonObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 // src/model/config.ts
 var CONFIG_FILE = "sustain.config.json";
 var FAIL_ON = ["stale", "new-box", "new-arrow", "violation"];
@@ -281,7 +280,7 @@ function strings(value) {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string");
 }
 function readConfig(value) {
-  if (!isJsonObject(value)) return { ok: false, errors: ["the config must be a JSON object"] };
+  if (!isRecord(value)) return { ok: false, errors: ["the config must be a JSON object"] };
   const errors = [];
   for (const key of Object.keys(value)) if (!["map", "ignore", "check", "rules"].includes(key)) errors.push(`unknown key "${key}"`);
   if (value["map"] !== void 0 && (typeof value["map"] !== "string" || !/^[a-z0-9]+-[A-Za-z0-9._-]+$/.test(value["map"]))) errors.push('"map" must name a run folder in .archify/');
@@ -289,7 +288,7 @@ function readConfig(value) {
   if (value["rules"] !== void 0) errors.push(...readRules(value["rules"]).errors);
   const check = value["check"];
   if (check !== void 0) {
-    if (!isJsonObject(check)) errors.push('"check" must be an object');
+    if (!isRecord(check)) errors.push('"check" must be an object');
     else {
       for (const key of Object.keys(check)) if (key !== "failOn") errors.push(`unknown key "check.${key}"`);
       const failOn = check["failOn"];
@@ -928,16 +927,11 @@ function listFiles(root, env = process.env) {
 // src/model/runRecord.ts
 var import_node_fs4 = require("node:fs");
 var import_node_path4 = require("node:path");
-
-// src/model/session.ts
-var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
-
-// src/model/runRecord.ts
 var RUN_FILE = "run.json";
 function readRunRecord(runDir) {
   try {
     const value = JSON.parse((0, import_node_fs4.readFileSync)((0, import_node_path4.join)(runDir, RUN_FILE), "utf8"));
-    return isJsonObject(value) && value["schema"] === 1 && typeof value["phase"] === "string" ? value : null;
+    return isRecord(value) && value["schema"] === 1 && typeof value["phase"] === "string" ? value : null;
   } catch {
     return null;
   }
@@ -968,7 +962,7 @@ var ORDER = ["fresh", "unknown", "moved", "edited", "missing"];
 function readFingerprints(runDir) {
   try {
     const value = JSON.parse((0, import_node_fs5.readFileSync)((0, import_node_path5.join)(runDir, FINGERPRINTS_FILE), "utf8"));
-    return isJsonObject(value) && value["schema"] === 1 && Array.isArray(value["citations"]) ? value : null;
+    return isRecord(value) && value["schema"] === 1 && Array.isArray(value["citations"]) ? value : null;
   } catch {
     return null;
   }
@@ -1035,9 +1029,6 @@ function fileReader(root) {
 // src/model/tolerant.ts
 var COMPONENT_TYPES = ["frontend", "backend", "database", "cloud", "security", "messagebus", "external"];
 var VARIANTS = ["default", "emphasis", "security", "dashed"];
-function isObj(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 function str(value) {
   return typeof value === "string" ? value : void 0;
 }
@@ -1053,8 +1044,8 @@ function readSources(value, pointer, skipped2) {
   if (!Array.isArray(value)) return [];
   const sources = [];
   value.forEach((entry, k) => {
-    const path2 = isObj(entry) ? str(entry["path"]) : void 0;
-    if (!isObj(entry) || path2 === void 0) {
+    const path2 = isRecord(entry) ? str(entry["path"]) : void 0;
+    if (!isRecord(entry) || path2 === void 0) {
       skipped2.push(`${pointer}/sources/${k}: no string path`);
       return;
     }
@@ -1070,7 +1061,7 @@ function readSources(value, pointer, skipped2) {
   return sources;
 }
 function readGrid(value) {
-  if (!isObj(value) || value["mode"] !== "grid") return void 0;
+  if (!isRecord(value) || value["mode"] !== "grid") return void 0;
   const grid = { mode: "grid" };
   const origin = pair(value["origin"]);
   if (origin) grid.origin = origin;
@@ -1081,7 +1072,7 @@ function readGrid(value) {
   return grid;
 }
 function readDiagram(value) {
-  if (!isObj(value)) return { ok: false, reason: "the root is not a JSON object" };
+  if (!isRecord(value)) return { ok: false, reason: "the root is not a JSON object" };
   const rawComponents = value["components"];
   if (!Array.isArray(rawComponents) || rawComponents.length === 0) {
     return { ok: false, reason: "it has no components" };
@@ -1091,8 +1082,8 @@ function readDiagram(value) {
   const ids = /* @__PURE__ */ new Set();
   rawComponents.forEach((raw, i) => {
     const pointer = `/components/${i}`;
-    const id = isObj(raw) ? str(raw["id"]) : void 0;
-    if (!isObj(raw) || id === void 0) {
+    const id = isRecord(raw) ? str(raw["id"]) : void 0;
+    if (!isRecord(raw) || id === void 0) {
       skipped2.push(`${pointer}: no string id`);
       return;
     }
@@ -1127,9 +1118,9 @@ function readDiagram(value) {
   const rawConnections = value["connections"];
   if (Array.isArray(rawConnections)) {
     rawConnections.forEach((raw, i) => {
-      const from = isObj(raw) ? str(raw["from"]) : void 0;
-      const to = isObj(raw) ? str(raw["to"]) : void 0;
-      if (!isObj(raw) || from === void 0 || to === void 0 || !ids.has(from) || !ids.has(to)) {
+      const from = isRecord(raw) ? str(raw["from"]) : void 0;
+      const to = isRecord(raw) ? str(raw["to"]) : void 0;
+      if (!isRecord(raw) || from === void 0 || to === void 0 || !ids.has(from) || !ids.has(to)) {
         skipped2.push(`/connections/${i}: from/to do not resolve`);
         return;
       }
@@ -1147,7 +1138,7 @@ function readDiagram(value) {
   if (Array.isArray(rawBoundaries)) {
     rawBoundaries.forEach((raw, i) => {
       const pointer = `/boundaries/${i}`;
-      if (!isObj(raw)) {
+      if (!isRecord(raw)) {
         skipped2.push(`${pointer}: not an object`);
         return;
       }
@@ -1167,7 +1158,7 @@ function readDiagram(value) {
   }
   const diagram = { components, connections, boundaries };
   const meta = value["meta"];
-  const title = isObj(meta) ? str(meta["title"]) : void 0;
+  const title = isRecord(meta) ? str(meta["title"]) : void 0;
   if (title) diagram.title = title;
   const grid = readGrid(value["layout"]);
   if (grid) diagram.grid = grid;

@@ -1,11 +1,12 @@
 // UI-02: `codex exec --json` events as feed items. Codex reports no final result line, so the
 // runner judges success by the exit code.
+import { isRecord } from "../types";
 import { clip, commandItem, NO_USAGE, validatorItem, type FeedItem, type StreamParser, type StreamUpdate, type StreamUsage } from "./feed";
 
 type Json = Record<string, unknown>;
 
 function record(value: unknown): Json {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Json) : {};
+  return isRecord(value) ? value : {};
 }
 
 function text(value: unknown): string {

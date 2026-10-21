@@ -5,8 +5,10 @@
 // failure, 2 usage or I/O error (message on stderr, no stdout JSON). Command details and
 // scoring constants: ADR 0037.
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve, sep } from "node:path";
+import { probeFile } from "../model/citations";
+import { assertWritable, isWithin } from "../model/confine";
 import { isDenied } from "../model/deny";
 import { collectGitFacts } from "../model/git";
 import { createRunFolder, runTimestamp, slugify } from "../model/runFolder";
@@ -42,7 +44,6 @@ import {
   type SessionStep,
 } from "../model/session";
 import { bugStillPresent, hunkCount, mutateFile, restoreHunk, type MutationResult } from "./modes/bugfix/mutations";
-import { assertWritable } from "../model/confine";
 
 const USAGE =
   "usage: node session.mjs <command>\n" +
@@ -126,39 +127,18 @@ function ifPaused(session: SessionState): number | null {
 }
 
 /**
- * Resolves `arg` to a regular file inside the repo root. Throws for missing files, paths
- * escaping the root, deny-listed paths and anything under `.sustain/`.
+ * `arg`'s `/`-separated path from the repository root, after following links, or `null` when it
+ * lies outside the root. A path where nothing exists is taken as written.
  */
-function repoFile(arg: string): { abs: string; rel: string } {
-  const abs = resolve(root, arg);
-  let real: string;
-  try {
-    real = realpathSync(abs);
-  } catch {
-    throw new Error(`${arg} does not exist`);
-  }
+function repoPath(arg: string): string | null {
   const rootReal = realpathSync(root);
-  if (real !== rootReal && !real.startsWith(rootReal + sep)) {
-    throw new Error(`${arg} resolves outside the repository root`);
-  }
-  const rel = relative(rootReal, real).split(sep).join("/");
-  if (rel === "") throw new Error(`${arg} is the repository root, not a file`);
-  if (rel.split("/")[0] === SUSTAIN_DIR || isDenied(rel)) throw new Error(`${rel} is off-limits for sessions`);
-  if (!statSync(real).isFile()) throw new Error(`${rel} is not a file`);
-  return { abs: real, rel };
-}
-
-/** `rel` for matching against `manifest` paths; never throws, never touches the fs. */
-function looseRel(arg: string): string | null {
-  let abs: string;
+  let abs = resolve(root, arg);
   try {
-    abs = realpathSync(resolve(root, arg));
+    abs = realpathSync(abs);
   } catch {
-    abs = resolve(root, arg);
+    // Nothing is there, so the written path is the one to match.
   }
-  const rootReal = realpathSync(root);
-  if (abs !== rootReal && !abs.startsWith(rootReal + sep)) return null;
-  return relative(rootReal, abs).split(sep).join("/");
+  return isWithin(rootReal, abs) ? relative(rootReal, abs).split(sep).join("/") : null;
 }
 
 function save(active: Active): void {
@@ -328,12 +308,16 @@ function cmdInject(args: string[]): number {
     return report(1, { status: "bad-phase", phase: session.phase, message: `inject runs in implementing or hunting, not ${session.phase}` });
   }
 
-  let target: { abs: string; rel: string };
-  try {
-    target = repoFile(opts["file"]!);
-  } catch (error) {
-    return report(1, { status: "error", message: (error as Error).message });
-  }
+  const arg = opts["file"]!;
+  const fail = (message: string): number => report(1, { status: "error", message });
+  if (!existsSync(resolve(root, arg))) return fail(`${arg} does not exist`);
+  const rel = repoPath(arg);
+  if (rel === null) return fail(`${arg} resolves outside the repository root`);
+  if (rel === "") return fail(`${arg} is the repository root, not a file`);
+  if (rel.split("/")[0] === SUSTAIN_DIR || isDenied(rel)) return fail(`${rel} is off-limits for sessions`);
+  const rootReal = realpathSync(root);
+  if (probeFile(rootReal, rel).kind === "notFile") return fail(`${rel} is not a file`);
+  const target = { abs: join(rootReal, rel), rel };
   if (languageOf(target.rel) === null) {
     return report(1, { status: "error", message: `${target.rel}: bugs are seeded in JavaScript, TypeScript and Java files only` });
   }
@@ -378,7 +362,7 @@ function cmdReport(args: string[]): number {
   const { session, manifest } = active;
   const parked = ifPaused(session);
   if (parked !== null) return parked;
-  const rel = looseRel(opts["file"]!);
+  const rel = repoPath(opts["file"]!);
   const bug = rel === null ? undefined : manifest.bugs.find((b) => b.file === rel && !b.found && !b.fixed && b.restored !== true);
   if (bug === undefined) {
     return report(1, { status: "miss", file: opts["file"], message: `${opts["file"]} holds no unreported seeded bug` });
@@ -410,7 +394,7 @@ function cmdHint(args: string[]): number {
     if (bug === undefined) return report(1, { status: "no-bug", message: `unknown bug ${JSON.stringify(opts["bug"])}` });
     if (!live(bug)) return report(1, { status: "no-bug", bug: bug.id, message: `${bug.id} is already ${bug.fixed ? "fixed" : "restored"}` });
   } else if (opts["file"] !== undefined) {
-    const rel = looseRel(opts["file"]!);
+    const rel = repoPath(opts["file"]!);
     bug = rel === null ? undefined : manifest.bugs.find((b) => b.file === rel && live(b));
     if (bug === undefined) return report(1, { status: "no-bug", file: opts["file"], message: `${opts["file"]} holds no unfixed seeded bug` });
   } else {

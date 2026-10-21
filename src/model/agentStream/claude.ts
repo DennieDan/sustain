@@ -1,10 +1,11 @@
 // UI-02: Claude Code's `--output-format stream-json` lines as feed items.
+import { isRecord } from "../types";
 import { clip, commandItem, NO_USAGE, validatorItem, type FeedItem, type StreamParser, type StreamUpdate, type StreamUsage } from "./feed";
 
 type Json = Record<string, unknown>;
 
 function record(value: unknown): Json {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Json) : {};
+  return isRecord(value) ? value : {};
 }
 
 function text(value: unknown): string {

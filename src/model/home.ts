@@ -1,22 +1,6 @@
 // UI-01, UI-04: wording shared by the sidebar and the status bar. Browser-safe.
+import { relativeAge } from "./dates";
 import type { MapItem, RunCard } from "./messages";
-
-/** "just now", "5 minutes ago", "2 days ago". */
-export function relativeAge(fromIso: string, now: Date): string {
-  const seconds = Math.max(0, Math.floor((now.getTime() - Date.parse(fromIso)) / 1000));
-  const steps: [number, string][] = [
-    [60 * 60 * 24 * 365, "year"],
-    [60 * 60 * 24 * 30, "month"],
-    [60 * 60 * 24, "day"],
-    [60 * 60, "hour"],
-    [60, "minute"],
-  ];
-  for (const [size, unit] of steps) {
-    const count = Math.floor(seconds / size);
-    if (count >= 1) return `${count} ${unit}${count === 1 ? "" : "s"} ago`;
-  }
-  return "just now";
-}
 
 /** The header's map status: "Map from 2 days ago · 16 boxes", or "No map yet". */
 export function mapStatus(maps: readonly MapItem[], now: Date): string {

@@ -1,6 +1,6 @@
 // Post-hoc ID matcher for regenerated drafts (FR-UPD-09). Gives the elements of an independently drawn draft the IDs of
 // the previous diagram's elements they correspond to, by Jaccard similarity of cited file sets. Pure: no Node imports.
-import { isJsonObject, type JsonObject } from "./types";
+import { isRecord, type JsonObject } from "./types";
 
 /** Minimum Jaccard similarity of cited file sets for a draft component to inherit a previous component's id. */
 export const MATCH_THRESHOLD = 0.3;
@@ -20,7 +20,7 @@ interface Keyed {
 }
 
 function objects(value: unknown): JsonObject[] {
-  return Array.isArray(value) ? value.filter(isJsonObject) : [];
+  return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 
 function idOf(value: JsonObject): string | undefined {
@@ -93,7 +93,7 @@ function freshId(id: string, avoid: Iterable<string>[]): string {
 export function matchIds(previous: unknown, draft: JsonObject, threshold = MATCH_THRESHOLD): MatchResult {
   if (!(threshold > 0 && threshold <= 1)) throw new Error(`invalid match threshold ${threshold}`);
   if (!Array.isArray(draft.components)) throw new Error("draft has no components array");
-  const prev = isJsonObject(previous) ? previous : {};
+  const prev = isRecord(previous) ? previous : {};
   const prevComponents = keyed(objects(prev.components));
   const draftComponents = objects(draft.components);
 
@@ -136,7 +136,7 @@ export function matchIds(previous: unknown, draft: JsonObject, threshold = MATCH
   const usedConnectionIds = new Set<string>();
   const connectionMap: Record<string, string> = {};
   const mapConnection = (c: unknown): unknown => {
-    if (!isJsonObject(c)) return c;
+    if (!isRecord(c)) return c;
     const from = mapComponent(c.from);
     const to = mapComponent(c.to);
     const bothMatched = typeof from === "string" && typeof to === "string" && assigned.has(from) && assigned.has(to);
@@ -157,11 +157,11 @@ export function matchIds(previous: unknown, draft: JsonObject, threshold = MATCH
   };
 
   const diagram: JsonObject = { ...draft };
-  diagram.components = draft.components.map((c) => (isJsonObject(c) && idOf(c) !== undefined ? { ...c, id: mapComponent(c.id) } : c));
+  diagram.components = draft.components.map((c) => (isRecord(c) && idOf(c) !== undefined ? { ...c, id: mapComponent(c.id) } : c));
   if (Array.isArray(draft.connections)) diagram.connections = draft.connections.map(mapConnection);
   if (Array.isArray(draft.boundaries)) {
     diagram.boundaries = draft.boundaries.map((b) =>
-      isJsonObject(b) && Array.isArray(b.wraps) ? { ...b, wraps: b.wraps.map(mapComponent) } : b);
+      isRecord(b) && Array.isArray(b.wraps) ? { ...b, wraps: b.wraps.map(mapComponent) } : b);
   }
   return { diagram, componentMap: Object.fromEntries(componentMap), connectionMap, renamed };
 }

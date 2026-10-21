@@ -20,7 +20,7 @@ function isDenied(path) {
 }
 
 // src/model/types.ts
-function isJsonObject(value) {
+function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function stringifyDocument(value) {
@@ -46,20 +46,20 @@ function decideMode(facts) {
   return { mode: "update", reason: "update", base };
 }
 function diagramComponents(value) {
-  if (!isJsonObject(value) || !Array.isArray(value["components"])) return [];
+  if (!isRecord(value) || !Array.isArray(value["components"])) return [];
   const out = [];
   for (const component of value["components"]) {
-    if (!isJsonObject(component) || typeof component["id"] !== "string") continue;
+    if (!isRecord(component) || typeof component["id"] !== "string") continue;
     const id = component["id"];
     const label = typeof component["label"] === "string" ? component["label"] : id;
     const sources = Array.isArray(component["sources"]) ? component["sources"] : [];
-    const paths = new Set(sources.flatMap((source) => isJsonObject(source) && typeof source["path"] === "string" ? [source["path"]] : []));
+    const paths = new Set(sources.flatMap((source) => isRecord(source) && typeof source["path"] === "string" ? [source["path"]] : []));
     out.push({ id, label, paths });
   }
   return out;
 }
 function candidateRevision(value) {
-  if (!isJsonObject(value) || !isJsonObject(value["meta"]) || !isJsonObject(value["meta"]["repository"])) return null;
+  if (!isRecord(value) || !isRecord(value["meta"]) || !isRecord(value["meta"]["repository"])) return null;
   const revision = value["meta"]["repository"]["revision"];
   return typeof revision === "string" ? revision : null;
 }
@@ -351,6 +351,12 @@ function probeFile(rootReal, path) {
 import { readdirSync, realpathSync as realpathSync2, statSync as statSync2 } from "node:fs";
 import { basename, dirname, join as join2, sep as sep2 } from "node:path";
 
+// src/model/jsonFile.ts
+import { closeSync as closeSync2, fsyncSync, openSync as openSync2, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
+function readJson(path) {
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
 // src/model/runFolder.ts
 var ARCHIFY_DIR = ".archify";
 var CANDIDATE_FILE = "candidate.sir";
@@ -537,7 +543,7 @@ function commitInfo(root, revision, program = "git") {
 }
 
 // src/model/lineage.ts
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join as join4 } from "node:path";
 
 // src/model/runChanges.ts
@@ -568,20 +574,20 @@ var CHANGES_FILE = "changes.json";
 var isCount = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
 var isNullableString = (value) => value === null || typeof value === "string";
 function readCommit(value) {
-  if (!isJsonObject(value)) return null;
+  if (!isRecord(value)) return null;
   const { subject, committedAt } = value;
   return typeof subject === "string" && typeof committedAt === "string" ? { subject, committedAt } : null;
 }
-function readJson(runDir, file) {
+function readRunFile(runDir, file) {
   try {
-    return JSON.parse(readFileSync(join4(runDir, file), "utf8"));
+    return readJson(join4(runDir, file));
   } catch {
     return void 0;
   }
 }
 function readLineage(runDir) {
-  const value = readJson(runDir, LINEAGE_FILE);
-  if (!isJsonObject(value)) return null;
+  const value = readRunFile(runDir, LINEAGE_FILE);
+  if (!isRecord(value)) return null;
   const { mode, reason, previousRun, baseRevision, revision, dirty, dirtyCount, updatesSinceRegeneration } = value;
   if (mode !== "update" && mode !== "regenerate") return null;
   if (typeof reason !== "string" || !isNullableString(previousRun) || !isNullableString(baseRevision) || !isNullableString(revision)) return null;

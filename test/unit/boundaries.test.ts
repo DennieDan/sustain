@@ -26,6 +26,7 @@ const BROWSER_SAFE_MODEL: Record<string, true> = {
   "src/model/ownership.ts": true,
   "src/model/delta.ts": true,
   "src/model/deltaMarkdown.ts": true,
+  "src/model/dates.ts": true,
 };
 const NODE_MODEL: Record<string, true> = {
   "src/model/citations.ts": true,
@@ -44,6 +45,8 @@ const NODE_MODEL: Record<string, true> = {
   "src/model/repoSize.ts": true,
   "src/model/fingerprints.ts": true,
   "src/model/staleness.ts": true,
+  "src/model/jsonFile.ts": true,
+  "src/model/hashTree.mts": true,
 };
 const NODE_ALLOWED: Record<string, true> = {
   "node:fs": true,

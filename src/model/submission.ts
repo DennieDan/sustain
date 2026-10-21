@@ -3,7 +3,7 @@
 // File access (citations, step 4) is injected so this module stays free of Node APIs.
 import { semanticChecks } from "./checks";
 import { validateArchitecture } from "./schema";
-import { isJsonObject, pointerToken, type ArchifyDoc, type Issue, type JsonObject, type Repository } from "./types";
+import { isRecord, pointerToken, type ArchifyDoc, type Issue, type JsonObject, type Repository } from "./types";
 import { findSecrets } from "./secrets";
 
 const META_DROPS = ["viewBox", "views", "animation", "translations", "visual_preset", "engineering_profile"];
@@ -34,7 +34,7 @@ function dropInArray(root: JsonObject, field: string, keys: readonly string[], r
   const items = root[field];
   if (!Array.isArray(items)) return;
   items.forEach((item, i) => {
-    if (isJsonObject(item)) dropKeys(item, keys, `/${field}/${i}`, removed);
+    if (isRecord(item)) dropKeys(item, keys, `/${field}/${i}`, removed);
   });
 }
 
@@ -45,9 +45,9 @@ function dropInArray(root: JsonObject, field: string, keys: readonly string[], r
  */
 export function applyAppOwnedFields(value: unknown, app: AppOwned): string[] {
   const removed: string[] = [];
-  if (!isJsonObject(value)) return removed;
+  if (!isRecord(value)) return removed;
   dropKeys(value, ["layout"], "", removed);
-  if (isJsonObject(value["meta"])) dropKeys(value["meta"], META_DROPS, "/meta", removed);
+  if (isRecord(value["meta"])) dropKeys(value["meta"], META_DROPS, "/meta", removed);
   dropInArray(value, "components", COMPONENT_DROPS, removed);
   dropInArray(value, "connections", CONNECTION_DROPS, removed);
   dropInArray(value, "boundaries", BOUNDARY_DROPS, removed);
@@ -56,7 +56,7 @@ export function applyAppOwnedFields(value: unknown, app: AppOwned): string[] {
   const rest = Object.entries(value).filter(([key]) => key !== "schema_version" && key !== "diagram_type");
   for (const key of Object.keys(value)) delete value[key];
   Object.assign(value, { schema_version: 1, diagram_type: "architecture" }, Object.fromEntries(rest));
-  if (!isJsonObject(value["meta"])) value["meta"] = {};
+  if (!isRecord(value["meta"])) value["meta"] = {};
   const meta = value["meta"] as JsonObject;
   meta["locale"] = "en";
   meta["quality_profile"] = "showcase";
@@ -72,10 +72,10 @@ export function applyAppOwnedFields(value: unknown, app: AppOwned): string[] {
  */
 export function stripAppOwned(value: unknown): unknown {
   const copy: unknown = structuredClone(value);
-  if (!isJsonObject(copy)) return copy;
+  if (!isRecord(copy)) return copy;
   const removed: string[] = [];
   dropKeys(copy, ["layout"], "", removed);
-  if (isJsonObject(copy["meta"])) dropKeys(copy["meta"], [...META_DROPS, "locale", "quality_profile", "output", "repository"], "/meta", removed);
+  if (isRecord(copy["meta"])) dropKeys(copy["meta"], [...META_DROPS, "locale", "quality_profile", "output", "repository"], "/meta", removed);
   dropInArray(copy, "components", COMPONENT_DROPS, removed);
   dropInArray(copy, "connections", CONNECTION_DROPS, removed);
   dropInArray(copy, "boundaries", BOUNDARY_DROPS, removed);

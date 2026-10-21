@@ -1,7 +1,7 @@
 // PRC-01: `sustain.config.json` at the repository root, committed with the code. Browser-safe;
 // callers read the file.
 import { readRules } from "./rules";
-import { isJsonObject } from "./types";
+import { isRecord } from "./types";
 
 export const CONFIG_FILE = "sustain.config.json";
 
@@ -27,7 +27,7 @@ function strings(value: unknown): value is string[] {
 
 /** Checks a parsed config: known keys only, each of the right shape. */
 export function readConfig(value: unknown): ConfigResult {
-  if (!isJsonObject(value)) return { ok: false, errors: ["the config must be a JSON object"] };
+  if (!isRecord(value)) return { ok: false, errors: ["the config must be a JSON object"] };
   const errors: string[] = [];
   for (const key of Object.keys(value)) if (!["map", "ignore", "check", "rules"].includes(key)) errors.push(`unknown key "${key}"`);
   if (value["map"] !== undefined && (typeof value["map"] !== "string" || !/^[a-z0-9]+-[A-Za-z0-9._-]+$/.test(value["map"]))) errors.push('"map" must name a run folder in .archify/');
@@ -35,7 +35,7 @@ export function readConfig(value: unknown): ConfigResult {
   if (value["rules"] !== undefined) errors.push(...readRules(value["rules"]).errors);
   const check = value["check"];
   if (check !== undefined) {
-    if (!isJsonObject(check)) errors.push('"check" must be an object');
+    if (!isRecord(check)) errors.push('"check" must be an object');
     else {
       for (const key of Object.keys(check)) if (key !== "failOn") errors.push(`unknown key "check.${key}"`);
       const failOn = check["failOn"];

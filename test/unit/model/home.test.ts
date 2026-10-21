@@ -2,7 +2,8 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { clock, mapStatus, relativeAge, runFigures, statusText, tokenCount } from "../../../src/model/home";
+import { relativeAge } from "../../../src/model/dates";
+import { clock, mapStatus, runFigures, statusText, tokenCount } from "../../../src/model/home";
 import { listMaps } from "../../../src/model/maps";
 import type { MapItem, RunCard } from "../../../src/model/messages";
 import { newRunRecord, newRunSince, runFolderNames, writeRunRecord } from "../../../src/model/runRecord";

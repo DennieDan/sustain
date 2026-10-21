@@ -5,6 +5,7 @@
 import { diffDiagrams, markKept } from "../src/model/diagramDiff";
 import type { DiagramDiff, ElementDiff, FieldChange } from "../src/model/diagramDiff";
 import type { CommitRef } from "../src/model/comparison";
+import { relativeAge } from "../src/model/dates";
 import type { Compare, WebviewMessage } from "../src/model/messages";
 import { readDiagram } from "../src/model/tolerant";
 import type { ViewConnection, ViewDiagram } from "../src/model/tolerant";
@@ -55,27 +56,8 @@ export function compareDiagrams(current: ViewDiagram, compare: Compare | null): 
   return { compare, baseline: baseline.diagram, diff };
 }
 
-const MINUTE_MS = 60_000;
-const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
-/** Older dates show as the ISO date. */
+/** Older commit dates show as the ISO date. */
 const RELATIVE_DAYS = 30;
-
-/**
- * "just now" (< 1 min, or in the future), "N minutes/hours/days ago" up to 30 days, else the ISO
- * date `YYYY-MM-DD` as written in `iso`. `undefined` for an unparseable timestamp.
- */
-export function relativeDate(iso: string, now: Date): string | undefined {
-  const time = Date.parse(iso);
-  if (Number.isNaN(time)) return undefined;
-  const age = now.getTime() - time;
-  const ago = (n: number, unit: string): string => `${n} ${unit}${n === 1 ? "" : "s"} ago`;
-  if (age < MINUTE_MS) return "just now";
-  if (age < HOUR_MS) return ago(Math.floor(age / MINUTE_MS), "minute");
-  if (age < DAY_MS) return ago(Math.floor(age / HOUR_MS), "hour");
-  if (age <= RELATIVE_DAYS * DAY_MS) return ago(Math.floor(age / DAY_MS), "day");
-  return /^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(0, 10) : new Date(time).toISOString().slice(0, 10);
-}
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);
@@ -96,7 +78,7 @@ function commitParts(commit: CommitRef | null, withDate: boolean, now: Date): No
   if (!commit) return [document.createTextNode("unknown revision")];
   const parts: Node[] = [el("code", "header__hash", commit.revision.slice(0, 7))];
   if (commit.subject) parts.push(document.createTextNode(" "), el("span", "header__subject", `\u201c${commit.subject}\u201d`));
-  const date = withDate && commit.committedAt ? relativeDate(commit.committedAt, now) : undefined;
+  const date = withDate && commit.committedAt ? relativeAge(commit.committedAt, now, RELATIVE_DAYS) : undefined;
   if (date !== undefined) {
     const span = el("span", "header__date", date);
     span.title = commit.committedAt!;

@@ -4,7 +4,7 @@
 // `harness/lib/diff.mjs`. Pure: git output and file reads come in as strings or callbacks.
 import { isDenied } from "./deny";
 import type { Lineage } from "./lineage";
-import { isJsonObject } from "./types";
+import { isRecord } from "./types";
 
 /** Updates allowed before the next run regenerates (U4, ADR 0029). */
 export const MAX_UPDATES = 5;
@@ -69,14 +69,14 @@ export interface MapComponent {
 
 /** The components of a parsed candidate; entries without a string `id` are skipped. */
 export function diagramComponents(value: unknown): MapComponent[] {
-  if (!isJsonObject(value) || !Array.isArray(value["components"])) return [];
+  if (!isRecord(value) || !Array.isArray(value["components"])) return [];
   const out: MapComponent[] = [];
   for (const component of value["components"]) {
-    if (!isJsonObject(component) || typeof component["id"] !== "string") continue;
+    if (!isRecord(component) || typeof component["id"] !== "string") continue;
     const id = component["id"];
     const label = typeof component["label"] === "string" ? component["label"] : id;
     const sources = Array.isArray(component["sources"]) ? component["sources"] : [];
-    const paths = new Set(sources.flatMap((source) => (isJsonObject(source) && typeof source["path"] === "string" ? [source["path"]] : [])));
+    const paths = new Set(sources.flatMap((source) => (isRecord(source) && typeof source["path"] === "string" ? [source["path"]] : [])));
     out.push({ id, label, paths });
   }
   return out;
@@ -84,7 +84,7 @@ export function diagramComponents(value: unknown): MapComponent[] {
 
 /** `meta.repository.revision` of a parsed candidate, or `null`. */
 export function candidateRevision(value: unknown): string | null {
-  if (!isJsonObject(value) || !isJsonObject(value["meta"]) || !isJsonObject(value["meta"]["repository"])) return null;
+  if (!isRecord(value) || !isRecord(value["meta"]) || !isRecord(value["meta"]["repository"])) return null;
   const revision = value["meta"]["repository"]["revision"];
   return typeof revision === "string" ? revision : null;
 }

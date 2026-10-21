@@ -5,6 +5,7 @@
 import type { ImportRef } from "./evidence/paths";
 import { Ownership } from "./ownership";
 import { globToRegExp } from "./glob";
+import { isRecord } from "./types";
 
 export const RULE_KINDS = ["forbid", "only-via", "isolated"] as const;
 export type RuleKind = (typeof RULE_KINDS)[number];
@@ -30,7 +31,6 @@ export interface Violation {
   imported: string;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const ends = (value: unknown): string[] | null => (typeof value === "string" && value !== "" ? [value] : Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === "string" && entry !== "") ? (value as string[]) : null);
 
 /** The rules in `value` (a config's `rules`), and what is wrong with any that are not. */

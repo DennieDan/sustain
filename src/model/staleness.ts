@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { FINGERPRINTS_FILE, gitBlobId, hashLines, looseLines, normalizedLines, type CitationPrint, type Fingerprints } from "./fingerprints";
-import { isJsonObject } from "./types";
+import { isRecord } from "./types";
 
 export type Freshness = "fresh" | "moved" | "edited" | "missing" | "unknown";
 
@@ -34,7 +34,7 @@ export interface MapFreshness {
 export function readFingerprints(runDir: string): Fingerprints | null {
   try {
     const value: unknown = JSON.parse(readFileSync(join(runDir, FINGERPRINTS_FILE), "utf8"));
-    return isJsonObject(value) && value["schema"] === 1 && Array.isArray(value["citations"]) ? (value as unknown as Fingerprints) : null;
+    return isRecord(value) && value["schema"] === 1 && Array.isArray(value["citations"]) ? (value as unknown as Fingerprints) : null;
   } catch {
     return null;
   }

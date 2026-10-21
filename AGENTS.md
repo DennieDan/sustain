@@ -57,7 +57,7 @@ Keep tool output and scratch files out of the repository. Build and probe in the
 
 ## Shell and environment
 
-- On machines with nvm, non-interactive shells resolve `node` to system Node 18. The toolchain needs Node 22.12 or newer, and `.nvmrc` pins 26. There, start every command that runs `node`, `npm` or `npx` with `source ~/.nvm/nvm.sh && nvm use >/dev/null &&`. The prefix applies only where nvm is installed.
+- On machines with nvm, non-interactive shells resolve `node` to system Node 18. The toolchain needs Node 22.18 or newer, and `.nvmrc` pins 26. There, start every command that runs `node`, `npm` or `npx` with `source ~/.nvm/nvm.sh && nvm use >/dev/null &&`. The prefix applies only where nvm is installed. `esbuild.mjs` imports TypeScript through Node's type stripping, which runs without a flag from 22.18.
 - Run tools through the npm scripts or `node_modules/.bin`. A bare `npx <tool>` can pick up a stale cache built for Node 18.
 - Unset `ELECTRON_RUN_AS_NODE` before `npm run test:e2e`. Terminals inside editors set it.
 - Other agent sessions run on this machine at the same time. Give any server or database you start its own port and name, and remove it afterwards.

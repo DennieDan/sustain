@@ -1,9 +1,12 @@
 // src/agent/match-ids.ts
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+// src/model/jsonFile.ts
+import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
+
 // src/model/types.ts
-function isJsonObject(value) {
+function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function stringifyDocument(value) {
@@ -11,10 +14,15 @@ function stringifyDocument(value) {
 `;
 }
 
+// src/model/jsonFile.ts
+function readJson(path) {
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
 // src/model/matchIds.ts
 var MATCH_THRESHOLD = 0.3;
 function objects(value) {
-  return Array.isArray(value) ? value.filter(isJsonObject) : [];
+  return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 function idOf(value) {
   return typeof value.id === "string" ? value.id : void 0;
@@ -70,7 +78,7 @@ function freshId(id, avoid) {
 function matchIds(previous, draft, threshold = MATCH_THRESHOLD) {
   if (!(threshold > 0 && threshold <= 1)) throw new Error(`invalid match threshold ${threshold}`);
   if (!Array.isArray(draft.components)) throw new Error("draft has no components array");
-  const prev = isJsonObject(previous) ? previous : {};
+  const prev = isRecord(previous) ? previous : {};
   const prevComponents = keyed(objects(prev.components));
   const draftComponents = objects(draft.components);
   const componentMap = /* @__PURE__ */ new Map();
@@ -109,7 +117,7 @@ function matchIds(previous, draft, threshold = MATCH_THRESHOLD) {
   const usedConnectionIds = /* @__PURE__ */ new Set();
   const connectionMap = {};
   const mapConnection = (c) => {
-    if (!isJsonObject(c)) return c;
+    if (!isRecord(c)) return c;
     const from = mapComponent(c.from);
     const to = mapComponent(c.to);
     const bothMatched = typeof from === "string" && typeof to === "string" && assigned.has(from) && assigned.has(to);
@@ -127,10 +135,10 @@ function matchIds(previous, draft, threshold = MATCH_THRESHOLD) {
     return { ...c, ...id !== void 0 ? { id } : {}, from, to };
   };
   const diagram = { ...draft };
-  diagram.components = draft.components.map((c) => isJsonObject(c) && idOf(c) !== void 0 ? { ...c, id: mapComponent(c.id) } : c);
+  diagram.components = draft.components.map((c) => isRecord(c) && idOf(c) !== void 0 ? { ...c, id: mapComponent(c.id) } : c);
   if (Array.isArray(draft.connections)) diagram.connections = draft.connections.map(mapConnection);
   if (Array.isArray(draft.boundaries)) {
-    diagram.boundaries = draft.boundaries.map((b) => isJsonObject(b) && Array.isArray(b.wraps) ? { ...b, wraps: b.wraps.map(mapComponent) } : b);
+    diagram.boundaries = draft.boundaries.map((b) => isRecord(b) && Array.isArray(b.wraps) ? { ...b, wraps: b.wraps.map(mapComponent) } : b);
   }
   return { diagram, componentMap: Object.fromEntries(componentMap), connectionMap, renamed };
 }
@@ -141,17 +149,12 @@ function usageError(message) {
 `);
   return 2;
 }
-function readJson(path, what) {
-  let text;
+function readInput(path, what) {
   try {
-    text = readFileSync(path, "utf8");
+    return { value: readJson(path) };
   } catch (error) {
-    return { error: `cannot read ${what}: ${error.message}` };
-  }
-  try {
-    return { value: JSON.parse(text) };
-  } catch (error) {
-    return { error: `${what} is not valid JSON: ${error.message}` };
+    const message = error.message;
+    return { error: error instanceof SyntaxError ? `${what} is not valid JSON: ${message}` : `cannot read ${what}: ${message}` };
   }
 }
 function main(args) {
@@ -160,14 +163,14 @@ function main(args) {
   }
   const draftPath = resolve(process.cwd(), args[0]);
   const previousPath = resolve(process.cwd(), args[2]);
-  const draft = readJson(draftPath, "draft");
+  const draft = readInput(draftPath, "draft");
   if ("error" in draft) return usageError(draft.error);
-  const previous = readJson(previousPath, "previous candidate");
+  const previous = readInput(previousPath, "previous candidate");
   if ("error" in previous) return usageError(previous.error);
-  if (!isJsonObject(draft.value) || !Array.isArray(draft.value.components)) {
+  if (!isRecord(draft.value) || !Array.isArray(draft.value.components)) {
     return usageError("draft must be a JSON object with a components array");
   }
-  if (!isJsonObject(previous.value)) return usageError("previous candidate must be a JSON object");
+  if (!isRecord(previous.value)) return usageError("previous candidate must be a JSON object");
   const { diagram, componentMap, connectionMap, renamed } = matchIds(previous.value, draft.value);
   try {
     writeFileSync(draftPath, stringifyDocument(diagram));

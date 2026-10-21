@@ -11,7 +11,7 @@ import { fileReader, isTestPath, listFiles } from "../model/repoSize";
 import { collectGitFacts, repositoryFromGit } from "../model/git";
 import { ARCHIFY_DIR, CANDIDATE_FILE, locateDraft, publishCandidate, type DraftLocation } from "../model/runFolder";
 import { newRunRecord, readRunRecord, RUN_FILE, updateRunRecord, type RunRecord } from "../model/runRecord";
-import { writeJson } from "../model/session";
+import { writeJson } from "../model/jsonFile";
 import { checkSubmission, REMOVED_FIELD_MESSAGE } from "../model/submission";
 import { stringifyDocument, type ArchifyDoc, type Issue } from "../model/types";
 

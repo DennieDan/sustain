@@ -3,8 +3,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { assertWritable } from "./confine";
 import { ARCHIFY_DIR } from "./runFolder";
-import { writeJson } from "./session";
-import { isJsonObject } from "./types";
+import { writeJson } from "./jsonFile";
+import { isRecord } from "./types";
 
 export const RUN_FILE = "run.json";
 
@@ -70,7 +70,7 @@ export function newRunRecord(fields: { kind?: RunKind; focus: string; paths?: st
 export function readRunRecord(runDir: string): RunRecord | null {
   try {
     const value: unknown = JSON.parse(readFileSync(join(runDir, RUN_FILE), "utf8"));
-    return isJsonObject(value) && value["schema"] === 1 && typeof value["phase"] === "string" ? (value as unknown as RunRecord) : null;
+    return isRecord(value) && value["schema"] === 1 && typeof value["phase"] === "string" ? (value as unknown as RunRecord) : null;
   } catch {
     return null;
   }

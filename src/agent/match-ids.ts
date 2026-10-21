@@ -1,27 +1,24 @@
 // `node .agents/skills/sustain-architecture/scripts/match-ids.mjs <draft> --previous <candidate>` (FR-UPD-09).
 // Rewrites a regenerated draft in place so its elements carry the previous diagram's IDs. Bundled to a dependency-free
 // ESM file.
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readJson } from "../model/jsonFile";
 import { matchIds } from "../model/matchIds";
-import { isJsonObject, stringifyDocument } from "../model/types";
+import { isRecord, stringifyDocument } from "../model/types";
 
 function usageError(message: string): number {
   process.stderr.write(`match-ids.mjs: ${message}\n`);
   return 2;
 }
 
-function readJson(path: string, what: string): { value: unknown } | { error: string } {
-  let text: string;
+/** The JSON in `path`, or the usage error that names `what` could not be read or parsed. */
+function readInput(path: string, what: string): { value: unknown } | { error: string } {
   try {
-    text = readFileSync(path, "utf8");
+    return { value: readJson(path) };
   } catch (error) {
-    return { error: `cannot read ${what}: ${(error as Error).message}` };
-  }
-  try {
-    return { value: JSON.parse(text) };
-  } catch (error) {
-    return { error: `${what} is not valid JSON: ${(error as Error).message}` };
+    const message = (error as Error).message;
+    return { error: error instanceof SyntaxError ? `${what} is not valid JSON: ${message}` : `cannot read ${what}: ${message}` };
   }
 }
 
@@ -31,14 +28,14 @@ function main(args: string[]): number {
   }
   const draftPath = resolve(process.cwd(), args[0]!);
   const previousPath = resolve(process.cwd(), args[2]!);
-  const draft = readJson(draftPath, "draft");
+  const draft = readInput(draftPath, "draft");
   if ("error" in draft) return usageError(draft.error);
-  const previous = readJson(previousPath, "previous candidate");
+  const previous = readInput(previousPath, "previous candidate");
   if ("error" in previous) return usageError(previous.error);
-  if (!isJsonObject(draft.value) || !Array.isArray(draft.value.components)) {
+  if (!isRecord(draft.value) || !Array.isArray(draft.value.components)) {
     return usageError("draft must be a JSON object with a components array");
   }
-  if (!isJsonObject(previous.value)) return usageError("previous candidate must be a JSON object");
+  if (!isRecord(previous.value)) return usageError("previous candidate must be a JSON object");
 
   const { diagram, componentMap, connectionMap, renamed } = matchIds(previous.value, draft.value);
   try {

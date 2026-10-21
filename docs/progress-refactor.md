@@ -181,7 +181,14 @@ Tests the ACs call for:
 - RFX-06: `SAF-07 the scan flags a bare "git" program` in `test/unit/execScan.test.ts`, and the existing changeMap, changes and git tests.
 - RFX-07: the existing dom tests.
 
-- [ ] **RFX-04 One copy of each shared helper** `[unit]`
+Divergences:
+- `hashTree` lives in `src/model/hashTree.mts`, not `integrity.ts`, as the owner chose. The `.mts` name tells Node that the file is an ES module. The build then prints no module-type warning. Its importers name the file with its extension, which `allowImportingTsExtensions` in `tsconfig.json` allows. `AGENTS.md` raises the toolchain's Node to 22.18.
+- `writeAtomic` names its temp file `.<target>.tmp-<pid>-<time>`, as `publishCandidate` did. The session files' temp file was `.tmp-<pid>-<time>`. No watcher or test reads either name.
+- The FR-CMP-09 dom test calls `relativeAge(iso, NOW, 30)` in place of `relativeDate(iso, NOW)`, as the owner chose. Its cases and expectations stay.
+- `boundaries.test.ts` lists `dates.ts` as browser-safe, and `jsonFile.ts` and `hashTree.mts` among the Node modules.
+- `session.mjs inject` checks that the file exists with `existsSync` before the path checks. `repoFile` used the failure of `realpathSync` for this, with the same message.
+
+- [x] **RFX-04 One copy of each shared helper** `[unit]`. `test/unit/sharedHelpers.test.ts` passes: `RFX-04 one copy of each shared helper` › each of `isRecord`, `readJson`, `writeJson`, `writeAtomic`, `hashTree`, `relativeAge`, `isWithin` and `probeFile` `has exactly one definition`, `relativeDate`, `repoFile` and `looseRel` have none, `one expression tells a plain object from null and arrays` and `one write renames a temp file over its target`. Two of them failed with an `isRecord` copy and a `relativeDate` function added to `hooksFiles.ts`. The existing caller tests pass with import-path changes only, apart from the FR-CMP-09 test above. A smoke run of the rebuilt `session.mjs` gives the old messages for a missing file, the root, a folder, `.sustain/active`, `/etc/hosts` and a link out of the repository, and seeds and reports a bug in `src/a.ts`. `npm run check` passes with 1256 tests in 83 files. `npm run test:e2e` passes in all six runs: `single` 86, `empty` 3 and `multi` 2 on each of VS Code 1.126.0 and 1.141.0. The action bundle no longer includes `src/model/session.ts`.
 - [ ] **RFX-05 One argument parser for the scripts** `[unit]`
 - [ ] **RFX-06 One git output parser** `[unit]`
 - [ ] **RFX-07 One set of webview DOM helpers** `[dom]`

@@ -1,5 +1,5 @@
 // src/agent/repo-facts.ts
-import { basename as basename2, join as join6 } from "node:path";
+import { basename as basename3, join as join6 } from "node:path";
 
 // src/model/git.ts
 import { spawnSync } from "node:child_process";
@@ -448,8 +448,41 @@ function repoSize(root, env = process.env, limit = COUNT_LIMIT) {
 }
 
 // src/model/runFolder.ts
-import { closeSync, fsyncSync, mkdirSync, openSync, realpathSync as realpathSync2, renameSync, rmSync, statSync as statSync2, unlinkSync, writeSync } from "node:fs";
-import { basename, dirname, join as join3, resolve, sep } from "node:path";
+import { mkdirSync, realpathSync as realpathSync2, statSync as statSync2, unlinkSync } from "node:fs";
+import { basename as basename2, dirname as dirname2, join as join4, resolve, sep } from "node:path";
+
+// src/model/jsonFile.ts
+import { closeSync, fsyncSync, openSync, readFileSync as readFileSync2, renameSync, rmSync, writeSync } from "node:fs";
+import { basename, dirname, join as join3 } from "node:path";
+
+// src/model/types.ts
+function stringifyDocument(value) {
+  return `${JSON.stringify(value, null, 2)}
+`;
+}
+
+// src/model/jsonFile.ts
+function writeAtomic(path, content) {
+  const temp = join3(dirname(path), `.${basename(path)}.tmp-${process.pid}-${Date.now()}`);
+  try {
+    const fd = openSync(temp, "wx");
+    try {
+      writeSync(fd, content);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    renameSync(temp, path);
+  } catch (error) {
+    rmSync(temp, { force: true });
+    throw error;
+  }
+}
+function writeJson(path, value) {
+  writeAtomic(path, stringifyDocument(value));
+}
+
+// src/model/runFolder.ts
 var ARCHIFY_DIR = ".archify";
 var DRAFT_FILE = "draft.json";
 var SLUG_MAX = 40;
@@ -491,7 +524,7 @@ function createRunFolder(root, slug, timestamp, options = {}) {
   if (!/^[a-z0-9]+$/.test(prefix)) throw new Error(`"${prefix}" is not a valid run folder prefix`);
   const base = `${prefix}-${slug}-${timestamp}`;
   if (!parseRunName(base) || /[/\\]/.test(base)) throw new Error(`"${base}" is not a valid run folder name`);
-  const parent = join3(root, dir);
+  const parent = join4(root, dir);
   mkdirSync(parent, { recursive: true });
   const parentReal = realpathSync2(parent);
   if (!isInside(realpathSync2(root), parentReal) || !statSync2(parentReal).isDirectory()) {
@@ -500,7 +533,7 @@ function createRunFolder(root, slug, timestamp, options = {}) {
   for (let n = 1; n <= MAX_COLLISIONS; n += 1) {
     const name = n === 1 ? base : `${base}-${n}`;
     try {
-      mkdirSync(join3(parentReal, name));
+      mkdirSync(join4(parentReal, name));
       return name;
     } catch (error) {
       if (error.code !== "EEXIST") throw error;
@@ -514,7 +547,7 @@ import { join as join5 } from "node:path";
 
 // src/model/confine.ts
 import { lstatSync as lstatSync2, realpathSync as realpathSync3 } from "node:fs";
-import { dirname as dirname2, isAbsolute, relative } from "node:path";
+import { dirname as dirname3, isAbsolute, relative } from "node:path";
 function isWithin(parentReal, childReal) {
   const rel = relative(parentReal, childReal);
   return rel === "" || !rel.startsWith("..") && !isAbsolute(rel);
@@ -531,8 +564,8 @@ function assertNotLink(path) {
 }
 function assertWritable(root, path) {
   const rootReal = realpathSync3(root);
-  let ancestor = dirname2(path);
-  while (lstatOrNull(ancestor) === null && dirname2(ancestor) !== ancestor) ancestor = dirname2(ancestor);
+  let ancestor = dirname3(path);
+  while (lstatOrNull(ancestor) === null && dirname3(ancestor) !== ancestor) ancestor = dirname3(ancestor);
   let ancestorReal;
   try {
     ancestorReal = realpathSync3(ancestor);
@@ -541,42 +574,6 @@ function assertWritable(root, path) {
   }
   if (!isWithin(rootReal, ancestorReal)) throw new Error(`${path} would be written outside ${root}`);
   assertNotLink(path);
-}
-
-// src/model/session.ts
-import {
-  appendFileSync,
-  closeSync as closeSync2,
-  existsSync,
-  fsyncSync as fsyncSync2,
-  mkdirSync as mkdirSync2,
-  openSync as openSync2,
-  readFileSync as readFileSync2,
-  renameSync as renameSync2,
-  rmSync as rmSync2,
-  writeSync as writeSync2
-} from "node:fs";
-import { dirname as dirname3, join as join4 } from "node:path";
-var STALE_IDLE_MS = 24 * 60 * 60 * 1e3;
-function writeAtomic(path, content) {
-  const temp = join4(dirname3(path), `.tmp-${process.pid}-${Date.now()}`);
-  try {
-    const fd = openSync2(temp, "wx");
-    try {
-      writeSync2(fd, content);
-      fsyncSync2(fd);
-    } finally {
-      closeSync2(fd);
-    }
-    renameSync2(temp, path);
-  } catch (error) {
-    rmSync2(temp, { force: true });
-    throw error;
-  }
-}
-function writeJson(path, value) {
-  writeAtomic(path, `${JSON.stringify(value, null, 2)}
-`);
 }
 
 // src/model/runRecord.ts
@@ -618,7 +615,7 @@ function main(args) {
   const git = collectGitFacts(root);
   let run2;
   try {
-    run2 = createRunFolder(root, slugify(focus, basename2(root)), runTimestamp(/* @__PURE__ */ new Date()));
+    run2 = createRunFolder(root, slugify(focus, basename3(root)), runTimestamp(/* @__PURE__ */ new Date()));
     writeRunRecord(root, join6(root, ARCHIFY_DIR, run2), newRunRecord({ focus, skillVersion: SKILL_VERSION }));
   } catch (error) {
     process.stderr.write(`repo-facts.mjs: ${error.message}
