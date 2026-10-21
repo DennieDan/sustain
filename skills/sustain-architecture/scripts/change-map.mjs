@@ -291,10 +291,6 @@ function renderMapping(base, head, map) {
 `;
 }
 
-// src/model/citations.ts
-import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
-import { join, sep } from "node:path";
-
 // src/model/citationPath.ts
 var MAX_PATH_LENGTH = 240;
 function citationPathOk(path) {
@@ -305,6 +301,8 @@ function citationPathOk(path) {
 }
 
 // src/model/citations.ts
+import { closeSync, openSync, readSync, realpathSync, statSync } from "node:fs";
+import { join, sep } from "node:path";
 var MAX_CITED_BYTES = 2 * 1024 * 1024;
 var BINARY_SNIFF_BYTES = 8 * 1024;
 function countLines(bytes) {

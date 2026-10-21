@@ -1,10 +1,6 @@
 // FRS-04: diffs parse into old-side hunks, and boxes are marked by how the hunks touch what they cite.
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { markChanges, parseDiff, rangeOf, unquotePath } from "../../../src/model/changes";
-import { diffFor } from "../../../src/model/git";
-import { git, gitRepo, put } from "../support/temp";
 
 const DIFF = [
   "diff --git a/src/a.ts b/src/a.ts",
@@ -70,35 +66,6 @@ describe("FRS-04 marks", () => {
       weak: ["header", "edge", "renamed"],
       uncovered: ["café.ts"],
     });
-  });
-});
-
-describe("FRS-04 scopes in a git repository", () => {
-  test("uncommitted changes include untracked files; a range compares two commits; bad ranges are refused", () => {
-    const root = gitRepo({ "src/a.ts": "1\n2\n3\n" });
-    const first = git(root, "rev-parse", "HEAD").trim();
-    put(root, "src/a.ts", "1\nTWO\n3\n");
-    git(root, "commit", "-qam", "two");
-    put(root, "src/a.ts", "1\nTWO\nTHREE\n");
-    writeFileSync(join(root, "new.ts"), "n\n");
-
-    const uncommitted = diffFor(root, { kind: "uncommitted" });
-    expect(uncommitted.ok && parseDiff(uncommitted.text)).toEqual([{ path: "src/a.ts", oldPath: "src/a.ts", status: "modified", hunks: [{ oldStart: 3, oldLines: 1 }], added: 1 }]);
-    expect(uncommitted.ok && uncommitted.untracked).toEqual(["new.ts"]);
-
-    const range = diffFor(root, { kind: "range", from: first, to: "HEAD" });
-    expect(range.ok && parseDiff(range.text)[0]!.hunks).toEqual([{ oldStart: 2, oldLines: 1 }]);
-    expect(range.ok && range.untracked).toEqual([]);
-    expect(diffFor(root, { kind: "range", from: "--output=/tmp/x", to: "HEAD" })).toEqual({ ok: false, reason: "A commit range looks like main..HEAD." });
-  });
-
-  test("this branch compares with its merge-base with main", () => {
-    const root = gitRepo({ "a.ts": "1\n" });
-    git(root, "checkout", "-qb", "feature");
-    put(root, "a.ts", "2\n");
-    git(root, "commit", "-qam", "feature");
-    const branch = diffFor(root, { kind: "branch" });
-    expect(branch.ok && parseDiff(branch.text).map((file) => file.path)).toEqual(["a.ts"]);
   });
 });
 

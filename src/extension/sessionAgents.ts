@@ -1,7 +1,7 @@
 // LRN-01: the agents a learning session can run in, and the terminal's argument vector for each.
 // No `vscode` import, so detection and argv are unit-tested in Node.
 import { existsSync } from "node:fs";
-import { findOnPath } from "./agents";
+import { findOnPath } from "../model/which";
 import { devinPromptArgs, findDevinCli } from "./devin";
 import type { SessionAgent } from "./hooksFiles";
 

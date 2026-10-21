@@ -10,7 +10,6 @@ import type { ArchifyDoc, Issue, SourceRef } from "./types";
 export const MAX_CITED_BYTES = 2 * 1024 * 1024;
 /** Leading bytes searched for a NUL byte. */
 export const BINARY_SNIFF_BYTES = 8 * 1024;
-export { citationPathOk, MAX_PATH_LENGTH } from "./citationPath";
 
 /** Lines in `bytes`; a trailing newline does not start an extra line (`""` 0, `"a\n"` 1, `"a\nb"` 2). */
 export function countLines(bytes: Uint8Array): number {
