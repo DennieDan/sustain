@@ -19,6 +19,141 @@ function isDenied(path) {
   return path.split("/").some(segmentDenied);
 }
 
+// src/model/gitFormat.ts
+var COMMIT = /^[0-9a-f]{40}$/;
+var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
+function isRevision(value, kind) {
+  return typeof value === "string" && (kind === "commit" ? COMMIT : NAME).test(value);
+}
+var C_ESCAPES = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, "\\": 92 };
+function unquotePath(path) {
+  if (!(path.length >= 2 && path.startsWith('"') && path.endsWith('"'))) return path;
+  const bytes = [];
+  const body = path.slice(1, -1);
+  for (let i = 0; i < body.length; i += 1) {
+    const ch = body[i];
+    if (ch !== "\\") {
+      bytes.push(...new TextEncoder().encode(ch));
+      continue;
+    }
+    const next = body[i + 1] ?? "";
+    const octal = /^[0-7]{3}/.exec(body.slice(i + 1));
+    if (octal) {
+      bytes.push(parseInt(octal[0], 8));
+      i += 3;
+    } else {
+      bytes.push(C_ESCAPES[next] ?? next.charCodeAt(0));
+      i += 1;
+    }
+  }
+  return new TextDecoder().decode(new Uint8Array(bytes));
+}
+function parseNameStatusZ(output) {
+  const fields = output.split("\0");
+  const entries = [];
+  for (let i = 0; i < fields.length; i += 1) {
+    const status = fields[i];
+    if (status === "") continue;
+    if (/^[RC]/.test(status)) {
+      const oldPath = fields[i + 1];
+      const path = fields[i + 2];
+      i += 2;
+      if (oldPath && path) entries.push({ status, path, oldPath });
+    } else {
+      const path = fields[i + 1];
+      i += 1;
+      if (path) entries.push({ status, path });
+    }
+  }
+  return entries;
+}
+function parsePorcelainZ(output) {
+  const fields = output.split("\0");
+  const paths = [];
+  for (let i = 0; i < fields.length; i += 1) {
+    const record = fields[i];
+    if (record.length < 4) continue;
+    paths.push(record.slice(3));
+    if (/[RC]/.test(record.slice(0, 2))) i += 1;
+  }
+  return paths;
+}
+var HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
+function withoutPrefix(path, prefix) {
+  return path.startsWith(prefix) ? path.slice(prefix.length) : path;
+}
+function gitHeaderPaths(rest) {
+  const half = (rest.length - 1) / 2;
+  if (Number.isInteger(half) && rest.startsWith("a/") && rest.slice(half, half + 3) === " b/" && rest.slice(2, half) === rest.slice(half + 3)) {
+    return [rest.slice(2, half), rest.slice(half + 3)];
+  }
+  let oldRaw;
+  let newRaw;
+  if (rest.startsWith('"')) {
+    oldRaw = /^"(?:[^"\\]|\\.)*"/.exec(rest)?.[0] ?? rest;
+    newRaw = rest.slice(oldRaw.length + 1);
+  } else {
+    const split = Math.max(rest.lastIndexOf(" b/"), rest.lastIndexOf(' "b/'));
+    oldRaw = split < 0 ? rest : rest.slice(0, split);
+    newRaw = split < 0 ? rest : rest.slice(split + 1);
+  }
+  return [withoutPrefix(unquotePath(oldRaw), "a/"), withoutPrefix(unquotePath(newRaw), "b/")];
+}
+function headerLinePath(raw, prefix) {
+  const path = unquotePath(raw.replace(/\t$/, ""));
+  return path === "/dev/null" ? null : withoutPrefix(path, prefix);
+}
+function parseDiffSections(diff) {
+  const sections = [];
+  for (const text of diff.split(/^(?=diff --git )/m)) {
+    if (!text.startsWith("diff --git ")) continue;
+    const lines = text.split("\n");
+    const section = {
+      text,
+      headerPaths: gitHeaderPaths(lines[0].slice("diff --git ".length)),
+      oldPath: void 0,
+      newPath: void 0,
+      renamed: false,
+      added: false,
+      deleted: false,
+      hunks: []
+    };
+    for (const line of lines.slice(1)) {
+      const hunk = HUNK_HEADER.exec(line);
+      if (hunk) {
+        section.hunks.push({
+          header: line,
+          oldStart: Number(hunk[1]),
+          oldLines: hunk[2] === void 0 ? 1 : Number(hunk[2]),
+          newStart: Number(hunk[3]),
+          newLines: hunk[4] === void 0 ? 1 : Number(hunk[4])
+        });
+      } else if (section.hunks.length > 0) {
+        continue;
+      } else if (line.startsWith("rename from ")) {
+        section.oldPath = headerLinePath(line.slice("rename from ".length), "");
+        section.renamed = true;
+      } else if (line.startsWith("rename to ")) {
+        section.newPath = headerLinePath(line.slice("rename to ".length), "");
+      } else if (line.startsWith("copy from ")) {
+        section.oldPath = headerLinePath(line.slice("copy from ".length), "");
+      } else if (line.startsWith("copy to ")) {
+        section.newPath = headerLinePath(line.slice("copy to ".length), "");
+      } else if (line.startsWith("new file mode")) {
+        section.added = true;
+      } else if (line.startsWith("deleted file mode")) {
+        section.deleted = true;
+      } else if (line.startsWith("--- ") && section.oldPath === void 0) {
+        section.oldPath = headerLinePath(line.slice(4), "a/");
+      } else if (line.startsWith("+++ ") && section.newPath === void 0) {
+        section.newPath = headerLinePath(line.slice(4), "b/");
+      }
+    }
+    sections.push(section);
+  }
+  return sections;
+}
+
 // src/model/types.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -63,97 +198,17 @@ function candidateRevision(value) {
   const revision = value["meta"]["repository"]["revision"];
   return typeof revision === "string" ? revision : null;
 }
-var C_ESCAPES = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, "\\": 92 };
-function unquotePath(path) {
-  if (!(path.length >= 2 && path.startsWith('"') && path.endsWith('"'))) return path;
-  const bytes = [];
-  const body = path.slice(1, -1);
-  for (let i = 0; i < body.length; i += 1) {
-    const ch = body[i];
-    if (ch !== "\\") {
-      bytes.push(...new TextEncoder().encode(ch));
-      continue;
-    }
-    const next = body[i + 1] ?? "";
-    const octal = /^[0-7]{3}/.exec(body.slice(i + 1));
-    if (octal) {
-      bytes.push(parseInt(octal[0], 8));
-      i += 3;
-    } else {
-      bytes.push(C_ESCAPES[next] ?? next.charCodeAt(0));
-      i += 1;
-    }
-  }
-  return new TextDecoder().decode(new Uint8Array(bytes));
-}
-function headerPath(raw, prefix) {
-  const path = unquotePath(raw.replace(/\t$/, ""));
-  return path.startsWith(prefix) ? path.slice(prefix.length) : path;
-}
 function splitDiff(raw) {
-  const files = [];
-  const chunks = raw.split(/^(?=diff --git )/m).filter((chunk) => chunk.startsWith("diff --git "));
-  for (const text of chunks) {
-    const lines = text.split("\n");
-    let oldPath;
-    let newPath;
-    const hunks = [];
-    for (const line of lines) {
-      if (line.startsWith("rename from ")) oldPath = headerPath(line.slice("rename from ".length), "");
-      else if (line.startsWith("rename to ")) newPath = headerPath(line.slice("rename to ".length), "");
-      else if (line.startsWith("copy from ")) oldPath = headerPath(line.slice("copy from ".length), "");
-      else if (line.startsWith("copy to ")) newPath = headerPath(line.slice("copy to ".length), "");
-      else if (line.startsWith("--- ") && oldPath === void 0) oldPath = line === "--- /dev/null" ? null : headerPath(line.slice(4), "a/");
-      else if (line.startsWith("+++ ") && newPath === void 0) newPath = line === "+++ /dev/null" ? null : headerPath(line.slice(4), "b/");
-      const hunk = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(line);
-      if (hunk) {
-        hunks.push({
-          header: line,
-          oldStart: Number(hunk[1]),
-          oldLines: hunk[2] === void 0 ? 1 : Number(hunk[2]),
-          newStart: Number(hunk[3]),
-          newLines: hunk[4] === void 0 ? 1 : Number(hunk[4])
-        });
-      }
-    }
+  return parseDiffSections(raw).map((section) => {
+    let { oldPath, newPath } = section;
     if (oldPath === void 0 || newPath === void 0) {
-      const header = (lines[0] ?? "").slice("diff --git ".length);
-      let path = null;
-      const quoted = /^"(a\/(?:[^"\\]|\\.)*)" "(b\/(?:[^"\\]|\\.)*)"$/.exec(header);
-      if (quoted) {
-        const [left, right] = [unquotePath(`"${quoted[1]}"`).slice(2), unquotePath(`"${quoted[2]}"`).slice(2)];
-        if (left === right) path = left;
-      } else {
-        const half = (header.length - 1) / 2;
-        const left = header.slice(0, half);
-        const right = header.slice(half + 1);
-        if (left.startsWith("a/") && right.startsWith("b/") && left.slice(2) === right.slice(2)) path = left.slice(2);
-      }
-      if (oldPath === void 0) oldPath = /^new file mode/m.test(text) ? null : path;
-      if (newPath === void 0) newPath = /^deleted file mode/m.test(text) ? null : path;
+      const [left, right] = section.headerPaths;
+      const path = left === right ? left : null;
+      if (oldPath === void 0) oldPath = section.added ? null : path;
+      if (newPath === void 0) newPath = section.deleted ? null : path;
     }
-    files.push({ oldPath: oldPath ?? null, newPath: newPath ?? null, text, hunks });
-  }
-  return files;
-}
-function parseNameStatusZ(output) {
-  const fields = output.split("\0");
-  const entries = [];
-  for (let i = 0; i < fields.length; i += 1) {
-    const status = fields[i];
-    if (status === "") continue;
-    if (/^[RC]/.test(status)) {
-      const oldPath = fields[i + 1];
-      const path = fields[i + 2];
-      i += 2;
-      if (oldPath && path) entries.push({ status, path, oldPath });
-    } else {
-      const path = fields[i + 1];
-      i += 1;
-      if (path) entries.push({ status, path });
-    }
-  }
-  return entries;
+    return { oldPath, newPath, text: section.text, hunks: section.hunks };
+  });
 }
 function touchedFiles(entries) {
   const out = /* @__PURE__ */ new Set();
@@ -487,17 +542,6 @@ function sanitizeOrigin(url) {
   const host = authority.slice(authority.lastIndexOf("@") + 1);
   return `${scheme}://${host}${tail}`;
 }
-function parsePorcelainZ(output) {
-  const fields = output.split("\0");
-  const paths = [];
-  for (let i = 0; i < fields.length; i += 1) {
-    const record = fields[i];
-    if (record.length < 4) continue;
-    paths.push(record.slice(3));
-    if (/[RC]/.test(record.slice(0, 2))) i += 1;
-  }
-  return paths;
-}
 function collectGitFacts(root, env = process.env) {
   const program = gitProgram(env);
   if (program === void 0) return null;
@@ -509,7 +553,7 @@ function collectGitFacts(root, env = process.env) {
     return null;
   }
   const head = run(program, root, GIT_READS.head)?.trim().toLowerCase();
-  if (head === void 0 || !/^[0-9a-f]{40}$/.test(head)) return null;
+  if (head === void 0 || !isRevision(head, "commit")) return null;
   const origin = run(program, root, GIT_READS.origin)?.trim() ?? "";
   const allDirty = parsePorcelainZ(run(program, root, GIT_READS.status) ?? "").filter((path) => !path.startsWith(".archify/"));
   return {
@@ -519,23 +563,20 @@ function collectGitFacts(root, env = process.env) {
     dirty: allDirty.slice(0, MAX_DIRTY_PATHS)
   };
 }
-function isRevision(value) {
-  return typeof value === "string" && /^[0-9a-f]{40}$/.test(value);
-}
-function baseReachable(root, base, program = "git") {
-  if (!isRevision(base)) return false;
+function baseReachable(root, base, program = gitProgram()) {
+  if (program === void 0 || !isRevision(base, "commit")) return false;
   return run(program, root, [...GIT_READS.commitExists, `${base}^{commit}`]) !== null && run(program, root, [...GIT_READS.isAncestor, base, "HEAD"]) !== null;
 }
-function readChanges(root, base, program = "git") {
-  if (!isRevision(base)) return null;
+function readChanges(root, base, program = gitProgram()) {
+  if (program === void 0 || !isRevision(base, "commit")) return null;
   const nameStatus = run(program, root, [...GIT_READS.nameStatus, base, "--"]);
   const diff = run(program, root, [...GIT_READS.diff, base, "--"]);
   const untracked = run(program, root, GIT_READS.untracked);
   if (nameStatus === null || diff === null || untracked === null) return null;
   return { nameStatus, diff, untracked };
 }
-function commitInfo(root, revision, program = "git") {
-  if (!isRevision(revision)) return null;
+function commitInfo(root, revision, program = gitProgram()) {
+  if (program === void 0 || !isRevision(revision, "commit")) return null;
   const output = run(program, root, [...GIT_READS.commitInfo, revision, "--"]);
   const match = output === null ? null : /^([^\0\n]*)\0([^\0\n]+)\n?$/.exec(output);
   if (!match) return null;

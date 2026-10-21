@@ -27,6 +27,7 @@ const BROWSER_SAFE_MODEL: Record<string, true> = {
   "src/model/delta.ts": true,
   "src/model/deltaMarkdown.ts": true,
   "src/model/dates.ts": true,
+  "src/model/gitFormat.ts": true,
 };
 const NODE_MODEL: Record<string, true> = {
   "src/model/citations.ts": true,

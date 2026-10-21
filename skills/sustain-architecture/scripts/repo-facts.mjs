@@ -5,6 +5,24 @@ import { basename as basename3, join as join6 } from "node:path";
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 
+// src/model/gitFormat.ts
+var COMMIT = /^[0-9a-f]{40}$/;
+var NAME = /^(?!-)[A-Za-z0-9._/~^@{}-]+$/;
+function isRevision(value, kind) {
+  return typeof value === "string" && (kind === "commit" ? COMMIT : NAME).test(value);
+}
+function parsePorcelainZ(output) {
+  const fields = output.split("\0");
+  const paths = [];
+  for (let i = 0; i < fields.length; i += 1) {
+    const record = fields[i];
+    if (record.length < 4) continue;
+    paths.push(record.slice(3));
+    if (/[RC]/.test(record.slice(0, 2))) i += 1;
+  }
+  return paths;
+}
+
 // src/model/which.ts
 import { accessSync, constants, statSync } from "node:fs";
 import { delimiter, join, posix, win32 } from "node:path";
@@ -79,17 +97,6 @@ function sanitizeOrigin(url) {
   const host = authority.slice(authority.lastIndexOf("@") + 1);
   return `${scheme}://${host}${tail}`;
 }
-function parsePorcelainZ(output) {
-  const fields = output.split("\0");
-  const paths = [];
-  for (let i = 0; i < fields.length; i += 1) {
-    const record = fields[i];
-    if (record.length < 4) continue;
-    paths.push(record.slice(3));
-    if (/[RC]/.test(record.slice(0, 2))) i += 1;
-  }
-  return paths;
-}
 function collectGitFacts(root, env = process.env) {
   const program = gitProgram(env);
   if (program === void 0) return null;
@@ -101,7 +108,7 @@ function collectGitFacts(root, env = process.env) {
     return null;
   }
   const head = run(program, root, GIT_READS.head)?.trim().toLowerCase();
-  if (head === void 0 || !/^[0-9a-f]{40}$/.test(head)) return null;
+  if (head === void 0 || !isRevision(head, "commit")) return null;
   const origin = run(program, root, GIT_READS.origin)?.trim() ?? "";
   const allDirty = parsePorcelainZ(run(program, root, GIT_READS.status) ?? "").filter((path) => !path.startsWith(".archify/"));
   return {

@@ -3,12 +3,13 @@
 // imports on both sides (PRC-06); delta.ts decides.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { parseDiff, REVISION_PATTERN, type FileChange } from "./changes";
+import { parseDiff, type FileChange } from "./changes";
 import { CONFIG_FILE, readConfig, type FailOn, type SustainConfig } from "./config";
 import { deltaReport, isSourceFile, verdict, type DeltaReport } from "./delta";
 import { listCandidates } from "./discovery";
 import { importLanguage, importResolver } from "./evidence/graph";
 import { diffBetween, existsAt, fileAt, filesAt, mergeBase, renamesSince, untrackedFiles } from "./git";
+import { isRevision } from "./gitFormat";
 import { globToRegExp } from "./glob";
 import { isTestPath, listFiles } from "./repoSize";
 import { checkRules, readRules, type Violation } from "./rules";
@@ -98,7 +99,7 @@ function filesOnDisk(root: string, dir: string): string[] {
 
 export function runCheck(options: CheckOptions): CheckOutcome {
   const { root, base, head } = options;
-  if (!REVISION_PATTERN.test(base) || (head !== undefined && !REVISION_PATTERN.test(head))) return { ok: false, reason: "--base and --head take revisions such as origin/main or HEAD." };
+  if (!isRevision(base, "name") || (head !== undefined && !isRevision(head, "name"))) return { ok: false, reason: "--base and --head take revisions such as origin/main or HEAD." };
   const config = loadConfig(root);
   if (!config.ok) return config;
   const run = options.map ?? config.config.map ?? mainMap(root);

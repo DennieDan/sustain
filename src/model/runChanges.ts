@@ -1,7 +1,8 @@
 // `<run folder>/changes.json` (FR-CMP-02): the change map of an update run as data, for the
 // viewer's "Code changed, kept" and "Not in any component" sections. Browser-safe: types and
 // pure functions only; reading and writing the file is in lineage.ts.
-import type { ChangeMap, FileDiff, NameStatus } from "./changeMap";
+import type { ChangeMap, FileDiff } from "./changeMap";
+import type { NameStatus } from "./gitFormat";
 import { isRecord } from "./types";
 
 /** Git status reduced to what the viewer shows: renames carry `oldPath`. */

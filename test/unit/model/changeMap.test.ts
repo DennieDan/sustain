@@ -7,15 +7,14 @@ import {
   decideMode,
   diagramComponents,
   mapChanges,
-  parseNameStatusZ,
   renderChange,
   renderMapping,
   splitDiff,
   touchedFiles,
-  unquotePath,
   type ChangeInput,
   type ModeFacts,
 } from "../../../src/model/changeMap";
+import { parseNameStatusZ, unquotePath } from "../../../src/model/gitFormat";
 import type { Lineage } from "../../../src/model/lineage";
 
 const raw = `diff --git a/src/Parser.java b/src/Parser.java
