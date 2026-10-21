@@ -9,6 +9,7 @@ import { relativeAge } from "../src/model/dates";
 import type { Compare, WebviewMessage } from "../src/model/messages";
 import { readDiagram } from "../src/model/tolerant";
 import type { ViewConnection, ViewDiagram } from "../src/model/tolerant";
+import { button, el } from "./dom";
 import type { ElementKind } from "./render";
 import { formatFileChange } from "./tooltip";
 
@@ -58,20 +59,6 @@ export function compareDiagrams(current: ViewDiagram, compare: Compare | null): 
 
 /** Older commit dates show as the ISO date. */
 const RELATIVE_DAYS = 30;
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
-  const element = document.createElement(tag);
-  element.className = className;
-  if (text !== undefined) element.textContent = text;
-  return element;
-}
-
-function button(className: string, text: string, onClick: () => void): HTMLButtonElement {
-  const element = el("button", className, text);
-  element.type = "button";
-  element.addEventListener("click", onClick);
-  return element;
-}
 
 /** `<short hash> "<subject>"` and, when `withDate`, ` · <relative date>` (full ISO as `title`). */
 function commitParts(commit: CommitRef | null, withDate: boolean, now: Date): Node[] {

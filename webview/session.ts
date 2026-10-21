@@ -3,6 +3,7 @@
 // SessionHostMessage/SessionWebviewMessage. Bundled as dist/session-webview.js.
 import type { SessionHostMessage, SessionView, SessionWebviewMessage } from "../src/model/messages";
 import type { LeaderboardEntry } from "../src/model/leaderboard";
+import { el } from "./dom";
 
 declare function acquireVsCodeApi(): { postMessage(message: SessionWebviewMessage): void };
 const vscode = acquireVsCodeApi();
@@ -22,13 +23,6 @@ const PHASE_LABEL: Record<string, string> = {
   paused: "Paused",
   done: "Done",
 };
-
-function el(tag: string, className = "", text = ""): HTMLElement {
-  const node = document.createElement(tag);
-  if (className !== "") node.className = className;
-  if (text !== "") node.textContent = text;
-  return node;
-}
 
 function formatElapsed(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));

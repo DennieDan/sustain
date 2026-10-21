@@ -5,22 +5,9 @@ import { relativeAge } from "../src/model/dates";
 import { mapStatus, runFigures } from "../src/model/home";
 import type { HomeState, HomeWebviewMessage, MapItem, RunCard } from "../src/model/messages";
 import type { Check } from "../src/model/preflight";
+import { button, el } from "./dom";
 
 export type Post = (message: HomeWebviewMessage) => void;
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className !== "") node.className = className;
-  if (text !== "") node.textContent = text;
-  return node;
-}
-
-function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
-  const node = el("button", className, label);
-  node.type = "button";
-  node.addEventListener("click", onClick);
-  return node;
-}
 
 function section(title: string, className: string): HTMLElement {
   const node = el("section", `section ${className}`);
@@ -65,7 +52,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   const controls = el("div", "composer__controls");
   // CST-03: above the threshold the first click arms the button and the second sends the run.
   let generateArmed = false;
-  const generate = button("Generate", "button button--primary composer__generate", () => {
+  const generate = button("button button--primary composer__generate", "Generate", () => {
     const confirm = current?.composer.confirm === true;
     if (confirm && !generateArmed) {
       generateArmed = true;
@@ -78,7 +65,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
   });
   const notes = el("div", "composer__notes");
   // RCH-04: the same prompt, for an agent Sustain does not launch.
-  const copyPrompt = button("Copy prompt for…", "link composer__copy", () => post({ type: "copyPromptFor", focus: focus.value }));
+  const copyPrompt = button("link composer__copy", "Copy prompt for…", () => post({ type: "copyPromptFor", focus: focus.value }));
   composer.append(focus, controls, generate, copyPrompt, notes);
   focus.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !generate.disabled) generate.click();
@@ -141,7 +128,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     mode.setAttribute("role", "group");
     mode.setAttribute("aria-label", "Run mode");
     for (const [value, label] of [["sidebar", "In sidebar"], ["terminal", "In terminal"]] as const) {
-      const option = button(label, `toggle__option${state.composer.runMode === value ? " toggle__option--on" : ""}`, () => post({ type: "setRunMode", runMode: value }));
+      const option = button(`toggle__option${state.composer.runMode === value ? " toggle__option--on" : ""}`, label, () => post({ type: "setRunMode", runMode: value }));
       option.setAttribute("aria-pressed", String(state.composer.runMode === value));
       mode.append(option);
     }
@@ -176,16 +163,16 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
       denied.append(el("p", "run__denials-title", "The agent was refused:"));
       const list = el("ul", "run__denial-list");
       for (const denial of run.denials) list.append(el("li", "", denial));
-      denied.append(list, button("Run in terminal instead", "button", () => post({ type: "runInTerminal" })));
+      denied.append(list, button("button", "Run in terminal instead", () => post({ type: "runInTerminal" })));
       card.append(denied);
     }
-    if (run.status === "running") card.append(button("Cancel", "button run__cancel", () => post({ type: "cancelRun" })));
+    if (run.status === "running") card.append(button("button run__cancel", "Cancel", () => post({ type: "cancelRun" })));
     runSlot.append(card);
   }
 
   function mapEntry(item: MapItem): HTMLElement {
     const entry = el("li", "map");
-    const open = button(item.title ?? item.runFolder, "map__title", () => post({ type: "openMap", file: item.file }));
+    const open = button("map__title", item.title ?? item.runFolder, () => post({ type: "openMap", file: item.file }));
     open.title = item.runFolder;
     const meta = [
       item.focus,
@@ -197,8 +184,8 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     );
     const actions = el("div", "map__actions");
     actions.append(
-      button("Open", "link", () => post({ type: "openMap", file: item.file })),
-      button("Delete", "link link--danger", () => post({ type: "deleteMap", file: item.file })),
+      button("link", "Open", () => post({ type: "openMap", file: item.file })),
+      button("link link--danger", "Delete", () => post({ type: "deleteMap", file: item.file })),
     );
     entry.append(open, el("div", "map__meta", meta.join(" · ")), actions);
     return entry;
@@ -230,7 +217,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
       }
       block.append(list);
     }
-    block.append(button("Suggest rules", "button", () => post({ type: "suggestRules" })));
+    block.append(button("button", "Suggest rules", () => post({ type: "suggestRules" })));
     rulesSlot.append(block);
   }
 
@@ -242,7 +229,7 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     const list = el("ul", "health__list");
     for (const item of state.health) {
       const entry = el("li", `health__item${item.attention ? " health__item--attention" : ""}`);
-      entry.append(button(item.text, "link health__open", () => post({ type: "openHealth", item: item.kind })));
+      entry.append(button("link health__open", item.text, () => post({ type: "openHealth", item: item.kind })));
       list.append(entry);
     }
     block.append(list);
@@ -274,10 +261,10 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
         const row = el("li", `check check--${check.ok ? "ok" : "fail"}`);
         row.dataset["check"] = check.id;
         row.append(el("span", "check__mark", check.ok ? "✓" : "✗"), el("span", "check__detail", check.detail));
-        if (!check.ok && check.fix) row.append(button(check.fix.label, "link check__fix", () => post({ type: "fix", check: check.id })));
+        if (!check.ok && check.fix) row.append(button("link check__fix", check.fix.label, () => post({ type: "fix", check: check.id })));
         list.append(row);
       }
-      setup.append(list, button("Check again", "link", () => post({ type: "checkSetup" })));
+      setup.append(list, button("link", "Check again", () => post({ type: "checkSetup" })));
     }
     if (checks !== null && failing !== setupFailing) setup.open = failing;
     if (checks !== null) setupFailing = failing;
@@ -288,11 +275,11 @@ export function createHome(container: HTMLElement, post: Post, now: () => Date =
     if (state.root === null) return;
     const block = section("Learning session", "learning");
     if (state.session === null) {
-      block.append(button("Start learning session", "button", () => post({ type: "startLearning" })));
+      block.append(button("button", "Start learning session", () => post({ type: "startLearning" })));
     } else {
       const { phase, stepIndex, stepsTotal, score } = state.session;
       const step = stepsTotal > 0 ? ` · Step ${Math.min(stepIndex + 1, stepsTotal)} of ${stepsTotal}` : "";
-      block.append(el("div", "learning__status", `${phase[0]?.toUpperCase() ?? ""}${phase.slice(1)}${step} · Score ${score}`), button("Open session", "button", () => post({ type: "openSession" })));
+      block.append(el("div", "learning__status", `${phase[0]?.toUpperCase() ?? ""}${phase.slice(1)}${step} · Score ${score}`), button("button", "Open session", () => post({ type: "openSession" })));
     }
     session.append(block);
   }
