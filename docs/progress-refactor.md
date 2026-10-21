@@ -6,8 +6,8 @@ Tracks [spec-refactor.md](spec-refactor.md). Milestone statuses: Not started, In
 
 | Milestone | Status | Branch | Commit |
 |---|---|---|---|
-| RF0 Adoption | Closed pending owner (pull request) | `refactor/rf0-adoption` | `50f974c` |
-| RF1 Dead code | Not started | `refactor/rf1-dead-code` | |
+| RF0 Adoption | Closed (pull request #9) | `refactor/rf0-adoption` | `50f974c` |
+| RF1 Dead code | In progress | `refactor/rf1-dead-code` | |
 | RF2 Shared helpers | Not started | `refactor/rf2-shared-helpers` | |
 | RF3 Unit folders | Not started | `refactor/rf3-unit-folders` | |
 | RF4 Isolate learn | Not started | `refactor/rf4-isolate-learn` | |
@@ -93,6 +93,37 @@ Divergences:
 - [x] **RFX-01 Refactor docs adopted** `[unit]`. `test/unit/checkDocs.test.ts` › `RFX-01 check:docs traces the refactor spec and fails when an RFX ID is missing from its progress checklist` passes, and it failed with the refactor row removed from `TRACES`. `the repository's own docs pass` passes on the real `docs/`. `npm run check` passes with 1263 tests, and check:docs reports 70 ADRs and 245 relative links. `npm run test:e2e` gives the same 77 passing and 9 failing in `single` as the baseline with the keychain fix. RF1 owns those failures.
 
 ## RF1 Dead code
+
+Investigation before the proposal:
+- The 9 local e2e failures were 5 real ones and 4 caused by this machine. VS Code merged the login shell's PATH, from `/etc/paths.d/homebrew`, into the extension host. `/opt/homebrew/bin/claude` then joined the tests' agent stubs, and the Codex and Devin tests met an agent pick they did not expect. With `--force-disable-user-env` and a PATH without installed agent CLIs, the local run matches CI on pull request #9: 81 passing, 5 failing.
+- Of the 5 real failures, the two Install tests expect the dropped skills (RFX-03). The two ARC-04 notes tests write `candidate.json`, which `58793bf` (ADR 0033) renamed to `candidate.sir`. The Open Architecture test expects the "Install the sustain-architecture skill first?" prompt, which `b84ea1b` replaced with the focus prompt. `kerk` already asserts the focus prompt, and `647df7b` kept the older test.
+- `RunKind` `"drill"` is written by `repo-facts.mjs --parent`, which `SKILL.md` still describes. Nothing reads it. The owner chose on 2026-10-21 to remove `--parent` from the script and the skill together with the value. The `parent` field stays in run.json, always `null`, so the format does not change.
+- `.github/workflows/deploy-cloud.yml` deploys `cloud/`, which `main` does not have, and `test/unit/package.test.ts` pins it.
+- Outside this refactor, CI on pull request #9 also failed `check (windows-latest)` in `test/unit/agent/changeMap.test.ts` and `sustain-check`, because the repository commits no map. RF1 leaves both alone.
+
+Proposal:
+
+| File or unit | Change | Estimate |
+|---|---|---|
+| `test/e2e/runTest.ts` | Launch VS Code with `--force-disable-user-env`, and give it the runner's PATH without folders that hold an installed agent CLI, with Node linked into a folder of its own. | +20 / -3 |
+| Files with no importers | Delete `webview/bridge.ts`, `src/model/branchMaps.ts`, `agentHome.ts`, `score.ts`, `openLinks.ts`, `citing.ts`, `schemas/tour.schema.json`, `schemas/upload.schema.json`, and the tests `score.test.ts`, `openLinks.test.ts` and `citing.test.ts`. | +0 / -760 |
+| `src/model/git.ts`, `test/unit/model/changes.test.ts` | Delete `diffFor`, `numstatSince`, `foldersAt`, `currentBranch`, `defaultBranch`, `ChangeScope` and the helpers and types only they use. Delete the `diffFor` tests. | +0 / -140 |
+| `src/model/refresh.ts` to `src/model/glob.ts` | `git mv`, with `check.ts` and `rules.ts` importing the new path. Then delete `refreshReport`, `refreshArgs`, `inScope` and their types. | +3 / -55 |
+| `webview/a11y.ts` | Delete `screenReaderList`. | +0 / -36 |
+| Re-exports | `agents.ts` stops re-exporting `findOnPath`, and `citations.ts` stops re-exporting `citationPathOk` and `MAX_PATH_LENGTH`. `devin.ts`, `generate.ts`, `sessionAgents.ts`, `change-map.ts`, `sourceTarget.ts` and three tests import from `which.ts` and `citationPath.ts`. | +8 / -10 |
+| `src/model/usageLog.ts`, `test/unit/model/usageLog.test.ts` | Drop the eleven events. The two existing tests use counted events only, and a new test loads a log with a `refresh` count. | +12 / -16 |
+| `EstimateKind` | `estimate.ts` keeps `"full"` only. `coefficients.json` drops its `refresh` and `ask` lines. `estimates.ts` loses `estimateKind`, `generate.ts` passes `"full"`, and the `skillEstimates` assertion in `estimate.test.ts` uses `"full"`. | +4 / -32 |
+| `RunKind` `"drill"` | `runRecord.ts`, `repo-facts.ts` without `--parent`, `SKILL.md` without the drill-down lines, the rebuilt `skills/sustain-architecture/scripts/repo-facts.mjs`. | +4 / -16 |
+| Comments and dead CSS | `esbuild.mjs`, `elkInThread.ts`, `estimate.ts`, `secrets.ts` and `runRecord.ts` stop naming removed files and features. `styles.css` drops the unused `.overview` drill-down rules. `agentStream/feed.ts` drops its `refresh-facts.mjs` branch. | +6 / -24 |
+| `tsconfig.json` | Drop `bench` and `eval` from `include`. | +1 / -1 |
+| `.github/workflows/ci.yml`, `test/unit/ci.test.ts` | Drop the `cloud` and `cloud-image` jobs and the cloud job test. | +0 / -26 |
+| `.github/workflows/deploy-cloud.yml`, `test/unit/package.test.ts` | Delete the workflow and its test. | +0 / -32 |
+| `test/e2e/suite/single.install.test.ts` | Expect `sustain-architecture` and `sustain-bugfix` only. | +3 / -12 |
+| `test/e2e/suite/single.notes.test.ts`, `single.view.test.ts` | Write `candidate.sir`, and assert the focus prompt as `kerk` does. | +4 / -4 |
+
+Tests the ACs call for:
+- RFX-02: `SET-05 a log holding a count for a removed event keeps loading and counts the remaining events` in `test/unit/model/usageLog.test.ts`, plus `npm run check` and `npm run test:e2e`.
+- RFX-03: `test/unit/ci.test.ts` against the trimmed workflow, and `npm run test:e2e` green.
 
 - [ ] **RFX-02 Dropped features removed** `[unit]`
 - [ ] **RFX-03 Build, CI and test leftovers removed** `[unit]` `[e2e]`
