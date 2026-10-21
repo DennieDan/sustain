@@ -6,7 +6,7 @@ Tracks [spec-refactor.md](spec-refactor.md). Milestone statuses: Not started, In
 
 | Milestone | Status | Branch | Commit |
 |---|---|---|---|
-| RF0 Adoption | Not started | `refactor/rf0-adoption` | |
+| RF0 Adoption | Closed pending owner (pull request) | `refactor/rf0-adoption` | `50f974c` |
 | RF1 Dead code | Not started | `refactor/rf1-dead-code` | |
 | RF2 Shared helpers | Not started | `refactor/rf2-shared-helpers` | |
 | RF3 Unit folders | Not started | `refactor/rf3-unit-folders` | |
@@ -48,6 +48,9 @@ Calls made while writing the spec:
 - `inject` waits until the hook has fired once. A session therefore reaches `hunting` only when its hook is live, whether or not the agent reloads hook files.
 - RF0 is added ahead of RF1 to cover the move to `docs/`, the `AGENTS.md` change and the baseline gate run.
 
+Calls made during the build:
+- 2026-10-21: refactor commits are signed. The 1Password SSH signer timed out while RF0 was built. The RF0 commits were first made unsigned, and the owner approved re-signing them with `git rebase -S --force-rebase 215c944` before the push.
+
 ## Suggestions
 
 - Validate webview messages at runtime on the host side.
@@ -58,13 +61,20 @@ Calls made while writing the spec:
 
 Proposal:
 
-| File or unit | Change | Estimate |
-|---|---|---|
-| `docs/spec-refactor.md`, `docs/progress-refactor.md` | Move from `.scratch/` into git. The spec's status line says the owner approved it. | +465 / -0 |
-| `scripts/check-docs.mjs` | Trace each spec and progress pair from one table, the v0.3 pair and the refactor pair. | +15 / -8 |
-| `test/unit/checkDocs.test.ts` | Name the progress file in `checkTraceability` calls, and add the refactor tracing test. | +12 / -4 |
-| `docs/spec-v0.3.md`, `docs/progress-v0.3.md` | A status line that marks each historical. | +2 / -0 |
-| `AGENTS.md` | Current work, Git, and Shell and environment. | +10 / -8 |
+| File or unit | Change | Estimate | Built |
+|---|---|---|---|
+| `docs/spec-refactor.md`, `docs/progress-refactor.md` | Move from `.scratch/` into git. The spec's status line says the owner approved it. | +465 / -0 | +478 / -0, then +12 / -2 |
+| `scripts/check-docs.mjs` | Trace each spec and progress pair from one table, the v0.3 pair and the refactor pair. | +15 / -8 | +24 / -13 |
+| `test/unit/checkDocs.test.ts` | Name the progress file in `checkTraceability` calls, and add the refactor tracing test. | +12 / -4 | +11 / -3 |
+| `docs/spec-v0.3.md`, `docs/progress-v0.3.md` | A status line that marks each historical. | +2 / -0 | +3 / -0 |
+| `AGENTS.md` | Current work, Git, and Shell and environment. | +10 / -8 | +5 / -4 |
+| `test/e2e/runTest.ts` | Not proposed. | | +4 / -0 |
+
+Where the build differs from the proposal:
+- `test/e2e/runTest.ts` gained the keychain flags described under Divergences.
+- `AGENTS.md` also changed in "Working agreement".
+- The RF0 commits went in with `npm run test:e2e` at the baseline's 9 failures, not green. RF1 (RFX-03) owns making e2e pass.
+- `test/unit/layout/perf.test.ts` (NFR-PERF-01) failed twice in the last five runs of `npm run check`, once at 292 ms against a 288 ms budget. Each failure passed on the next run. No code it covers changed in RF0.
 
 Tests the AC calls for:
 - `RFX-01 check:docs traces the refactor spec and fails when an RFX ID is missing from its progress checklist` in `test/unit/checkDocs.test.ts`.
