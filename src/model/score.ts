@@ -1,7 +1,7 @@
 // ACC-04: how close a map comes to a hand-written architecture. Boxes match truth components by
 // containment: at least half of a box's cited paths fall inside a truth component's globs. Uncited
 // boxes may match by label or alias. Browser-safe.
-import { globToRegExp } from "./refresh";
+import { globToRegExp } from "./glob";
 
 export interface TruthComponent {
   id: string;

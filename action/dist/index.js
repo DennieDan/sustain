@@ -189,7 +189,7 @@ function add(map, key, id) {
   map.set(key, set);
 }
 
-// src/model/refresh.ts
+// src/model/glob.ts
 function globToRegExp(glob) {
   let pattern = "";
   for (let i = 0; i < glob.length; i++) {

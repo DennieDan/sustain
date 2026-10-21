@@ -4,7 +4,7 @@
 // nothing import `from` except what `to` lists. Browser-safe.
 import type { ImportRef } from "./evidence/paths";
 import { Ownership } from "./ownership";
-import { globToRegExp } from "./refresh";
+import { globToRegExp } from "./glob";
 
 export const RULE_KINDS = ["forbid", "only-via", "isolated"] as const;
 export type RuleKind = (typeof RULE_KINDS)[number];
