@@ -12,7 +12,7 @@ import type { ComposerAgent, ComposerCli, RunMode } from "../model/messages";
 import { findOnPath } from "../model/which";
 import { agentLaunchArgs, AGENTS, headlessArgs, SKILL_SCRIPTS, skillPrompt, type Agent, type SkillName } from "./agents";
 import { devinPromptArgs, findDevinCli } from "./devin";
-import { estimateKind, launchEstimate } from "./estimates";
+import { launchEstimate } from "./estimates";
 import { pickRepoRoot } from "./folders";
 import { ensureGitExclude } from "./hooksFiles";
 import { ensureSkillIntact, skillNote, skillStatus } from "./integrity";
@@ -87,7 +87,7 @@ export function generateTask(focus: string, regenerate = false): LaunchTask {
  */
 export function launchNotes(context: vscode.ExtensionContext, root: string, cli: ComposerCli, mode: RunMode, headless: boolean, skillName: SkillName = "sustain-architecture"): LaunchNote[] {
   const notes: LaunchNote[] = [];
-  const estimate = cli === "devin" ? null : launchEstimate(root, cli, estimateKind(skillName));
+  const estimate = cli === "devin" ? null : launchEstimate(root, cli, "full");
   if (estimate !== null) notes.push({ kind: "estimate", text: estimate.text, confirm: estimate.confirm });
   if (cli === "devin") notes.push({ kind: "estimate", text: "Devin runs in its own terminal and reports no tokens to Sustain, so there is no estimate for it." });
   const status = skillStatus(context.extensionUri, root, cli, skillName);
@@ -131,7 +131,7 @@ export async function launchTask(context: vscode.ExtensionContext, runs: Runs, r
       vscode.commands.executeCommand("vscode.open", vscode.Uri.file(join(root, ".git", "info", "exclude"))),
     );
   }
-  const request = { root, focus: task.title, agent: { cli: agent.cli, label: agent.label }, task, estimate: agent.cli === "devin" ? null : launchEstimate(root, agent.cli, estimateKind(task.skill)) };
+  const request = { root, focus: task.title, agent: { cli: agent.cli, label: agent.label }, task, estimate: agent.cli === "devin" ? null : launchEstimate(root, agent.cli, "full") };
   if (mode === "sidebar" && agent.cli !== "devin" && canRunHeadless(binary)) {
     const skillDir = join(skillBase(configuredScope(), root), agent.cli === "claude" ? ".claude" : ".agents", "skills", task.skill);
     const args = headlessArgs(agent.cli, prompt, { skillDir, scripts: SKILL_SCRIPTS[task.skill] });

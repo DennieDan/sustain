@@ -154,20 +154,6 @@ var coefficients_default = {
         perFile: 30,
         low: 0.7,
         high: 1.4
-      },
-      refresh: {
-        base: 6e4,
-        perLine: 0.3,
-        perFile: 10,
-        low: 0.6,
-        high: 1.6
-      },
-      ask: {
-        base: 3e4,
-        perLine: 0.1,
-        perFile: 5,
-        low: 0.5,
-        high: 2
       }
     },
     codex: {
@@ -177,20 +163,6 @@ var coefficients_default = {
         perFile: 30,
         low: 0.7,
         high: 1.4
-      },
-      refresh: {
-        base: 45e3,
-        perLine: 0.3,
-        perFile: 10,
-        low: 0.6,
-        high: 1.6
-      },
-      ask: {
-        base: 25e3,
-        perLine: 0.1,
-        perFile: 5,
-        low: 0.5,
-        high: 2
       }
     }
   },

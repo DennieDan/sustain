@@ -3,7 +3,6 @@
 import * as vscode from "vscode";
 import { runEstimate, type EstimateAgent, type EstimateKind, type RunEstimate } from "../model/estimate";
 import { repoSize, sizeFacts, type RepoSize } from "../model/repoSize";
-import type { SkillName } from "./agents";
 
 /** How long a folder's size is reused. */
 export const SIZE_TTL_MS = 60_000;
@@ -30,11 +29,6 @@ export function forgetSizes(): void {
 export function confirmAbove(): number {
   const value = vscode.workspace.getConfiguration("sustain").get<number>("confirmAboveTokens", DEFAULT_CONFIRM_ABOVE);
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : DEFAULT_CONFIRM_ABOVE;
-}
-
-/** The estimate kind a skill's run spends; an audit reads cited ranges as a refresh does. */
-export function estimateKind(skill: SkillName): EstimateKind {
-  return skill === "sustain-architecture" ? "full" : "refresh";
 }
 
 /** The estimate of a `kind` run by `agent` in `root`, or `null` when the folder cannot be measured. */

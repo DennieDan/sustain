@@ -2,22 +2,7 @@
 // and nothing else: no paths, labels, repository names or anything a user typed. Browser-safe.
 
 /** The actions the log counts. Nothing outside this list is ever recorded. */
-export const USAGE_EVENTS = [
-  "generate",
-  "refresh",
-  "audit",
-  "ask",
-  "review",
-  "showChanges",
-  "exportPage",
-  "checkUnderstanding",
-  "tour",
-  "createTour",
-  "drillDown",
-  "find",
-  "learn",
-  "copyPrompt",
-] as const;
+export const USAGE_EVENTS = ["generate", "learn", "copyPrompt"] as const;
 
 export type UsageEvent = (typeof USAGE_EVENTS)[number];
 
