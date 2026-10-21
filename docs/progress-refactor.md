@@ -50,6 +50,7 @@ Calls made while writing the spec:
 
 Calls made during the build:
 - 2026-10-21: refactor commits are signed. The 1Password SSH signer timed out while RF0 was built. The RF0 commits were first made unsigned, and the owner approved re-signing them with `git rebase -S --force-rebase 215c944` before the push.
+- 2026-10-21: the core typecheck declares `TextEncoder`, `TextDecoder` and `structuredClone` for `src/core`, as the owner chose. `gitFormat.ts` and `submission.ts` keep their code.
 
 ## Suggestions
 
@@ -246,7 +247,13 @@ Tests the ACs call for:
 - RFX-10: `npm run typecheck`, the dom suite and `npm run test:e2e`.
 - RFX-11: `npm run check:docs`.
 
-- [ ] **RFX-08 Unit folders** `[unit]` `[e2e]`
+Divergences:
+- The move commits also give the path-keyed tests the new paths: `boundaries.test.ts`, `execScan.test.ts`, `noNetwork.test.ts`, `sharedHelpers.test.ts` and `manifest.test.ts`. The gates run on every commit, and these tests name the moved files.
+- Until RFX-09 replaces it, `boundaries.test.ts` keeps checking the files that left `src/model` and `src/layout`, at their new paths. It lists the files that went to `src/viewer` and `src/vscode`, and it leaves out `skillFiles.ts`, which came from `src/extension` and was never scanned.
+- `noNetwork.test.ts` leaves `src/action/` out of its scan of `src/`, because its Action test covers that folder with the GitHub client allowed. `execScan.test.ts` scans `src/skills`, `src/core` and `src/core-node` beside `src/agent` and `src/model`. `tsconfig.json` drops `action/src`.
+- `THIRD_PARTY_NOTICES.md` names the schemas' new folder in a commit of its own.
+
+- [x] **RFX-08 Unit folders** `[unit]` `[e2e]`. Commits `bdf6115` (`src/core`), `91bd53a` (`src/core-node`), `0a27655` (`src/viewer`), `21b3c1c` (`src/vscode`), `1f5f966` (`src/skills`), `af56f00` (`src/action`) and `6574fd1` (notices). Each move commit rebuilt the bundles, and a throwaway diff of each bundle against the previous commit found only esbuild's `// <path>` comments changed. The core move changed 8 such lines in `action/dist/index.js` and 52 in the skill scripts, the core-node move 52 and 132, the skills move 16 in the architecture scripts, and the action move 8 in `action/dist/index.js`. The viewer and vscode moves changed no bundle. `committed.test.ts` and `action.test.ts` pass on every commit. `npm run check` passes with 1257 tests in 83 files after each commit. `npm run test:e2e` passes in all six runs after each commit: `single` 86, `empty` 3 and `multi` 2 on each of VS Code 1.126.0 and 1.141.0.
 - [ ] **RFX-09 Unit import rules** `[unit]`
 - [ ] **RFX-10 Protocols owned by their units** `[unit]` `[dom]` `[e2e]`
 - [ ] **RFX-11 Unit boundaries ADR** `[unit]`
