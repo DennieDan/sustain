@@ -8,8 +8,8 @@ Tracks [spec-refactor.md](spec-refactor.md). Milestone statuses: Not started, In
 |---|---|---|---|
 | RF0 Adoption | Closed (pull request #9) | `refactor/rf0-adoption` | `50f974c` |
 | RF1 Dead code | Closed (pull request #10) | `refactor/rf1-dead-code` | `91addcc` |
-| RF2 Shared helpers | Closed pending owner (push and pull request) | `refactor/rf2-shared-helpers` | `f802490` |
-| RF3 Unit folders | Not started | `refactor/rf3-unit-folders` | |
+| RF2 Shared helpers | Closed (pull request #11) | `refactor/rf2-shared-helpers` | `f802490` |
+| RF3 Unit folders | In progress | `refactor/rf3-unit-folders` | |
 | RF4 Isolate learn | Not started | `refactor/rf4-isolate-learn` | |
 | RF5 Skills independence | Not started | `refactor/rf5-skills` | |
 | RF6 One check flow | Not started | `refactor/rf6-check-flow` | |
@@ -210,6 +210,41 @@ Divergences:
 - [x] **RFX-07 One set of webview DOM helpers** `[dom]`. Commit `f802490`. `webview/dom.ts` holds `el` and `button`, and `changes.ts`, `home.ts` and `session.ts` import them. The dom tests pass unchanged: 145 tests in 8 files. 22 of them failed with the shared `button`'s first two parameters swapped. `npm run check` passes with 1257 tests in 83 files. `npm run test:e2e` passes in all six runs with the same counts.
 
 ## RF3 Unit folders
+
+Investigation before the proposal:
+- `changeMap.ts` and `runChanges.ts` are pure. The viewer's tooltip imports `runChanges.ts`, which uses `changeMap.ts`'s types. Both therefore go to `src/core`, although §2 lists change maps under `src/core-node`.
+- `changeMap.ts` and `comparison.ts` import the `Lineage` type from `lineage.ts`, which reads and writes files. The lineage types move to `src/core/lineage.ts`, and `src/core-node/lineage.ts` keeps the reads and writes.
+- `gitFormat.ts`'s `unquotePath` uses `TextEncoder` and `TextDecoder`, and `submission.ts`'s `stripAppOwned` uses `structuredClone`. None of them is in `lib: ["ES2023"]`. Node and every browser provide all three. `stripAppOwned` has no caller. Two ways meet the core typecheck. `src/core` can declare the three globals for its own typecheck, which changes no code. Or `unquotePath` can encode and decode UTF-8 by hand and `stripAppOwned` can copy through JSON, which changes how the core runs. The owner chooses at RFX-09.
+- `src/model/messages.ts` imports the agent stream, health, leaderboard, preflight and run record types. The viewer may import only `src/core`. Its rule therefore holds only after RFX-10 splits the file, and RFX-10 is built before RFX-09.
+- Four pure modules have only `src/vscode` importers and share a name with an extension file. They move with new names: `agentNotes.ts` to `notesBlock.ts`, `hotspots.ts` to `boxHotspots.ts`, `usageLog.ts` to `usageCounts.ts`, and `home.ts` to `sidebar/wording.ts`. Their tests keep their names.
+- `src/viewer/main.ts` calls `acquireVsCodeApi`, and `src/viewer/styles.css` names `--vscode-*` variables. RFX-18 and RFX-19 remove them in RF7. Until then the viewer rule lists these two files as pending, and the test fails when any other viewer file breaks the rule.
+- The bug-hunt files stay in place until RF4. `boundaries.test.ts` gives each of them the unit RFX-12 moves it to: `src/learn` for `src/model/session.ts`, `leaderboard.ts`, `src/agent/session.ts`, `session-hook.ts`, `modes/bugfix/`, `src/extension/hooksFiles.ts`, `sessionAgents.ts`, `sessionFiles.ts` and `webview/session.ts`, and `src/vscode/learn` for `learn.ts`, `sessionPanel.ts` and `sessionWatcher.ts`. The rules then apply to them as if they had moved. Five imports break them until RF4: `sessionAgents.ts` imports `src/vscode/devin.ts` (RFX-12), and `home.ts`, `install.ts`, `removeSustain.ts` and `generate.ts` in `src/vscode` import bug-hunt files (RFX-13). The test lists these five as pending.
+
+Proposal:
+
+| File or unit | Change | Estimate |
+|---|---|---|
+| `src/core` | `git mv` from `src/model/`: `types.ts`, `tolerant.ts`, `checks.ts`, `schema.ts`, `schemas/architecture.schema.json`, `schemas/common.schema.json`, `secrets.ts`, `submission.ts`, `changeMap.ts`, `runChanges.ts`, `matchIds.ts`, `diagramDiff.ts`, `comparison.ts`, `dates.ts`, `gitFormat.ts`, `citationPath.ts` and `deny.ts`. Their tests in `test/unit/model/` move to `test/unit/core/`: `changeMap`, `checks`, `comparison`, `deny`, `diagramDiff`, `matchIds`, `runChanges`, `schema`, `secrets` and `tolerant`. | +110 / -110 |
+| `src/core-node` | `git mv` from `src/model/`: `citations.ts`, `confine.ts`, `jsonFile.ts`, `hashTree.mts`, `scriptArgs.ts`, `git.ts`, `runFolder.ts`, `runRecord.ts`, `lineage.ts`, `discovery.ts`, `which.ts`, `integrity.ts`, `preflight.ts`, `check.ts`, `repoSize.ts`, `fingerprints.ts`, `staleness.ts`, `estimate.ts`, `coefficients.json`, `pricing.json`, `glob.ts`, `ownership.ts`, `rules.ts`, `config.ts`, `changes.ts`, `delta.ts`, `deltaMarkdown.ts`, `evidence.ts` and `evidence/` (`graph`, `java`, `paths`, `python`, `typescript`). `src/extension/skillFiles.ts` moves here too. Their tests move to `test/unit/core-node/`: `changes`, `check` with `__snapshots__/delta.md`, `citations`, `confine`, `discovery`, `estimate`, `evidence`, `git`, `imports`, `integrity`, `lineage`, `preflight`, `repoSize`, `rules`, `runFolder` and `skillFiles`. | +175 / -175 |
+| `src/viewer` | `git mv` of `src/layout/` (`boundaries`, `edges`, `elk`, `elkInThread`, `geom`, `layout`, `measure`, `mode`, `scene`) to `src/viewer/layout/`. From `webview/`: `a11y.ts`, `changes.ts`, `click.ts`, `dom.ts`, `main.ts`, `render.ts`, `tooltip.ts`, `viewport.ts` and `styles.css`. `src/model/messages.ts` moves to `src/viewer/protocol.ts`. `test/unit/layout/` moves to `test/unit/viewer/layout/`, and the dom tests `changes`, `click`, `inert`, `main`, `render`, `tooltip` and `viewport` move to `test/dom/viewer/`. `esbuild.mjs` builds `dist/webview.js` and `dist/webview.css` from the new paths. | +125 / -125 |
+| `src/vscode` | `git mv` of `src/extension/` to `src/vscode/`: `agentNotes`, `agents`, `baseline`, `copyPrompt`, `devin`, `estimates`, `extension`, `folders`, `generate`, `home`, `hotspots`, `html`, `install`, `integrity`, `navigate`, `notify`, `open`, `previewWrite`, `removeSustain`, `ruleCommands`, `rules`, `runner`, `runs`, `scope`, `showInMap`, `sourceTarget`, `statusBar`, `usageLog`, `viewer`, `watchLogic` and `watcher`. From `src/model/`: `agentStream/` (`claude`, `codex`, `feed`, `summary`, `tracker`), `maps.ts`, `ruleEdits.ts`, `agentNotes.ts` as `notesBlock.ts`, `hotspots.ts` as `boxHotspots.ts` and `usageLog.ts` as `usageCounts.ts`. To `src/vscode/sidebar/`: `src/model/home.ts` as `wording.ts`, `src/model/health.ts`, and `webview/home.ts`, `sidebar.ts` and `sidebar.css`. Tests: `test/unit/extension/` `agents`, `baseline`, `devin`, `html`, `launchArgs`, `runner`, `sourceTarget` and `watchLogic`, and `test/unit/model/` `agentNotes`, `agentStream`, `hotspots`, `ruleEdits` and `usageLog` move to `test/unit/vscode/`. `home` and `health` move to `test/unit/vscode/sidebar/`, and `test/dom/sidebar.test.ts` to `test/dom/vscode/`. `esbuild.mjs` builds `dist/extension.js`, `dist/sidebar.js` and `dist/sidebar.css` from the new paths. | +110 / -110 |
+| `src/skills` | `git mv` of `src/agent/change-map.ts`, `match-ids.ts`, `repo-facts.ts` and `validate.ts`. Tests: `test/unit/agent/` `changeMap`, `matchIds`, `repoFacts` and `validate`, and `test/unit/skill/` `committed`, `preapprovals` and `skill` move to `test/unit/skills/`. `esbuild.mjs`'s script entries follow. | +5 / -5 |
+| `src/action`, `src/cli` | `git mv` of `action/src/github.ts`, `index.ts` and `main.ts` to `src/action/`. `test/unit/action.test.ts` moves to `test/unit/action/`, and `test/unit/cli.test.ts` to `test/unit/cli/`. `esbuild.mjs` builds `action/dist/index.js` from `src/action/index.ts`, and `tsconfig.json` drops `action/src`. `src/cli/` stays. | +15 / -15 |
+| Path-keyed tests | Each move commit gives `boundaries.test.ts`, `execScan.test.ts`, `noNetwork.test.ts`, `sharedHelpers.test.ts` and `manifest.test.ts` the new paths of the files they name, with the same checks. | +40 / -40 |
+| Bundles | `skills/*/scripts/*.mjs` and `action/dist/index.js` are rebuilt in each move commit. Only esbuild's source-path comments change. | +140 / -140 |
+| `THIRD_PARTY_NOTICES.md` | Names the schemas' new folder. | +1 / -1 |
+| RFX-10 protocols | `src/viewer/protocol.ts` keeps `HostMessage`, `WebviewMessage` and `Compare`. The sidebar types move to a new `src/vscode/sidebar/protocol.ts`, and the `Session*` types to a new `src/learn/protocol.ts`. Every importer names the protocol it uses. | +130 / -115 |
+| RFX-09 lineage types | `CommitInfo`, `Lineage` and its `RunMode` move to a new `src/core/lineage.ts`. `changeMap.ts`, `comparison.ts`, `git.ts`, `change-map.ts` and `baseline.ts` import them from there. | +35 / -30 |
+| RFX-09 core globals | The owner's choice above. Declaring the globals adds a declaration file to `src/core` that the root typecheck leaves out. Rewriting changes `gitFormat.ts` and `submission.ts`. | +10 / -1 or +45 / -3 |
+| `test/unit/boundaries.test.ts` | Rewritten on the §2 rules, checked on path prefixes, with the four negatives, the bug-hunt files' RF4 units and the pending lists above. `sourceScan.ts` can also list `.css` files. | +170 / -120 |
+| Core typecheck | New `src/core/tsconfig.json` with `lib: ["ES2023"]` and `types: []`. `npm run typecheck` runs it after the root typecheck. A unit test typechecks a fixture under it. | +45 / -1 |
+| RFX-11 ADR | New ADR "Unit boundaries", added to the index. It supersedes the structural parts of ADRs 0004, 0007, 0015, 0016, 0026, 0052 and 0064. ADRs 0049, 0051, 0054, 0055, 0059, 0060 and 0063 become Superseded, each with one line naming `647df7b`. | +75 / -14 |
+
+Tests the ACs call for:
+- RFX-08: `npm run check` and `npm run test:e2e`. `committed.test.ts` and `action.test.ts` compare the committed bundles with a fresh build. A diff of each rebuilt bundle shows that only the source-path comments changed.
+- RFX-09: in `test/unit/boundaries.test.ts`, the real tree passes the unit rules and each of the four negatives, and one fixture per rule fails it. A test typechecks a fixture under `src/core/tsconfig.json` and sees a `node:fs` import fail. `noNetwork.test.ts`, `execScan.test.ts`, `committed.test.ts` and `messages.test.ts` keep their checks with the new paths.
+- RFX-10: `npm run typecheck`, the dom suite and `npm run test:e2e`.
+- RFX-11: `npm run check:docs`.
 
 - [ ] **RFX-08 Unit folders** `[unit]` `[e2e]`
 - [ ] **RFX-09 Unit import rules** `[unit]`
