@@ -74,7 +74,7 @@ Every command is also in the Command Palette under "Sustain".
 | Explorer right-click | Map This Folder with Sustain |
 | Maps list | Open, Refresh, Export page, Create tour and Delete on each map |
 | Pull request | The Sustain check and its comment |
-| **Sustain: Install Agent Skills** | Copies the `sustain-architecture` skill into `.agents/skills/sustain-architecture/` and links `.claude/skills/sustain-architecture` to it (a copy if links are not possible). Asks before overwriting an existing install. |
+| **Sustain: Install Agent Skills** | Installs `sustain-architecture` and `sustain-bugfix` where `sustain.skillScope` says: your home folder by default (`~/.agents/skills/`, nothing added to the repository), or the repository's `.agents/skills/` when the scope is `project`. Each `.claude/skills/<name>` entry links to the `.agents` copy (a copy where links are not possible). Asks before overwriting an existing install. |
 | **Sustain: Generate Architecture** | Asks for an optional focus, then (when the folder already has a diagram) whether to update the latest diagram or regenerate from scratch, then an agent, and starts Claude Code or Codex in a terminal with the skill invocation. Offers to install the skill first if it is missing. If the agent is not on `PATH`, it offers to copy the prompt instead. |
 | **Sustain: Open Architecture** | Opens the newest diagram of the folder in a Sustain Architecture tab, or reveals and reloads its tab if it is already open. |
 
@@ -97,7 +97,7 @@ Diagrams are `.sir` files (Sustain Intermediate Representation, Archify JSON ins
 - **Practice** in the sidebar checks your understanding of this branch's or the uncommitted changes. Your agent asks three questions, and grades each answer with a link to the code. The expected answers never reach the sidebar, and the results stay in VS Code's storage for the workspace. Below them, the section lists your finished bug hunts, explain-backs and tours, with their dates.
 - **Rules** in `sustain.config.json` say which boxes may import which. An import that breaks one shows in the Problems panel at its line and in the pull request check; use Suggest rules in the sidebar. Every change to the file shows as a diff first.
 
-1. Run **Sustain: Install Agent Skills** once per repository.
+1. Run **Sustain: Install Agent Skills** once — per repository only when `sustain.skillScope` is `project`.
 2. Run **Sustain: Generate Architecture**, or start the skill yourself in your agent:
    - **Claude Code:** `/sustain-architecture` followed by an optional focus, e.g. `/sustain-architecture payment flow`. Reading, searching and the skill's scripts are pre-approved; Claude Code still asks before writing the diagram file.
    - **Codex:** `$sustain-architecture` followed by an optional focus, e.g. `$sustain-architecture payment flow`.
