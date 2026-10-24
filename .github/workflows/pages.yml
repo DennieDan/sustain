@@ -2,7 +2,7 @@ name: Deploy website to GitHub Pages
 
 on:
   push:
-    branches: [main, features-description]
+    branches: [main, docs/features-description]
     paths:
       - "site/**"
       - ".github/workflows/pages.yml"
