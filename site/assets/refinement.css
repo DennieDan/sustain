@@ -1,4 +1,12 @@
 /* AI SUS visual language: pale green, forest, and code as evidence. */
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("fonts/SpaceGrotesk-SemiBold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
 :root {
   --paper: #f7f9f4;
   --paper-2: #eaf0e8;
@@ -11,6 +19,7 @@
   --mint: #a8dfbf;
   --white: #fffef9;
   --sans: "Avenir Next", Avenir, "Helvetica Neue", system-ui, sans-serif;
+  --display-sans: "Space Grotesk", var(--sans);
   --content-max: 1120px;
   --content-gutter: clamp(48px, 9vw, 128px);
   --font-body: 1rem;
@@ -220,6 +229,23 @@ a:focus-visible, button:focus-visible { outline: 3px solid #4d7b3f; outline-offs
 .section-head h2, .learning h2, .quick-start h2, .cloud-section h2, .feature-section h2, .feature-cta h2, .faq h2 { font-size: var(--font-section-title); font-weight: 650; }
 .story-copy h3, .price-card h2, .education-banner h2 { font-size: var(--font-story-title); font-weight: 650; }
 .feature-demo h3, .cloud-panel h3 { font-size: var(--font-card-title); font-weight: 650; }
+/* Large marketing titles echo the wordmark; documentation keeps the reading font. */
+.home-page .hero h1,
+.home-page .section-head h2,
+.home-page .story-copy h3,
+.home-page .learning h2,
+.home-page .quick-start h2,
+.home-page .cloud-section h2,
+.features-page .page-hero h1,
+.features-page .feature-section h2,
+.features-page .feature-cta h2,
+.pricing-page .page-hero h1,
+.pricing-page .price-card h2,
+.pricing-page .education-banner h2,
+.pricing-page .faq h2 {
+  font-family: var(--display-sans);
+  font-weight: 600;
+}
 .home-page .section-pad, .features-page .feature-section, .features-page .feature-cta { padding-block: var(--section-space); }
 .pricing-page .faq { padding-block: var(--section-space); }
 
