@@ -1,4 +1,4 @@
-/* Sustain's visual language: pale green, forest, and code as evidence. */
+/* AI SUS visual language: pale green, forest, and code as evidence. */
 :root {
   --paper: #f7f9f4;
   --paper-2: #eaf0e8;
@@ -34,8 +34,9 @@ a:focus-visible, button:focus-visible { outline: 3px solid #4d7b3f; outline-offs
 .site-header { background: #f7f9f4f2; border-color: var(--line); color: var(--ink); backdrop-filter: blur(10px); }
 .header-inner { min-height: 76px; gap: 30px; }
 .brand { font-size: 1.4rem; font-weight: 750; letter-spacing: -.04em; }
-.brand-mark { border-color: var(--forest); border-radius: 3px; }
-.brand-dot { color: #56834b; }
+.brand-wordmark img { display: block; width: 160px; height: auto; }
+.brand-mark { width: 30px; height: 30px; border: 0; border-radius: 0; }
+.brand-mark img { width: 27px; height: 27px; }
 .primary-nav { gap: 30px; }
 .primary-nav a { color: var(--ink); font-size: .9rem; font-weight: 600; }
 .primary-nav a:hover, .primary-nav a[aria-current="page"] { color: #477646; }
@@ -277,6 +278,7 @@ a:focus-visible, button:focus-visible { outline: 3px solid #4d7b3f; outline-offs
 }
 @media (max-width: 560px) {
   :root { --font-page-title: clamp(2.3rem, 8vw, 2.9rem); --font-section-title: 2rem; --font-story-title: 1.75rem; --font-lead: 1.06rem; --section-space: 64px; --page-hero-top: 52px; }
+  .brand-wordmark img { width: 138px; }
   .docs-intro h1 { font-size: 2.05rem; }
   .docs-step { padding: 34px 0 42px; }
   .step-heading h2 { font-size: 1.55rem; }

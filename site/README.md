@@ -1,6 +1,6 @@
-# Sustain website
+# AI SUS website
 
-This static site is the future-launch marketing and guided setup site for Sustain. It lives beside the extension and Cloud code in the same repository. It has no build step or runtime dependency.
+This static site is the future-launch marketing and guided setup site for AI SUS. It lives beside the extension and Cloud code in the same repository. It has no build step or runtime dependency.
 
 ## Preview
 

@@ -1,10 +1,11 @@
-# Sustain site design rules
+# AI SUS site design rules
 
 This site should feel like a readable engineering instrument. Its visual focus is the map and the code behind it.
 
 ## Visual language
 
 - Use a pale green neutral, forest green, and a small amount of lime. In product previews, green means a matching citation and amber means cited code changed.
+- Use the supplied AI SUS wordmark in the header. The secondary diagram mark has no enclosing border and uses the same green as the active Get Started link. Browser tabs use the green PNG favicon.
 - Set the homepage headline beside its explanation. Let the interactive map demonstrate the product immediately below. Use sentence-case headings and reserve monospace type for code and interface metadata.
 - Home, Features, Pricing, and Data & privacy share the `--content-max` and `--content-gutter` values in `assets/refinement.css`. Their main content stays centered while section backgrounds can span the viewport.
 - Use `--font-page-title` for public-page headlines, `--font-section-title` for major sections, and `--font-story-title` and `--font-card-title` for smaller headings. These values and the Avenir-based font stack are the site's type system. Keep the Get Started article at documentation scale.
@@ -27,5 +28,5 @@ This site should feel like a readable engineering instrument. Its visual focus i
 ## Review before launch
 
 - Check every integration, price, education rule, and privacy statement against the released product.
-- Review third-party marks against their owners' current guidelines. Keep product names and marks subordinate to Sustain's identity.
+- Review third-party marks against their owners' current guidelines. Keep product names and marks subordinate to AI SUS's identity.
 - Test keyboard access, narrow screens, contrast, reduced motion, and the complete Get Started path in a browser.
